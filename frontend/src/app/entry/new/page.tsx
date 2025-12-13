@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/form-elements';
 import { useAutoSave } from '@/hooks/use-auto-save';
 import TemplatesModal from '@/components/templates/TemplatesModal';
 import { voiceCommandService } from '@/services/voice-command.service';
+import { aiContentAnalyzer } from '@/services/ai-content-analyzer.service';
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
     ssr: false,
@@ -57,6 +58,8 @@ export default function NewEntryPage() {
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [error, setError] = useState('');
     const [voiceProcessed, setVoiceProcessed] = useState(false);
+    const [isAnalyzingContent, setIsAnalyzingContent] = useState(false);
+    const [aiSuggestions, setAiSuggestions] = useState<any>(null);
 
     // Process voice input from URL params
     useEffect(() => {
@@ -108,9 +111,39 @@ export default function NewEntryPage() {
         fetchChapters();
     }, [accessToken]);
 
-    const handleEditorChange = (text: string, html: string) => {
+    const handleEditorChange = async (text: string, html: string) => {
         setContent(text);
         setContentHtml(html);
+
+        // Analyze content for AI suggestions (debounced)
+        if (text.trim().length > 20) {
+            setIsAnalyzingContent(true);
+
+            // Debounce the analysis
+            setTimeout(async () => {
+                try {
+                    const analysis = await aiContentAnalyzer.analyzeContent(text);
+                    setAiSuggestions(analysis);
+
+                    // Auto-fill if fields are empty
+                    if (!title && analysis.suggestedTitle !== 'Untitled Entry') {
+                        setTitle(analysis.suggestedTitle);
+                    }
+
+                    if (!mood && analysis.detectedMood) {
+                        setMood(analysis.detectedMood);
+                    }
+
+                    if (tags.length === 0 && analysis.extractedTags.length > 0) {
+                        setTags(analysis.extractedTags);
+                    }
+                } catch (error) {
+                    console.error('Content analysis failed:', error);
+                } finally {
+                    setIsAnalyzingContent(false);
+                }
+            }, 1000); // 1 second debounce
+        }
     };
 
     const handleAddTag = (e: React.KeyboardEvent) => {
