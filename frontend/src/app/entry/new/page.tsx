@@ -466,6 +466,88 @@ export default function NewEntryPage() {
                                                 </div>
                                             )}
 
+                                            {/* Growth & Patterns (Social Science Model) */}
+                                            {extractedData.growthPoints && extractedData.growthPoints.length > 0 && (
+                                                <div className="grid gap-3 p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <label className="text-xs font-semibold text-emerald-300 uppercase tracking-wider">Growth & Patterns</label>
+                                                        <span className="text-[10px] text-emerald-400/50 bg-emerald-500/10 px-1.5 rounded border border-emerald-500/10">Social Science Model</span>
+                                                    </div>
+                                                    {extractedData.growthPoints.map((point, i) => (
+                                                        <div key={i} className="flex items-start gap-3 text-sm text-slate-200">
+                                                            <span className={`mt-1 text-xs px-2 py-0.5 rounded border capitalize whitespace-nowrap ${point.category === 'professional' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
+                                                                point.category === 'relational' ? 'bg-pink-500/20 text-pink-300 border-pink-500/30' :
+                                                                    point.category === 'spiritual' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
+                                                                        'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                                                }`}>
+                                                                {point.category}
+                                                            </span>
+                                                            <div className="flex-1">
+                                                                <p className="leading-relaxed opacity-90">{point.insight}</p>
+                                                                {point.actionable && (
+                                                                    <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 mt-1 font-medium opacity-80">
+                                                                        🚀 Actionable Step
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* EQ Metrics */}
+                                            {extractedData.emotionalIntelligence && (
+                                                <div className="p-5 rounded-xl bg-white/5 border border-white/5 transition-all hover:bg-white/[0.07]">
+                                                    <div className="flex items-center justify-between mb-5">
+                                                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Emotional Intelligence</label>
+                                                        <span className="text-xs px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 capitalize font-medium">
+                                                            Dominant: {extractedData.emotionalIntelligence.dominantTrait}
+                                                        </span>
+                                                    </div>
+                                                    <div className="space-y-4">
+                                                        {/* Self Awareness */}
+                                                        <div>
+                                                            <div className="flex justify-between text-xs text-slate-300 mb-2">
+                                                                <span>Self Awareness</span>
+                                                                <span className="opacity-70">{extractedData.emotionalIntelligence.selfAwareness}/10</span>
+                                                            </div>
+                                                            <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                                                                <div
+                                                                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+                                                                    style={{ width: `${extractedData.emotionalIntelligence.selfAwareness * 10}%` }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        {/* Regulation */}
+                                                        <div>
+                                                            <div className="flex justify-between text-xs text-slate-300 mb-2">
+                                                                <span>Self Regulation</span>
+                                                                <span className="opacity-70">{extractedData.emotionalIntelligence.regulation}/10</span>
+                                                            </div>
+                                                            <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                                                                <div
+                                                                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                                                                    style={{ width: `${extractedData.emotionalIntelligence.regulation * 10}%` }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        {/* Social Awareness */}
+                                                        <div>
+                                                            <div className="flex justify-between text-xs text-slate-300 mb-2">
+                                                                <span>Social Awareness</span>
+                                                                <span className="opacity-70">{extractedData.emotionalIntelligence.socialAwareness}/10</span>
+                                                            </div>
+                                                            <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                                                                <div
+                                                                    className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.3)]"
+                                                                    style={{ width: `${extractedData.emotionalIntelligence.socialAwareness * 10}%` }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {/* Smart Fields */}
                                             <div className="grid md:grid-cols-2 gap-6">
                                                 <div className="space-y-4">
@@ -487,8 +569,8 @@ export default function NewEntryPage() {
                                                                     key={m.value}
                                                                     onClick={() => setMoodOverride(moodOverride === m.value ? null : m.value)}
                                                                     className={`px-3 py-2 rounded-xl text-sm flex items-center gap-2 transition-all border ${displayMood === m.value
-                                                                            ? 'bg-primary border-primary text-white shadow-lg shadow-primary/25'
-                                                                            : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10 hover:border-white/10'
+                                                                        ? 'bg-primary border-primary text-white shadow-lg shadow-primary/25'
+                                                                        : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10 hover:border-white/10'
                                                                         }`}
                                                                 >
                                                                     <span>{m.emoji}</span>
