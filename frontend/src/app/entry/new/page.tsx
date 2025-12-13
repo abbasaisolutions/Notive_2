@@ -11,6 +11,7 @@ import { useAutoSave } from '@/hooks/use-auto-save';
 import TemplatesModal from '@/components/templates/TemplatesModal';
 import { voiceCommandService } from '@/services/voice-command.service';
 import { aiContentAnalyzer } from '@/services/ai-content-analyzer.service';
+import StructuredDataPreview from '@/components/insights/StructuredDataPreview';
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
     ssr: false,
@@ -361,6 +362,23 @@ export default function NewEntryPage() {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     className="w-full bg-transparent border-none text-3xl font-bold text-white placeholder-slate-600 focus:outline-none mb-6"
+                />
+
+                {/* AI Analysis Preview */}
+                <StructuredDataPreview
+                    content={content}
+                    onDataExtracted={(data) => {
+                        // Auto-fill if fields are empty
+                        if (!title && data.title !== 'Untitled Entry') {
+                            setTitle(data.title);
+                        }
+                        if (!mood && data.primaryEmotion?.emotion) {
+                            setMood(data.primaryEmotion.emotion);
+                        }
+                        if (tags.length === 0 && data.suggestedTags.length > 0) {
+                            setTags(data.suggestedTags);
+                        }
+                    }}
                 />
 
                 {/* Chapter Selector */}
