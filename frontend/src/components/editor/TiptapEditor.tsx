@@ -1,7 +1,7 @@
 'use client';
 
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';
@@ -147,6 +147,9 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
 };
 
 export default function TiptapEditor({ content = '', initialContent = '', onChange, placeholder = 'Start writing...' }: TiptapEditorProps) {
+    const contentRef = useRef(initialContent || content);
+    const isExternalUpdate = useRef(false);
+
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -155,15 +158,22 @@ export default function TiptapEditor({ content = '', initialContent = '', onChan
                 placeholder,
             }),
         ],
-        content: initialContent || content,
+        content: contentRef.current,
         editorProps: {
             attributes: {
                 class: 'prose prose-invert prose-sm sm:prose-base max-w-none focus:outline-none min-h-[200px] p-4',
             },
         },
         onUpdate: ({ editor }) => {
+            if (isExternalUpdate.current) {
+                isExternalUpdate.current = false;
+                return;
+            }
             if (onChange) {
-                onChange(editor.getText(), editor.getHTML());
+                const text = editor.getText();
+                const html = editor.getHTML();
+                contentRef.current = text;
+                onChange(text, html);
             }
         },
         immediatelyRender: false,
@@ -171,10 +181,12 @@ export default function TiptapEditor({ content = '', initialContent = '', onChan
 
     // Sync with external content changes (e.g., from voice input)
     useEffect(() => {
-        if (editor && initialContent && editor.getText() !== initialContent) {
-            editor.commands.setContent(initialContent);
+        if (editor && content && content !== contentRef.current) {
+            isExternalUpdate.current = true;
+            contentRef.current = content;
+            editor.commands.setContent(content);
         }
-    }, [editor, initialContent]);
+    }, [editor, content]);
 
     useEffect(() => {
         if (editor) {
@@ -192,3 +204,4 @@ export default function TiptapEditor({ content = '', initialContent = '', onChan
         </div>
     );
 }
+
