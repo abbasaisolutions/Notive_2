@@ -175,7 +175,7 @@ export default function NewEntryPage() {
 
         analysisTimeoutRef.current = setTimeout(() => {
             analyzeContent(content);
-        }, 1200);
+        }, 1000); // Faster feedback (1s)
 
         return () => {
             if (analysisTimeoutRef.current) {
@@ -248,6 +248,7 @@ export default function NewEntryPage() {
                     contentHtml,
                     mood: finalMood,
                     tags: finalTags,
+                    extractedData, // Store full extracted data for insights
                 }),
             });
 
@@ -296,13 +297,14 @@ export default function NewEntryPage() {
     const displayTags = tagsOverride.length > 0 ? tagsOverride : (extractedData?.suggestedTags || []);
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
+        <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-white selection:bg-primary/30">
             <div className="fixed top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[150px] pointer-events-none" />
+            <div className="fixed bottom-0 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
 
-            <div className="max-w-3xl mx-auto px-4 py-6 relative z-10">
+            <div className="max-w-3xl mx-auto px-4 py-8 relative z-10">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <Link href="/dashboard" className="p-2 -ml-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                <div className="flex items-center justify-between mb-8">
+                    <Link href="/dashboard" className="p-3 -ml-2 rounded-2xl text-slate-400 hover:text-white hover:bg-white/10 transition-all">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="m15 18-6-6 6-6" />
                         </svg>
@@ -311,190 +313,249 @@ export default function NewEntryPage() {
                     <button
                         onClick={handleSave}
                         disabled={isSaving || !content.trim()}
-                        className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-medium 
-                                   disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-primary/25 
-                                   transition-all flex items-center gap-2"
+                        className="px-6 py-3 rounded-2xl bg-gradient-to-r from-primary to-purple-600 text-white font-semibold 
+                                   disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-primary/25 hover:scale-105
+                                   transition-all flex items-center gap-2 active:scale-95"
                     >
                         {isSaving ? (
                             <>
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                 Saving...
                             </>
                         ) : (
                             <>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
                                 </svg>
-                                Save
+                                Save Entry
                             </>
                         )}
                     </button>
                 </div>
 
                 {error && (
-                    <div className="mb-4 bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm">
+                    <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-300 px-6 py-4 rounded-2xl text-sm flex items-center gap-3 backdrop-blur-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
                         {error}
                     </div>
                 )}
 
-                {/* Voice Recording Section */}
-                <div className="glass-card rounded-2xl p-6 mb-4">
-                    <div className="flex items-center justify-center mb-4">
-                        <button
-                            onClick={isRecording ? stopRecording : startRecording}
-                            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${isRecording
-                                    ? 'bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/30'
-                                    : 'bg-gradient-to-br from-primary to-secondary hover:shadow-lg hover:shadow-primary/30 hover:scale-105'
-                                }`}
-                        >
-                            {isRecording ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
-                                    <rect x="6" y="6" width="12" height="12" rx="2" />
-                                </svg>
-                            ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                                    <line x1="12" x2="12" y1="19" y2="22" />
-                                </svg>
-                            )}
-                        </button>
-                    </div>
+                {/* Main Capture Area */}
+                <div className="relative mb-6 group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-purple-600/20 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                    {/* Recording Status */}
-                    {isRecording && (
-                        <div className="text-center mb-4">
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/20">
-                                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                <span className="text-red-400 text-sm font-medium">Recording...</span>
+                    <div className="relative glass-card rounded-[2rem] p-8 border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl">
+                        {/* Voice Control - Floating Centered */}
+                        <div className="flex flex-col items-center justify-center mb-8">
+                            <button
+                                onClick={isRecording ? stopRecording : startRecording}
+                                className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${isRecording
+                                    ? 'bg-red-500 scale-110 shadow-[0_0_40px_rgba(239,68,68,0.4)]'
+                                    : 'bg-gradient-to-br from-primary to-purple-600 hover:shadow-[0_0_30px_rgba(59,130,246,0.4)] hover:scale-105'
+                                    }`}
+                            >
+                                {isRecording ? (
+                                    <div className="relative">
+                                        <div className="absolute inset-0 animate-ping opacity-75 bg-white rounded-full"></div>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="white" className="relative z-10">
+                                            <rect x="6" y="6" width="12" height="12" rx="2" />
+                                        </svg>
+                                    </div>
+                                ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                        <line x1="12" x2="12" y1="19" y2="22" />
+                                    </svg>
+                                )}
+                            </button>
+
+                            <div className="mt-4 h-6">
+                                {isRecording ? (
+                                    <div className="flex items-center gap-2">
+                                        <span className="relative flex h-3 w-3">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                        </span>
+                                        <span className="text-red-300 text-sm font-medium tracking-wide uppercase">Recording</span>
+                                    </div>
+                                ) : (
+                                    <span className="text-slate-500 text-sm font-medium">Tap to speak</span>
+                                )}
                             </div>
                         </div>
-                    )}
 
-                    {/* Interim Text (what's being recognized) */}
-                    {interimText && (
-                        <div className="text-center text-slate-400 italic text-sm mb-4 px-4">
-                            "{interimText}"
+                        {/* Interim Text Display */}
+                        {interimText && (
+                            <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/5 text-center">
+                                <p className="text-slate-300 italic text-lg animate-pulse">"{interimText}"</p>
+                            </div>
+                        )}
+
+                        {/* Editor */}
+                        <div className="relative">
+                            <TiptapEditor
+                                onChange={handleEditorChange}
+                                placeholder="Start writing or speaking..."
+                                content={content}
+                            />
                         </div>
-                    )}
-
-                    <p className="text-center text-slate-500 text-sm mb-4">
-                        {isRecording ? 'Speak naturally, tap stop when done' : 'Tap to speak or type below'}
-                    </p>
-
-                    {/* Text Editor */}
-                    <TiptapEditor
-                        onChange={handleEditorChange}
-                        placeholder="What's on your mind today?"
-                        content={content}
-                    />
+                    </div>
                 </div>
 
-                {/* AI Analysis Summary */}
+                {/* AI Intelligence Panel */}
                 {(extractedData || isAnalyzing) && (
-                    <div className="glass-card rounded-2xl overflow-hidden mb-4">
-                        <button
-                            onClick={() => setShowDetails(!showDetails)}
-                            className="w-full p-4 flex items-center justify-between text-left hover:bg-white/5 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center ${isAnalyzing ? 'animate-pulse' : ''}`}>
-                                    <span className="text-sm">🤖</span>
-                                </div>
-                                <div>
-                                    <div className="text-white font-medium text-sm">
-                                        {isAnalyzing ? 'Analyzing...' : 'AI Summary'}
+                    <div className="relative group transition-all duration-300">
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl blur opacity-75 group-hover:opacity-100 transition-opacity" />
+
+                        <div className="relative glass-card rounded-2xl overflow-hidden border border-white/10 bg-slate-900/60 backdrop-blur-xl">
+                            <button
+                                onClick={() => setShowDetails(!showDetails)}
+                                className="w-full p-5 flex items-center justify-between text-left hover:bg-white/5 transition-colors"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg ${isAnalyzing ? 'animate-pulse' : ''}`}>
+                                        <span className="text-lg">✨</span>
                                     </div>
-                                    {extractedData && !isAnalyzing && (
-                                        <div className="text-slate-400 text-xs">
-                                            {extractedData.wordCount} words
-                                            {displayMood && ` • ${MOODS.find(m => m.value === displayMood)?.emoji || '😊'} ${displayMood}`}
-                                            {displayTags.length > 0 && ` • ${displayTags.length} tags`}
+                                    <div>
+                                        <div className="text-white font-semibold flex items-center gap-2">
+                                            AI Insights
+                                            {isAnalyzing && (
+                                                <span className="text-xs font-normal text-cyan-300 animate-pulse bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                                                    Analyzing...
+                                                </span>
+                                            )}
                                         </div>
+                                        {extractedData && (
+                                            <div className="text-slate-400 text-xs mt-1 flex items-center gap-2">
+                                                <span>{extractedData.wordCount} words</span>
+                                                {displayMood && (
+                                                    <>
+                                                        <span className="w-1 h-1 rounded-full bg-slate-600" />
+                                                        <span className="text-white bg-white/10 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                                                            {MOODS.find(m => m.value === displayMood)?.emoji} {displayMood}
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className={`w-8 h-8 rounded-full bg-white/5 flex items-center justify-center transition-transform duration-300 ${showDetails ? 'rotate-180 bg-white/10' : ''}`}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-400"><path d="m6 9 6 6 6-6" /></svg>
+                                </div>
+                            </button>
+
+                            {/* Expanded Details */}
+                            <div className={`transition-all duration-300 ease-in-out ${showDetails ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                                <div className="p-5 space-y-6 border-t border-white/5 bg-black/20">
+                                    {extractedData && (
+                                        <>
+                                            {/* Insights Grid */}
+                                            {extractedData.insights.length > 0 && (
+                                                <div className="grid gap-3 p-4 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20">
+                                                    <label className="text-xs font-semibold text-indigo-300 uppercase tracking-wider mb-1">Key Insights</label>
+                                                    {extractedData.insights.map((insight, i) => (
+                                                        <div key={i} className="flex items-start gap-3 text-sm text-slate-200">
+                                                            <span className="mt-1 text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 capitalize">
+                                                                {insight.type}
+                                                            </span>
+                                                            <span className="leading-relaxed">{insight.content}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Smart Fields */}
+                                            <div className="grid md:grid-cols-2 gap-6">
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <label className="text-xs font-medium text-slate-400 mb-2 block uppercase tracking-wider">Suggested Title</label>
+                                                        <input
+                                                            type="text"
+                                                            value={displayTitle}
+                                                            onChange={(e) => setTitleOverride(e.target.value)}
+                                                            className="w-full bg-white/5 hover:bg-white/10 transition-colors rounded-xl px-4 py-3 text-white placeholder-slate-500 border border-white/10 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                                                        />
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="text-xs font-medium text-slate-400 mb-2 block uppercase tracking-wider">Mood</label>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {MOODS.map((m) => (
+                                                                <button
+                                                                    key={m.value}
+                                                                    onClick={() => setMoodOverride(moodOverride === m.value ? null : m.value)}
+                                                                    className={`px-3 py-2 rounded-xl text-sm flex items-center gap-2 transition-all border ${displayMood === m.value
+                                                                            ? 'bg-primary border-primary text-white shadow-lg shadow-primary/25'
+                                                                            : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10 hover:border-white/10'
+                                                                        }`}
+                                                                >
+                                                                    <span>{m.emoji}</span>
+                                                                    <span>{m.label}</span>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    {(extractedData.people.length > 0 || extractedData.places.length > 0) && (
+                                                        <div>
+                                                            <label className="text-xs font-medium text-slate-400 mb-2 block uppercase tracking-wider">Deteceted Entities</label>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {extractedData.people.map((p, i) => (
+                                                                    <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-300 border border-blue-500/20 text-sm">
+                                                                        👤 {p.name} <span className="text-blue-500/50 text-xs">({p.relationship})</span>
+                                                                    </span>
+                                                                ))}
+                                                                {extractedData.places.map((p, i) => (
+                                                                    <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-sm">
+                                                                        📍 {p.name}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div>
+                                                        <label className="text-xs font-medium text-slate-400 mb-2 block uppercase tracking-wider">Tags</label>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {displayTags.map((tag) => (
+                                                                <span key={tag} className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 text-sm transition-colors">
+                                                                    #{tag}
+                                                                    <button onClick={() => removeTag(tag)} className="text-slate-500 hover:text-red-400 ml-1">×</button>
+                                                                </span>
+                                                            ))}
+                                                            <input
+                                                                type="text"
+                                                                placeholder="+ Tag"
+                                                                className="px-3 py-1.5 rounded-lg bg-transparent text-sm text-white placeholder-slate-600 border border-white/10 focus:border-primary/50 focus:outline-none w-24 hover:bg-white/5 focus:bg-white/5 transition-colors"
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        addTag((e.target as HTMLInputElement).value.trim());
+                                                                        (e.target as HTMLInputElement).value = '';
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             </div>
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                className={`text-slate-400 transition-transform ${showDetails ? 'rotate-180' : ''}`}
-                            >
-                                <path d="m6 9 6 6 6-6" />
-                            </svg>
-                        </button>
-
-                        {showDetails && extractedData && (
-                            <div className="px-4 pb-4 space-y-4 border-t border-white/5">
-                                {/* Title */}
-                                <div className="pt-4">
-                                    <label className="text-xs text-slate-400 mb-1 block">Title</label>
-                                    <input
-                                        type="text"
-                                        value={displayTitle}
-                                        onChange={(e) => setTitleOverride(e.target.value)}
-                                        placeholder="Auto-generated title..."
-                                        className="w-full bg-white/5 rounded-xl px-4 py-2 text-white placeholder-slate-500 border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                                    />
-                                </div>
-
-                                {/* Mood */}
-                                <div>
-                                    <label className="text-xs text-slate-400 mb-2 block">Mood</label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {MOODS.map((m) => (
-                                            <button
-                                                key={m.value}
-                                                type="button"
-                                                onClick={() => setMoodOverride(moodOverride === m.value ? null : m.value)}
-                                                className={`px-3 py-1.5 rounded-xl text-sm flex items-center gap-1.5 transition-all ${displayMood === m.value
-                                                        ? 'bg-primary text-white'
-                                                        : 'bg-white/5 text-slate-300 hover:bg-white/10'
-                                                    }`}
-                                            >
-                                                <span>{m.emoji}</span>
-                                                <span>{m.label}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Tags */}
-                                <div>
-                                    <label className="text-xs text-slate-400 mb-2 block">Tags</label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {displayTags.map((tag) => (
-                                            <span key={tag} className="px-3 py-1 rounded-full bg-white/10 text-sm text-slate-200 flex items-center gap-2">
-                                                #{tag}
-                                                <button onClick={() => removeTag(tag)} className="text-slate-400 hover:text-white">×</button>
-                                            </span>
-                                        ))}
-                                        <input
-                                            type="text"
-                                            placeholder="+ Add"
-                                            className="px-3 py-1 rounded-full bg-white/5 text-sm text-white placeholder-slate-500 border border-white/10 focus:outline-none w-20"
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    addTag((e.target as HTMLInputElement).value.trim());
-                                                    (e.target as HTMLInputElement).value = '';
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                        </div>
                     </div>
                 )}
 
-                {/* Tips for empty state */}
-                {!content && (
-                    <div className="text-center text-slate-500 text-sm py-4">
-                        <p>✨ Just speak or type — AI handles the rest!</p>
+                {/* Empty State Hint */}
+                {!content && !isRecording && (
+                    <div className="mt-12 text-center">
+                        <p className="text-slate-500 text-sm font-medium">
+                            <span className="text-primary">Tip:</span> Just speak naturally. AI will capture, format, and organize everything for you.
+                        </p>
                     </div>
                 )}
             </div>
