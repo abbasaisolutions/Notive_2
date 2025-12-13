@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground: 248 250 252; /* Slate 50 */
+  --background-start: 15 23 42; /* Slate 900 */
+  --background-end: 2 6 23; /* Slate 950 */
+  --primary: 99 102 241; /* Indigo 500 */
+  --secondary: 236 72 153; /* Pink 500 */
+}
+
+html.light {
+  --foreground: 15 23 42; /* Slate 900 */
+  --background-start: 248 250 252; /* Slate 50 */
+  --background-end: 241 245 249; /* Slate 100 */
+}
+
+html.light body {
+  background: linear-gradient(to bottom, rgb(248 250 252), rgb(241 245 249)) fixed;
+}
+
+html.light .glass {
+  @apply bg-white/70 border-slate-200;
+}
+
+html.light .glass-card {
+  @apply bg-white/60 border-slate-200/50 hover:bg-white/80;
+}
+
+html.light .text-white {
+  color: rgb(15 23 42) !important;
+}
+
+html.light .text-slate-400 {
+  color: rgb(100 116 139) !important;
+}
+
+body {
+  color: rgb(var(--foreground));
+  background: linear-gradient(
+      to bottom,
+      rgb(var(--background-start)),
+      rgb(var(--background-end))
+    )
+    fixed;
+  min-height: 100vh;
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-slate-900/70 backdrop-blur-xl border border-white/10 shadow-xl;
+  }
+  
+  .glass-card {
+    @apply bg-slate-800/40 backdrop-blur-md border border-white/5 rounded-2xl shadow-lg hover:bg-slate-800/50 transition-all duration-300;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+/* Animations */
+@keyframes confetti {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@keyframes celebration {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.6);
+  }
+}
+
+.animate-confetti {
+  animation: confetti 2s ease-out forwards;
+}
+
+.animate-celebration {
+  animation: celebration 0.5s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}

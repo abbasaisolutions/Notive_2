@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPERADMIN
+}
+
+enum Category {
+  PERSONAL
+  PROFESSIONAL
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String?  // Optional for SSO users
+  name          String?
+  avatarUrl     String?
+  role          Role     @default(USER)
+  isBanned      Boolean  @default(false)
+  googleId      String?  @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Refresh tokens for this user
+  refreshTokens RefreshToken[]
+  
+  // Profile
+  profile       UserProfile?
+  
+  // Journal entries
+  entries       Entry[]
+  
+  // Chapters
+  chapters      Chapter[]
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Entry {
+  id          String   @id @default(cuid())
+  title       String?
+  content     String   @db.Text
+  contentHtml String?  @db.Text
+  coverImage  String?
+  mood        String?
+  tags        String[]
+  category    Category @default(PERSONAL)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapterId   String?
+  chapter     Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  shareLinks  ShareLink[]
+  
+  // Phase 2: Insights & Sharing
+  lessons     String[]
+  skills      String[]
+  reflection  String?  @db.Text
+  isShared    Boolean  @default(false)
+  sharedToken String?  @unique
+  
+  // Phase 3: Social & Extensions
+  source      EntrySource @default(NOTIVE)
+  externalId  String?     
+  sourceLink  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+}
+
+enum EntrySource {
+  NOTIVE
+  FACEBOOK
+  INSTAGRAM
+}
+
+model UserProfile {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio         String?   @db.Text
+  location    String?
+  occupation  String?
+  website     String?
+  birthDate   DateTime?
+  lifeGoals   String[]
+  updatedAt   DateTime  @updatedAt
+}
+
+model Chapter {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#6366f1") // Primary purple
+  icon        String?  @default("📖")
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries     Entry[]
+  shareLinks  ShareLink[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ShareLink {
+  id        String    @id @default(cuid())
+  token     String    @unique @default(cuid())
+  entryId   String?
+  entry     Entry?    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  chapterId String?
+  chapter   Chapter?  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+}
