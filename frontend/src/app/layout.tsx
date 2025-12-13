@@ -8,6 +8,8 @@ import { ThemeProvider } from "@/context/theme-context";
 import ContextPrompt from "@/components/smart/ContextPrompt";
 import MobileNav from "@/components/layout/MobileNav";
 import CelebrationModal from "@/components/gamification/CelebrationModal";
+import FloatingVoiceButton from "@/components/voice/FloatingVoiceButton";
+import SmartPromptNotification from "@/components/voice/SmartPromptNotification";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -37,6 +39,8 @@ export default function RootLayout({
                                     <ContextPrompt />
                                     <MobileNav />
                                     <CelebrationModal />
+                                    <FloatingVoiceButton />
+                                    <SmartPromptNotification />
                                 </SmartProvider>
                             </GamificationProvider>
                         </AuthProvider>

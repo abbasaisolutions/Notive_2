@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/context/auth-context';
@@ -9,6 +9,7 @@ import { useGamification } from '@/context/gamification-context';
 import { Button } from '@/components/ui/form-elements';
 import { useAutoSave } from '@/hooks/use-auto-save';
 import TemplatesModal from '@/components/templates/TemplatesModal';
+import { voiceCommandService } from '@/services/voice-command.service';
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
     ssr: false,
@@ -37,6 +38,7 @@ interface Chapter {
 
 export default function NewEntryPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, accessToken, isLoading: authLoading } = useAuth();
     const { awardXP, refreshStats } = useGamification();
     const [title, setTitle] = useState('');
@@ -54,6 +56,39 @@ export default function NewEntryPage() {
     const [showTemplates, setShowTemplates] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [error, setError] = useState('');
+    const [voiceProcessed, setVoiceProcessed] = useState(false);
+
+    // Process voice input from URL params
+    useEffect(() => {
+        if (voiceProcessed) return;
+
+        const voiceText = searchParams.get('voice');
+        const promptText = searchParams.get('prompt');
+
+        if (voiceText) {
+            // Process voice transcript
+            const processed = voiceCommandService.processTranscript(voiceText);
+            setContent(processed.cleanedText);
+
+            // Extract and set mood
+            const extractedMood = voiceCommandService.extractMood(voiceText);
+            if (extractedMood) {
+                setMood(extractedMood);
+            }
+
+            // Extract and set tags
+            const extractedTags = voiceCommandService.extractTags(voiceText);
+            if (extractedTags.length > 0) {
+                setTags(extractedTags);
+            }
+
+            setVoiceProcessed(true);
+        } else if (promptText) {
+            // Set content from prompt
+            setContent(promptText);
+            setVoiceProcessed(true);
+        }
+    }, [searchParams, voiceProcessed]);
 
     useEffect(() => {
         const fetchChapters = async () => {
