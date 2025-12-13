@@ -8,6 +8,7 @@ import Underline from '@tiptap/extension-underline';
 
 interface TiptapEditorProps {
     content?: string;
+    initialContent?: string;
     onChange?: (content: string, html: string) => void;
     placeholder?: string;
 }
@@ -145,7 +146,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
     );
 };
 
-export default function TiptapEditor({ content = '', onChange, placeholder = 'Start writing...' }: TiptapEditorProps) {
+export default function TiptapEditor({ content = '', initialContent = '', onChange, placeholder = 'Start writing...' }: TiptapEditorProps) {
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -154,10 +155,10 @@ export default function TiptapEditor({ content = '', onChange, placeholder = 'St
                 placeholder,
             }),
         ],
-        content,
+        content: initialContent || content,
         editorProps: {
             attributes: {
-                class: 'prose prose-invert prose-sm sm:prose-base max-w-none focus:outline-none min-h-[300px] p-4',
+                class: 'prose prose-invert prose-sm sm:prose-base max-w-none focus:outline-none min-h-[200px] p-4',
             },
         },
         onUpdate: ({ editor }) => {
@@ -167,6 +168,13 @@ export default function TiptapEditor({ content = '', onChange, placeholder = 'St
         },
         immediatelyRender: false,
     });
+
+    // Sync with external content changes (e.g., from voice input)
+    useEffect(() => {
+        if (editor && initialContent && editor.getText() !== initialContent) {
+            editor.commands.setContent(initialContent);
+        }
+    }, [editor, initialContent]);
 
     useEffect(() => {
         if (editor) {
