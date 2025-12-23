@@ -51,14 +51,14 @@ export default function ContextPrompt() {
                         </svg>
                     </div>
                     <div>
-                        <h3 className="font-bold text-white mb-1">Smart Prompt</h3>
+                        <h3 className="font-bold text-white mb-1">Neural Spark</h3>
                         <p className="text-slate-300 text-sm mb-4">{message}</p>
                         <div className="flex gap-2">
                             <button
                                 onClick={handleAction}
                                 className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
                             >
-                                Journal About It
+                                Capture the Moment
                             </button>
                             <button
                                 onClick={handleDismiss}

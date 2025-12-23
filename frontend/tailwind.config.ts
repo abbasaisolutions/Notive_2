@@ -8,18 +8,26 @@ const config: Config = {
     ],
     theme: {
         extend: {
+            fontFamily: {
+                sans: ["var(--font-inter)", "sans-serif"],
+                serif: ["var(--font-serif)", "serif"],
+            },
             colors: {
-                background: "var(--background)",
-                foreground: "var(--foreground)",
-                glass: "rgba(30, 41, 59, 0.7)",
+                background: "rgb(var(--background-start))",
+                foreground: "rgb(var(--foreground))",
                 primary: {
-                    DEFAULT: "#8B5CF6",
+                    DEFAULT: "rgb(var(--primary))",
                     foreground: "#FFFFFF"
                 },
                 secondary: {
-                    DEFAULT: "#06B6D4",
+                    DEFAULT: "rgb(var(--secondary))",
                     foreground: "#FFFFFF"
-                }
+                },
+                accent: {
+                    DEFAULT: "rgb(var(--accent))",
+                    foreground: "#FFFFFF"
+                },
+                glass: "var(--glass-bg)",
             },
             backgroundImage: {
                 "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",

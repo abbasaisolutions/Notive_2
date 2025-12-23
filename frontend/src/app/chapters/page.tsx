@@ -135,8 +135,8 @@ export default function ChaptersPage() {
                             </svg>
                         </Link>
                         <div>
-                            <h1 className="text-3xl font-bold text-white">Chapters</h1>
-                            <p className="text-slate-400">Organize your journal into collections</p>
+                            <h1 className="text-3xl font-bold text-white">Living Volumes</h1>
+                            <p className="text-slate-400">Chapters of your life, archived as digital volumes</p>
                         </div>
                     </div>
                     <button
@@ -170,33 +170,38 @@ export default function ChaptersPage() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {chapters.map((chapter) => (
-                            <div key={chapter.id} className="glass-card rounded-2xl overflow-hidden group">
-                                <div className="h-2" style={{ backgroundColor: chapter.color }} />
-                                <div className="p-6">
+                            <div key={chapter.id} className="glass-card rounded-2xl overflow-hidden group hover:scale-[1.02] transition-transform duration-500">
+                                <div className="h-32 relative overflow-hidden bg-slate-900">
+                                    <div className="absolute inset-0 opacity-20" style={{ backgroundColor: chapter.color }} />
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <span className="text-6xl group-hover:scale-125 transition-transform duration-700">{chapter.icon}</span>
+                                    </div>
+                                    <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: chapter.color }} />
+                                </div>
+                                <div className="p-6 relative">
+                                    <div className="absolute -top-4 right-6 px-3 py-1 rounded-full bg-slate-900 border border-white/10 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                        Vol. {chapter._count.entries.toString().padStart(2, '0')}
+                                    </div>
                                     <div className="flex items-start justify-between mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-3xl">{chapter.icon}</span>
-                                            <div>
-                                                <h3 className="text-lg font-bold text-white group-hover:text-primary transition-colors">{chapter.name}</h3>
-                                                <p className="text-sm text-slate-400">{chapter._count.entries} entries</p>
+                                        <div>
+                                            <h3 className="text-xl font-bold text-white mb-1">{chapter.name}</h3>
+                                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                <span>{chapter._count.entries} entries</span>
+                                                <span className="w-1 h-1 rounded-full bg-slate-700" />
+                                                <span>Started {new Date(chapter.createdAt).getFullYear()}</span>
                                             </div>
                                         </div>
-                                        <div className="flex gap-1">
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => openEditModal(chapter)} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                     <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
                                                 </svg>
                                             </button>
-                                            <button onClick={() => handleDelete(chapter.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                    <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                                                </svg>
-                                            </button>
                                         </div>
                                     </div>
-                                    {chapter.description && <p className="text-slate-400 text-sm mb-4 line-clamp-2">{chapter.description}</p>}
-                                    <Link href={`/chapters/view?id=${chapter.id}`} className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                                        View Entries
+                                    {chapter.description && <p className="text-slate-400 text-sm mb-6 line-clamp-2 italic">"{chapter.description}"</p>}
+                                    <Link href={`/chapters/view?id=${chapter.id}`} className="flex items-center justify-center w-full py-2.5 rounded-xl border border-white/5 bg-white/5 hover:bg-primary hover:text-white transition-all text-sm font-medium gap-2">
+                                        Open Volume
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
                                         </svg>
