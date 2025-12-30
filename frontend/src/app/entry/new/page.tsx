@@ -46,6 +46,7 @@ export default function NewEntryPage() {
     const [titleOverride, setTitleOverride] = useState('');
     const [moodOverride, setMoodOverride] = useState<string | null>(null);
     const [tagsOverride, setTagsOverride] = useState<string[]>([]);
+    const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
     // Voice recording state
     const [isRecording, setIsRecording] = useState(false);
@@ -141,9 +142,11 @@ export default function NewEntryPage() {
     useEffect(() => {
         const voiceText = searchParams.get('voice');
         const promptText = searchParams.get('prompt');
+        const audioParam = searchParams.get('audioUrl');
 
         if (voiceText) {
             setContent(voiceText);
+            if (audioParam) setAudioUrl(audioParam);
         } else if (promptText) {
             setContent(promptText);
         }
@@ -248,6 +251,7 @@ export default function NewEntryPage() {
                     contentHtml,
                     mood: finalMood,
                     tags: finalTags,
+                    audioUrl,
                     extractedData, // Store full extracted data for insights
                 }),
             });
@@ -389,6 +393,15 @@ export default function NewEntryPage() {
                         {interimText && (
                             <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/5 text-center">
                                 <p className="text-slate-300 italic text-lg animate-pulse">"{interimText}"</p>
+                            </div>
+                        )}
+
+
+                        {/* Audio Player */}
+                        {audioUrl && (
+                            <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/5">
+                                <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider">Voice Recording</p>
+                                <audio controls src={audioUrl} className="w-full h-10" />
                             </div>
                         )}
 

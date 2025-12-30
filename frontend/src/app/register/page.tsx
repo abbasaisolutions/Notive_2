@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Input, Button } from '@/components/ui/form-elements';
+import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
+import { motion } from 'framer-motion';
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -44,72 +46,111 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-slate-950">
             {/* Background Glow Effects */}
-            <div className="absolute top-1/4 right-0 w-[500px] h-[500px] bg-secondary/20 rounded-full blur-[150px] pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
+            <motion.div
+                animate={{
+                    scale: [1, 1.2, 1],
+                    opacity: [0.3, 0.5, 0.3],
+                    rotate: [0, 90, 0]
+                }}
+                transition={{
+                    duration: 15,
+                    repeat: Infinity,
+                    ease: "linear"
+                }}
+                className="absolute top-1/4 right-0 w-[500px] h-[500px] bg-secondary/20 rounded-full blur-[150px] pointer-events-none"
+            />
+            <motion.div
+                animate={{
+                    scale: [1, 1.3, 1],
+                    opacity: [0.2, 0.4, 0.2],
+                    rotate: [0, -60, 0]
+                }}
+                transition={{
+                    duration: 20,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                }}
+                className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/20 rounded-full blur-[120px] pointer-events-none"
+            />
 
-            <div className="w-full max-w-md relative z-10">
+            <FadeIn className="w-full max-w-md relative z-10">
                 {/* Logo */}
                 <div className="text-center mb-8">
                     <Link href="/">
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent inline-block">
+                        <motion.h1
+                            whileHover={{ scale: 1.05 }}
+                            className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent inline-block"
+                        >
                             Notive.
-                        </h1>
+                        </motion.h1>
                     </Link>
                     <p className="text-slate-400 mt-2">Create your account to get started.</p>
                 </div>
 
                 {/* Register Form Card */}
-                <div className="glass p-8 rounded-3xl">
+                <div className="glass p-8 rounded-3xl border border-white/5 shadow-xl shadow-black/20">
                     <form onSubmit={handleSubmit} className="space-y-5">
                         {error && (
-                            <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm">
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm"
+                            >
                                 {error}
-                            </div>
+                            </motion.div>
                         )}
 
-                        <Input
-                            id="name"
-                            label="Full Name"
-                            type="text"
-                            placeholder="John Doe"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                        />
+                        <SlideUp delay={0.1}>
+                            <Input
+                                id="name"
+                                label="Full Name"
+                                type="text"
+                                placeholder="John Doe"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                            />
+                        </SlideUp>
 
-                        <Input
-                            id="email"
-                            label="Email"
-                            type="email"
-                            placeholder="you@example.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
+                        <SlideUp delay={0.2}>
+                            <Input
+                                id="email"
+                                label="Email"
+                                type="email"
+                                placeholder="you@example.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                            />
+                        </SlideUp>
 
-                        <Input
-                            id="password"
-                            label="Password"
-                            type="password"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
+                        <SlideUp delay={0.3}>
+                            <Input
+                                id="password"
+                                label="Password"
+                                type="password"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                            />
+                        </SlideUp>
 
-                        <Input
-                            id="confirmPassword"
-                            label="Confirm Password"
-                            type="password"
-                            placeholder="••••••••"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            required
-                        />
+                        <SlideUp delay={0.4}>
+                            <Input
+                                id="confirmPassword"
+                                label="Confirm Password"
+                                type="password"
+                                placeholder="••••••••"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                required
+                            />
+                        </SlideUp>
 
-                        <div className="text-sm text-slate-400">
-                            <label className="flex items-start gap-2 cursor-pointer">
+                        <SlideUp delay={0.5} className="text-sm text-slate-400">
+                            <label className="flex items-start gap-2 cursor-pointer hover:text-slate-300 transition-colors">
                                 <input
                                     type="checkbox"
                                     required
@@ -126,25 +167,27 @@ export default function RegisterPage() {
                                     </Link>
                                 </span>
                             </label>
-                        </div>
+                        </SlideUp>
 
-                        <Button type="submit" className="w-full" isLoading={isLoading}>
-                            Create Account
-                        </Button>
+                        <SlideUp delay={0.6}>
+                            <Button type="submit" className="w-full" isLoading={isLoading}>
+                                Create Account
+                            </Button>
+                        </SlideUp>
                     </form>
 
                     {/* Divider */}
-                    <div className="relative my-6">
+                    <SlideUp delay={0.7} className="relative my-6">
                         <div className="absolute inset-0 flex items-center">
                             <div className="w-full border-t border-white/10"></div>
                         </div>
                         <div className="relative flex justify-center text-sm">
                             <span className="px-4 bg-slate-900/70 text-slate-500">Or sign up with</span>
                         </div>
-                    </div>
+                    </SlideUp>
 
                     {/* OAuth Buttons */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <SlideUp delay={0.8} className="grid grid-cols-2 gap-4">
                         <Button variant="secondary" type="button">
                             <svg className="w-5 h-5" viewBox="0 0 24 24">
                                 <path
@@ -172,17 +215,19 @@ export default function RegisterPage() {
                             </svg>
                             Apple
                         </Button>
-                    </div>
+                    </SlideUp>
                 </div>
 
                 {/* Login Link */}
-                <p className="text-center mt-6 text-slate-400">
-                    Already have an account?{' '}
-                    <Link href="/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
-                        Sign in
-                    </Link>
-                </p>
-            </div>
+                <SlideUp delay={0.9}>
+                    <p className="text-center mt-6 text-slate-400">
+                        Already have an account?{' '}
+                        <Link href="/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
+                            Sign in
+                        </Link>
+                    </p>
+                </SlideUp>
+            </FadeIn>
         </div>
     );
 }

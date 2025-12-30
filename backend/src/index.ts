@@ -12,6 +12,7 @@ import analyticsRoutes from './routes/analytics.routes';
 import userRoutes from './routes/user.routes';
 import adminRoutes from './routes/admin.routes';
 import socialRoutes from './routes/social.routes';
+import importRoutes from './routes/import.routes';
 
 dotenv.config();
 
@@ -44,6 +45,7 @@ app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/user', userRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/social', socialRoutes);
+app.use('/api/v1/import', importRoutes);
 
 // Start server
 app.listen(port, () => {

@@ -22,7 +22,7 @@
 
 @layer base {
   body {
-    @apply text-slate-200 antialiased selection:bg-primary/30 selection:text-white;
+    @apply text-slate-200 antialiased selection:bg-primary/30 selection:text-white leading-relaxed;
     background: radial-gradient(circle at 50% -20%, #1e1b4b, #030712) fixed;
     min-height: 100vh;
   }
@@ -33,7 +33,11 @@
   h4,
   h5,
   h6 {
-    @apply font-serif tracking-tight text-white;
+    @apply font-serif tracking-tight text-white font-medium;
+  }
+  
+  h1 {
+    @apply tracking-tighter;
   }
 }
 
@@ -131,4 +135,53 @@
   opacity: 1;
   transform: translateY(0);
   transition: opacity 500ms, transform 500ms;
+}
+
+/* Shimmer animation for skeleton loaders */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Touch targets for mobile (minimum 44x44px) */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .bento-box {
+    padding: 1.25rem !important;
+    /* Reduced from default for better mobile spacing */
+    backdrop-filter: blur(8px);
+    /* Reduce blur radius for performance */
+  }
+
+  .page-padding {
+    padding: 1rem;
+  }
+
+  /* Better mobile typography */
+  h1 {
+    font-size: 2rem !important;
+  }
+
+  h2 {
+    font-size: 1.5rem !important;
+  }
+
+  /* Ensure touch targets are big enough */
+  button,
+  a {
+    min-height: 44px;
+  }
 }
