@@ -17,10 +17,12 @@ function getXPForLevel(level: number) {
 
 export default function ProfilePage() {
     const router = useRouter();
-    const { user, logout, isLoading: authLoading } = useAuth();
+    const { user, logout, accessToken, isLoading: authLoading } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const { stats, refreshStats } = useGamification();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    const [API_URL] = useState(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1');
 
     useEffect(() => {
         refreshStats();
@@ -30,6 +32,51 @@ export default function ProfilePage() {
         setIsLoggingOut(true);
         await logout();
         router.push('/login');
+    };
+
+    const handleExportData = async () => {
+        try {
+            const response = await fetch(`${API_URL}/user/export`, {
+                headers: { Authorization: `Bearer ${accessToken || localStorage.getItem('accessToken')}` },
+            });
+
+            if (!response.ok) throw new Error('Export failed');
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `notive-data-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Failed to export data. Please try again.');
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        if (!confirm('Are you absolutely sure? This action cannot be undone and will permanently delete all your entries and data.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/user/account`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${accessToken || localStorage.getItem('accessToken')}` },
+            });
+
+            if (!response.ok) throw new Error('Delete failed');
+
+            alert('Your account has been deleted.');
+            await logout();
+            router.push('/register');
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('Failed to delete account. Please try again.');
+        }
     };
 
     if (authLoading) {
@@ -262,6 +309,38 @@ export default function ProfilePage() {
                                         </div>
                                         <div className="text-[10px] text-slate-500 uppercase font-bold px-2 py-1 rounded bg-white/5">On</div>
                                     </motion.button>
+
+                                    {/* Data & Privacy Section */}
+                                    <div className="pt-4 mt-4 border-t border-white/5">
+                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 px-2">Data & Privacy</h4>
+                                        <div className="space-y-2">
+                                            <motion.button
+                                                whileHover={{ x: 5 }}
+                                                onClick={handleExportData}
+                                                className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-white/5 transition-all group"
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
+                                                    </div>
+                                                    <span className="text-sm font-bold text-slate-300 tracking-wider">Export My Data</span>
+                                                </div>
+                                            </motion.button>
+
+                                            <motion.button
+                                                whileHover={{ x: 5, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+                                                onClick={handleDeleteAccount}
+                                                className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-red-500/5 transition-all group group-hover:border-red-500/20 border border-transparent"
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+                                                    </div>
+                                                    <span className="text-sm font-bold text-red-400 tracking-wider">Delete Account</span>
+                                                </div>
+                                            </motion.button>
+                                        </div>
+                                    </div>
 
                                     <motion.button
                                         whileHover={{ x: 5, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}

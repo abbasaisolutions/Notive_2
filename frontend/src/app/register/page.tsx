@@ -37,7 +37,7 @@ export default function RegisterPage() {
 
         try {
             await register(email, password, name);
-            router.push('/dashboard');
+            router.push('/onboarding');
         } catch (err: any) {
             setError(err.message || 'Failed to register');
         } finally {
@@ -187,8 +187,8 @@ export default function RegisterPage() {
                     </SlideUp>
 
                     {/* OAuth Buttons */}
-                    <SlideUp delay={0.8} className="grid grid-cols-2 gap-4">
-                        <Button variant="secondary" type="button">
+                    <SlideUp delay={0.8} className="flex justify-center">
+                        <Button variant="secondary" type="button" className="w-full flex items-center justify-center gap-2">
                             <svg className="w-5 h-5" viewBox="0 0 24 24">
                                 <path
                                     fill="currentColor"
@@ -207,13 +207,7 @@ export default function RegisterPage() {
                                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                                 />
                             </svg>
-                            Google
-                        </Button>
-                        <Button variant="secondary" type="button">
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
-                            </svg>
-                            Apple
+                            Sign up with Google
                         </Button>
                     </SlideUp>
                 </div>

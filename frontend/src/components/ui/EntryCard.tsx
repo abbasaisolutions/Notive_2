@@ -13,12 +13,33 @@ interface EntryCardProps {
         mood: string | null;
         tags: string[];
         coverImage: string | null;
+        audioUrl?: string | null;
         createdAt: string;
     };
     delay?: number;
 }
 
 export default function EntryCard({ entry, delay = 0 }: EntryCardProps) {
+    const [isPlaying, setIsPlaying] = React.useState(false);
+    const audioRef = React.useRef<HTMLAudioElement>(null);
+
+    const togglePlay = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (audioRef.current) {
+            if (isPlaying) {
+                audioRef.current.pause();
+            } else {
+                audioRef.current.play();
+            }
+            setIsPlaying(!isPlaying);
+        }
+    };
+
+    const handleEnded = () => {
+        setIsPlaying(false);
+    };
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -44,6 +65,29 @@ export default function EntryCard({ entry, delay = 0 }: EntryCardProps) {
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-60" />
 
                         {/* Overlay text for date/heart if needed, but keeping clean for now */}
+                    </div>
+                )}
+
+                {/* Audio Indicator / Play Button */}
+                {entry.audioUrl && (
+                    <div className="absolute top-4 right-4 z-20">
+                        <button
+                            onClick={togglePlay}
+                            className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all hover:scale-105 active:scale-95 group/audio"
+                        >
+                            {isPlaying ? (
+                                <div className="flex gap-1 items-end h-4">
+                                    <span className="w-1 h-2 bg-white rounded-full animate-[bounce_0.8s_infinite]" />
+                                    <span className="w-1 h-4 bg-white rounded-full animate-[bounce_0.8s_infinite_0.2s]" />
+                                    <span className="w-1 h-3 bg-white rounded-full animate-[bounce_0.8s_infinite_0.4s]" />
+                                </div>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none" className="text-white ml-0.5">
+                                    <path d="M8 5v14l11-7z" />
+                                </svg>
+                            )}
+                        </button>
+                        <audio ref={audioRef} src={entry.audioUrl} onEnded={handleEnded} className="hidden" />
                     </div>
                 )}
 

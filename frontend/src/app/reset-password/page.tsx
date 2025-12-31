@@ -1,39 +1,65 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Input, Button } from '@/components/ui/form-elements';
 import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
 import { motion } from 'framer-motion';
 
-export default function ForgotPasswordPage() {
-    const [email, setEmail] = useState('');
-    const [isSubmitted, setIsSubmitted] = useState(false);
+export default function ResetPasswordPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const token = searchParams.get('token');
+
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [isSuccess, setIsSuccess] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (!token) {
+            setError('Invalid or missing reset token.');
+        }
+    }, [token]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+
+        if (password !== confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+
+        if (password.length < 8) {
+            setError('Password must be at least 8 characters');
+            return;
+        }
+
         setIsLoading(true);
 
         try {
             const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
-            const res = await fetch(`${API_URL}/auth/forgot-password`, {
+            const res = await fetch(`${API_URL}/auth/reset-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
+                body: JSON.stringify({ token, password }),
             });
 
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.message || 'Failed to send reset email');
+                throw new Error(data.message || 'Failed to reset password');
             }
 
-            setIsSubmitted(true);
+            setIsSuccess(true);
+            setTimeout(() => {
+                router.push('/login');
+            }, 3000);
         } catch (err: any) {
-            setError(err.message || 'Failed to send reset email. Please try again.');
+            setError(err.message || 'Failed to reset password. Link may be expired.');
         } finally {
             setIsLoading(false);
         }
@@ -78,17 +104,17 @@ export default function ForgotPasswordPage() {
                             Notive.
                         </motion.h1>
                     </Link>
-                    <p className="text-slate-400 mt-2">Recover your account.</p>
+                    <p className="text-slate-400 mt-2">Reset your password.</p>
                 </div>
 
                 <div className="glass p-8 rounded-3xl border border-white/5 shadow-xl shadow-black/20">
-                    {!isSubmitted ? (
+                    {!isSuccess ? (
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="text-center">
-                                <span className="text-4xl mb-4 block">🔐</span>
-                                <h2 className="text-xl font-bold text-white mb-2">Forgot Password?</h2>
+                                <span className="text-4xl mb-4 block">🔑</span>
+                                <h2 className="text-xl font-bold text-white mb-2">New Password</h2>
                                 <p className="text-sm text-slate-400">
-                                    Enter your email address and we'll send you instructions to reset your password.
+                                    Create a new strong password for your account.
                                 </p>
                             </div>
 
@@ -104,30 +130,32 @@ export default function ForgotPasswordPage() {
 
                             <SlideUp delay={0.1}>
                                 <Input
-                                    id="email"
-                                    label="Email Address"
-                                    type="email"
-                                    placeholder="you@example.com"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
+                                    id="password"
+                                    label="New Password"
+                                    type="password"
+                                    placeholder="••••••••"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
                                     required
                                 />
                             </SlideUp>
 
                             <SlideUp delay={0.2}>
-                                <Button type="submit" className="w-full" isLoading={isLoading}>
-                                    Send Reset Instructions
-                                </Button>
+                                <Input
+                                    id="confirmPassword"
+                                    label="Confirm Password"
+                                    type="password"
+                                    placeholder="••••••••"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    required
+                                />
                             </SlideUp>
 
-                            <SlideUp delay={0.3} className="text-center">
-                                <Link
-                                    href="/login"
-                                    className="text-sm text-slate-400 hover:text-white transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-                                    Back to Login
-                                </Link>
+                            <SlideUp delay={0.3}>
+                                <Button type="submit" className="w-full" isLoading={isLoading} disabled={!token}>
+                                    Reset Password
+                                </Button>
                             </SlideUp>
                         </form>
                     ) : (
@@ -137,33 +165,14 @@ export default function ForgotPasswordPage() {
                             className="text-center space-y-6"
                         >
                             <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto text-4xl">
-                                ✉️
+                                ✅
                             </div>
                             <div>
-                                <h2 className="text-2xl font-bold text-white mb-2">Check your email</h2>
+                                <h2 className="text-2xl font-bold text-white mb-2">Password Reset!</h2>
                                 <p className="text-slate-400">
-                                    We've sent password reset instructions to <span className="text-white font-medium">{email}</span>
+                                    Your password has been successfully updated. Redirecting you to login...
                                 </p>
                             </div>
-
-                            <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-200 text-xs text-left">
-                                <p><strong>Note for Developer:</strong> Since email service is mocked, check the backend console for the reset link.</p>
-                            </div>
-
-                            <Button
-                                onClick={() => setIsSubmitted(false)}
-                                variant="secondary"
-                                className="w-full"
-                            >
-                                Try another email
-                            </Button>
-
-                            <Link
-                                href="/login"
-                                className="block text-sm text-primary hover:text-primary/80 transition-colors"
-                            >
-                                Return to Login
-                            </Link>
                         </motion.div>
                     )}
                 </div>

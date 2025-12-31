@@ -20,6 +20,7 @@ interface Entry {
     mood: string | null;
     tags: string[];
     coverImage: string | null;
+    audioUrl?: string | null;
     createdAt: string;
 }
 

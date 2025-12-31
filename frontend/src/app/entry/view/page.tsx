@@ -13,6 +13,7 @@ interface Entry {
     content: string;
     contentHtml: string | null;
     coverImage: string | null;
+    audioUrl?: string | null;
     mood: string | null;
     tags: string[];
     chapterId: string | null;
@@ -172,6 +173,19 @@ function EntryDetailContent() {
                 {entry.coverImage && (
                     <div className="mb-8 rounded-2xl overflow-hidden">
                         <img src={entry.coverImage} alt={entry.title || 'Cover'} className="w-full h-64 md:h-80 object-cover" />
+                    </div>
+                )}
+
+                {/* Audio Player */}
+                {entry.audioUrl && (
+                    <div className="mb-8 p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" x2="12" y1="19" y2="22" /></svg>
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Voice Note</p>
+                            <audio controls src={entry.audioUrl} className="w-full h-8 opacity-80" />
+                        </div>
                     </div>
                 )}
 
