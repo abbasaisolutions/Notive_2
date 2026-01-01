@@ -20,6 +20,11 @@ export const metadata: Metadata = {
     description: "Capture your thoughts, track your mood, and discover insights about yourself with a beautiful, secure, and intelligent journaling experience.",
     keywords: ["journaling", "AI", "mood tracking", "self-improvement", "privacy", "notes"],
     authors: [{ name: "Notive Team" }],
+    icons: {
+        icon: "/logos/icon.png",
+        shortcut: "/logos/icon.png",
+        apple: "/logos/icon.png",
+    },
     openGraph: {
         title: "Notive | Your AI-Powered Journaling Companion",
         description: "Capture your thoughts, track your mood, and discover insights about yourself.",
@@ -27,7 +32,7 @@ export const metadata: Metadata = {
         siteName: "Notive",
         images: [
             {
-                url: "https://notive.app/og-image.png",
+                url: "/logos/logo-withbg.png",
                 width: 1200,
                 height: 630,
             },
@@ -39,7 +44,7 @@ export const metadata: Metadata = {
         card: "summary_large_image",
         title: "Notive | Your AI-Powered Journaling Companion",
         description: "Capture your thoughts, track your mood, and discover insights about yourself.",
-        images: ["https://notive.app/og-image.png"],
+        images: ["/logos/logo-withbg.png"],
     },
 };
 

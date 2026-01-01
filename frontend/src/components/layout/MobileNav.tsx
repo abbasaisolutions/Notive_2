@@ -86,8 +86,8 @@ export default function MobileNav() {
 
     return (
         <nav className="fixed bottom-6 left-6 right-6 z-50 md:hidden">
-            <div className="bg-slate-900/40 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] px-4 py-3 shadow-2xl flex items-center justify-around relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent pointer-events-none" />
+            <div className="bg-teal-dark/60 backdrop-blur-2xl border border-cream/10 rounded-[2.5rem] px-4 py-3 shadow-2xl flex items-center justify-around relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-t from-secondary/5 to-transparent pointer-events-none" />
 
                 {navItems.map((item) => {
                     const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href));
@@ -97,7 +97,7 @@ export default function MobileNav() {
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-white shadow-xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all relative z-10"
+                                className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-cream shadow-xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all relative z-10"
                             >
                                 {item.icon}
                             </Link>
@@ -108,7 +108,7 @@ export default function MobileNav() {
                         <Link
                             key={item.href}
                             href={item.href}
-                            className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative z-10 ${isActive ? 'text-primary scale-110' : 'text-slate-500 hover:text-white'
+                            className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative z-10 ${isActive ? 'text-secondary scale-110' : 'text-cream/50 hover:text-cream'
                                 }`}
                         >
                             <div className={`${isActive ? 'opacity-100' : 'opacity-70'}`}>

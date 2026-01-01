@@ -15,16 +15,16 @@ export function Input({ label, error, className, id, ...props }: InputProps) {
     return (
         <div className="w-full">
             {label && (
-                <label htmlFor={id} className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label htmlFor={id} className="block text-sm font-medium text-cream/80 mb-1.5">
                     {label}
                 </label>
             )}
             <input
                 id={id}
                 className={cn(
-                    'w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-white/10',
-                    'text-white placeholder-slate-500',
-                    'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50',
+                    'w-full px-4 py-3 rounded-xl bg-teal-dark/50 border border-cream/10',
+                    'text-cream placeholder-cream/40',
+                    'focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary/50',
                     'transition-all duration-200',
                     error && 'border-red-500/50 focus:ring-red-500/50',
                     className
@@ -54,10 +54,10 @@ export function Button({
 
     const variants = {
         primary:
-            'bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25 hover:shadow-primary/40',
+            'bg-primary hover:bg-primary/90 text-cream shadow-lg shadow-primary/25 hover:shadow-primary/40',
         secondary:
-            'bg-slate-700 hover:bg-slate-600 text-white border border-white/10',
-        ghost: 'bg-transparent hover:bg-white/5 text-slate-300 hover:text-white',
+            'bg-teal-light hover:bg-teal-light/80 text-cream border border-cream/10',
+        ghost: 'bg-transparent hover:bg-cream/5 text-cream/80 hover:text-cream',
     };
 
     return (

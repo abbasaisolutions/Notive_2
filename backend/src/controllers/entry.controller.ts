@@ -41,7 +41,6 @@ export const getEntries = async (req: Request, res: Response) => {
         const limit = parseInt(req.query.limit as string) || 20;
         const search = req.query.search as string;
         const skip = (page - 1) * limit;
-
         const where: any = {
             userId,
             deletedAt: null,
@@ -139,7 +138,7 @@ export const updateEntry = async (req: Request, res: Response) => {
                 tags: tags !== undefined ? tags : existing.tags,
                 coverImage: coverImage !== undefined ? coverImage : existing.coverImage,
                 chapterId: chapterId !== undefined ? chapterId : existing.chapterId,
-            },
+            },  
         });
 
         return res.status(200).json({ entry });

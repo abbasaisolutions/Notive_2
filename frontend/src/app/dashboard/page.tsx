@@ -99,7 +99,7 @@ export default function DashboardPage() {
 
                             <div className="relative z-10">
                                 <div className="flex items-center gap-4 mb-4">
-                                    <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] uppercase tracking-[0.2em] font-bold border border-primary/20">
+                                    <span className="px-3 py-1 rounded-full bg-secondary/10 text-secondary text-[10px] uppercase tracking-[0.2em] font-bold border border-secondary/20">
                                         Legacy Sanctuary
                                     </span>
                                     <StreakCounter />
@@ -116,7 +116,7 @@ export default function DashboardPage() {
                             <div className="mt-12 flex items-center gap-4 relative z-10">
                                 <Link
                                     href="/entry/new"
-                                    className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-[1.5rem] font-semibold transition-all shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 flex items-center gap-3"
+                                    className="bg-primary hover:bg-primary/90 text-cream px-8 py-4 rounded-[1.5rem] font-semibold transition-all shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 flex items-center gap-3"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                         <line x1="12" x2="12" y1="5" y2="19" />
@@ -124,7 +124,7 @@ export default function DashboardPage() {
                                     </svg>
                                     Capture Echo
                                 </Link>
-                                <button className="p-4 rounded-[1.5rem] border border-white/10 hover:bg-white/5 transition-all text-slate-400 hover:text-white">
+                                <button className="p-4 rounded-[1.5rem] border border-cream/10 hover:bg-cream/5 transition-all text-cream/60 hover:text-cream">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
                                     </svg>
@@ -143,15 +143,15 @@ export default function DashboardPage() {
                                         placeholder="Find an echo..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-serif"
+                                        className="w-full pl-12 pr-4 py-4 rounded-2xl bg-cream/5 border border-cream/10 text-cream placeholder-cream/40 focus:outline-none focus:ring-2 focus:ring-secondary/50 transition-all font-serif"
                                     />
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-4 top-1/2 transform -translate-y-1/2 text-cream/50 group-focus-within:text-secondary transition-colors">
                                         <circle cx="11" cy="11" r="8" />
                                         <path d="m21 21-4.3-4.3" />
                                     </svg>
                                     {searchQuery !== debouncedSearch && (
                                         <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                                            <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+                                            <div className="animate-spin h-5 w-5 border-2 border-secondary border-t-transparent rounded-full" />
                                         </div>
                                     )}
                                 </div>
@@ -160,12 +160,12 @@ export default function DashboardPage() {
                             {/* Stats Bento */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="bento-box p-6 text-center">
-                                    <div className="text-3xl font-bold text-white mb-2">{entries.length}</div>
-                                    <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Echoes</div>
+                                    <div className="text-3xl font-bold text-cream mb-2">{entries.length}</div>
+                                    <div className="text-[10px] text-cream/50 uppercase tracking-widest font-bold">Echoes</div>
                                 </div>
                                 <div className="bento-box p-6 text-center">
                                     <div className="text-3xl font-bold text-secondary mb-2">Active</div>
-                                    <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Flow</div>
+                                    <div className="text-[10px] text-cream/50 uppercase tracking-widest font-bold">Flow</div>
                                 </div>
                             </div>
                         </div>
@@ -176,27 +176,27 @@ export default function DashboardPage() {
                         {/* Simulation Bento */}
                         <div className="bento-box p-8 lg:col-span-1">
                             <h3 className="text-lg mb-4 font-serif flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                                <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
                                 Neural Sparks
                             </h3>
                             <div className="space-y-3">
                                 <button
                                     onClick={() => simulateEvent('A fresh workout finished. Reflect on the energy.')}
-                                    className="w-full p-4 rounded-2xl bg-orange-500/5 hover:bg-orange-500/10 text-orange-400 border border-orange-500/10 text-xs transition-all text-left group"
+                                    className="w-full p-4 rounded-2xl bg-secondary/5 hover:bg-secondary/10 text-secondary border border-secondary/10 text-xs transition-all text-left group"
                                 >
                                     Reflect on Energy
                                     <span className="block text-[10px] opacity-50 group-hover:opacity-100 transition-opacity mt-1">Simulate Workout</span>
                                 </button>
                                 <button
                                     onClick={() => simulateEvent('Travel detected. What captured your eye?')}
-                                    className="w-full p-4 rounded-2xl bg-blue-500/5 hover:bg-blue-500/10 text-blue-400 border border-blue-500/10 text-xs transition-all text-left group"
+                                    className="w-full p-4 rounded-2xl bg-primary/5 hover:bg-primary/10 text-cream/80 border border-primary/10 text-xs transition-all text-left group"
                                 >
                                     The Traveler's Lens
                                     <span className="block text-[10px] opacity-50 group-hover:opacity-100 transition-opacity mt-1">Simulate Location</span>
                                 </button>
                                 <button
                                     onClick={() => simulateEvent('4 hours of deep work detected. How is your focus?')}
-                                    className="w-full p-4 rounded-2xl bg-purple-500/5 hover:bg-purple-500/10 text-purple-400 border border-purple-500/10 text-xs transition-all text-left group"
+                                    className="w-full p-4 rounded-2xl bg-secondary/5 hover:bg-secondary/10 text-secondary border border-secondary/10 text-xs transition-all text-left group"
                                 >
                                     Deep Focus Sync
                                     <span className="block text-[10px] opacity-50 group-hover:opacity-100 transition-opacity mt-1">Simulate Session</span>
@@ -208,7 +208,7 @@ export default function DashboardPage() {
                         <div className="lg:col-span-3 space-y-6">
                             <div className="flex items-center justify-between px-2">
                                 <h3 className="text-2xl font-serif">Recent Chronicles</h3>
-                                <Link href="/timeline" className="text-xs text-primary hover:text-white transition-colors tracking-widest font-bold uppercase">View Journey</Link>
+                                <Link href="/timeline" className="text-xs text-secondary hover:text-cream transition-colors tracking-widest font-bold uppercase">View Journey</Link>
                             </div>
 
                             {isLoading ? (
@@ -224,19 +224,19 @@ export default function DashboardPage() {
                                 </div>
                             ) : entries.length === 0 ? (
                                 <div className="bento-box p-20 text-center">
-                                    <div className="w-24 h-24 mx-auto mb-8 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary animate-float">
+                                    <div className="w-24 h-24 mx-auto mb-8 rounded-[2rem] bg-secondary/10 flex items-center justify-center text-secondary animate-float">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M12 20h9" />
                                             <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
                                         </svg>
                                     </div>
-                                    <h3 className="text-3xl font-serif text-white mb-4">The First Spark Awaits</h3>
+                                    <h3 className="text-3xl font-serif text-cream mb-4">The First Spark Awaits</h3>
                                     <p className="zen-text max-w-md mx-auto mb-10">
                                         Your legacy is a silence waiting to be broken. Capture your first echo and begin your journey.
                                     </p>
                                     <Link
                                         href="/entry/new"
-                                        className="bg-primary hover:bg-primary/90 text-white px-10 py-5 rounded-[2rem] font-bold shadow-2xl transition-all"
+                                        className="bg-primary hover:bg-primary/90 text-cream px-10 py-5 rounded-[2rem] font-bold shadow-2xl transition-all"
                                     >
                                         Capture First Echo
                                     </Link>
@@ -257,12 +257,12 @@ export default function DashboardPage() {
                                                         fill
                                                         className="object-cover group-hover:scale-110 transition-transform duration-700 brightness-75 group-hover:brightness-100"
                                                     />
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-60" />
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-teal-dark via-transparent to-transparent opacity-60" />
                                                 </div>
                                             )}
                                             <div className="p-8 flex-1 flex flex-col relative">
                                                 <div className="flex justify-between items-start mb-6">
-                                                    <div className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold">
+                                                    <div className="text-[10px] text-cream/50 uppercase tracking-[0.2em] font-bold">
                                                         {new Date(entry.createdAt).toLocaleDateString(undefined, {
                                                             month: 'long',
                                                             day: 'numeric',
@@ -270,12 +270,12 @@ export default function DashboardPage() {
                                                         })}
                                                     </div>
                                                     {entry.mood && (
-                                                        <span className="px-3 py-1 rounded-full bg-white/5 text-[9px] text-white/50 uppercase tracking-widest font-bold border border-white/5">
+                                                        <span className="px-3 py-1 rounded-full bg-cream/5 text-[9px] text-cream/50 uppercase tracking-widest font-bold border border-cream/5">
                                                             {entry.mood}
                                                         </span>
                                                     )}
                                                 </div>
-                                                <h4 className="text-2xl font-serif text-white mb-3 group-hover:text-primary transition-colors">
+                                                <h4 className="text-2xl font-serif text-cream mb-3 group-hover:text-secondary transition-colors">
                                                     {entry.title || 'Untitled Chronicle'}
                                                 </h4>
                                                 <p className="zen-text text-sm line-clamp-3 mb-6 flex-1 opacity-80 group-hover:opacity-100 transition-opacity">
@@ -283,7 +283,7 @@ export default function DashboardPage() {
                                                 </p>
                                                 <div className="flex flex-wrap gap-2">
                                                     {entry.tags.map(tag => (
-                                                        <span key={tag} className="text-[10px] text-primary bg-primary/5 px-3 py-1 rounded-full border border-primary/10">
+                                                        <span key={tag} className="text-[10px] text-secondary bg-secondary/5 px-3 py-1 rounded-full border border-secondary/10">
                                                             #{tag}
                                                         </span>
                                                     ))}

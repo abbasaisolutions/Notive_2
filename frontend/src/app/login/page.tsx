@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Input, Button } from '@/components/ui/form-elements';
@@ -63,18 +64,24 @@ export default function LoginPage() {
     return (
         <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
             {/* Background Glow Effects */}
-            <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute top-0 left-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
 
             <div className="w-full max-w-md relative z-10">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <Link href="/">
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent inline-block">
-                            Notive.
-                        </h1>
+                    <Link href="/" className="inline-block">
+                        <Image
+                            src="/logos/logo(main-transparent).png"
+                            alt="Notive Logo"
+                            width={200}
+                            height={80}
+                            className="mx-auto mt-10 hover:scale-105 transition-transform"
+                            priority
+                        />
+                       
                     </Link>
-                    <p className="text-slate-400 mt-2">Welcome back! Sign in to continue.</p>
+                    <p className="text-cream/60 mt-2">Welcome back! Sign in to continue.</p>
                 </div>
 
                 {/* Login Form Card */}
@@ -107,14 +114,14 @@ export default function LoginPage() {
                         />
 
                         <div className="flex items-center justify-between text-sm">
-                            <label className="flex items-center gap-2 text-slate-400 cursor-pointer">
+                            <label className="flex items-center gap-2 text-cream/60 cursor-pointer">
                                 <input
                                     type="checkbox"
-                                    className="w-4 h-4 rounded bg-slate-800 border-white/10 text-primary focus:ring-primary/50"
+                                    className="w-4 h-4 rounded bg-teal-dark border-cream/10 text-secondary focus:ring-secondary/50"
                                 />
                                 Remember me
                             </label>
-                            <Link href="/forgot-password" className="text-primary hover:text-primary/80 transition-colors">
+                            <Link href="/forgot-password" className="text-secondary hover:text-secondary/80 transition-colors">
                                 Forgot password?
                             </Link>
                         </div>
@@ -127,10 +134,10 @@ export default function LoginPage() {
                     {/* Divider */}
                     <div className="relative my-8">
                         <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-white/10"></div>
+                            <div className="w-full border-t border-cream/10"></div>
                         </div>
                         <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-slate-900/70 text-slate-500">Or continue with</span>
+                            <span className="px-4 bg-teal-dark/70 text-cream/50">Or continue with</span>
                         </div>
                     </div>
 
@@ -146,9 +153,9 @@ export default function LoginPage() {
                 </div>
 
                 {/* Register Link */}
-                <p className="text-center mt-6 text-slate-400">
+                <p className="text-center mt-6 text-cream/60">
                     Don't have an account?{' '}
-                    <Link href="/register" className="text-primary hover:text-primary/80 font-medium transition-colors">
+                    <Link href="/register" className="text-secondary hover:text-secondary/80 font-medium transition-colors">
                         Create one
                     </Link>
                 </p>

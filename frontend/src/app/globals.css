@@ -3,28 +3,39 @@
 @tailwind utilities;
 
 :root {
-  --foreground: 226 232 240;
-  /* Slate 200 */
-  --background-start: 3 7 18;
-  /* Near Black */
-  --background-end: 8 10 24;
-  /* Deep Indigo */
-  --primary: 99 102 241;
-  /* Indigo 500 */
-  --secondary: 236 72 153;
-  /* Pink 500 */
-  --accent: 139 92 246;
-  /* Violet 500 */
-  --glass-bg: rgba(15, 23, 42, 0.6);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-glow: rgba(99, 102, 241, 0.1);
+  /* New Color Palette */
+  --color-darkest: #1D2F33;
+  --color-dark: #26464B;
+  --color-medium: #5F8184;
+  --color-light: #F2F0E4;
+  
+  --foreground: 242 240 228;
+  /* Cream #F2F0E4 */
+  --background-start: 29 47 51;
+  /* Darkest Teal #1D2F33 */
+  --background-end: 38 70 75;
+  /* Dark Teal #26464B */
+  --primary: 38 70 75;
+  /* Dark Teal #26464B */
+  --secondary: 95 129 132;
+  /* Medium Teal #5F8184 */
+  --accent: 95 129 132;
+  /* Medium Teal #5F8184 */
+  --glass-bg: rgba(29, 47, 51, 0.6);
+  --glass-border: rgba(242, 240, 228, 0.1);
+  --glass-glow: rgba(95, 129, 132, 0.2);
 }
 
 @layer base {
   body {
-    @apply text-slate-200 antialiased selection:bg-primary/30 selection:text-white;
-    background: radial-gradient(circle at 50% -20%, #1e1b4b, #030712) fixed;
+    @apply text-cream antialiased;
+    background: linear-gradient(135deg, #1D2F33 0%, #26464B 100%) fixed;
     min-height: 100vh;
+  }
+
+  ::selection {
+    background: rgba(95, 129, 132, 0.4);
+    color: #F2F0E4;
   }
 
   h1,
@@ -33,27 +44,32 @@
   h4,
   h5,
   h6 {
-    @apply font-serif tracking-tight text-white;
+    @apply font-serif tracking-tight text-cream;
   }
 }
 
 @layer utilities {
   .cosmic-bg {
     background:
-      radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
-      radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.05) 0%, transparent 40%),
-      radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.03) 0%, transparent 60%);
+      radial-gradient(circle at 20% 30%, rgba(95, 129, 132, 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(38, 70, 75, 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 50% 50%, rgba(95, 129, 132, 0.05) 0%, transparent 60%);
   }
 
   .bento-box {
-    @apply bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl transition-all duration-500 hover:bg-slate-900/60 hover:border-white/20 hover:shadow-primary/5;
+    @apply bg-teal-dark/40 backdrop-blur-xl border border-cream/10 rounded-[2rem] shadow-2xl transition-all duration-500;
     position: relative;
     overflow: hidden;
   }
 
+  .bento-box:hover {
+    @apply bg-teal-dark/60 border-cream/20;
+    box-shadow: 0 25px 50px -12px rgba(95, 129, 132, 0.15);
+  }
+
   .bento-box::before {
     content: '';
-    @apply absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none opacity-0 transition-opacity duration-500;
+    @apply absolute inset-0 bg-gradient-to-br from-cream/5 to-transparent pointer-events-none opacity-0 transition-opacity duration-500;
   }
 
   .bento-box:hover::before {
@@ -61,11 +77,19 @@
   }
 
   .zen-text {
-    @apply font-serif italic leading-relaxed text-slate-300;
+    @apply font-serif italic leading-relaxed text-cream/80;
   }
 
   .glass-nav {
-    @apply bg-slate-950/20 backdrop-blur-lg border border-white/5 shadow-xl;
+    @apply bg-teal-dark/30 backdrop-blur-lg border border-cream/5 shadow-xl;
+  }
+
+  .glass {
+    @apply bg-teal-dark/40 backdrop-blur-xl border border-cream/10;
+  }
+
+  .glass-card {
+    @apply bg-teal-dark/50 backdrop-blur-xl border border-cream/10;
   }
 
   /* Animations */
@@ -104,7 +128,7 @@
   }
 
   .glow-text {
-    text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+    text-shadow: 0 0 20px rgba(242, 240, 228, 0.2);
   }
 }
 
@@ -118,7 +142,11 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
+  @apply bg-cream/10 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-cream/20;
 }
 
 /* Page Transitions */

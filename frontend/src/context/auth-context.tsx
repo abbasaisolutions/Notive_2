@@ -39,28 +39,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
 
     // Try to refresh token on mount
-    useEffect(() => {
-        const initAuth = async () => {
-            try {
-                const response = await fetch(`${API_URL}/auth/refresh`, {
-                    method: 'POST',
-                    credentials: 'include', // Include cookies
-                });
+   useEffect(() => {
+    const initAuth = async () => {
+        try {
+            // Try to get refresh token from localStorage (if backend doesn't use cookies)
+            const refreshToken = localStorage.getItem('refresh_token');
 
-                if (response.ok) {
-                    const data = await response.json();
-                    setAccessToken(data.accessToken);
-                    setUser(data.user);
-                }
-            } catch (error) {
-                logger.error('Failed to refresh token on mount', error);
-            } finally {
+            // If no token, skip refresh
+            if (!refreshToken) {
                 setIsLoading(false);
+                return;
             }
-        };
 
-        initAuth();
-    }, []);
+            const response = await fetch(`${API_URL}/auth/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: refreshToken }), // send token explicitly
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setAccessToken(data.accessToken);
+                setUser(data.user);
+
+                // Optionally update refresh token if backend sends new one
+                if (data.refreshToken) {
+                    localStorage.setItem('refresh_token', data.refreshToken);
+                }
+            } else {
+                // Refresh failed → clear tokens
+                localStorage.removeItem('refresh_token');
+                setAccessToken(null);
+                setUser(null);
+            }
+        } catch (error) {
+            logger.error('Failed to refresh token on mount', error);
+            setAccessToken(null);
+            setUser(null);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    initAuth();
+}, []);
 
     const login = async (email: string, password: string) => {
         const response = await fetch(`${API_URL}/auth/login`, {

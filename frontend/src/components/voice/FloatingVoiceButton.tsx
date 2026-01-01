@@ -186,13 +186,13 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                             <div className="flex items-center gap-2">
                                 <div className={`w-3 h-3 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-green-500'
                                     }`} />
-                                <span className="text-sm font-medium text-white">
+                                <span className="text-sm font-medium text-cream">
                                     {isRecording ? 'Recording...' : isProcessing ? 'Processing...' : 'Ready'}
                                 </span>
                             </div>
                             <button
                                 onClick={handleDiscard}
-                                className="text-slate-400 hover:text-white transition-colors"
+                                className="text-cream/60 hover:text-cream transition-colors"
                                 disabled={isProcessing}
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -207,7 +207,7 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                                 {[...Array(20)].map((_, i) => (
                                     <div
                                         key={i}
-                                        className="w-1 bg-primary rounded-full transition-all duration-100"
+                                        className="w-1 bg-secondary rounded-full transition-all duration-100"
                                         style={{
                                             height: `${Math.max(4, audioLevel * 100 * (0.5 + Math.random() * 0.5))}%`,
                                         }}
@@ -217,8 +217,8 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                         )}
 
                         {/* Transcript Preview */}
-                        <div className="bg-slate-800/50 rounded-lg p-3 mb-3 min-h-[60px] max-h-[120px] overflow-y-auto">
-                            <p className="text-sm text-slate-300">
+                        <div className="bg-teal-dark/50 rounded-lg p-3 mb-3 min-h-[60px] max-h-[120px] overflow-y-auto">
+                            <p className="text-sm text-cream/80">
                                 {transcript || (isRecording ? 'Start speaking...' : 'Tap the mic to start')}
                             </p>
                         </div>
@@ -228,13 +228,13 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                             {isRecording ? (
                                 <button
                                     onClick={stopRecording}
-                                    className="flex-1 py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                                    className="flex-1 py-2 px-4 bg-red-500 hover:bg-red-600 text-cream rounded-lg font-medium transition-colors"
                                 >
                                     Stop & Save
                                 </button>
                             ) : isProcessing ? (
-                                <div className="flex-1 py-2 px-4 bg-primary/50 text-white rounded-lg font-medium flex items-center justify-center">
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                                <div className="flex-1 py-2 px-4 bg-primary/50 text-cream rounded-lg font-medium flex items-center justify-center">
+                                    <div className="w-4 h-4 border-2 border-cream border-t-transparent rounded-full animate-spin mr-2" />
                                     Processing...
                                 </div>
                             ) : null}
@@ -253,7 +253,7 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                             height="28"
                             viewBox="0 0 24 24"
                             fill="none"
-                            stroke="white"
+                            stroke="#F2F0E4"
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"

@@ -63,11 +63,11 @@ export default function SmartPromptNotification() {
 
     return (
         <div className="fixed top-20 right-6 z-40 max-w-sm animate-slide-in-right">
-            <div className="glass-card rounded-2xl p-4 shadow-2xl border border-white/10">
+            <div className="glass-card rounded-2xl p-4 shadow-2xl border border-cream/10">
                 {/* Icon */}
                 <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F2F0E4" strokeWidth="2">
                             <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                             <line x1="12" x2="12" y1="19" y2="22" />
@@ -76,10 +76,10 @@ export default function SmartPromptNotification() {
 
                     {/* Content */}
                     <div className="flex-1">
-                        <h3 className="text-sm font-medium text-white mb-1">
+                        <h3 className="text-sm font-medium text-cream mb-1">
                             Time to reflect?
                         </h3>
-                        <p className="text-sm text-slate-300 mb-3">
+                        <p className="text-sm text-cream/80 mb-3">
                             {prompt}
                         </p>
 
@@ -87,13 +87,13 @@ export default function SmartPromptNotification() {
                         <div className="flex gap-2">
                             <button
                                 onClick={handleAccept}
-                                className="flex-1 py-2 px-3 bg-primary hover:bg-primary/80 text-white text-sm font-medium rounded-lg transition-colors"
+                                className="flex-1 py-2 px-3 bg-primary hover:bg-primary/80 text-cream text-sm font-medium rounded-lg transition-colors"
                             >
                                 Start Journaling
                             </button>
                             <button
                                 onClick={handleDismiss}
-                                className="py-2 px-3 text-slate-400 hover:text-white text-sm transition-colors"
+                                className="py-2 px-3 text-cream/60 hover:text-cream text-sm transition-colors"
                             >
                                 Later
                             </button>
@@ -103,7 +103,7 @@ export default function SmartPromptNotification() {
                     {/* Close button */}
                     <button
                         onClick={handleDismiss}
-                        className="text-slate-400 hover:text-white transition-colors"
+                        className="text-cream/60 hover:text-cream transition-colors"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M18 6 6 18M6 6l12 12" />

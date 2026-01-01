@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 
@@ -102,10 +103,19 @@ export default function Sidebar() {
 
     return (
         <aside className="hidden md:flex flex-col w-64 glass-nav h-[calc(100vh-2rem)] sticky top-4 left-4 ml-4 my-4 rounded-[2.5rem] overflow-hidden z-50">
-            <div className="p-8">
-                <h1 className="text-3xl font-serif font-bold bg-gradient-to-r from-primary via-white to-secondary bg-clip-text text-transparent tracking-tighter glow-text">
-                    Notive.
-                </h1>
+            <div className="p-6">
+                <Link href="/dashboard" className="flex items-center gap-3 group">
+                    <Image
+                        src="/logos/icon.png"
+                        alt="Notive"
+                        width={40}
+                        height={40}
+                        className="group-hover:scale-110 transition-transform"
+                    />
+                    <h1 className="text-2xl font-serif font-bold bg-gradient-to-r from-secondary via-cream to-primary bg-clip-text text-transparent tracking-tighter glow-text">
+                        Notive.
+                    </h1>
+                </Link>
             </div>
 
             <nav className="flex-1 px-6 space-y-1">
@@ -116,11 +126,11 @@ export default function Sidebar() {
                             key={item.href}
                             href={item.href}
                             className={`flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all group ${isActive
-                                ? 'text-white bg-white/10 shadow-lg shadow-white/5'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                ? 'text-cream bg-cream/10 shadow-lg shadow-cream/5'
+                                : 'text-cream/60 hover:text-cream hover:bg-cream/5'
                                 }`}
                         >
-                            <span className={`transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-primary' : ''}`}>
+                            <span className={`transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-secondary' : ''}`}>
                                 {item.icon}
                             </span>
                             <span className={isActive ? 'font-semibold tracking-wide' : 'font-normal'}>
@@ -132,19 +142,19 @@ export default function Sidebar() {
             </nav>
 
             <div className="p-6 mt-auto">
-                <div className="bg-white/5 backdrop-blur-md p-4 rounded-3xl border border-white/5 group hover:bg-white/10 transition-all">
+                <div className="bg-cream/5 backdrop-blur-md p-4 rounded-3xl border border-cream/5 group hover:bg-cream/10 transition-all">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-sm font-bold text-white shadow-lg animate-float">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-sm font-bold text-cream shadow-lg animate-float">
                             {user?.name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <div className="text-sm font-semibold text-white truncate">{user?.name || 'User'}</div>
-                            <div className="text-[10px] text-slate-500 truncate uppercase tracking-widest">{user?.email}</div>
+                            <div className="text-sm font-semibold text-cream truncate">{user?.name || 'User'}</div>
+                            <div className="text-[10px] text-cream/50 truncate uppercase tracking-widest">{user?.email}</div>
                         </div>
                     </div>
                     <button
                         onClick={handleLogout}
-                        className="w-full mt-4 px-3 py-2 text-xs text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all flex items-center justify-center gap-2 border border-transparent hover:border-white/5"
+                        className="w-full mt-4 px-3 py-2 text-xs text-cream/60 hover:text-cream hover:bg-cream/5 rounded-xl transition-all flex items-center justify-center gap-2 border border-transparent hover:border-cream/5"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />

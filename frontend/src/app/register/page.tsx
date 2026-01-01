@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Input, Button } from '@/components/ui/form-elements';
@@ -52,12 +53,18 @@ export default function RegisterPage() {
             <div className="w-full max-w-md relative z-10">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <Link href="/">
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent inline-block">
-                            Notive.
-                        </h1>
+                    <Link href="/" className="inline-block">
+                        <Image
+                            src="/logos/logo(main-transparent).png"
+                            alt="Notive Logo"
+                            width={200}
+                            height={80}
+                            className="mx-auto mt-10 hover:scale-105 transition-transform"
+                            priority
+                        />
+                 
                     </Link>
-                    <p className="text-slate-400 mt-2">Create your account to get started.</p>
+                    <p className="text-cream/60 mt-2">Create your account to get started.</p>
                 </div>
 
                 {/* Register Form Card */}
@@ -108,20 +115,20 @@ export default function RegisterPage() {
                             required
                         />
 
-                        <div className="text-sm text-slate-400">
+                        <div className="text-sm text-cream/60">
                             <label className="flex items-start gap-2 cursor-pointer">
                                 <input
                                     type="checkbox"
                                     required
-                                    className="w-4 h-4 mt-0.5 rounded bg-slate-800 border-white/10 text-primary focus:ring-primary/50"
+                                    className="w-4 h-4 mt-0.5 rounded bg-teal-dark border-cream/10 text-secondary focus:ring-secondary/50"
                                 />
                                 <span>
                                     I agree to the{' '}
-                                    <Link href="/terms" className="text-primary hover:underline">
+                                    <Link href="/terms" className="text-secondary hover:underline">
                                         Terms of Service
                                     </Link>{' '}
                                     and{' '}
-                                    <Link href="/privacy" className="text-primary hover:underline">
+                                    <Link href="/privacy" className="text-secondary hover:underline">
                                         Privacy Policy
                                     </Link>
                                 </span>
@@ -136,10 +143,10 @@ export default function RegisterPage() {
                     {/* Divider */}
                     <div className="relative my-6">
                         <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-white/10"></div>
+                            <div className="w-full border-t border-cream/10"></div>
                         </div>
                         <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-slate-900/70 text-slate-500">Or sign up with</span>
+                            <span className="px-4 bg-teal-dark/70 text-cream/50">Or sign up with</span>
                         </div>
                     </div>
 
@@ -176,9 +183,9 @@ export default function RegisterPage() {
                 </div>
 
                 {/* Login Link */}
-                <p className="text-center mt-6 text-slate-400">
+                <p className="text-center mt-6 text-cream/60">
                     Already have an account?{' '}
-                    <Link href="/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
+                    <Link href="/login" className="text-secondary hover:text-secondary/80 font-medium transition-colors">
                         Sign in
                     </Link>
                 </p>

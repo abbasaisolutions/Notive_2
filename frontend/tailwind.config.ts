@@ -13,21 +13,28 @@ const config: Config = {
                 serif: ["var(--font-serif)", "serif"],
             },
             colors: {
-                background: "rgb(var(--background-start))",
-                foreground: "rgb(var(--foreground))",
+                background: "#1D2F33",
+                foreground: "#F2F0E4",
                 primary: {
-                    DEFAULT: "rgb(var(--primary))",
-                    foreground: "#FFFFFF"
+                    DEFAULT: "#26464B",
+                    light: "#5F8184",
+                    foreground: "#F2F0E4"
                 },
                 secondary: {
-                    DEFAULT: "rgb(var(--secondary))",
-                    foreground: "#FFFFFF"
+                    DEFAULT: "#5F8184",
+                    foreground: "#F2F0E4"
                 },
                 accent: {
-                    DEFAULT: "rgb(var(--accent))",
-                    foreground: "#FFFFFF"
+                    DEFAULT: "#5F8184",
+                    foreground: "#F2F0E4"
                 },
-                glass: "var(--glass-bg)",
+                glass: "rgba(29, 47, 51, 0.6)",
+                cream: "#F2F0E4",
+                teal: {
+                    dark: "#1D2F33",
+                    DEFAULT: "#26464B",
+                    light: "#5F8184",
+                }
             },
             backgroundImage: {
                 "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
