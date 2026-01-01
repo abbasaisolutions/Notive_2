@@ -46,6 +46,7 @@ export default function NewEntryPage() {
     const [titleOverride, setTitleOverride] = useState('');
     const [moodOverride, setMoodOverride] = useState<string | null>(null);
     const [tagsOverride, setTagsOverride] = useState<string[]>([]);
+    const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
     // Voice recording state
     const [isRecording, setIsRecording] = useState(false);
@@ -55,8 +56,13 @@ export default function NewEntryPage() {
 
     // UI state
     const [isSaving, setIsSaving] = useState(false);
+    const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [error, setError] = useState('');
     const [showDetails, setShowDetails] = useState(false);
+    const [entryId, setEntryId] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
     const analysisTimeoutRef = useRef<NodeJS.Timeout>();
 
     // Sync content ref
@@ -141,9 +147,11 @@ export default function NewEntryPage() {
     useEffect(() => {
         const voiceText = searchParams.get('voice');
         const promptText = searchParams.get('prompt');
+        const audioParam = searchParams.get('audioUrl');
 
         if (voiceText) {
             setContent(voiceText);
+            if (audioParam) setAudioUrl(audioParam);
         } else if (promptText) {
             setContent(promptText);
         }
@@ -221,34 +229,57 @@ export default function NewEntryPage() {
         setContentHtml(html);
     }, []);
 
-    const handleSave = async () => {
+    // Auto-save logic
+    useEffect(() => {
+        // Don't auto-save if empty or just loaded
+        if (!content.trim() || isSaving) return;
+
+        if (autoSaveTimeoutRef.current) {
+            clearTimeout(autoSaveTimeoutRef.current);
+        }
+
+        autoSaveTimeoutRef.current = setTimeout(() => {
+            handleSave(true); // true = isAutoSave
+        }, 3000); // Auto-save after 3 seconds of inactivity
+
+        return () => {
+            if (autoSaveTimeoutRef.current) {
+                clearTimeout(autoSaveTimeoutRef.current);
+            }
+        };
+    }, [content, titleOverride, moodOverride, tagsOverride, audioUrl, extractedData]);
+
+    const handleSave = async (isAutoSave = false) => {
         if (!content.trim()) {
-            setError('Please write or speak something before saving.');
+            if (!isAutoSave) setError('Please write or speak something before saving.');
             return;
         }
 
         setIsSaving(true);
-        setError('');
+        if (!isAutoSave) setError('');
 
         const finalTitle = titleOverride || extractedData?.title || null;
         const finalMood = moodOverride || extractedData?.primaryEmotion?.emotion || null;
         const finalTags = tagsOverride.length > 0 ? tagsOverride : (extractedData?.suggestedTags || []);
 
         try {
-            const response = await fetch(`${API_URL}/entries`, {
-                method: 'POST',
+            const method = entryId ? 'PUT' : 'POST';
+            const url = entryId ? `${API_URL}/entries/${entryId}` : `${API_URL}/entries`;
+
+            const response = await fetch(url, {
+                method,
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${accessToken}`,
                 },
-                credentials: 'include',
                 body: JSON.stringify({
                     title: finalTitle,
                     content,
                     contentHtml,
                     mood: finalMood,
                     tags: finalTags,
-                    extractedData, // Store full extracted data for insights
+                    audioUrl,
+                    extractedData,
                 }),
             });
 
@@ -258,12 +289,26 @@ export default function NewEntryPage() {
                 throw new Error(data.message || 'Failed to save entry');
             }
 
-            localStorage.setItem('lastEntryTime', Date.now().toString());
-            awardXP(50, 'Entry created');
-            refreshStats();
-            router.push('/dashboard');
+            // If created, set entry ID for future updates
+            if (!entryId && data.entry?.id) {
+                setEntryId(data.entry.id);
+            }
+
+            setLastSaved(new Date());
+
+            if (!isAutoSave) {
+                localStorage.setItem('lastEntryTime', Date.now().toString());
+                if (!entryId) {
+                    // Only award XP on first manual save/creation if we decide auto-save shouldn't grant XP repeatedly
+                    // But actually, XP logic should probably handle this or be on first creation only.
+                    awardXP(50, 'Entry created');
+                    refreshStats();
+                }
+                router.push('/dashboard');
+            }
         } catch (err: any) {
-            setError(err.message || 'Failed to save entry');
+            console.error('Save error:', err);
+            if (!isAutoSave) setError(err.message || 'Failed to save entry');
         } finally {
             setIsSaving(false);
         }
@@ -277,6 +322,58 @@ export default function NewEntryPage() {
 
     const removeTag = (tag: string) => {
         setTagsOverride(tagsOverride.filter(t => t !== tag));
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch(`${API_URL}/files/upload`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to upload image');
+            }
+
+            // Append image to content (Tiptap handles this better with extensions, but for now specific markdown/html)
+            // Or ideally store as `coverImage` if first one, or insert into content.
+            // Let's insert into content as markdown image for simplicity with text-based editor fallback
+            // But since we use Tiptap, inserting HTML is better if Tiptap supports it via props or we append.
+            // Current Tiptap setup seems basic. Let's append to content.
+
+            // Actually, TiptapEditor likely updates `contentHtml`?
+            // Since we don't have direct access to editor instance here without refactor, 
+            // let's append HTML image tag to `contentHtml` and `content` text.
+
+            const imageMarkdown = `\n![Image](${data.url})\n`;
+            const newContent = content + imageMarkdown;
+            setContent(newContent);
+
+            // Also set as cover image if none set
+            // Note: coverImage state wasn't explicitly managed in NewEntryPage before (it was in props/body but not state)
+            // We should add state for it or just ignore for now.
+            // Let's just append to body.
+
+            // Reset input
+            if (fileInputRef.current) fileInputRef.current.value = '';
+
+        } catch (err: any) {
+            setError(err.message || 'Failed to upload image');
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     if (authLoading) {
@@ -304,14 +401,33 @@ export default function NewEntryPage() {
             <div className="max-w-3xl mx-auto px-4 py-8 relative z-10">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
-                    <Link href="/dashboard" className="p-3 -ml-2 rounded-2xl text-slate-400 hover:text-white hover:bg-white/10 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="m15 18-6-6 6-6" />
-                        </svg>
-                    </Link>
+                    <div className="flex items-center gap-4">
+                        <Link href="/dashboard" className="p-3 -ml-2 rounded-2xl text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="m15 18-6-6 6-6" />
+                            </svg>
+                        </Link>
+
+                        {/* Status Indicator */}
+                        <div className="text-xs font-medium text-slate-500 animate-fade-in flex items-center gap-2">
+                            {isSaving ? (
+                                <>
+                                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                    Saving...
+                                </>
+                            ) : lastSaved ? (
+                                <>
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                    Draft Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </>
+                            ) : (
+                                <span className="opacity-0">Ready</span>
+                            )}
+                        </div>
+                    </div>
 
                     <button
-                        onClick={handleSave}
+                        onClick={() => handleSave(false)}
                         disabled={isSaving || !content.trim()}
                         className="px-6 py-3 rounded-2xl bg-gradient-to-r from-primary to-purple-600 text-white font-semibold 
                                    disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-primary/25 hover:scale-105
@@ -327,7 +443,7 @@ export default function NewEntryPage() {
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
                                 </svg>
-                                Save Entry
+                                {entryId ? 'Update Entry' : 'Save Entry'}
                             </>
                         )}
                     </button>
@@ -370,7 +486,7 @@ export default function NewEntryPage() {
                                 )}
                             </button>
 
-                            <div className="mt-4 h-6">
+                            <div className="mt-4 h-6 flex flex-col items-center">
                                 {isRecording ? (
                                     <div className="flex items-center gap-2">
                                         <span className="relative flex h-3 w-3">
@@ -385,10 +501,43 @@ export default function NewEntryPage() {
                             </div>
                         </div>
 
+                        {/* Toolbar */}
+                        <div className="flex justify-end mb-4 px-2">
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                            />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
+                                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all flex items-center gap-2 text-sm"
+                                title="Upload Image"
+                            >
+                                {isUploading ? (
+                                    <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                                )}
+                                <span>Add Image</span>
+                            </button>
+                        </div>
+
                         {/* Interim Text Display */}
                         {interimText && (
                             <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/5 text-center">
                                 <p className="text-slate-300 italic text-lg animate-pulse">"{interimText}"</p>
+                            </div>
+                        )}
+
+
+                        {/* Audio Player */}
+                        {audioUrl && (
+                            <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/5">
+                                <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider">Voice Recording</p>
+                                <audio controls src={audioUrl} className="w-full h-10" />
                             </div>
                         )}
 

@@ -76,17 +76,17 @@ export default function VoiceRecorder({
             (window as any).webkitSpeechRecognition;
 
         if (typeof window !== 'undefined' && SpeechRecognitionAPI) {
-            recognitionRef.current = new SpeechRecognitionAPI();
-            recognitionRef.current.continuous = true;
-            recognitionRef.current.interimResults = true;
-            recognitionRef.current.lang = language;
+            const recognition = new SpeechRecognitionAPI();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = language;
 
-            recognitionRef.current.onstart = () => {
+            recognition.onstart = () => {
                 setError(null);
                 setInterimText('');
             };
 
-            recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+            recognition.onresult = (event: SpeechRecognitionEvent) => {
                 let finalTranscript = '';
                 let interim = '';
 
@@ -113,7 +113,7 @@ export default function VoiceRecorder({
                 }
             };
 
-            recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
+            recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
                 const errorMessage = ERROR_MESSAGES[event.error] || ERROR_MESSAGES.default;
                 setError(errorMessage);
                 setIsListening(false);
@@ -132,10 +132,12 @@ export default function VoiceRecorder({
                 }
             };
 
-            recognitionRef.current.onend = () => {
+            recognition.onend = () => {
                 setIsListening(false);
                 setInterimText('');
             };
+
+            recognitionRef.current = recognition;
         } else {
             setIsSupported(false);
         }
@@ -187,10 +189,10 @@ export default function VoiceRecorder({
                 type="button"
                 onClick={toggleListening}
                 className={`p-2 rounded-lg transition-all ${isListening
-                        ? 'bg-red-500/20 text-red-400 animate-pulse'
-                        : error
-                            ? 'bg-yellow-500/20 text-yellow-400'
-                            : 'text-slate-400 hover:text-white hover:bg-white/10'
+                    ? 'bg-red-500/20 text-red-400 animate-pulse'
+                    : error
+                        ? 'bg-yellow-500/20 text-yellow-400'
+                        : 'text-slate-400 hover:text-white hover:bg-white/10'
                     }`}
                 title={
                     isListening

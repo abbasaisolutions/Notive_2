@@ -168,3 +168,61 @@ export const updateAvatar = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Failed to update avatar' });
     }
 };
+
+/**
+ * Export all user data (GDPR)
+ */
+export const exportData = async (req: Request, res: Response) => {
+    try {
+        // @ts-ignore
+        const userId = req.userId;
+
+        const userData = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                profile: true,
+                entries: true,
+                chapters: true,
+                socialConnections: true,
+                refreshTokens: false, // Don't export security tokens
+            },
+        });
+
+        if (!userData) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Clean user object (remove password, tokens)
+        const { password, refreshTokens, ...cleanData } = userData as any;
+
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename=notive-data-${userId}.json`);
+
+        return res.json(cleanData);
+    } catch (error) {
+        console.error('Export data error:', error);
+        return res.status(500).json({ message: 'Failed to export data' });
+    }
+};
+
+/**
+ * Delete account and all data
+ */
+export const deleteAccount = async (req: Request, res: Response) => {
+    try {
+        // @ts-ignore
+        const userId = req.userId;
+
+        // Prisma cascade delete will handle related data if configured, 
+        // essentially we just need to delete the user.
+
+        await prisma.user.delete({
+            where: { id: userId },
+        });
+
+        return res.json({ message: 'Account permanently deleted' });
+    } catch (error) {
+        console.error('Delete account error:', error);
+        return res.status(500).json({ message: 'Failed to delete account' });
+    }
+};

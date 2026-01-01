@@ -12,6 +12,8 @@ import analyticsRoutes from './routes/analytics.routes';
 import userRoutes from './routes/user.routes';
 import adminRoutes from './routes/admin.routes';
 import socialRoutes from './routes/social.routes';
+import importRoutes from './routes/import.routes';
+import fileRoutes from './routes/file.routes';
 
 dotenv.config();
 
@@ -44,6 +46,8 @@ app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/user', userRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/social', socialRoutes);
+app.use('/api/v1/import', importRoutes);
+app.use('/api/v1/files', fileRoutes);
 
 // Global error handler
 app.use((err: any, req: Request, res: Response, next: any) => {

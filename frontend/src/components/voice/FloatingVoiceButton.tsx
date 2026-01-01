@@ -81,9 +81,127 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
         };
     }, [isRecording]);
 
-    const startAudioVisualization = async () => {
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+
+    const startRecording = async () => {
+        if (!user) {
+            router.push('/login');
+            return;
+        }
+
+        setIsRecording(true);
+        setIsExpanded(true);
+        setTranscript('');
+        audioChunksRef.current = [];
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            // Start visualization
+            startAudioVisualization(stream);
+
+            // Start Speech Recognition
+            recognitionRef.current?.start();
+
+            // Start Media Recorder
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+            mediaRecorder.start();
+            mediaRecorderRef.current = mediaRecorder;
+
+        } catch (error) {
+            console.error('Failed to start recording:', error);
+            setIsRecording(false);
+            setIsExpanded(false);
+        }
+    };
+
+    const stopRecording = () => {
+        setIsRecording(false);
+        recognitionRef.current?.stop();
+
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+
+            // Wait for data to be available
+            mediaRecorderRef.current.onstop = async () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                await processRecording(audioBlob);
+            };
+        } else {
+            // Fallback if no media recorder (shouldn't happen if started correctly)
+            processRecording(null);
+        }
+
+        if (audioContextRef.current) {
+            audioContextRef.current.close();
+            audioContextRef.current = null;
+        }
+
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+        }
+    };
+
+    const processRecording = async (audioBlob: Blob | null) => {
+        if (transcript.trim()) {
+            setIsProcessing(true);
+
+            let audioUrl = '';
+
+            if (audioBlob) {
+                try {
+                    const formData = new FormData();
+                    formData.append('image', audioBlob, 'voice-note.webm'); // Field name 'image' because backend uses upload.single('image') as generic
+
+                    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+                    const response = await fetch(`${API_URL}/entries/upload`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('accessToken')}` // Simple auth retrieval
+                        },
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        audioUrl = data.url;
+                    }
+                } catch (err) {
+                    console.error('Audio upload failed', err);
+                }
+            }
+
+            // Process the transcript
+            setTimeout(() => {
+                setIsProcessing(false);
+                if (onQuickCapture) {
+                    onQuickCapture(transcript);
+                } else {
+                    // Navigate to new entry with pre-filled content
+                    const params = new URLSearchParams();
+                    params.set('voice', transcript);
+                    if (audioUrl) {
+                        params.set('audioUrl', audioUrl);
+                    }
+                    router.push(`/entry/new?${params.toString()}`);
+                }
+                setIsExpanded(false);
+                setTranscript('');
+            }, 500);
+        } else {
+            setIsExpanded(false);
+        }
+    };
+
+    // Helper modified to accept stream
+    const startAudioVisualization = async (stream: MediaStream) => {
+        try {
             audioContextRef.current = new AudioContext();
             analyserRef.current = audioContextRef.current.createAnalyser();
             const source = audioContextRef.current.createMediaStreamSource(stream);
@@ -104,58 +222,6 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
             updateAudioLevel();
         } catch (error) {
             console.error('Error accessing microphone:', error);
-        }
-    };
-
-    const startRecording = async () => {
-        if (!user) {
-            router.push('/login');
-            return;
-        }
-
-        setIsRecording(true);
-        setIsExpanded(true);
-        setTranscript('');
-
-        try {
-            recognitionRef.current?.start();
-            await startAudioVisualization();
-        } catch (error) {
-            console.error('Failed to start recording:', error);
-            setIsRecording(false);
-            setIsExpanded(false);
-        }
-    };
-
-    const stopRecording = () => {
-        setIsRecording(false);
-        recognitionRef.current?.stop();
-
-        if (audioContextRef.current) {
-            audioContextRef.current.close();
-            audioContextRef.current = null;
-        }
-
-        if (animationFrameRef.current) {
-            cancelAnimationFrame(animationFrameRef.current);
-        }
-
-        if (transcript.trim()) {
-            setIsProcessing(true);
-            // Process the transcript
-            setTimeout(() => {
-                setIsProcessing(false);
-                if (onQuickCapture) {
-                    onQuickCapture(transcript);
-                } else {
-                    // Navigate to new entry with pre-filled content
-                    router.push(`/entry/new?voice=${encodeURIComponent(transcript)}`);
-                }
-                setIsExpanded(false);
-                setTranscript('');
-            }, 1000);
-        } else {
-            setIsExpanded(false);
         }
     };
 

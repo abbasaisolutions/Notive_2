@@ -20,10 +20,24 @@ export const metadata: Metadata = {
     description: "Capture your thoughts, track your mood, and discover insights about yourself with a beautiful, secure, and intelligent journaling experience.",
     keywords: ["journaling", "AI", "mood tracking", "self-improvement", "privacy", "notes"],
     authors: [{ name: "Notive Team" }],
+<<<<<<< HEAD
     icons: {
         icon: "/logos/icon.png",
         shortcut: "/logos/icon.png",
         apple: "/logos/icon.png",
+=======
+    manifest: '/manifest.json',
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: 'black-translucent',
+        title: 'Notive',
+    },
+    viewport: {
+        width: 'device-width',
+        initialScale: 1,
+        maximumScale: 1,
+        userScalable: false, // Prevents input zoom on mobile
+>>>>>>> 9a9c056f33be4adfa1b5521a7d2268f2927d9d5e
     },
     openGraph: {
         title: "Notive | Your AI-Powered Journaling Companion",

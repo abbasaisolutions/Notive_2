@@ -1,9 +1,11 @@
 import { Router } from 'express';
-import { analyzeEntry, generatePersonalStatement } from '../controllers/ai.controller';
+import { analyzeEntry, generatePersonalStatement, chatWithJournal } from '../controllers/ai.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 
 const router = Router();
 
+
+router.post('/chat', authMiddleware, chatWithJournal);
 router.post('/analyze/:entryId?', authMiddleware, analyzeEntry);
 router.get('/statement', authMiddleware, generatePersonalStatement);
 

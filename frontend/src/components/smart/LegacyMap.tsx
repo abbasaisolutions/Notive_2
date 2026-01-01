@@ -26,23 +26,48 @@ export default function LegacyMap() {
         const fetchWisdom = async () => {
             if (!accessToken) return;
             try {
-                // Fetching from existing analytics/stats and simulating a distribution
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/analytics/stats`, {
+                // Fetch recent entries to extract wisdom/tags
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/entries?limit=20`, {
                     headers: { Authorization: `Bearer ${accessToken}` },
                 });
 
                 if (response.ok) {
                     const data = await response.json();
-                    // Simulating stars based on stats for the demo
-                    // In a real app, this would be a dedicated "wisdom" endpoint
-                    const mockStars: WisdomStar[] = [
-                        { id: '1', title: 'Resilience', text: 'Growth comes from persistence during difficult chapters.', type: 'wisdom', x: 20, y: 30, size: 2 },
-                        { id: '2', title: 'Creativity', text: 'Documenting ideas regularly sparks unexpected connections.', type: 'insight', x: 60, y: 20, size: 1.5 },
-                        { id: '3', title: 'Self-Awareness', text: 'Mood tracking reveals patterns in emotional energy.', type: 'growth', x: 40, y: 70, size: 2.5 },
-                        { id: '4', title: 'Focus', text: 'Morning journaling sets a clear intention for the day.', type: 'wisdom', x: 75, y: 55, size: 1.8 },
-                        { id: '5', title: 'Empathy', text: 'Reflecting on interactions improves relationship depth.', type: 'insight', x: 15, y: 80, size: 1.2 },
-                    ];
-                    setStars(mockStars);
+
+                    // Transform entries into "Stars"
+                    // If no specific "wisdom" field, use tags or extract from content
+                    const generatedStars: WisdomStar[] = [];
+
+                    if (data.entries && data.entries.length > 0) {
+                        data.entries.forEach((entry: any, index: number) => {
+                            // Extract a "lesson" or "tag" to be the star title
+                            const title = entry.tags && entry.tags.length > 0
+                                ? entry.tags[0]
+                                : entry.mood || 'Reflection';
+
+                            // Create a star for valid entries
+                            if (title) {
+                                generatedStars.push({
+                                    id: entry.id,
+                                    title: title.charAt(0).toUpperCase() + title.slice(1),
+                                    text: entry.content ? (entry.content.substring(0, 100) + '...') : 'No content available.',
+                                    type: entry.tags.includes('lesson') ? 'wisdom' : 'insight',
+                                    x: Math.random() * 80 + 10, // Random layout 10-90%
+                                    y: Math.random() * 80 + 10,
+                                    size: 1 + Math.random() * 1.5 // Size variance
+                                });
+                            }
+                        });
+                    }
+
+                    // Fallback if no entries
+                    if (generatedStars.length === 0) {
+                        generatedStars.push(
+                            { id: 'mock1', title: 'Start Writing', text: 'Your wisdom map is empty. Write your first entry to populate the stars.', type: 'wisdom', x: 50, y: 50, size: 3 }
+                        );
+                    }
+
+                    setStars(generatedStars.slice(0, 10)); // Limit to 10 stars for UI clarity
                 }
             } catch (error) {
                 console.error('Failed to fetch legacy map data:', error);
@@ -91,8 +116,9 @@ export default function LegacyMap() {
                             delay: Math.random() * 2
                         }}
                         onClick={() => setSelectedStar(star)}
-                        className="absolute flex items-center justify-center p-4 hover:z-20 group/star"
+                        className="absolute flex items-center justify-center p-4 hover:z-20 group/star focus:outline-none focus:ring-2 focus:ring-yellow-400/50 rounded-full"
                         style={{ left: `${star.x}%`, top: `${star.y}%` }}
+                        aria-label={`View insight: ${star.title}`}
                     >
                         <div className="relative">
                             <Star
