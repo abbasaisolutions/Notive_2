@@ -7,11 +7,13 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { API_URL } from '@/constants/config';
+import type { LucideIcon } from 'lucide-react';
+import { Flame, Heart, Moon, Sparkles, Star, Sunrise, Sun, Target, Trophy } from 'lucide-react';
 
 interface Insight {
     id: string;
     type: 'motivation' | 'wellness' | 'suggestion' | 'achievement' | 'pattern';
-    icon: string;
+    icon: LucideIcon;
     title: string;
     message: string;
     priority: 'high' | 'medium' | 'low';
@@ -48,7 +50,7 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
             insights.push({
                 id: 'streak-week',
                 type: 'achievement',
-                icon: '🏆',
+                icon: Trophy,
                 title: 'Weekly Champion!',
                 message: `You've journaled for ${data.currentStreak} days straight! You're building an incredible habit.`,
                 priority: 'high',
@@ -57,7 +59,7 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
             insights.push({
                 id: 'streak-progress',
                 type: 'motivation',
-                icon: '🔥',
+                icon: Flame,
                 title: `${7 - data.currentStreak} more days to weekly goal!`,
                 message: 'Keep going! Consistency is key to self-discovery.',
                 priority: 'medium',
@@ -67,7 +69,7 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
             insights.push({
                 id: 'streak-restart',
                 type: 'motivation',
-                icon: '✨',
+                icon: Sparkles,
                 title: 'Start fresh today!',
                 message: "Every journey begins with a single step. Let's restart your streak.",
                 priority: 'high',
@@ -85,7 +87,7 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
                 insights.push({
                     id: 'mood-check',
                     type: 'wellness',
-                    icon: '💙',
+                    icon: Heart,
                     title: 'Checking in with you',
                     message: "Your recent entries suggest you might be going through a tough time. Remember, it's okay to not be okay.",
                     priority: 'high',
@@ -95,7 +97,7 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
                 insights.push({
                     id: 'mood-positive',
                     type: 'pattern',
-                    icon: '☀️',
+                    icon: Sun,
                     title: 'You\'re on a roll!',
                     message: `Your mood has been consistently positive lately. Keep doing what you're doing!`,
                     priority: 'low',
@@ -108,7 +110,7 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
             insights.push({
                 id: 'morning-reflection',
                 type: 'suggestion',
-                icon: '🌅',
+                icon: Sunrise,
                 title: 'Morning reflection',
                 message: 'Start your day with intention. What are you grateful for this morning?',
                 priority: 'medium',
@@ -118,7 +120,7 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
             insights.push({
                 id: 'evening-review',
                 type: 'suggestion',
-                icon: '🌙',
+                icon: Moon,
                 title: 'Evening wind-down',
                 message: 'Take a moment to reflect on your day before rest.',
                 priority: 'medium',
@@ -133,7 +135,7 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
                 insights.push({
                     id: 'theme-focus',
                     type: 'pattern',
-                    icon: '🎯',
+                    icon: Target,
                     title: `Focused on "${topTheme.theme}"`,
                     message: `This theme appears ${topTheme.count} times in your entries. It seems important to you right now.`,
                     priority: 'low',
@@ -147,7 +149,7 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
             insights.push({
                 id: 'milestone-10',
                 type: 'achievement',
-                icon: '🎉',
+                icon: Sparkles,
                 title: 'Double digits!',
                 message: "You've written 10 entries! Your journal is starting to paint a picture of your journey.",
                 priority: 'high',
@@ -156,7 +158,7 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
             insights.push({
                 id: 'milestone-50',
                 type: 'achievement',
-                icon: '🌟',
+                icon: Star,
                 title: '50 entries milestone!',
                 message: 'Half a century of reflections! Your dedication to self-discovery is inspiring.',
                 priority: 'high',
@@ -165,7 +167,7 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
             insights.push({
                 id: 'milestone-100',
                 type: 'achievement',
-                icon: '💎',
+                icon: Star,
                 title: 'Century mark!',
                 message: '100 entries! You have a treasure trove of personal insights waiting to be explored.',
                 priority: 'high',
@@ -193,7 +195,7 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
         <div className="space-y-4">
             <div className="flex items-center justify-between px-2">
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <span className="text-xl">🔮</span>
+                    <Sparkles className="w-5 h-5" />
                     AI Insights
                 </h3>
                 <span className="text-xs text-slate-500">Personalized for you</span>
@@ -221,7 +223,12 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
                         </button>
 
                         <div className="flex items-start gap-4">
-                            <div className="text-3xl flex-shrink-0">{insight.icon}</div>
+                            <div className="flex-shrink-0">
+                                {(() => {
+                                    const Icon = insight.icon;
+                                    return <Icon className="w-7 h-7 text-white" />;
+                                })()}
+                            </div>
                             <div className="flex-1 min-w-0">
                                 <h4 className="font-bold text-white mb-1">{insight.title}</h4>
                                 <p className="text-sm text-slate-400 leading-relaxed">{insight.message}</p>

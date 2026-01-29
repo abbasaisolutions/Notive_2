@@ -7,6 +7,8 @@ import dynamic from 'next/dynamic';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/form-elements';
 import { useAutoSave } from '@/hooks/use-auto-save';
+import { MOOD_ICONS } from '@/constants/moods';
+import RewriteToolbar from '@/components/editor/RewriteToolbar';
 
 // Dynamic import to avoid SSR issues with Tiptap
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
@@ -15,14 +17,14 @@ const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
 });
 
 const MOODS = [
-    { emoji: '😊', label: 'Happy', value: 'happy' },
-    { emoji: '😌', label: 'Calm', value: 'calm' },
-    { emoji: '😔', label: 'Sad', value: 'sad' },
-    { emoji: '😰', label: 'Anxious', value: 'anxious' },
-    { emoji: '😤', label: 'Frustrated', value: 'frustrated' },
-    { emoji: '🤔', label: 'Thoughtful', value: 'thoughtful' },
-    { emoji: '💪', label: 'Motivated', value: 'motivated' },
-    { emoji: '😴', label: 'Tired', value: 'tired' },
+    { icon: MOOD_ICONS.happy, label: 'Happy', value: 'happy' },
+    { icon: MOOD_ICONS.calm, label: 'Calm', value: 'calm' },
+    { icon: MOOD_ICONS.sad, label: 'Sad', value: 'sad' },
+    { icon: MOOD_ICONS.anxious, label: 'Anxious', value: 'anxious' },
+    { icon: MOOD_ICONS.frustrated, label: 'Frustrated', value: 'frustrated' },
+    { icon: MOOD_ICONS.thoughtful, label: 'Thoughtful', value: 'thoughtful' },
+    { icon: MOOD_ICONS.motivated, label: 'Motivated', value: 'motivated' },
+    { icon: MOOD_ICONS.tired, label: 'Tired', value: 'tired' },
 ];
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
@@ -307,11 +309,26 @@ function EditEntryContent() {
                                     : 'bg-white/5 text-slate-300 hover:bg-white/10'
                                     }`}
                             >
-                                <span>{m.emoji}</span>
+                                {(() => {
+                                    const MoodIcon = m.icon;
+                                    return <MoodIcon className="w-4 h-4 text-white" />;
+                                })()}
                                 <span>{m.label}</span>
                             </button>
                         ))}
                     </div>
+                </div>
+
+                {/* Rewrite Toolbar */}
+                <div className="mb-4">
+                    <RewriteToolbar 
+                        content={content}
+                        onRewrite={(newContent) => {
+                            setContent(newContent);
+                            setContentHtml(`<p>${newContent}</p>`);
+                        }}
+                        disabled={isSaving}
+                    />
                 </div>
 
                 {/* Editor */}

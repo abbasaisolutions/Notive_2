@@ -4,6 +4,9 @@
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
 import nlpService from '../services/nlp.service';
+import { healthInsightsService } from '../services/health-insights.service';
+import { healthSyncService } from '../services/health-sync.service';
+import { googleFitOAuthService } from '../services/googlefit-oauth.service';
 
 class InsightsController {
     /**
@@ -96,6 +99,112 @@ class InsightsController {
         } catch (error: any) {
             console.error('Insights error:', error);
             return res.status(500).json({ message: 'Failed to generate insights' });
+        }
+    }
+
+    /**
+     * Get comprehensive insights including health correlations
+     * GET /api/v1/analytics/comprehensive-insights
+     */
+    async getComprehensiveInsights(req: Request, res: Response) {
+        try {
+            // @ts-ignore
+            const userId = req.userId;
+            const period = req.query.period as string || 'month';
+            const periodDays = period === 'week' ? 7 : period === 'month' ? 30 : 365;
+
+            // Check if user has Google Fit connected
+            const hasHealthData = await googleFitOAuthService.isConnected(userId);
+
+            // Get base insights
+            const now = new Date();
+            const cutoff = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
+
+            const entries = await prisma.entry.findMany({
+                where: {
+                    userId,
+                    createdAt: { gte: cutoff },
+                    deletedAt: null,
+                },
+                orderBy: { createdAt: 'desc' },
+                select: {
+                    content: true,
+                    mood: true,
+                    tags: true,
+                    createdAt: true,
+                },
+            });
+
+            // Get NLP insights
+            const nlpInsights = await nlpService.generateInsights(
+                entries.map(e => ({
+                    content: e.content,
+                    mood: e.mood || undefined,
+                    createdAt: e.createdAt,
+                }))
+            );
+
+            // Get health insights if available
+            let healthInsights = null;
+            let healthStats = null;
+
+            if (hasHealthData) {
+                try {
+                    healthInsights = await healthInsightsService.generateHealthMoodInsights(userId, periodDays);
+                    healthStats = await healthSyncService.getHealthStats(userId, periodDays);
+                } catch (error) {
+                    console.warn('Could not get health insights:', error);
+                }
+            }
+
+            // Build combined insights
+            const combinedInsights: string[] = [];
+            
+            // Add mood trends
+            if (nlpInsights.moodTrend === 'improving') {
+                combinedInsights.push('Your overall mood has been improving lately. Keep up whatever you\'re doing!');
+            } else if (nlpInsights.moodTrend === 'declining') {
+                combinedInsights.push('Your mood has been trending down. Consider what factors might be contributing.');
+            }
+
+            // Add health correlations
+            if (healthInsights?.sleepMoodCorrelation) {
+                combinedInsights.push(healthInsights.sleepMoodCorrelation);
+            }
+            if (healthInsights?.activityMoodCorrelation) {
+                combinedInsights.push(healthInsights.activityMoodCorrelation);
+            }
+
+            // Add health-based recommendations
+            if (healthStats && healthStats.avgSleepHours !== null && healthStats.avgSleepHours < 6.5) {
+                combinedInsights.push('Your average sleep has been lower than recommended. Quality rest can significantly impact mood.');
+            }
+
+            return res.json({
+                insights: {
+                    ...nlpInsights,
+                    entryCount: entries.length,
+                    combinedInsights,
+                },
+                healthData: hasHealthData ? {
+                    connected: true,
+                    stats: healthStats,
+                    correlations: healthInsights ? {
+                        sleepMood: healthInsights.sleepMoodCorrelation,
+                        activityMood: healthInsights.activityMoodCorrelation,
+                    } : null,
+                    patterns: healthInsights?.patterns || [],
+                    recommendations: healthInsights?.recommendations || [],
+                } : {
+                    connected: false,
+                    message: 'Connect Google Fit to see health-mood correlations',
+                },
+                period,
+                generatedAt: new Date().toISOString(),
+            });
+        } catch (error: any) {
+            console.error('Comprehensive insights error:', error);
+            return res.status(500).json({ message: 'Failed to generate comprehensive insights' });
         }
     }
 

@@ -147,6 +147,7 @@ export default function ProfileEditPage() {
                     </div>
                 </header>
 
+    import { AlertTriangle, BarChart3, Box, FileText, Settings, Shield, Sparkles, User } from 'lucide-react';
                 {/* Status Message */}
                 <AnimatePresence mode='wait'>
                     {message && (
@@ -156,8 +157,12 @@ export default function ProfileEditPage() {
                             exit={{ opacity: 0, y: -20, height: 0 }}
                             className={`p-4 rounded-2xl bento-box border-none ${message.type === 'success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}
                         >
-                            <div className="flex items-center gap-3">
-                                <span className="text-lg">{message.type === 'success' ? '✨' : '⚠️'}</span>
+                                <div className="flex items-center gap-3">
+                                    {message.type === 'success' ? (
+                                        <Sparkles className="w-4 h-4" />
+                                    ) : (
+                                        <AlertTriangle className="w-4 h-4" />
+                                    )}
                                 <p className="text-sm font-bold tracking-wide uppercase italic">{message.text}</p>
                             </div>
                         </motion.div>
@@ -167,17 +172,17 @@ export default function ProfileEditPage() {
                 {/* Tabs Navigation */}
                 <SlideUp delay={0.1} className="flex flex-wrap gap-2 p-1 bg-white/5 border border-white/5 rounded-[1.5rem] backdrop-blur-xl">
                     {[
-                        { id: 'essence', label: 'Profile', icon: '👤' },
-                        { id: 'account', label: 'Security', icon: '🛡️' },
-                        { id: 'preferences', label: 'Preferences', icon: '⚙️' },
-                        { id: 'data', label: 'Data', icon: '📦' }
+                        { id: 'essence', label: 'Profile', icon: User },
+                        { id: 'account', label: 'Security', icon: Shield },
+                        { id: 'preferences', label: 'Preferences', icon: Settings },
+                        { id: 'data', label: 'Data', icon: Box }
                     ].map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as any)}
                             className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold tracking-widest transition-all ${activeTab === tab.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
                         >
-                            <span>{tab.icon}</span>
+                            <tab.icon className="w-4 h-4" />
                             <span className="hidden sm:inline uppercase">{tab.label}</span>
                         </button>
                     ))}
@@ -377,12 +382,12 @@ export default function ProfileEditPage() {
                                 <p className="zen-text text-slate-300">Your chronicles belong to you. Choose how you wish to preserve your digital legacy.</p>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <motion.button whileHover={{ scale: 1.05 }} className="p-6 rounded-3xl bg-white/5 border border-white/5 text-left hover:bg-primary/10 hover:border-primary/20 transition-all group">
-                                        <span className="block text-2xl mb-3 group-hover:scale-110 transition-transform">📄</span>
+                                        <FileText className="w-6 h-6 mb-3 group-hover:scale-110 transition-transform" />
                                         <p className="text-white font-bold mb-1">Export PDF Volume</p>
                                         <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold font-mono">Archive for printing</p>
                                     </motion.button>
                                     <motion.button whileHover={{ scale: 1.05 }} className="p-6 rounded-3xl bg-white/5 border border-white/5 text-left hover:bg-primary/10 hover:border-primary/20 transition-all group">
-                                        <span className="block text-2xl mb-3 group-hover:scale-110 transition-transform">📊</span>
+                                        <BarChart3 className="w-6 h-6 mb-3 group-hover:scale-110 transition-transform" />
                                         <p className="text-white font-bold mb-1">Export JSON Matrix</p>
                                         <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold font-mono">Developer/Backup format</p>
                                     </motion.button>

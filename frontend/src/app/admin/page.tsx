@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
+import { Lock } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -125,7 +126,9 @@ export default function AdminPage() {
     if (error === 'Admin access required') {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center p-8">
-                <div className="text-6xl mb-4">🔒</div>
+                <div className="flex justify-center mb-4">
+                    <Lock className="w-12 h-12 text-white" />
+                </div>
                 <h1 className="text-2xl font-bold text-white mb-2">Access Denied</h1>
                 <p className="text-slate-400 mb-6">You need admin privileges to access this page.</p>
                 <Link href="/dashboard" className="px-6 py-3 bg-primary text-white rounded-xl">Go to Dashboard</Link>

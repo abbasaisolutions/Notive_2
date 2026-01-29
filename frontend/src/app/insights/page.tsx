@@ -4,8 +4,10 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAnalytics } from '@/hooks/useAnalytics';
-import { getMoodEmoji, getMoodColor } from '@/constants/moods';
+import { getMoodIcon, getMoodColor } from '@/constants/moods';
 import { SkeletonCard, SkeletonStat } from '@/components/ui/SkeletonLoader';
+import HealthInsightsPanel from '@/components/insights/HealthInsightsPanel';
+import { BarChart3, Bot, BookOpen, Flame, Frown, Heart, PenLine, Smile, Sparkles, Target, TrendingUp } from 'lucide-react';
 
 export default function InsightsPage() {
     const router = useRouter();
@@ -16,14 +18,14 @@ export default function InsightsPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 pb-24">
+            <div className="min-h-screen bg-gradient-to-b from-neutral-900 to-neutral-950 pb-24">
                 <div className="max-w-6xl mx-auto px-4 py-8">
                     <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-slate-800 rounded-xl animate-pulse" />
+                            <div className="w-10 h-10 bg-neutral-800 rounded-xl animate-pulse" />
                             <div>
-                                <div className="h-8 w-48 bg-slate-800 rounded animate-pulse mb-2" />
-                                <div className="h-4 w-64 bg-slate-800 rounded animate-pulse" />
+                                <div className="h-8 w-48 bg-neutral-800 rounded animate-pulse mb-2" />
+                                <div className="h-4 w-64 bg-neutral-800 rounded animate-pulse" />
                             </div>
                         </div>
                     </div>
@@ -44,9 +46,11 @@ export default function InsightsPage() {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <div className="text-6xl mb-4">😕</div>
+                    <div className="flex justify-center mb-4">
+                        <Frown className="w-12 h-12 text-white" />
+                    </div>
                     <h2 className="text-2xl font-bold text-white mb-2">Oops! Something went wrong</h2>
-                    <p className="text-slate-400 mb-6">{error}</p>
+                    <p className="text-neutral-400 mb-6">{error}</p>
                     <button
                         onClick={() => router.refresh()}
                         className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-all"
@@ -66,11 +70,11 @@ export default function InsightsPage() {
                     <div className="bento-box p-12 text-center">
                         {/* Animated icon */}
                         <div className="w-32 h-32 mx-auto mb-8 rounded-3xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center animate-float">
-                            <span className="text-7xl">📊</span>
+                            <BarChart3 className="w-16 h-16 text-white" />
                         </div>
 
                         <h2 className="text-3xl font-serif text-white mb-4">
-                            Your Insights Await! ✨
+                            Your Insights Await! <Sparkles className="inline-block w-6 h-6 text-white" />
                         </h2>
 
                         <p className="zen-text text-lg max-w-md mx-auto mb-8">
@@ -92,7 +96,7 @@ export default function InsightsPage() {
 
                             <Link
                                 href="/dashboard"
-                                className="text-slate-400 hover:text-white transition-colors flex items-center gap-2"
+                                className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2"
                             >
                                 Back to Dashboard
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -104,19 +108,19 @@ export default function InsightsPage() {
                         {/* Quick tips */}
                         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
                             <div className="p-4 rounded-xl bg-white/5">
-                                <span className="text-2xl mb-2 block">😊</span>
+                                <Smile className="w-6 h-6 mb-2 text-white" />
                                 <h4 className="text-sm font-bold text-white mb-1">Track Your Mood</h4>
-                                <p className="text-xs text-slate-400">See patterns in your emotional journey</p>
+                                <p className="text-xs text-neutral-400">See patterns in your emotional journey</p>
                             </div>
                             <div className="p-4 rounded-xl bg-white/5">
-                                <span className="text-2xl mb-2 block">🎯</span>
+                                <Target className="w-6 h-6 mb-2 text-white" />
                                 <h4 className="text-sm font-bold text-white mb-1">Identify Themes</h4>
-                                <p className="text-xs text-slate-400">Discover what matters most to you</p>
+                                <p className="text-xs text-neutral-400">Discover what matters most to you</p>
                             </div>
                             <div className="p-4 rounded-xl bg-white/5">
-                                <span className="text-2xl mb-2 block">📈</span>
+                                <TrendingUp className="w-6 h-6 mb-2 text-white" />
                                 <h4 className="text-sm font-bold text-white mb-1">Measure Growth</h4>
-                                <p className="text-xs text-slate-400">Watch your progress over time</p>
+                                <p className="text-xs text-neutral-400">Watch your progress over time</p>
                             </div>
                         </div>
                     </div>
@@ -126,19 +130,19 @@ export default function InsightsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 pb-24">
+        <div className="min-h-screen bg-gradient-to-b from-neutral-900 to-neutral-950 pb-24">
             <div className="max-w-6xl mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
                         <Link href="/dashboard" className="p-2 rounded-xl hover:bg-white/10 transition-colors touch-target">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-400">
                                 <path d="m15 18-6-6 6-6" />
                             </svg>
                         </Link>
                         <div>
                             <h1 className="text-3xl font-bold text-white">Your Insights</h1>
-                            <p className="text-slate-400">Discover patterns in your journey</p>
+                            <p className="text-neutral-400">Discover patterns in your journey</p>
                         </div>
                     </div>
 
@@ -150,7 +154,7 @@ export default function InsightsPage() {
                                 onClick={() => setSelectedPeriod(period)}
                                 className={`px-4 py-2 rounded-xl font-medium transition-all touch-target ${selectedPeriod === period
                                     ? 'bg-primary text-white'
-                                    : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                                    : 'bg-white/5 text-neutral-400 hover:bg-white/10'
                                     }`}
                             >
                                 {period.charAt(0).toUpperCase() + period.slice(1)}
@@ -162,27 +166,32 @@ export default function InsightsPage() {
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     <div className="glass-card p-6 rounded-2xl">
-                        <div className="text-4xl mb-2">📝</div>
+                        <PenLine className="w-8 h-8 mb-2 text-white" />
                         <div className="text-3xl font-bold text-white">{analytics.totalEntries}</div>
-                        <div className="text-slate-400 text-sm">Entries</div>
+                        <div className="text-neutral-400 text-sm">Entries</div>
                     </div>
                     <div className="glass-card p-6 rounded-2xl">
-                        <div className="text-4xl mb-2">🔥</div>
+                        <Flame className="w-8 h-8 mb-2 text-white" />
                         <div className="text-3xl font-bold text-white">{analytics.currentStreak}</div>
-                        <div className="text-slate-400 text-sm">Day Streak</div>
+                        <div className="text-neutral-400 text-sm">Day Streak</div>
                         {analytics.currentStreak >= 7 && (
-                            <div className="mt-2 text-xs text-green-400">🎉 Goal achieved!</div>
+                            <div className="mt-2 text-xs text-green-400 flex items-center gap-1">
+                                <Sparkles className="w-3 h-3" /> Goal achieved!
+                            </div>
                         )}
                     </div>
                     <div className="glass-card p-6 rounded-2xl">
-                        <div className="text-4xl mb-2">📖</div>
+                        <BookOpen className="w-8 h-8 mb-2 text-white" />
                         <div className="text-3xl font-bold text-white">{analytics.avgWordCount}</div>
-                        <div className="text-slate-400 text-sm">Avg Words</div>
+                        <div className="text-neutral-400 text-sm">Avg Words</div>
                     </div>
                     <div className="glass-card p-6 rounded-2xl">
-                        <div className="text-4xl mb-2">{getMoodEmoji(analytics.topMood)}</div>
+                        {(() => {
+                            const TopMoodIcon = getMoodIcon(analytics.topMood);
+                            return <TopMoodIcon className="w-8 h-8 mb-2 text-white" />;
+                        })()}
                         <div className="text-xl font-bold text-white capitalize">{analytics.topMood}</div>
-                        <div className="text-slate-400 text-sm">Top Mood</div>
+                        <div className="text-neutral-400 text-sm">Top Mood</div>
                     </div>
                 </div>
 
@@ -203,14 +212,14 @@ export default function InsightsPage() {
                                             }}
                                             title={`${day.date}: ${day.mood}`}
                                         />
-                                        <span className="text-[10px] text-slate-500 group-hover:text-white transition-colors">
+                                        <span className="text-[10px] text-neutral-500 group-hover:text-white transition-colors">
                                             {day.date.split('/')[1]}
                                         </span>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-slate-400 text-center py-8">No mood data yet</p>
+                            <p className="text-neutral-400 text-center py-8">No mood data yet</p>
                         )}
                     </div>
 
@@ -220,11 +229,14 @@ export default function InsightsPage() {
                         <div className="space-y-3">
                             {analytics.emotionBreakdown.slice(0, 5).map((emotion, i) => (
                                 <div key={i} className="flex items-center gap-3">
-                                    <span className="text-2xl">{getMoodEmoji(emotion.emotion)}</span>
+                                    {(() => {
+                                        const MoodIcon = getMoodIcon(emotion.emotion);
+                                        return <MoodIcon className="w-6 h-6 text-white" />;
+                                    })()}
                                     <div className="flex-1">
                                         <div className="flex justify-between mb-1">
                                             <span className="text-white capitalize">{emotion.emotion}</span>
-                                            <span className="text-slate-400">{emotion.percentage}%</span>
+                                            <span className="text-neutral-400">{emotion.percentage}%</span>
                                         </div>
                                         <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                                             <div
@@ -255,7 +267,7 @@ export default function InsightsPage() {
                                 </span>
                             ))}
                             {analytics.topThemes.length === 0 && (
-                                <p className="text-slate-400 w-full text-center py-4">
+                                <p className="text-neutral-400 w-full text-center py-4">
                                     Add tags to your entries to see themes!
                                 </p>
                             )}
@@ -264,15 +276,17 @@ export default function InsightsPage() {
 
                     {/* Gratitude Wall */}
                     <div className="glass-card p-6 rounded-2xl">
-                        <h2 className="text-xl font-bold text-white mb-4">🙏 Gratitude Wall</h2>
+                        <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                            <Heart className="w-5 h-5" /> Gratitude Wall
+                        </h2>
                         <div className="space-y-2">
                             {analytics.gratitudeItems.map((item, i) => (
-                                <div key={i} className="p-3 bg-white/5 rounded-xl text-slate-300 italic">
+                                <div key={i} className="p-3 bg-white/5 rounded-xl text-neutral-300 italic">
                                     "{item}"
                                 </div>
                             ))}
                             {analytics.gratitudeItems.length === 0 && (
-                                <p className="text-slate-400 text-center py-4">
+                                <p className="text-neutral-400 text-center py-4">
                                     Express gratitude in your entries to fill this wall!
                                 </p>
                             )}
@@ -283,10 +297,10 @@ export default function InsightsPage() {
                 {/* AI Reflection */}
                 <div className="mt-8 glass-card p-6 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10">
                     <div className="flex items-center gap-3 mb-4">
-                        <span className="text-3xl">🤖</span>
+                        <Bot className="w-7 h-7 text-white" />
                         <h2 className="text-xl font-bold text-white">AI Reflection</h2>
                     </div>
-                    <div className="text-slate-300 leading-relaxed">
+                    <div className="text-neutral-300 leading-relaxed">
                         {analytics.totalEntries > 0 ? (
                             <>
                                 <p className="mb-3">
@@ -294,12 +308,17 @@ export default function InsightsPage() {
                                     with an average of <strong className="text-white">{analytics.avgWordCount} words</strong> each.
                                 </p>
                                 <p className="mb-3">
-                                    Your dominant mood has been <strong className="text-white capitalize">{analytics.topMood}</strong> {getMoodEmoji(analytics.topMood)},
+                                    Your dominant mood has been <strong className="text-white capitalize">{analytics.topMood}</strong>{' '}
+                                    {(() => {
+                                        const TopMoodIcon = getMoodIcon(analytics.topMood);
+                                        return <TopMoodIcon className="inline-block w-4 h-4 text-white" />;
+                                    })()},
                                     appearing in {analytics.emotionBreakdown[0]?.percentage || 0}% of your entries.
                                 </p>
                                 {analytics.currentStreak > 0 && (
                                     <p className="mb-3">
-                                        🔥 You're on a <strong className="text-white">{analytics.currentStreak}-day streak</strong>!
+                                        <Flame className="inline-block w-4 h-4 text-white" /> You're on a{' '}
+                                        <strong className="text-white">{analytics.currentStreak}-day streak</strong>!
                                         {analytics.currentStreak >= 7 ? ' Amazing consistency!' : ' Keep the momentum going.'}
                                     </p>
                                 )}
@@ -314,6 +333,9 @@ export default function InsightsPage() {
                         )}
                     </div>
                 </div>
+
+                {/* Health & Mood Insights Panel */}
+                <HealthInsightsPanel period={selectedPeriod} />
             </div>
         </div>
     );

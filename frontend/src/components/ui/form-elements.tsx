@@ -20,17 +20,6 @@ export function Input({ label, error, className, id, ...props }: InputProps) {
                     {label}
                 </label>
             )}
-<<<<<<< HEAD
-            <input
-                id={id}
-                className={cn(
-                    'w-full px-4 py-3 rounded-xl bg-teal-dark/50 border border-cream/10',
-                    'text-cream placeholder-cream/40',
-                    'focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary/50',
-                    'transition-all duration-200',
-                    error && 'border-red-500/50 focus:ring-red-500/50',
-                    className
-=======
             <motion.div
                 initial={false}
                 animate={error ? { x: [-10, 10, -5, 5, 0] } : {}}
@@ -39,9 +28,9 @@ export function Input({ label, error, className, id, ...props }: InputProps) {
                 <input
                     id={id}
                     className={cn(
-                        'w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-white/10',
-                        'text-white placeholder-slate-500',
-                        'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50',
+                        'w-full px-4 py-3 rounded-xl bg-teal-dark/50 border border-cream/10',
+                        'text-cream placeholder-cream/40',
+                        'focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary/50',
                         'transition-all duration-200',
                         error && 'border-red-500/50 focus:ring-red-500/50',
                         className
@@ -59,7 +48,6 @@ export function Input({ label, error, className, id, ...props }: InputProps) {
                     >
                         {error}
                     </motion.p>
->>>>>>> 9a9c056f33be4adfa1b5521a7d2268f2927d9d5e
                 )}
             </AnimatePresence>
         </div>
@@ -85,17 +73,10 @@ export function Button({
 
     const variants = {
         primary:
-<<<<<<< HEAD
             'bg-primary hover:bg-primary/90 text-cream shadow-lg shadow-primary/25 hover:shadow-primary/40',
         secondary:
             'bg-teal-light hover:bg-teal-light/80 text-cream border border-cream/10',
         ghost: 'bg-transparent hover:bg-cream/5 text-cream/80 hover:text-cream',
-=======
-            'bg-primary text-white shadow-lg shadow-primary/25',
-        secondary:
-            'bg-slate-700 text-white border border-white/10',
-        ghost: 'bg-transparent text-slate-300 hover:text-white',
->>>>>>> 9a9c056f33be4adfa1b5521a7d2268f2927d9d5e
     };
 
     return (

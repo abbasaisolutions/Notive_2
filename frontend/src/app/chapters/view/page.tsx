@@ -4,6 +4,8 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
+import { getChapterIcon } from '@/constants/chapter-icons';
+import { PenLine } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -96,8 +98,11 @@ function ChapterDetailContent() {
                         </svg>
                     </Link>
                     <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl" style={{ backgroundColor: `${chapter.color}20` }}>
-                            {chapter.icon}
+                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${chapter.color}20` }}>
+                            {(() => {
+                                const ChapterIcon = getChapterIcon(chapter.icon);
+                                return <ChapterIcon className="w-7 h-7 text-white" />;
+                            })()}
                         </div>
                         <div>
                             <h1 className="text-3xl font-bold text-white">{chapter.name}</h1>
@@ -109,7 +114,9 @@ function ChapterDetailContent() {
                 {/* Entries */}
                 {entries.length === 0 ? (
                     <div className="glass-card p-12 rounded-2xl text-center">
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/10 flex items-center justify-center text-4xl">📝</div>
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/10 flex items-center justify-center">
+                            <PenLine className="w-8 h-8 text-white" />
+                        </div>
                         <h3 className="text-xl font-semibold text-white mb-2">No Entries Yet</h3>
                         <p className="text-slate-400 mb-6">Add entries to this chapter from the entry editor.</p>
                         <Link href="/entry/new" className="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl font-medium transition-all inline-block">

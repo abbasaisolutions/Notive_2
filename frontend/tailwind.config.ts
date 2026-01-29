@@ -13,27 +13,36 @@ const config: Config = {
                 serif: ["var(--font-serif)", "serif"],
             },
             colors: {
-                background: "#1D2F33",
-                foreground: "#F2F0E4",
+                background: "#18181b",
+                foreground: "#fafafa",
                 primary: {
-                    DEFAULT: "#26464B",
-                    light: "#5F8184",
-                    foreground: "#F2F0E4"
+                    DEFAULT: "#27272a",
+                    light: "#52525b",
+                    foreground: "#fafafa"
                 },
                 secondary: {
-                    DEFAULT: "#5F8184",
-                    foreground: "#F2F0E4"
+                    DEFAULT: "#71717a",
+                    foreground: "#fafafa"
                 },
                 accent: {
-                    DEFAULT: "#5F8184",
-                    foreground: "#F2F0E4"
+                    DEFAULT: "#a1a1aa",
+                    foreground: "#18181b"
                 },
-                glass: "rgba(29, 47, 51, 0.6)",
-                cream: "#F2F0E4",
+                glass: "rgba(24, 24, 27, 0.6)",
+                cream: "#fafafa",
+                neutral: {
+                    darkest: "#09090b",
+                    dark: "#18181b",
+                    DEFAULT: "#27272a",
+                    medium: "#52525b",
+                    light: "#a1a1aa",
+                    lighter: "#d4d4d8",
+                    lightest: "#fafafa",
+                },
                 teal: {
-                    dark: "#1D2F33",
-                    DEFAULT: "#26464B",
-                    light: "#5F8184",
+                    dark: "#18181b",
+                    DEFAULT: "#27272a",
+                    light: "#52525b",
                 }
             },
             backgroundImage: {

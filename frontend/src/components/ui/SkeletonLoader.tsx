@@ -16,15 +16,8 @@ export default function Skeleton({ className = '', variant = 'rectangular' }: Sk
 
   return (
     <div
-<<<<<<< HEAD
-      className={cn(
-        "animate-pulse-skeleton bg-cream/5 rounded-lg",
-        className
-      )}
-=======
       className={`${baseClasses} ${variantClasses[variant]} ${className}`}
       style={{ animation: 'shimmer 2s infinite' }}
->>>>>>> 9a9c056f33be4adfa1b5521a7d2268f2927d9d5e
     />
   );
 }

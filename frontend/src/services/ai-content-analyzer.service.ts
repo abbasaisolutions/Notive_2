@@ -148,64 +148,91 @@ class AIContentAnalyzerService {
             });
         }
 
-        return Array.from(tags).slice(0, 5); // Limit to 5 tags
+        return Array.from(tags).slice(0, 12); // Limit to 12 tags
     }
 
     /**
-     * Detect mood from content
+     * Detect mood from content with enhanced pattern matching
      */
     detectMood(content: string): string | null {
         const lowerContent = content.toLowerCase();
 
         const moodPatterns = {
             happy: {
-                keywords: /\b(happy|joyful|excited|great|wonderful|amazing|fantastic|awesome|love|loved|perfect|excellent|thrilled|delighted)\b/gi,
+                keywords: /\b(happy|joyful|excited|great|wonderful|amazing|fantastic|awesome|love|loved|perfect|excellent|thrilled|delighted|ecstatic|cheerful|elated|gleeful|pleased|satisfied|beaming|overjoyed|blissful|euphoric)\b/gi,
                 weight: 0,
+                priority: 1,
             },
             sad: {
-                keywords: /\b(sad|depressed|down|unhappy|miserable|terrible|awful|disappointed|heartbroken|lonely|crying|tears)\b/gi,
+                keywords: /\b(sad|depressed|down|unhappy|miserable|terrible|awful|disappointed|heartbroken|lonely|crying|tears|sorrowful|grief|grieving|mourning|despair|despairing|hopeless|dejected|disheartened|gloomy|melancholy|somber|blue)\b/gi,
                 weight: 0,
+                priority: 1,
             },
             anxious: {
-                keywords: /\b(anxious|worried|nervous|stressed|overwhelmed|panic|fear|scared|afraid|tense|uneasy)\b/gi,
+                keywords: /\b(anxious|worried|nervous|stressed|overwhelmed|panic|fear|scared|afraid|tense|uneasy|apprehensive|dreading|dread|on edge|restless|unsettled|frantic|jittery|edgy|agitated|fretful|alarmed|concerned)\b/gi,
                 weight: 0,
+                priority: 1,
             },
             calm: {
-                keywords: /\b(calm|peaceful|relaxed|serene|tranquil|content|comfortable|easy|gentle|quiet)\b/gi,
+                keywords: /\b(calm|peaceful|relaxed|serene|tranquil|content|comfortable|easy|gentle|quiet|at ease|at peace|soothing|mellow|composed|collected|untroubled|placid|restful|centered|grounded|zen|mindful)\b/gi,
                 weight: 0,
+                priority: 2,
             },
-            angry: {
-                keywords: /\b(angry|mad|furious|irritated|frustrated|annoyed|upset|rage|pissed|livid)\b/gi,
+            frustrated: {
+                keywords: /\b(angry|mad|furious|irritated|frustrated|annoyed|upset|rage|pissed|livid|enraged|fuming|irate|aggravated|exasperated|infuriated|resentful|bitter|hostile|seething)\b/gi,
                 weight: 0,
+                priority: 1,
             },
             motivated: {
-                keywords: /\b(motivated|inspired|energized|determined|driven|ambitious|focused|productive|accomplished|achieved)\b/gi,
+                keywords: /\b(motivated|inspired|energized|determined|driven|ambitious|focused|productive|accomplished|achieved|empowered|unstoppable|pumped|fired up|passionate|eager|enthusiastic|zealous|ready|confident)\b/gi,
                 weight: 0,
+                priority: 2,
             },
             tired: {
-                keywords: /\b(tired|exhausted|drained|sleepy|fatigued|weary|worn out|burned out)\b/gi,
+                keywords: /\b(tired|exhausted|drained|sleepy|fatigued|weary|worn out|burned out|depleted|spent|lethargic|sluggish|drowsy|wiped out|beat|run down|knackered|bushed|zonked)\b/gi,
                 weight: 0,
+                priority: 1,
             },
             thoughtful: {
-                keywords: /\b(thinking|wondering|pondering|reflecting|considering|contemplating|realizing|understanding)\b/gi,
+                keywords: /\b(thinking|wondering|pondering|reflecting|considering|contemplating|realizing|understanding|introspective|meditative|pensive|musing|ruminating|analyzing|processing|deep in thought)\b/gi,
                 weight: 0,
+                priority: 3,
+            },
+            grateful: {
+                keywords: /\b(grateful|thankful|blessed|appreciative|fortunate|lucky|humble|touched|moved|indebted|appreciating|counting blessings|heartwarmed)\b/gi,
+                weight: 0,
+                priority: 2,
             },
         };
 
-        // Count matches for each mood
+        // Count matches for each mood with increased sensitivity
         for (const [mood, data] of Object.entries(moodPatterns)) {
             const matches = lowerContent.match(data.keywords);
             moodPatterns[mood as keyof typeof moodPatterns].weight = matches ? matches.length : 0;
         }
 
-        // Find mood with highest weight
+        // Find mood with highest weight (considering priority for tie-breaking)
         let maxWeight = 0;
         let detectedMood: string | null = null;
+        let minPriority = 999;
 
         for (const [mood, data] of Object.entries(moodPatterns)) {
-            if (data.weight > maxWeight) {
+            if (data.weight > maxWeight || (data.weight === maxWeight && data.weight > 0 && data.priority < minPriority)) {
                 maxWeight = data.weight;
                 detectedMood = mood;
+                minPriority = data.priority;
+            }
+        }
+
+        // Fallback: analyze overall sentiment if no specific mood detected
+        if (!detectedMood && content.length > 20) {
+            const positiveMatches = (lowerContent.match(/\b(good|nice|well|better|enjoyed|fun|like|liked|positive|fine|okay|ok|pleasant)\b/gi) || []).length;
+            const negativeMatches = (lowerContent.match(/\b(bad|wrong|hard|difficult|struggle|problem|issue|pain|hurt|tough|rough|sucks)\b/gi) || []).length;
+            
+            if (positiveMatches > negativeMatches && positiveMatches >= 2) {
+                detectedMood = 'calm';
+            } else if (negativeMatches > positiveMatches && negativeMatches >= 2) {
+                detectedMood = 'thoughtful';
             }
         }
 

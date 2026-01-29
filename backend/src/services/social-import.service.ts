@@ -1,7 +1,7 @@
 // Social Media Import Service - Instagram & Facebook Integration
 // File: backend/src/services/social-import.service.ts
 
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 import prisma from '../config/prisma';
 
 // Types for social media data
@@ -188,15 +188,20 @@ export class SocialImportService {
     async getInstagramAccessToken(code: string): Promise<string> {
         if (code === 'mock_code') return 'mock_access_token';
 
-        const response = await axios.post('https://api.instagram.com/oauth/access_token', {
-            client_id: this.INSTAGRAM_CLIENT_ID,
-            client_secret: this.INSTAGRAM_CLIENT_SECRET,
-            grant_type: 'authorization_code',
-            redirect_uri: this.INSTAGRAM_REDIRECT_URI,
-            code,
-        }, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        });
+        const body = new URLSearchParams();
+        body.set('client_id', this.INSTAGRAM_CLIENT_ID);
+        body.set('client_secret', this.INSTAGRAM_CLIENT_SECRET);
+        body.set('grant_type', 'authorization_code');
+        body.set('redirect_uri', this.INSTAGRAM_REDIRECT_URI);
+        body.set('code', code);
+
+        const response = await axios.post<{ access_token: string }>(
+            'https://api.instagram.com/oauth/access_token',
+            body,
+            {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            }
+        );
 
         return response.data.access_token;
     }
@@ -207,7 +212,7 @@ export class SocialImportService {
     async getFacebookAccessToken(code: string): Promise<string> {
         if (code === 'mock_code') return 'mock_access_token';
 
-        const response = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
+        const response = await axios.get<{ access_token: string }>('https://graph.facebook.com/v18.0/oauth/access_token', {
             params: {
                 client_id: this.FACEBOOK_APP_ID,
                 client_secret: this.FACEBOOK_APP_SECRET,
@@ -258,9 +263,9 @@ export class SocialImportService {
 
         while (nextUrl && posts.length < 200) { // Max 200 posts
             try {
-                const response: AxiosResponse = await axios.get(nextUrl);
-                posts.push(...response.data.data);
-                nextUrl = response.data.paging?.next || null;
+                const { data } = await axios.get(nextUrl) as { data: { data: InstagramPost[]; paging?: { next?: string } } };
+                posts.push(...data.data);
+                nextUrl = data.paging?.next || null;
 
                 // Respect rate limits
                 await this.delay(100);
@@ -305,9 +310,9 @@ export class SocialImportService {
 
         while (nextUrl && posts.length < 200) { // Max 200 posts
             try {
-                const response: AxiosResponse = await axios.get(nextUrl);
-                posts.push(...response.data.data);
-                nextUrl = response.data.paging?.next || null;
+                const { data } = await axios.get(nextUrl) as { data: { data: FacebookPost[]; paging?: { next?: string } } };
+                posts.push(...data.data);
+                nextUrl = data.paging?.next || null;
 
                 await this.delay(100);
             } catch (error) {

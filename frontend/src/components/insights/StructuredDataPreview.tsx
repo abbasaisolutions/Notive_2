@@ -2,16 +2,28 @@
 
 import React, { useState, useEffect } from 'react';
 import { StructuredEntryData, structuredDataService } from '@/services/structured-data.service';
+import { MOOD_ICONS } from '@/constants/moods';
+import type { LucideIcon } from 'lucide-react';
+import { Activity, Bot, BookOpen, CheckCircle, MapPin, Meh, MessageCircle, RefreshCw, Shuffle, Sparkles, Target, User, UserMinus } from 'lucide-react';
 
 interface StructuredDataPreviewProps {
     content: string;
     onDataExtracted?: (data: StructuredEntryData) => void;
 }
 
-const moodEmojis: Record<string, string> = {
-    happy: '😊', sad: '😔', anxious: '😰', calm: '😌',
-    angry: '😤', motivated: '💪', grateful: '🙏', tired: '😴',
-    hopeful: '🌟', thoughtful: '🤔', lonely: '😢', neutral: '😐',
+const moodIcons: Record<string, LucideIcon> = {
+    happy: MOOD_ICONS.happy,
+    sad: MOOD_ICONS.sad,
+    anxious: MOOD_ICONS.anxious,
+    calm: MOOD_ICONS.calm,
+    angry: MOOD_ICONS.angry,
+    motivated: MOOD_ICONS.motivated,
+    grateful: MOOD_ICONS.grateful,
+    tired: MOOD_ICONS.tired,
+    hopeful: MOOD_ICONS.hopeful,
+    thoughtful: MOOD_ICONS.thoughtful,
+    lonely: UserMinus,
+    neutral: MOOD_ICONS.neutral,
 };
 
 export default function StructuredDataPreview({ content, onDataExtracted }: StructuredDataPreviewProps) {
@@ -53,7 +65,7 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                 className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
             >
                 <div className="flex items-center gap-2">
-                    <span className="text-xl">🤖</span>
+                    <Bot className="w-5 h-5 text-white" />
                     <span className="font-medium text-white">AI Analysis</span>
                     {isLoading && (
                         <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -84,22 +96,30 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                                 data.overallSentiment === 'mixed' ? 'bg-yellow-500/20 text-yellow-400' :
                                     'bg-slate-500/20 text-slate-400'
                         }`}>
-                        {data.overallSentiment === 'positive' ? '✨ Positive' :
-                            data.overallSentiment === 'negative' ? '💭 Reflective' :
-                                data.overallSentiment === 'mixed' ? '🌊 Mixed' : '😐 Neutral'}
+                        <span className="inline-flex items-center gap-1">
+                            {data.overallSentiment === 'positive' ? <Sparkles className="w-3.5 h-3.5" /> :
+                                data.overallSentiment === 'negative' ? <MessageCircle className="w-3.5 h-3.5" /> :
+                                    data.overallSentiment === 'mixed' ? <Shuffle className="w-3.5 h-3.5" /> : <Meh className="w-3.5 h-3.5" />}
+                            {data.overallSentiment === 'positive' ? 'Positive' :
+                                data.overallSentiment === 'negative' ? 'Reflective' :
+                                    data.overallSentiment === 'mixed' ? 'Mixed' : 'Neutral'}
+                        </span>
                     </div>
 
                     {/* Primary Mood */}
                     {data.primaryEmotion && (
-                        <div className="px-3 py-1 rounded-full text-sm font-medium bg-primary/20 text-primary">
-                            {moodEmojis[data.primaryEmotion.emotion] || '😐'} {data.primaryEmotion.emotion}
+                        <div className="px-3 py-1 rounded-full text-sm font-medium bg-primary/20 text-primary inline-flex items-center gap-1">
+                            {(() => {
+                                const MoodIcon = moodIcons[data.primaryEmotion.emotion] || MOOD_ICONS.neutral;
+                                return <MoodIcon className="w-3.5 h-3.5" />;
+                            })()} {data.primaryEmotion.emotion}
                             <span className="ml-1 opacity-60">({data.primaryEmotion.intensity}/10)</span>
                         </div>
                     )}
 
                     {/* Word Count */}
-                    <div className="px-3 py-1 rounded-full text-sm bg-slate-500/20 text-slate-300">
-                        📖 {data.wordCount} words • {data.readingTime} min read
+                    <div className="px-3 py-1 rounded-full text-sm bg-slate-500/20 text-slate-300 inline-flex items-center gap-1">
+                        <BookOpen className="w-3.5 h-3.5" /> {data.wordCount} words • {data.readingTime} min read
                     </div>
                 </div>
             )}
@@ -128,7 +148,7 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                                                     'bg-slate-500/20 text-slate-300'
                                             }`}
                                     >
-                                        👤 {person.name}
+                                        <User className="w-3.5 h-3.5 inline-block mr-1" /> {person.name}
                                         {person.relationship && <span className="opacity-60"> ({person.relationship})</span>}
                                     </span>
                                 ))}
@@ -146,7 +166,7 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                                         key={i}
                                         className="px-3 py-1 rounded-full text-sm bg-primary/20 text-primary"
                                     >
-                                        🏃 {activity.name}
+                                        <Activity className="w-3.5 h-3.5 inline-block mr-1" /> {activity.name}
                                         {activity.duration && <span className="opacity-60"> ({activity.duration})</span>}
                                     </span>
                                 ))}
@@ -164,7 +184,7 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                                         key={i}
                                         className="px-3 py-1 rounded-full text-sm bg-secondary/20 text-secondary"
                                     >
-                                        📍 {place.name}
+                                        <MapPin className="w-3.5 h-3.5 inline-block mr-1" /> {place.name}
                                     </span>
                                 ))}
                             </div>
@@ -190,9 +210,12 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                                                     goal.status === 'in-progress' ? 'text-yellow-400' :
                                                         'text-primary'
                                             }`}>
-                                            {goal.status === 'achieved' ? '✅' :
-                                                goal.status === 'struggling' ? '💪' :
-                                                    goal.status === 'in-progress' ? '🔄' : '🎯'} {goal.goal}
+                                            <span className="inline-flex items-center gap-1">
+                                                {goal.status === 'achieved' ? <CheckCircle className="w-3.5 h-3.5" /> :
+                                                    goal.status === 'struggling' ? <Activity className="w-3.5 h-3.5" /> :
+                                                        goal.status === 'in-progress' ? <RefreshCw className="w-3.5 h-3.5" /> : <Target className="w-3.5 h-3.5" />}
+                                                {goal.goal}
+                                            </span>
                                         </span>
                                         <span className="ml-2 text-slate-400 text-xs capitalize">({goal.category})</span>
                                     </div>

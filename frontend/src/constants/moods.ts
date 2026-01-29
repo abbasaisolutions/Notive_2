@@ -1,3 +1,6 @@
+import type { LucideIcon } from 'lucide-react';
+import { AlertTriangle, Brain, Flame, Frown, Heart, Meh, Moon, Smile, Sparkles, Wind, Zap } from 'lucide-react';
+
 // Centralized mood configuration
 export const MOOD_COLORS: Record<string, string> = {
     happy: '#22c55e',
@@ -14,19 +17,19 @@ export const MOOD_COLORS: Record<string, string> = {
     angry: '#ef4444',
 };
 
-export const MOOD_EMOJIS: Record<string, string> = {
-    happy: '😊',
-    grateful: '🙏',
-    motivated: '💪',
-    hopeful: '🌟',
-    calm: '😌',
-    thoughtful: '🤔',
-    neutral: '😐',
-    tired: '😴',
-    anxious: '😰',
-    frustrated: '😤',
-    sad: '😔',
-    angry: '😡',
+export const MOOD_ICONS: Record<string, LucideIcon> = {
+    happy: Smile,
+    grateful: Heart,
+    motivated: Zap,
+    hopeful: Sparkles,
+    calm: Wind,
+    thoughtful: Brain,
+    neutral: Meh,
+    tired: Moon,
+    anxious: AlertTriangle,
+    frustrated: Flame,
+    sad: Frown,
+    angry: Flame,
 };
 
 export const MOOD_SCORES: Record<string, number> = {
@@ -55,15 +58,15 @@ export function getMoodColor(mood: string | null): string {
     return MOOD_COLORS[mood] || MOOD_COLORS.neutral;
 }
 
-export function getMoodEmoji(mood: string | null): string {
-    if (!mood) return MOOD_EMOJIS.neutral;
-    return MOOD_EMOJIS[mood] || MOOD_EMOJIS.neutral;
+export function getMoodIcon(mood: string | null): LucideIcon {
+    if (!mood) return MOOD_ICONS.neutral;
+    return MOOD_ICONS[mood] || MOOD_ICONS.neutral;
 }
 
 // Mood configuration for dropdowns
-export const MOOD_OPTIONS = Object.keys(MOOD_EMOJIS).map(mood => ({
+export const MOOD_OPTIONS = Object.keys(MOOD_ICONS).map(mood => ({
     value: mood,
     label: mood.charAt(0).toUpperCase() + mood.slice(1),
-    emoji: MOOD_EMOJIS[mood],
+    icon: MOOD_ICONS[mood],
     color: MOOD_COLORS[mood],
 }));

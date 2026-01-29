@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { BarChart3, Lock, Smartphone, Sparkles } from 'lucide-react';
 
 export default function Home() {
     return (
@@ -50,16 +51,20 @@ export default function Home() {
 
                 {/* Feature Pills */}
                 <div className="flex flex-wrap justify-center gap-3 mt-12">
-                    {['✨ AI Insights', '🔒 End-to-End Encrypted', '📱 Offline First', '📊 Mood Tracking'].map(
-                        (feature) => (
-                            <span
-                                key={feature}
-                                className="px-4 py-2 rounded-full bg-cream/5 border border-cream/10 text-sm text-cream/80"
-                            >
-                                {feature}
-                            </span>
-                        )
-                    )}
+                    {[
+                        { label: 'AI Insights', Icon: Sparkles },
+                        { label: 'End-to-End Encrypted', Icon: Lock },
+                        { label: 'Offline First', Icon: Smartphone },
+                        { label: 'Mood Tracking', Icon: BarChart3 },
+                    ].map(({ label, Icon }) => (
+                        <span
+                            key={label}
+                            className="px-4 py-2 rounded-full bg-cream/5 border border-cream/10 text-sm text-cream/80 inline-flex items-center gap-2"
+                        >
+                            <Icon className="w-4 h-4" />
+                            {label}
+                        </span>
+                    ))}
                 </div>
             </div>
         </main>

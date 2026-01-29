@@ -98,6 +98,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             throw new Error(data.message || 'Login failed');
         }
 
+        // Store refresh token in localStorage for token refresh
+        if (data.refreshToken) {
+            localStorage.setItem('refresh_token', data.refreshToken);
+        }
+
         setAccessToken(data.accessToken);
         setUser(data.user);
     };
@@ -116,6 +121,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             throw new Error(data.message || 'Registration failed');
         }
 
+        // Store refresh token in localStorage for token refresh
+        if (data.refreshToken) {
+            localStorage.setItem('refresh_token', data.refreshToken);
+        }
+
         setAccessToken(data.accessToken);
         setUser(data.user);
     };
@@ -129,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error) {
             logger.error('Logout failed', error);
         } finally {
+            localStorage.removeItem('refresh_token');
             setAccessToken(null);
             setUser(null);
         }

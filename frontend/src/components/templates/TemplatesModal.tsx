@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { Calendar, Heart, MessageSquare, Moon, PenLine, Target } from 'lucide-react';
 
 interface Template {
     id: string;
     name: string;
-    icon: string;
+    icon: LucideIcon;
     description: string;
     prompts: string[];
 }
@@ -14,7 +16,7 @@ const TEMPLATES: Template[] = [
     {
         id: 'gratitude',
         name: 'Gratitude',
-        icon: '🙏',
+        icon: Heart,
         description: 'Focus on what you\'re thankful for',
         prompts: [
             '3 things I\'m grateful for today:',
@@ -30,7 +32,7 @@ const TEMPLATES: Template[] = [
     {
         id: 'reflection',
         name: 'Daily Reflection',
-        icon: '🌙',
+        icon: Moon,
         description: 'End-of-day thoughts and insights',
         prompts: [
             'How am I feeling right now?',
@@ -45,7 +47,7 @@ const TEMPLATES: Template[] = [
     {
         id: 'goals',
         name: 'Goals & Intentions',
-        icon: '🎯',
+        icon: Target,
         description: 'Plan and track your progress',
         prompts: [
             'My main focus today:',
@@ -61,14 +63,14 @@ const TEMPLATES: Template[] = [
     {
         id: 'freewrite',
         name: 'Free Write',
-        icon: '✍️',
+        icon: PenLine,
         description: 'Just let it flow',
         prompts: [],
     },
     {
         id: 'mood',
         name: 'Mood Check-In',
-        icon: '💭',
+        icon: MessageSquare,
         description: 'Explore your emotions',
         prompts: [
             'Current mood (1-10):',
@@ -83,7 +85,7 @@ const TEMPLATES: Template[] = [
     {
         id: 'weekly',
         name: 'Weekly Review',
-        icon: '📅',
+        icon: Calendar,
         description: 'Reflect on your week',
         prompts: [
             'Highlight of the week:',
@@ -131,7 +133,7 @@ export default function TemplatesModal({ isOpen, onClose, onSelect }: TemplatesM
                             onClick={() => handleSelect(template)}
                             className="p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-left group"
                         >
-                            <span className="text-3xl mb-2 block">{template.icon}</span>
+                            <template.icon className="w-7 h-7 mb-2 text-white" />
                             <h3 className="text-white font-medium group-hover:text-primary transition-colors">{template.name}</h3>
                             <p className="text-slate-400 text-sm">{template.description}</p>
                         </button>

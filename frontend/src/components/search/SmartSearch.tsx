@@ -7,7 +7,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { API_URL, DEBOUNCE_DELAY } from '@/constants/config';
-import { getMoodEmoji } from '@/constants/moods';
+import { getMoodIcon } from '@/constants/moods';
+import { Search } from 'lucide-react';
 
 interface SearchResult {
     id: string;
@@ -156,8 +157,11 @@ export function SmartSearch() {
                                 <div className="flex items-start gap-3">
                                     {/* Mood Indicator */}
                                     {result.mood && (
-                                        <span className="text-2xl flex-shrink-0">
-                                            {getMoodEmoji(result.mood)}
+                                        <span className="flex-shrink-0">
+                                            {(() => {
+                                                const MoodIcon = getMoodIcon(result.mood);
+                                                return <MoodIcon className="w-6 h-6 text-white" />;
+                                            })()}
                                         </span>
                                     )}
 
@@ -217,7 +221,9 @@ export function SmartSearch() {
             {/* No Results */}
             {showResults && query && !isSearching && results.length === 0 && (
                 <div className="absolute top-full mt-2 w-full glass-card rounded-2xl p-8 z-50 text-center">
-                    <div className="text-4xl mb-3">🔍</div>
+                    <div className="flex justify-center mb-3">
+                        <Search className="w-8 h-8 text-white" />
+                    </div>
                     <h4 className="text-white font-bold mb-2">No entries found</h4>
                     <p className="text-slate-400 text-sm">
                         Try different keywords or check your spelling

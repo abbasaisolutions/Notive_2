@@ -3,44 +3,39 @@
 @tailwind utilities;
 
 :root {
-  /* New Color Palette */
-  --color-darkest: #1D2F33;
-  --color-dark: #26464B;
-  --color-medium: #5F8184;
-  --color-light: #F2F0E4;
+  /* Neutral Color Palette */
+  --color-darkest: #09090b;
+  --color-dark: #18181b;
+  --color-medium: #52525b;
+  --color-light: #fafafa;
   
-  --foreground: 242 240 228;
-  /* Cream #F2F0E4 */
-  --background-start: 29 47 51;
-  /* Darkest Teal #1D2F33 */
-  --background-end: 38 70 75;
-  /* Dark Teal #26464B */
-  --primary: 38 70 75;
-  /* Dark Teal #26464B */
-  --secondary: 95 129 132;
-  /* Medium Teal #5F8184 */
-  --accent: 95 129 132;
-  /* Medium Teal #5F8184 */
-  --glass-bg: rgba(29, 47, 51, 0.6);
-  --glass-border: rgba(242, 240, 228, 0.1);
-  --glass-glow: rgba(95, 129, 132, 0.2);
+  --foreground: 250 250 250;
+  /* Light Gray #fafafa */
+  --background-start: 24 24 27;
+  /* Dark Gray #18181b */
+  --background-end: 39 39 42;
+  /* Medium Dark #27272a */
+  --primary: 39 39 42;
+  /* Medium Dark #27272a */
+  --secondary: 82 82 91;
+  /* Medium Gray #52525b */
+  --accent: 161 161 170;
+  /* Light Gray #a1a1aa */
+  --glass-bg: rgba(24, 24, 27, 0.6);
+  --glass-border: rgba(250, 250, 250, 0.1);
+  --glass-glow: rgba(161, 161, 170, 0.2);
 }
 
 @layer base {
   body {
-<<<<<<< HEAD
-    @apply text-cream antialiased;
-    background: linear-gradient(135deg, #1D2F33 0%, #26464B 100%) fixed;
-=======
-    @apply text-slate-200 antialiased selection:bg-primary/30 selection:text-white leading-relaxed;
-    background: radial-gradient(circle at 50% -20%, #1e1b4b, #030712) fixed;
->>>>>>> 9a9c056f33be4adfa1b5521a7d2268f2927d9d5e
+    @apply text-cream antialiased selection:bg-primary/30 selection:text-white leading-relaxed;
+    background: linear-gradient(135deg, #18181b 0%, #27272a 100%) fixed;
     min-height: 100vh;
   }
 
   ::selection {
-    background: rgba(95, 129, 132, 0.4);
-    color: #F2F0E4;
+    background: rgba(161, 161, 170, 0.4);
+    color: #fafafa;
   }
 
   h1,
@@ -49,24 +44,20 @@
   h4,
   h5,
   h6 {
-<<<<<<< HEAD
-    @apply font-serif tracking-tight text-cream;
-=======
-    @apply font-serif tracking-tight text-white font-medium;
+    @apply font-serif tracking-tight text-cream font-medium;
   }
   
   h1 {
     @apply tracking-tighter;
->>>>>>> 9a9c056f33be4adfa1b5521a7d2268f2927d9d5e
   }
 }
 
 @layer utilities {
   .cosmic-bg {
     background:
-      radial-gradient(circle at 20% 30%, rgba(95, 129, 132, 0.08) 0%, transparent 40%),
-      radial-gradient(circle at 80% 70%, rgba(38, 70, 75, 0.08) 0%, transparent 40%),
-      radial-gradient(circle at 50% 50%, rgba(95, 129, 132, 0.05) 0%, transparent 60%);
+      radial-gradient(circle at 20% 30%, rgba(161, 161, 170, 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(82, 82, 91, 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 50% 50%, rgba(161, 161, 170, 0.05) 0%, transparent 60%);
   }
 
   .bento-box {
@@ -77,7 +68,7 @@
 
   .bento-box:hover {
     @apply bg-teal-dark/60 border-cream/20;
-    box-shadow: 0 25px 50px -12px rgba(95, 129, 132, 0.15);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   }
 
   .bento-box::before {
@@ -141,7 +132,7 @@
   }
 
   .glow-text {
-    text-shadow: 0 0 20px rgba(242, 240, 228, 0.2);
+    text-shadow: 0 0 20px rgba(250, 250, 250, 0.2);
   }
 }
 

@@ -14,6 +14,8 @@ import adminRoutes from './routes/admin.routes';
 import socialRoutes from './routes/social.routes';
 import importRoutes from './routes/import.routes';
 import fileRoutes from './routes/file.routes';
+import healthRoutes from './routes/health.routes';
+import { healthCronService } from './services/health-cron.service';
 
 dotenv.config();
 
@@ -48,6 +50,7 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/social', socialRoutes);
 app.use('/api/v1/import', importRoutes);
 app.use('/api/v1/files', fileRoutes);
+app.use('/api/v1/health', healthRoutes);
 
 // Global error handler
 app.use((err: any, req: Request, res: Response, next: any) => {
@@ -67,4 +70,9 @@ process.on('unhandledRejection', (reason, promise) => {
 // Start server
 app.listen(port, () => {
     console.log(`[server]: Server is running at http://localhost:${port}`);
+    
+    // Start health sync cron jobs
+    if (process.env.ENABLE_HEALTH_CRON !== 'false') {
+        healthCronService.start();
+    }
 });

@@ -13,16 +13,25 @@ export const chatWithJournal = async (req: Request, res: Response) => {
 
         if (!query) return res.status(400).json({ message: 'Query is required' });
 
-        // Fetch recent 10 entries for context (simple RAG)
+        // Fetch all user entries for similarity search
         const entries = await prisma.entry.findMany({
             where: { userId },
             orderBy: { createdAt: 'desc' },
-            take: 10
+            select: {
+                content: true,
+                createdAt: true,
+                title: true
+            }
         });
 
-        const context = entries.map(e => `[${e.createdAt.toISOString().split('T')[0]}] ${e.content}`).join('\n\n');
+        if (entries.length === 0) {
+            return res.json({ 
+                response: "You don't have any journal entries yet. Start writing to chat with your journal!" 
+            });
+        }
 
-        const response = await nlpService.chat(query, context);
+        // Use the new chatWithRelevantContext method that integrates similarity service + HF API
+        const response = await nlpService.chatWithRelevantContext(query, userId, entries);
 
         return res.json({ response });
     } catch (error) {
@@ -152,5 +161,36 @@ export const generatePersonalStatement = async (req: Request, res: Response) => 
     } catch (error) {
         console.error('Personal Statement generation error:', error);
         return res.status(500).json({ message: 'Failed to generate statement' });
+    }
+};
+
+/**
+ * Rewrite text with different styles/tones
+ */
+export const rewriteText = async (req: Request, res: Response) => {
+    try {
+        const { text, style } = req.body;
+
+        if (!text) {
+            return res.status(400).json({ message: 'Text is required' });
+        }
+
+        const validStyles = ['clearer', 'summary', 'lessons', 'formal', 'casual', 'encouraging'];
+        if (!style || !validStyles.includes(style)) {
+            return res.status(400).json({ 
+                message: `Invalid style. Must be one of: ${validStyles.join(', ')}` 
+            });
+        }
+
+        const rewrittenText = await nlpService.rewriteText(text, style);
+
+        return res.json({
+            original: text,
+            rewritten: rewrittenText,
+            style
+        });
+    } catch (error) {
+        console.error('Rewrite text error:', error);
+        return res.status(500).json({ message: 'Failed to rewrite text' });
     }
 };

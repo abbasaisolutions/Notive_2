@@ -4,6 +4,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { CheckCircle, Download, Lightbulb, XCircle } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { API_URL } from '@/constants/config';
 import SocialSelectionModal from './SocialSelectionModal';
@@ -139,7 +140,7 @@ export function SocialImportPanel() {
         <>
             <div className="bento-box p-8">
                 <div className="flex items-center gap-3 mb-6">
-                    <span className="text-3xl">📥</span>
+                    <Download className="w-7 h-7 text-white" />
                     <div>
                         <h3 className="text-xl font-bold text-white">Import Memories</h3>
                         <p className="text-sm text-slate-400">Connect and import from social accounts</p>
@@ -154,7 +155,7 @@ export function SocialImportPanel() {
                         }`}>
                         {importResult.success ? (
                             <div className="flex items-center gap-3">
-                                <span className="text-2xl">✅</span>
+                                <CheckCircle className="w-5 h-5 text-green-400" />
                                 <div>
                                     <p className="text-white font-semibold">
                                         {importResult.message || 'Import Successful!'}
@@ -171,7 +172,7 @@ export function SocialImportPanel() {
                             </div>
                         ) : (
                             <div className="flex items-center gap-3">
-                                <span className="text-2xl">❌</span>
+                                <XCircle className="w-5 h-5 text-red-400" />
                                 <div>
                                     <p className="text-white font-semibold">Import Failed</p>
                                     <p className="text-sm text-slate-400">{importResult.message}</p>
@@ -277,7 +278,7 @@ export function SocialImportPanel() {
                 {/* Info Notice */}
                 <div className="mt-6 p-4 rounded-xl bg-white/5 border border-white/10">
                     <div className="flex items-start gap-3">
-                        <span className="text-xl">💡</span>
+                        <Lightbulb className="w-5 h-5 text-white" />
                         <div className="text-sm">
                             <p className="text-slate-300 font-medium">How it works</p>
                             <p className="text-slate-500 mt-1">

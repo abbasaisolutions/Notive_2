@@ -51,6 +51,11 @@ model User {
   
   // Social Connections
   socialConnections SocialConnection[]
+  
+  // Google Fit Integration
+  googleFitConnection GoogleFitConnection?
+  healthContexts      HealthContext[]
+  healthInsights      HealthInsight[]
 }
 
 model RefreshToken {
@@ -151,4 +156,64 @@ model SocialConnection {
   updatedAt    DateTime @updatedAt
   
   @@unique([userId, provider])
+}
+
+// Google Fit Connection - Separate from main Google Auth
+model GoogleFitConnection {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken  String    @db.Text
+  refreshToken String    @db.Text
+  expiresAt    DateTime
+  scopes       String[]  // Granted scopes for audit
+  connectedAt  DateTime  @default(now())
+  lastSyncAt   DateTime?
+  updatedAt    DateTime  @updatedAt
+}
+
+// Daily Health Context - Aggregated health data per day
+model HealthContext {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime @db.Date
+  
+  // Sleep data
+  sleepMinutes  Int?     // Total sleep duration in minutes
+  sleepQuality  String?  // 'poor', 'fair', 'good', 'excellent' (derived from sleep stages)
+  
+  // Activity data
+  steps         Int?
+  activeMinutes Int?     // Minutes of moderate/vigorous activity
+  caloriesBurned Int?
+  
+  // Heart rate (optional)
+  avgHeartRate  Int?
+  restingHeartRate Int?
+  
+  // Metadata
+  syncedAt      DateTime @default(now())
+  source        String   @default("GOOGLE_FIT")
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+// Health Insights - AI-generated correlations
+model HealthInsight {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String   // 'sleep_mood', 'activity_mood', 'pattern', 'weekly_summary'
+  title       String
+  description String   @db.Text
+  data        Json?    // Additional structured data (charts, stats)
+  period      String   // 'day', 'week', 'month'
+  generatedAt DateTime @default(now())
+  
+  @@index([userId, type])
 }

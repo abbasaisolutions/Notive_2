@@ -1,25 +1,39 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import {
+    Activity,
+    Bookmark,
+    Brain,
+    Landmark,
+    Leaf,
+    Moon,
+    Palette,
+    PenLine,
+    RefreshCw,
+    Sparkles,
+    Sunrise,
+    Thermometer,
+} from 'lucide-react';
 import { useAuth } from './auth-context';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 // Badge definitions
 export const BADGES = {
-    first_entry: { id: 'first_entry', name: 'The First Spark', icon: '🌱', description: 'Began the journey of documentation' },
-    streak_3: { id: 'streak_3', name: 'Rhythm of Thought', icon: '🌊', description: 'Maintained a 3-day flow' },
-    streak_7: { id: 'streak_7', name: 'Synchronized', icon: '🔄', description: 'A full week of self-alignment' },
-    streak_30: { id: 'streak_30', name: 'Architect of Habit', icon: '🏛️', description: 'A month of dedication to your legacy' },
-    entries_10: { id: 'entries_10', name: 'Chronicle I', icon: '🔖', description: 'Authored 10 chapters of your story' },
-    entries_50: { id: 'entries_50', name: 'Life Historian', icon: '🏛️', description: 'Documented 50 significant moments' },
-    entries_100: { id: 'entries_100', name: 'Master Reflector', icon: '🧘', description: 'A century of captured insights' },
-    words_1000: { id: 'words_1000', name: 'Eloquent Mind', icon: '✨', description: 'Synthesized 1,000 words of truth' },
-    words_10000: { id: 'words_10000', name: 'The Silver Tongue', icon: '🖋️', description: 'Wove 10,000 words of personal wisdom' },
-    chapter_first: { id: 'chapter_first', name: 'Curator', icon: '🎨', description: 'Began curating your life volumes' },
-    mood_tracker: { id: 'mood_tracker', name: 'Emotional Intel', icon: '🌡️', description: 'Mapped your emotional landscape 10 times' },
-    night_owl: { id: 'night_owl', name: 'Lunar Reflections', icon: '🌙', description: 'Documented wisdom in the quiet of the night' },
-    early_bird: { id: 'early_bird', name: 'Dawn Insight', icon: '🌅', description: 'Captured clarity at the first light' },
+    first_entry: { id: 'first_entry', name: 'The First Spark', icon: Leaf, description: 'Began the journey of documentation' },
+    streak_3: { id: 'streak_3', name: 'Rhythm of Thought', icon: Activity, description: 'Maintained a 3-day flow' },
+    streak_7: { id: 'streak_7', name: 'Synchronized', icon: RefreshCw, description: 'A full week of self-alignment' },
+    streak_30: { id: 'streak_30', name: 'Architect of Habit', icon: Landmark, description: 'A month of dedication to your legacy' },
+    entries_10: { id: 'entries_10', name: 'Chronicle I', icon: Bookmark, description: 'Authored 10 chapters of your story' },
+    entries_50: { id: 'entries_50', name: 'Life Historian', icon: Landmark, description: 'Documented 50 significant moments' },
+    entries_100: { id: 'entries_100', name: 'Master Reflector', icon: Brain, description: 'A century of captured insights' },
+    words_1000: { id: 'words_1000', name: 'Eloquent Mind', icon: Sparkles, description: 'Synthesized 1,000 words of truth' },
+    words_10000: { id: 'words_10000', name: 'The Silver Tongue', icon: PenLine, description: 'Wove 10,000 words of personal wisdom' },
+    chapter_first: { id: 'chapter_first', name: 'Curator', icon: Palette, description: 'Began curating your life volumes' },
+    mood_tracker: { id: 'mood_tracker', name: 'Emotional Intel', icon: Thermometer, description: 'Mapped your emotional landscape 10 times' },
+    night_owl: { id: 'night_owl', name: 'Lunar Reflections', icon: Moon, description: 'Documented wisdom in the quiet of the night' },
+    early_bird: { id: 'early_bird', name: 'Dawn Insight', icon: Sunrise, description: 'Captured clarity at the first light' },
 };
 
 // XP values

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
 import InsightCard from '@/components/insights/InsightCard';
+import { FileText } from 'lucide-react';
 
 export default function LegacyPage() {
     const { user, accessToken } = useAuth();
@@ -79,7 +80,9 @@ export default function LegacyPage() {
                 {/* Personal Statement Section */}
                 <div className="space-y-6">
                     <h2 className="text-xl font-serif mb-6 flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 text-sm">📄</span>
+                        <span className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 text-sm">
+                            <FileText className="w-4 h-4" />
+                        </span>
                         Synthesized Mission
                     </h2>
 

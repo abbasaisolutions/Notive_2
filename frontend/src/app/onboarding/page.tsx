@@ -3,14 +3,15 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Brain, Camera, Sprout, Zap, Sparkles } from 'lucide-react';
 import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
 import { Button } from '@/components/ui/form-elements';
 
 const GOALS = [
-    { id: 'clarity', emoji: '🧠', label: 'Mental Clarity', desc: 'Clear my mind and organize thoughts' },
-    { id: 'memory', emoji: '📸', label: 'Memory Keeping', desc: 'Preserve moments and milestones' },
-    { id: 'growth', emoji: '🌱', label: 'Personal Growth', desc: 'Track progress and build habits' },
-    { id: 'productivity', emoji: '⚡', label: 'Productivity', desc: 'Plan days and review achievements' },
+    { id: 'clarity', icon: Brain, label: 'Mental Clarity', desc: 'Clear my mind and organize thoughts' },
+    { id: 'memory', icon: Camera, label: 'Memory Keeping', desc: 'Preserve moments and milestones' },
+    { id: 'growth', icon: Sprout, label: 'Personal Growth', desc: 'Track progress and build habits' },
+    { id: 'productivity', icon: Zap, label: 'Productivity', desc: 'Plan days and review achievements' },
 ];
 
 export default function OnboardingPage() {
@@ -65,7 +66,9 @@ export default function OnboardingPage() {
                                             : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10'
                                             }`}
                                     >
-                                        <span className="text-3xl mb-3 block">{goal.emoji}</span>
+                                        <span className="text-3xl mb-3 block">
+                                            <goal.icon className="w-8 h-8 text-white" />
+                                        </span>
                                         <h3 className={`font-bold mb-1 ${selectedGoal === goal.id ? 'text-white' : 'text-slate-200'}`}>
                                             {goal.label}
                                         </h3>
@@ -96,8 +99,8 @@ export default function OnboardingPage() {
                             exit={{ opacity: 0, x: -20 }}
                             className="bg-slate-900/50 backdrop-blur-xl border border-white/5 p-8 rounded-3xl text-center"
                         >
-                            <div className="w-20 h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
-                                ✨
+                            <div className="w-20 h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Sparkles className="w-9 h-9" />
                             </div>
                             <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
                                 You're all set!

@@ -68,6 +68,7 @@ export const register = async (req: Request, res: Response) => {
         return res.status(201).json({
             message: 'User registered successfully',
             accessToken,
+            refreshToken, // Also return in body for localStorage clients
             user: {
                 id: user.id,
                 email: user.email,
@@ -131,6 +132,7 @@ export const login = async (req: Request, res: Response) => {
         return res.status(200).json({
             message: 'Login successful',
             accessToken,
+            refreshToken, // Also return in body for localStorage clients
             user: {
                 id: user.id,
                 email: user.email,
@@ -146,7 +148,8 @@ export const login = async (req: Request, res: Response) => {
 // --- REFRESH TOKEN ---
 export const refresh = async (req: Request, res: Response) => {
     try {
-        const refreshToken = req.cookies?.refreshToken;
+        // Accept token from cookie OR request body (for mobile/localStorage clients)
+        const refreshToken = req.cookies?.refreshToken || req.body?.token;
 
         if (!refreshToken) {
             return res.status(401).json({ message: 'Refresh token not found' });

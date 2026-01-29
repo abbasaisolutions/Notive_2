@@ -47,12 +47,12 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-slate-950">
+        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-neutral-950">
             {/* Background Glow Effects */}
             <motion.div
                 animate={{
                     scale: [1, 1.2, 1],
-                    opacity: [0.3, 0.5, 0.3],
+                    opacity: [0.2, 0.3, 0.2],
                     rotate: [0, 90, 0]
                 }}
                 transition={{
@@ -60,12 +60,12 @@ export default function RegisterPage() {
                     repeat: Infinity,
                     ease: "linear"
                 }}
-                className="absolute top-1/4 right-0 w-[500px] h-[500px] bg-secondary/20 rounded-full blur-[150px] pointer-events-none"
+                className="absolute top-1/4 right-0 w-[500px] h-[500px] bg-neutral-500/20 rounded-full blur-[150px] pointer-events-none"
             />
             <motion.div
                 animate={{
                     scale: [1, 1.3, 1],
-                    opacity: [0.2, 0.4, 0.2],
+                    opacity: [0.15, 0.25, 0.15],
                     rotate: [0, -60, 0]
                 }}
                 transition={{
@@ -73,13 +73,12 @@ export default function RegisterPage() {
                     repeat: Infinity,
                     ease: "easeInOut"
                 }}
-                className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/20 rounded-full blur-[120px] pointer-events-none"
+                className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-neutral-600/20 rounded-full blur-[120px] pointer-events-none"
             />
 
             <FadeIn className="w-full max-w-md relative z-10">
                 {/* Logo */}
                 <div className="text-center mb-8">
-<<<<<<< HEAD
                     <Link href="/" className="inline-block">
                         <Image
                             src="/logos/logo(main-transparent).png"
@@ -89,22 +88,12 @@ export default function RegisterPage() {
                             className="mx-auto mt-10 hover:scale-105 transition-transform"
                             priority
                         />
-                 
-=======
-                    <Link href="/">
-                        <motion.h1
-                            whileHover={{ scale: 1.05 }}
-                            className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent inline-block"
-                        >
-                            Notive.
-                        </motion.h1>
->>>>>>> 9a9c056f33be4adfa1b5521a7d2268f2927d9d5e
                     </Link>
-                    <p className="text-cream/60 mt-2">Create your account to get started.</p>
+                    <p className="text-neutral-400 mt-2">Create your account to get started.</p>
                 </div>
 
                 {/* Register Form Card */}
-                <div className="glass p-8 rounded-3xl border border-white/5 shadow-xl shadow-black/20">
+                <div className="bg-neutral-900/60 backdrop-blur-xl p-8 rounded-3xl border border-white/10 shadow-xl shadow-black/20">
                     <form onSubmit={handleSubmit} className="space-y-5">
                         {error && (
                             <motion.div
@@ -163,25 +152,20 @@ export default function RegisterPage() {
                             />
                         </SlideUp>
 
-<<<<<<< HEAD
-                        <div className="text-sm text-cream/60">
-                            <label className="flex items-start gap-2 cursor-pointer">
-=======
-                        <SlideUp delay={0.5} className="text-sm text-slate-400">
-                            <label className="flex items-start gap-2 cursor-pointer hover:text-slate-300 transition-colors">
->>>>>>> 9a9c056f33be4adfa1b5521a7d2268f2927d9d5e
+                        <SlideUp delay={0.5} className="text-sm text-neutral-400">
+                            <label className="flex items-start gap-2 cursor-pointer hover:text-neutral-300 transition-colors">
                                 <input
                                     type="checkbox"
                                     required
-                                    className="w-4 h-4 mt-0.5 rounded bg-teal-dark border-cream/10 text-secondary focus:ring-secondary/50"
+                                    className="w-4 h-4 mt-0.5 rounded bg-neutral-800 border-neutral-700 text-neutral-400 focus:ring-neutral-500/50"
                                 />
                                 <span>
                                     I agree to the{' '}
-                                    <Link href="/terms" className="text-secondary hover:underline">
+                                    <Link href="/terms" className="text-white hover:underline">
                                         Terms of Service
                                     </Link>{' '}
                                     and{' '}
-                                    <Link href="/privacy" className="text-secondary hover:underline">
+                                    <Link href="/privacy" className="text-white hover:underline">
                                         Privacy Policy
                                     </Link>
                                 </span>
@@ -198,10 +182,10 @@ export default function RegisterPage() {
                     {/* Divider */}
                     <SlideUp delay={0.7} className="relative my-6">
                         <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-cream/10"></div>
+                            <div className="w-full border-t border-neutral-700"></div>
                         </div>
                         <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-teal-dark/70 text-cream/50">Or sign up with</span>
+                            <span className="px-4 bg-neutral-900 text-neutral-500">Or sign up with</span>
                         </div>
                     </SlideUp>
 
@@ -232,25 +216,15 @@ export default function RegisterPage() {
                 </div>
 
                 {/* Login Link */}
-<<<<<<< HEAD
-                <p className="text-center mt-6 text-cream/60">
-                    Already have an account?{' '}
-                    <Link href="/login" className="text-secondary hover:text-secondary/80 font-medium transition-colors">
-                        Sign in
-                    </Link>
-                </p>
-            </div>
-=======
                 <SlideUp delay={0.9}>
-                    <p className="text-center mt-6 text-slate-400">
+                    <p className="text-center mt-6 text-neutral-400">
                         Already have an account?{' '}
-                        <Link href="/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
+                        <Link href="/login" className="text-white hover:text-neutral-300 font-medium transition-colors">
                             Sign in
                         </Link>
                     </p>
                 </SlideUp>
             </FadeIn>
->>>>>>> 9a9c056f33be4adfa1b5521a7d2268f2927d9d5e
         </div>
     );
 }

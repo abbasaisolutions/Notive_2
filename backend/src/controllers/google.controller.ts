@@ -97,6 +97,7 @@ export const googleSignIn = async (req: Request, res: Response) => {
         return res.json({
             message: 'Login successful',
             accessToken,
+            refreshToken,
             user: {
                 id: user.id,
                 email: user.email,

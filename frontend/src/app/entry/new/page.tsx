@@ -7,6 +7,9 @@ import dynamic from 'next/dynamic';
 import { useAuth } from '@/context/auth-context';
 import { useGamification } from '@/context/gamification-context';
 import { structuredDataService, StructuredEntryData } from '@/services/structured-data.service';
+import { MOOD_ICONS } from '@/constants/moods';
+import { MapPin, Rocket, Sparkles, User } from 'lucide-react';
+import RewriteToolbar from '@/components/editor/RewriteToolbar';
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
     ssr: false,
@@ -14,15 +17,15 @@ const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
 });
 
 const MOODS = [
-    { emoji: '😊', label: 'Happy', value: 'happy' },
-    { emoji: '😌', label: 'Calm', value: 'calm' },
-    { emoji: '😔', label: 'Sad', value: 'sad' },
-    { emoji: '😰', label: 'Anxious', value: 'anxious' },
-    { emoji: '😤', label: 'Frustrated', value: 'frustrated' },
-    { emoji: '🤔', label: 'Thoughtful', value: 'thoughtful' },
-    { emoji: '💪', label: 'Motivated', value: 'motivated' },
-    { emoji: '😴', label: 'Tired', value: 'tired' },
-    { emoji: '🙏', label: 'Grateful', value: 'grateful' },
+    { icon: MOOD_ICONS.happy, label: 'Happy', value: 'happy' },
+    { icon: MOOD_ICONS.calm, label: 'Calm', value: 'calm' },
+    { icon: MOOD_ICONS.sad, label: 'Sad', value: 'sad' },
+    { icon: MOOD_ICONS.anxious, label: 'Anxious', value: 'anxious' },
+    { icon: MOOD_ICONS.frustrated, label: 'Frustrated', value: 'frustrated' },
+    { icon: MOOD_ICONS.thoughtful, label: 'Thoughtful', value: 'thoughtful' },
+    { icon: MOOD_ICONS.motivated, label: 'Motivated', value: 'motivated' },
+    { icon: MOOD_ICONS.tired, label: 'Tired', value: 'tired' },
+    { icon: MOOD_ICONS.grateful, label: 'Grateful', value: 'grateful' },
 ];
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
@@ -37,8 +40,6 @@ export default function NewEntryPage() {
     const [content, setContent] = useState('');
     const [contentHtml, setContentHtml] = useState('');
     const contentRef = useRef('');
-
-    // AI-extracted metadata
     const [extractedData, setExtractedData] = useState<StructuredEntryData | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -47,6 +48,7 @@ export default function NewEntryPage() {
     const [moodOverride, setMoodOverride] = useState<string | null>(null);
     const [tagsOverride, setTagsOverride] = useState<string[]>([]);
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
+    const [coverImage, setCoverImage] = useState<string | null>(null);
 
     // Voice recording state
     const [isRecording, setIsRecording] = useState(false);
@@ -247,7 +249,7 @@ export default function NewEntryPage() {
                 clearTimeout(autoSaveTimeoutRef.current);
             }
         };
-    }, [content, titleOverride, moodOverride, tagsOverride, audioUrl, extractedData]);
+    }, [content, contentHtml, titleOverride, moodOverride, tagsOverride, audioUrl, coverImage, extractedData]);
 
     const handleSave = async (isAutoSave = false) => {
         if (!content.trim()) {
@@ -279,6 +281,7 @@ export default function NewEntryPage() {
                     mood: finalMood,
                     tags: finalTags,
                     audioUrl,
+                    coverImage,
                     extractedData,
                 }),
             });
@@ -361,6 +364,14 @@ export default function NewEntryPage() {
             const newContent = content + imageMarkdown;
             setContent(newContent);
 
+            const imageHtml = `<p><img src="${data.url}" alt="Entry image" /></p>`;
+            const updatedHtml = contentHtml ? `${contentHtml}${imageHtml}` : imageHtml;
+            setContentHtml(updatedHtml);
+
+            if (!coverImage) {
+                setCoverImage(data.url);
+            }
+
             // Also set as cover image if none set
             // Note: coverImage state wasn't explicitly managed in NewEntryPage before (it was in props/body but not state)
             // We should add state for it or just ignore for now.
@@ -394,30 +405,30 @@ export default function NewEntryPage() {
     const displayTags = tagsOverride.length > 0 ? tagsOverride : (extractedData?.suggestedTags || []);
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-white selection:bg-primary/30">
-            <div className="fixed top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[150px] pointer-events-none" />
-            <div className="fixed bottom-0 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="min-h-screen bg-gradient-to-b from-neutral-900 to-neutral-950 text-white selection:bg-primary/30">
+            <div className="fixed top-0 left-1/4 w-96 h-96 bg-neutral-500/10 rounded-full blur-[150px] pointer-events-none" />
+            <div className="fixed bottom-0 right-1/4 w-64 h-64 bg-neutral-500/10 rounded-full blur-[120px] pointer-events-none" />
 
             <div className="max-w-3xl mx-auto px-4 py-8 relative z-10">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
-                        <Link href="/dashboard" className="p-3 -ml-2 rounded-2xl text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                        <Link href="/dashboard" className="p-3 -ml-2 rounded-2xl text-neutral-400 hover:text-white hover:bg-white/10 transition-all">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="m15 18-6-6 6-6" />
                             </svg>
                         </Link>
 
                         {/* Status Indicator */}
-                        <div className="text-xs font-medium text-slate-500 animate-fade-in flex items-center gap-2">
+                        <div className="text-xs font-medium text-neutral-500 animate-fade-in flex items-center gap-2">
                             {isSaving ? (
                                 <>
-                                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                    <div className="w-2 h-2 rounded-full bg-neutral-500 animate-pulse" />
                                     Saving...
                                 </>
                             ) : lastSaved ? (
                                 <>
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                    <div className="w-2 h-2 rounded-full bg-neutral-400" />
                                     Draft Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </>
                             ) : (
@@ -429,7 +440,7 @@ export default function NewEntryPage() {
                     <button
                         onClick={() => handleSave(false)}
                         disabled={isSaving || !content.trim()}
-                        className="px-6 py-3 rounded-2xl bg-gradient-to-r from-primary to-purple-600 text-white font-semibold 
+                        className="px-6 py-3 rounded-2xl bg-gradient-to-r from-primary to-neutral-700 text-white font-semibold 
                                    disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-primary/25 hover:scale-105
                                    transition-all flex items-center gap-2 active:scale-95"
                     >
@@ -450,7 +461,7 @@ export default function NewEntryPage() {
                 </div>
 
                 {error && (
-                    <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-300 px-6 py-4 rounded-2xl text-sm flex items-center gap-3 backdrop-blur-sm">
+                    <div className="mb-6 bg-neutral-500/10 border border-neutral-500/20 text-neutral-300 px-6 py-4 rounded-2xl text-sm flex items-center gap-3 backdrop-blur-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
                         {error}
                     </div>
@@ -458,16 +469,16 @@ export default function NewEntryPage() {
 
                 {/* Main Capture Area */}
                 <div className="relative mb-6 group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-purple-600/20 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-neutral-700/20 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                    <div className="relative glass-card rounded-[2rem] p-8 border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl">
+                    <div className="relative glass-card rounded-[2rem] p-8 border border-white/10 bg-neutral-900/40 backdrop-blur-xl shadow-2xl">
                         {/* Voice Control - Floating Centered */}
                         <div className="flex flex-col items-center justify-center mb-8">
                             <button
                                 onClick={isRecording ? stopRecording : startRecording}
                                 className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${isRecording
-                                    ? 'bg-red-500 scale-110 shadow-[0_0_40px_rgba(239,68,68,0.4)]'
-                                    : 'bg-gradient-to-br from-primary to-purple-600 hover:shadow-[0_0_30px_rgba(59,130,246,0.4)] hover:scale-105'
+                                    ? 'bg-neutral-500 scale-110 shadow-[0_0_40px_rgba(82,82,91,0.4)]'
+                                    : 'bg-gradient-to-br from-primary to-neutral-700 hover:shadow-[0_0_30px_rgba(82,82,91,0.4)] hover:scale-105'
                                     }`}
                             >
                                 {isRecording ? (
@@ -490,45 +501,73 @@ export default function NewEntryPage() {
                                 {isRecording ? (
                                     <div className="flex items-center gap-2">
                                         <span className="relative flex h-3 w-3">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neutral-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-3 w-3 bg-neutral-500"></span>
                                         </span>
-                                        <span className="text-red-300 text-sm font-medium tracking-wide uppercase">Recording</span>
+                                        <span className="text-neutral-300 text-sm font-medium tracking-wide uppercase">Recording</span>
                                     </div>
                                 ) : (
-                                    <span className="text-slate-500 text-sm font-medium">Tap to speak</span>
+                                    <span className="text-neutral-500 text-sm font-medium">Tap to speak</span>
                                 )}
                             </div>
                         </div>
 
                         {/* Toolbar */}
-                        <div className="flex justify-end mb-4 px-2">
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                className="hidden"
-                                accept="image/*"
-                                onChange={handleImageUpload}
+                        <div className="flex justify-between items-center mb-4 px-2">
+                            {/* Rewrite Toolbar */}
+                            <RewriteToolbar 
+                                content={content}
+                                onRewrite={(newContent) => {
+                                    setContent(newContent);
+                                    setContentHtml(`<p>${newContent}</p>`);
+                                }}
+                                disabled={isSaving}
                             />
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isUploading}
-                                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all flex items-center gap-2 text-sm"
-                                title="Upload Image"
-                            >
-                                {isUploading ? (
-                                    <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
-                                )}
-                                <span>Add Image</span>
-                            </button>
+                            
+                            {/* Image Upload */}
+                            <div className="flex items-center">
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handleImageUpload}
+                                />
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={isUploading}
+                                    className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/5 transition-all flex items-center gap-2 text-sm"
+                                    title="Upload Image"
+                                >
+                                    {isUploading ? (
+                                        <div className="w-4 h-4 border-2 border-neutral-400 border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                                    )}
+                                    <span>Add Image</span>
+                                </button>
+                            </div>
                         </div>
+
+                        {coverImage && (
+                            <div className="mb-6">
+                                <div className="relative w-full h-48 md:h-64 rounded-2xl overflow-hidden group">
+                                    <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+                                    <button
+                                        onClick={() => setCoverImage(null)}
+                                        className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
+                                        title="Remove cover image"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Interim Text Display */}
                         {interimText && (
                             <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/5 text-center">
-                                <p className="text-slate-300 italic text-lg animate-pulse">"{interimText}"</p>
+                                <p className="text-neutral-300 italic text-lg animate-pulse">"{interimText}"</p>
                             </div>
                         )}
 
@@ -536,7 +575,7 @@ export default function NewEntryPage() {
                         {/* Audio Player */}
                         {audioUrl && (
                             <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/5">
-                                <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider">Voice Recording</p>
+                                <p className="text-xs text-neutral-400 mb-2 uppercase tracking-wider">Voice Recording</p>
                                 <audio controls src={audioUrl} className="w-full h-10" />
                             </div>
                         )}
@@ -555,34 +594,37 @@ export default function NewEntryPage() {
                 {/* AI Intelligence Panel */}
                 {(extractedData || isAnalyzing) && (
                     <div className="relative group transition-all duration-300">
-                        <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl blur opacity-75 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-neutral-500/20 to-neutral-700/20 rounded-2xl blur opacity-75 group-hover:opacity-100 transition-opacity" />
 
-                        <div className="relative glass-card rounded-2xl overflow-hidden border border-white/10 bg-slate-900/60 backdrop-blur-xl">
+                            <div className="relative glass-card rounded-2xl overflow-hidden border border-white/10 bg-neutral-900/60 backdrop-blur-xl">
                             <button
                                 onClick={() => setShowDetails(!showDetails)}
                                 className="w-full p-5 flex items-center justify-between text-left hover:bg-white/5 transition-colors"
                             >
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg ${isAnalyzing ? 'animate-pulse' : ''}`}>
-                                        <span className="text-lg">✨</span>
+                                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br from-neutral-500 to-neutral-700 flex items-center justify-center shadow-lg ${isAnalyzing ? 'animate-pulse' : ''}`}>
+                                    <Sparkles className="w-5 h-5 text-white" />
                                     </div>
                                     <div>
                                         <div className="text-white font-semibold flex items-center gap-2">
                                             AI Insights
                                             {isAnalyzing && (
-                                                <span className="text-xs font-normal text-cyan-300 animate-pulse bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                                                    <span className="text-xs font-normal text-neutral-300 animate-pulse bg-neutral-500/10 px-2 py-0.5 rounded-full border border-neutral-500/20">
                                                     Analyzing...
                                                 </span>
                                             )}
                                         </div>
                                         {extractedData && (
-                                            <div className="text-slate-400 text-xs mt-1 flex items-center gap-2">
+                                                <div className="text-neutral-400 text-xs mt-1 flex items-center gap-2">
                                                 <span>{extractedData.wordCount} words</span>
                                                 {displayMood && (
                                                     <>
-                                                        <span className="w-1 h-1 rounded-full bg-slate-600" />
+                                                            <span className="w-1 h-1 rounded-full bg-neutral-600" />
                                                         <span className="text-white bg-white/10 px-1.5 py-0.5 rounded-md flex items-center gap-1">
-                                                            {MOODS.find(m => m.value === displayMood)?.emoji} {displayMood}
+                                                            {(() => {
+                                                                const MoodIcon = MOOD_ICONS[displayMood] || MOOD_ICONS.neutral;
+                                                                return <MoodIcon className="w-3 h-3 text-white" />;
+                                                            })()} {displayMood}
                                                         </span>
                                                     </>
                                                 )}
@@ -591,7 +633,7 @@ export default function NewEntryPage() {
                                     </div>
                                 </div>
                                 <div className={`w-8 h-8 rounded-full bg-white/5 flex items-center justify-center transition-transform duration-300 ${showDetails ? 'rotate-180 bg-white/10' : ''}`}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-400"><path d="m6 9 6 6 6-6" /></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-neutral-400"><path d="m6 9 6 6 6-6" /></svg>
                                 </div>
                             </button>
 
@@ -602,11 +644,11 @@ export default function NewEntryPage() {
                                         <>
                                             {/* Insights Grid */}
                                             {extractedData.insights.length > 0 && (
-                                                <div className="grid gap-3 p-4 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20">
-                                                    <label className="text-xs font-semibold text-indigo-300 uppercase tracking-wider mb-1">Key Insights</label>
+                                                <div className="grid gap-3 p-4 rounded-xl bg-gradient-to-br from-neutral-500/10 to-neutral-700/10 border border-neutral-500/20">
+                                                    <label className="text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-1">Key Insights</label>
                                                     {extractedData.insights.map((insight, i) => (
-                                                        <div key={i} className="flex items-start gap-3 text-sm text-slate-200">
-                                                            <span className="mt-1 text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 capitalize">
+                                                        <div key={i} className="flex items-start gap-3 text-sm text-neutral-200">
+                                                            <span className="mt-1 text-xs px-2 py-0.5 rounded bg-neutral-500/20 text-neutral-300 border border-neutral-500/30 capitalize">
                                                                 {insight.type}
                                                             </span>
                                                             <span className="leading-relaxed">{insight.content}</span>
@@ -617,25 +659,25 @@ export default function NewEntryPage() {
 
                                             {/* Growth & Patterns (Social Science Model) */}
                                             {extractedData.growthPoints && extractedData.growthPoints.length > 0 && (
-                                                <div className="grid gap-3 p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+                                                <div className="grid gap-3 p-4 rounded-xl bg-gradient-to-br from-neutral-500/10 to-neutral-700/10 border border-neutral-500/20">
                                                     <div className="flex items-center justify-between mb-1">
-                                                        <label className="text-xs font-semibold text-emerald-300 uppercase tracking-wider">Growth & Patterns</label>
-                                                        <span className="text-[10px] text-emerald-400/50 bg-emerald-500/10 px-1.5 rounded border border-emerald-500/10">Social Science Model</span>
+                                                        <label className="text-xs font-semibold text-neutral-300 uppercase tracking-wider">Growth & Patterns</label>
+                                                        <span className="text-[10px] text-neutral-400/50 bg-neutral-500/10 px-1.5 rounded border border-neutral-500/10">Social Science Model</span>
                                                     </div>
                                                     {extractedData.growthPoints.map((point, i) => (
-                                                        <div key={i} className="flex items-start gap-3 text-sm text-slate-200">
-                                                            <span className={`mt-1 text-xs px-2 py-0.5 rounded border capitalize whitespace-nowrap ${point.category === 'professional' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
-                                                                point.category === 'relational' ? 'bg-pink-500/20 text-pink-300 border-pink-500/30' :
-                                                                    point.category === 'spiritual' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
-                                                                        'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                                        <div key={i} className="flex items-start gap-3 text-sm text-neutral-200">
+                                                            <span className={`mt-1 text-xs px-2 py-0.5 rounded border capitalize whitespace-nowrap ${point.category === 'professional' ? 'bg-neutral-600/20 text-neutral-300 border-neutral-600/30' :
+                                                                point.category === 'relational' ? 'bg-neutral-500/20 text-neutral-300 border-neutral-500/30' :
+                                                                    point.category === 'spiritual' ? 'bg-neutral-700/20 text-neutral-300 border-neutral-700/30' :
+                                                                        'bg-neutral-400/20 text-neutral-300 border-neutral-400/30'
                                                                 }`}>
                                                                 {point.category}
                                                             </span>
                                                             <div className="flex-1">
                                                                 <p className="leading-relaxed opacity-90">{point.insight}</p>
                                                                 {point.actionable && (
-                                                                    <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 mt-1 font-medium opacity-80">
-                                                                        🚀 Actionable Step
+                                                                    <span className="inline-flex items-center gap-1 text-[10px] text-neutral-300 mt-1 font-medium opacity-80">
+                                                                        <Rocket className="w-3 h-3" /> Actionable Step
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -648,47 +690,47 @@ export default function NewEntryPage() {
                                             {extractedData.emotionalIntelligence && (
                                                 <div className="p-5 rounded-xl bg-white/5 border border-white/5 transition-all hover:bg-white/[0.07]">
                                                     <div className="flex items-center justify-between mb-5">
-                                                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Emotional Intelligence</label>
-                                                        <span className="text-xs px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 capitalize font-medium">
+                                                        <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Emotional Intelligence</label>
+                                                        <span className="text-xs px-2.5 py-1 rounded-lg bg-neutral-500/20 text-neutral-300 border border-neutral-500/30 capitalize font-medium">
                                                             Dominant: {extractedData.emotionalIntelligence.dominantTrait}
                                                         </span>
                                                     </div>
                                                     <div className="space-y-4">
                                                         {/* Self Awareness */}
                                                         <div>
-                                                            <div className="flex justify-between text-xs text-slate-300 mb-2">
+                                                            <div className="flex justify-between text-xs text-neutral-300 mb-2">
                                                                 <span>Self Awareness</span>
                                                                 <span className="opacity-70">{extractedData.emotionalIntelligence.selfAwareness}/10</span>
                                                             </div>
-                                                            <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                                                            <div className="h-2 bg-neutral-700/50 rounded-full overflow-hidden">
                                                                 <div
-                                                                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+                                                                    className="h-full bg-gradient-to-r from-neutral-500 to-neutral-300 rounded-full shadow-[0_0_10px_rgba(82,82,91,0.3)]"
                                                                     style={{ width: `${extractedData.emotionalIntelligence.selfAwareness * 10}%` }}
                                                                 />
                                                             </div>
                                                         </div>
                                                         {/* Regulation */}
                                                         <div>
-                                                            <div className="flex justify-between text-xs text-slate-300 mb-2">
+                                                            <div className="flex justify-between text-xs text-neutral-300 mb-2">
                                                                 <span>Self Regulation</span>
                                                                 <span className="opacity-70">{extractedData.emotionalIntelligence.regulation}/10</span>
                                                             </div>
-                                                            <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                                                            <div className="h-2 bg-neutral-700/50 rounded-full overflow-hidden">
                                                                 <div
-                                                                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                                                                    className="h-full bg-gradient-to-r from-neutral-500 to-neutral-300 rounded-full shadow-[0_0_10px_rgba(82,82,91,0.3)]"
                                                                     style={{ width: `${extractedData.emotionalIntelligence.regulation * 10}%` }}
                                                                 />
                                                             </div>
                                                         </div>
                                                         {/* Social Awareness */}
                                                         <div>
-                                                            <div className="flex justify-between text-xs text-slate-300 mb-2">
+                                                            <div className="flex justify-between text-xs text-neutral-300 mb-2">
                                                                 <span>Social Awareness</span>
                                                                 <span className="opacity-70">{extractedData.emotionalIntelligence.socialAwareness}/10</span>
                                                             </div>
-                                                            <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                                                            <div className="h-2 bg-neutral-700/50 rounded-full overflow-hidden">
                                                                 <div
-                                                                    className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.3)]"
+                                                                    className="h-full bg-gradient-to-r from-neutral-500 to-neutral-300 rounded-full shadow-[0_0_10px_rgba(82,82,91,0.3)]"
                                                                     style={{ width: `${extractedData.emotionalIntelligence.socialAwareness * 10}%` }}
                                                                 />
                                                             </div>
@@ -701,17 +743,17 @@ export default function NewEntryPage() {
                                             <div className="grid md:grid-cols-2 gap-6">
                                                 <div className="space-y-4">
                                                     <div>
-                                                        <label className="text-xs font-medium text-slate-400 mb-2 block uppercase tracking-wider">Suggested Title</label>
+                                                        <label className="text-xs font-medium text-neutral-400 mb-2 block uppercase tracking-wider">Suggested Title</label>
                                                         <input
                                                             type="text"
                                                             value={displayTitle}
                                                             onChange={(e) => setTitleOverride(e.target.value)}
-                                                            className="w-full bg-white/5 hover:bg-white/10 transition-colors rounded-xl px-4 py-3 text-white placeholder-slate-500 border border-white/10 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                                                            className="w-full bg-white/5 hover:bg-white/10 transition-colors rounded-xl px-4 py-3 text-white placeholder-neutral-500 border border-white/10 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
                                                         />
                                                     </div>
 
                                                     <div>
-                                                        <label className="text-xs font-medium text-slate-400 mb-2 block uppercase tracking-wider">Mood</label>
+                                                        <label className="text-xs font-medium text-neutral-400 mb-2 block uppercase tracking-wider">Mood</label>
                                                         <div className="flex flex-wrap gap-2">
                                                             {MOODS.map((m) => (
                                                                 <button
@@ -719,10 +761,13 @@ export default function NewEntryPage() {
                                                                     onClick={() => setMoodOverride(moodOverride === m.value ? null : m.value)}
                                                                     className={`px-3 py-2 rounded-xl text-sm flex items-center gap-2 transition-all border ${displayMood === m.value
                                                                         ? 'bg-primary border-primary text-white shadow-lg shadow-primary/25'
-                                                                        : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10 hover:border-white/10'
+                                                                        : 'bg-white/5 border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/10'
                                                                         }`}
                                                                 >
-                                                                    <span>{m.emoji}</span>
+                                                                    {(() => {
+                                                                        const MoodIcon = m.icon;
+                                                                        return <MoodIcon className="w-4 h-4 text-white" />;
+                                                                    })()}
                                                                     <span>{m.label}</span>
                                                                 </button>
                                                             ))}
@@ -733,16 +778,17 @@ export default function NewEntryPage() {
                                                 <div className="space-y-4">
                                                     {(extractedData.people.length > 0 || extractedData.places.length > 0) && (
                                                         <div>
-                                                            <label className="text-xs font-medium text-slate-400 mb-2 block uppercase tracking-wider">Deteceted Entities</label>
+                                                            <label className="text-xs font-medium text-neutral-400 mb-2 block uppercase tracking-wider">Deteceted Entities</label>
                                                             <div className="flex flex-wrap gap-2">
                                                                 {extractedData.people.map((p, i) => (
-                                                                    <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-300 border border-blue-500/20 text-sm">
-                                                                        👤 {p.name} <span className="text-blue-500/50 text-xs">({p.relationship})</span>
+                                                                    <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-500/10 text-neutral-300 border border-neutral-500/20 text-sm">
+                                                                        <User className="w-3.5 h-3.5" /> {p.name}{' '}
+                                                                        <span className="text-neutral-500/50 text-xs">({p.relationship})</span>
                                                                     </span>
                                                                 ))}
                                                                 {extractedData.places.map((p, i) => (
-                                                                    <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-sm">
-                                                                        📍 {p.name}
+                                                                    <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-500/10 text-neutral-300 border border-neutral-500/20 text-sm">
+                                                                        <MapPin className="w-3.5 h-3.5" /> {p.name}
                                                                     </span>
                                                                 ))}
                                                             </div>
@@ -750,18 +796,18 @@ export default function NewEntryPage() {
                                                     )}
 
                                                     <div>
-                                                        <label className="text-xs font-medium text-slate-400 mb-2 block uppercase tracking-wider">Tags</label>
+                                                        <label className="text-xs font-medium text-neutral-400 mb-2 block uppercase tracking-wider">Tags</label>
                                                         <div className="flex flex-wrap gap-2">
                                                             {displayTags.map((tag) => (
-                                                                <span key={tag} className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 text-sm transition-colors">
+                                                                <span key={tag} className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 border border-white/5 text-sm transition-colors">
                                                                     #{tag}
-                                                                    <button onClick={() => removeTag(tag)} className="text-slate-500 hover:text-red-400 ml-1">×</button>
+                                                                    <button onClick={() => removeTag(tag)} className="text-neutral-500 hover:text-neutral-200 ml-1">×</button>
                                                                 </span>
                                                             ))}
                                                             <input
                                                                 type="text"
                                                                 placeholder="+ Tag"
-                                                                className="px-3 py-1.5 rounded-lg bg-transparent text-sm text-white placeholder-slate-600 border border-white/10 focus:border-primary/50 focus:outline-none w-24 hover:bg-white/5 focus:bg-white/5 transition-colors"
+                                                                className="px-3 py-1.5 rounded-lg bg-transparent text-sm text-white placeholder-neutral-600 border border-white/10 focus:border-primary/50 focus:outline-none w-24 hover:bg-white/5 focus:bg-white/5 transition-colors"
                                                                 onKeyDown={(e) => {
                                                                     if (e.key === 'Enter') {
                                                                         addTag((e.target as HTMLInputElement).value.trim());
@@ -784,7 +830,7 @@ export default function NewEntryPage() {
                 {/* Empty State Hint */}
                 {!content && !isRecording && (
                     <div className="mt-12 text-center">
-                        <p className="text-slate-500 text-sm font-medium">
+                        <p className="text-neutral-500 text-sm font-medium">
                             <span className="text-primary">Tip:</span> Just speak naturally. AI will capture, format, and organize everything for you.
                         </p>
                     </div>

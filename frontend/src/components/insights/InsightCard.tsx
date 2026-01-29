@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Lightbulb, Zap } from 'lucide-react';
 
 interface InsightCardProps {
     type: 'lesson' | 'skill';
@@ -36,7 +37,7 @@ export default function InsightCard({ type, text, delay = 0 }: InsightCardProps)
                     w-8 h-8 rounded-lg flex items-center justify-center text-lg shadow-lg
                     ${isLesson ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}
                 `}>
-                    {isLesson ? '💡' : '⚡'}
+                    {isLesson ? <Lightbulb className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
                 </div>
                 <div>
                     <h4 className={`text-xs font-bold uppercase tracking-wider mb-1 ${isLesson ? 'text-amber-400' : 'text-emerald-400'}`}>

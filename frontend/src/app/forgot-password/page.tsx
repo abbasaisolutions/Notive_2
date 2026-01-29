@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Input, Button } from '@/components/ui/form-elements';
 import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
 import { motion } from 'framer-motion';
+import { Lock, Mail } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
@@ -67,7 +68,6 @@ export default function ForgotPasswordPage() {
                 }}
                 className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-[120px] pointer-events-none"
             />
-
             <FadeIn className="w-full max-w-md relative z-10">
                 <div className="text-center mb-8">
                     <Link href="/">
@@ -85,7 +85,9 @@ export default function ForgotPasswordPage() {
                     {!isSubmitted ? (
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="text-center">
-                                <span className="text-4xl mb-4 block">🔐</span>
+                                <div className="flex justify-center mb-4">
+                                    <Lock className="w-9 h-9 text-white" />
+                                </div>
                                 <h2 className="text-xl font-bold text-white mb-2">Forgot Password?</h2>
                                 <p className="text-sm text-slate-400">
                                     Enter your email address and we'll send you instructions to reset your password.
@@ -118,6 +120,9 @@ export default function ForgotPasswordPage() {
                                 <Button type="submit" className="w-full" isLoading={isLoading}>
                                     Send Reset Instructions
                                 </Button>
+                                        <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto">
+                                            <Mail className="w-9 h-9 text-green-400" />
+                                        </div>
                             </SlideUp>
 
                             <SlideUp delay={0.3} className="text-center">

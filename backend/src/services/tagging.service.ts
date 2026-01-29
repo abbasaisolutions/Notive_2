@@ -5,9 +5,9 @@ interface TagSuggestion {
     confidence: number;
 }
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = process.env.OPENAI_API_KEY
+    ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    : null;
 
 export class TaggingService {
     /**
@@ -15,6 +15,10 @@ export class TaggingService {
      * Returns tags with confidence scores
      */
     async suggestTags(content: string, title?: string): Promise<TagSuggestion[]> {
+        if (!openai) {
+            console.warn('OpenAI API key not configured, skipping AI tagging');
+            return [];
+        }
         try {
             const text = `${title ? `Title: ${title}\n` : ''}${content}`;
             

@@ -10,6 +10,7 @@ import Image from 'next/image';
 import StreakCounter from '@/components/gamification/StreakCounter';
 import SmartSearch from '@/components/search/SmartSearch';
 import EntryCard from '@/components/ui/EntryCard';
+import { Lightbulb, Target, TrendingUp } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -226,84 +227,16 @@ export default function DashboardPage() {
                                     ))}
                                 </div>
                             ) : entries.length === 0 ? (
-<<<<<<< HEAD
-                                <div className="bento-box p-20 text-center">
-                                    <div className="w-24 h-24 mx-auto mb-8 rounded-[2rem] bg-secondary/10 flex items-center justify-center text-secondary animate-float">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-=======
                                 <div className="bento-box p-12 md:p-20 text-center">
                                     {/* Animated icon */}
-                                    <div className="w-24 h-24 mx-auto mb-8 rounded-[2rem] bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-primary animate-float">
+                                    <div className="w-24 h-24 mx-auto mb-8 rounded-[2rem] bg-gradient-to-br from-secondary/20 to-accent/20 flex items-center justify-center text-secondary animate-float">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
->>>>>>> 9a9c056f33be4adfa1b5521a7d2268f2927d9d5e
                                             <path d="M12 20h9" />
                                             <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
                                         </svg>
                                     </div>
-<<<<<<< HEAD
-                                    <h3 className="text-3xl font-serif text-cream mb-4">The First Spark Awaits</h3>
-                                    <p className="zen-text max-w-md mx-auto mb-10">
-                                        Your legacy is a silence waiting to be broken. Capture your first echo and begin your journey.
-                                    </p>
-                                    <Link
-                                        href="/entry/new"
-                                        className="bg-primary hover:bg-primary/90 text-cream px-10 py-5 rounded-[2rem] font-bold shadow-2xl transition-all"
-                                    >
-                                        Capture First Echo
-                                    </Link>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {entries.map((entry) => (
-                                        <Link
-                                            key={entry.id}
-                                            href={`/entry/view?id=${entry.id}`}
-                                            className="bento-box group flex flex-col h-full hover:-translate-y-2"
-                                        >
-                                            {entry.coverImage && (
-                                                <div className="h-56 w-full relative overflow-hidden">
-                                                    <Image
-                                                        src={entry.coverImage}
-                                                        alt={entry.title || 'Echo'}
-                                                        fill
-                                                        className="object-cover group-hover:scale-110 transition-transform duration-700 brightness-75 group-hover:brightness-100"
-                                                    />
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-teal-dark via-transparent to-transparent opacity-60" />
-                                                </div>
-                                            )}
-                                            <div className="p-8 flex-1 flex flex-col relative">
-                                                <div className="flex justify-between items-start mb-6">
-                                                    <div className="text-[10px] text-cream/50 uppercase tracking-[0.2em] font-bold">
-                                                        {new Date(entry.createdAt).toLocaleDateString(undefined, {
-                                                            month: 'long',
-                                                            day: 'numeric',
-                                                            year: 'numeric'
-                                                        })}
-                                                    </div>
-                                                    {entry.mood && (
-                                                        <span className="px-3 py-1 rounded-full bg-cream/5 text-[9px] text-cream/50 uppercase tracking-widest font-bold border border-cream/5">
-                                                            {entry.mood}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <h4 className="text-2xl font-serif text-cream mb-3 group-hover:text-secondary transition-colors">
-                                                    {entry.title || 'Untitled Chronicle'}
-                                                </h4>
-                                                <p className="zen-text text-sm line-clamp-3 mb-6 flex-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                                                    {entry.content}
-                                                </p>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {entry.tags.map(tag => (
-                                                        <span key={tag} className="text-[10px] text-secondary bg-secondary/5 px-3 py-1 rounded-full border border-secondary/10">
-                                                            #{tag}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </Link>
-=======
 
-                                    <h3 className="text-3xl font-serif text-white mb-4">
+                                    <h3 className="text-3xl font-serif text-cream mb-4">
                                         Ready to Begin? ✨
                                     </h3>
 
@@ -315,7 +248,7 @@ export default function DashboardPage() {
                                     <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
                                         <Link
                                             href="/entry/new"
-                                            className="bg-primary hover:bg-primary/90 text-white px-10 py-5 rounded-[2rem] font-bold shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center gap-3"
+                                            className="bg-primary hover:bg-primary/90 text-cream px-10 py-5 rounded-[2rem] font-bold shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center gap-3"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                                 <line x1="12" x2="12" y1="5" y2="19" />
@@ -326,7 +259,7 @@ export default function DashboardPage() {
 
                                         <Link
                                             href="/chat"
-                                            className="text-slate-400 hover:text-white transition-colors flex items-center gap-2"
+                                            className="text-cream/60 hover:text-cream transition-colors flex items-center gap-2"
                                         >
                                             Need inspiration?
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -337,24 +270,24 @@ export default function DashboardPage() {
 
                                     {/* Quick tips for students */}
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-12">
-                                        <div className="p-5 rounded-2xl bg-white/5 hover:bg-white/10 transition-all">
-                                            <div className="text-3xl mb-3">💡</div>
-                                            <h4 className="text-sm font-bold text-white mb-2">Pro Tip</h4>
-                                            <p className="text-xs text-slate-400">
+                                        <div className="p-5 rounded-2xl bg-cream/5 hover:bg-cream/10 transition-all">
+                                            <Lightbulb className="w-7 h-7 mb-3 text-cream" />
+                                            <h4 className="text-sm font-bold text-cream mb-2">Pro Tip</h4>
+                                            <p className="text-xs text-cream/60">
                                                 Write for just 5 minutes daily to build the habit
                                             </p>
                                         </div>
-                                        <div className="p-5 rounded-2xl bg-white/5 hover:bg-white/10 transition-all">
-                                            <div className="text-3xl mb-3">🎯</div>
-                                            <h4 className="text-sm font-bold text-white mb-2">Track Anything</h4>
-                                            <p className="text-xs text-slate-400">
+                                        <div className="p-5 rounded-2xl bg-cream/5 hover:bg-cream/10 transition-all">
+                                            <Target className="w-7 h-7 mb-3 text-cream" />
+                                            <h4 className="text-sm font-bold text-cream mb-2">Track Anything</h4>
+                                            <p className="text-xs text-cream/60">
                                                 Studies, workouts, relationships - it all matters
                                             </p>
                                         </div>
-                                        <div className="p-5 rounded-2xl bg-white/5 hover:bg-white/10 transition-all">
-                                            <div className="text-3xl mb-3">📈</div>
-                                            <h4 className="text-sm font-bold text-white mb-2">See Progress</h4>
-                                            <p className="text-xs text-slate-400">
+                                        <div className="p-5 rounded-2xl bg-cream/5 hover:bg-cream/10 transition-all">
+                                            <TrendingUp className="w-7 h-7 mb-3 text-cream" />
+                                            <h4 className="text-sm font-bold text-cream mb-2">See Progress</h4>
+                                            <p className="text-xs text-cream/60">
                                                 Watch your insights grow with each entry
                                             </p>
                                         </div>
@@ -364,7 +297,6 @@ export default function DashboardPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {entries.slice(0, 6).map((entry, index) => (
                                         <EntryCard key={entry.id} entry={entry} delay={index * 0.1} />
->>>>>>> 9a9c056f33be4adfa1b5521a7d2268f2927d9d5e
                                     ))}
                                 </div>
                             )}

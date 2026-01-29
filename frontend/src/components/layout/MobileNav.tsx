@@ -90,11 +90,6 @@ export default function MobileNav() {
     }
 
     return (
-<<<<<<< HEAD
-        <nav className="fixed bottom-6 left-6 right-6 z-50 md:hidden">
-            <div className="bg-teal-dark/60 backdrop-blur-2xl border border-cream/10 rounded-[2.5rem] px-4 py-3 shadow-2xl flex items-center justify-around relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-t from-secondary/5 to-transparent pointer-events-none" />
-=======
         <>
             {/* More Drawer */}
             <AnimatePresence>
@@ -110,7 +105,7 @@ export default function MobileNav() {
                                 key={item.href}
                                 href={item.href}
                                 onClick={() => setIsMoreOpen(false)}
-                                className="flex items-center gap-3 bg-slate-900/90 backdrop-blur-xl border border-white/10 p-4 rounded-xl shadow-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                                className="flex items-center gap-3 bg-teal-dark/90 backdrop-blur-xl border border-cream/10 p-4 rounded-xl shadow-xl text-cream/70 hover:text-cream hover:bg-cream/10 transition-colors"
                             >
                                 {item.icon}
                                 <span className="text-sm font-semibold">{item.label}</span>
@@ -119,7 +114,6 @@ export default function MobileNav() {
                     </motion.div>
                 )}
             </AnimatePresence>
->>>>>>> 9a9c056f33be4adfa1b5521a7d2268f2927d9d5e
 
             <AnimatePresence>
                 {isMoreOpen && (
@@ -134,8 +128,8 @@ export default function MobileNav() {
             </AnimatePresence>
 
             <nav className="fixed bottom-6 left-6 right-6 z-50 md:hidden">
-                <div className="bg-slate-900/40 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] px-4 py-3 shadow-2xl flex items-center justify-around relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent pointer-events-none" />
+                <div className="bg-teal-dark/60 backdrop-blur-2xl border border-cream/10 rounded-[2.5rem] px-4 py-3 shadow-2xl flex items-center justify-around relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-t from-secondary/5 to-transparent pointer-events-none" />
 
                     {mainNavItems.map((item) => {
                         const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href));
@@ -145,7 +139,7 @@ export default function MobileNav() {
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-white shadow-xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all relative z-10 mx-2"
+                                    className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-cream shadow-xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all relative z-10 mx-2"
                                 >
                                     {item.icon}
                                 </Link>
@@ -156,16 +150,12 @@ export default function MobileNav() {
                             <Link
                                 key={item.href}
                                 href={item.href}
-<<<<<<< HEAD
-                                className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-cream shadow-xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all relative z-10"
-=======
-                                className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative z-10 flex-1 ${isActive ? 'text-primary' : 'text-slate-500 hover:text-white'
+                                className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative z-10 flex-1 ${isActive ? 'text-secondary scale-110' : 'text-cream/50 hover:text-cream'
                                     }`}
->>>>>>> 9a9c056f33be4adfa1b5521a7d2268f2927d9d5e
                             >
                                 <div className={`${isActive ? 'opacity-100 scale-110' : 'opacity-70'} transition-transform duration-200`}>
                                     {React.cloneElement(item.icon as React.ReactElement, {
-                                        size: 24, // Increased size for touch targets
+                                        size: 24,
                                         strokeWidth: isActive ? 2.5 : 2
                                     })}
                                 </div>
@@ -176,33 +166,10 @@ export default function MobileNav() {
                         );
                     })}
 
-<<<<<<< HEAD
-                    return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative z-10 ${isActive ? 'text-secondary scale-110' : 'text-cream/50 hover:text-cream'
-                                }`}
-                        >
-                            <div className={`${isActive ? 'opacity-100' : 'opacity-70'}`}>
-                                {React.cloneElement(item.icon as React.ReactElement, {
-                                    size: 20,
-                                    strokeWidth: isActive ? 2.5 : 2
-                                })}
-                            </div>
-                            <span className={`text-[10px] mt-1 font-bold uppercase tracking-widest ${isActive ? 'opacity-100' : 'opacity-40'}`}>
-                                {item.label}
-                            </span>
-                        </Link>
-                    );
-                })}
-            </div>
-        </nav>
-=======
                     {/* More Button */}
                     <button
                         onClick={() => setIsMoreOpen(!isMoreOpen)}
-                        className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative z-10 flex-1 ${isMoreOpen ? 'text-white' : 'text-slate-500 hover:text-white'}`}
+                        className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative z-10 flex-1 ${isMoreOpen ? 'text-cream' : 'text-cream/50 hover:text-cream'}`}
                     >
                         <div className={`${isMoreOpen ? 'opacity-100 scale-110' : 'opacity-70'} transition-transform duration-200`}>
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -216,7 +183,6 @@ export default function MobileNav() {
                 </div>
             </nav>
         </>
->>>>>>> 9a9c056f33be4adfa1b5521a7d2268f2927d9d5e
     );
 }
 

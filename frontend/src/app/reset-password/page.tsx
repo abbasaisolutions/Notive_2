@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Input, Button } from '@/components/ui/form-elements';
 import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
 import { motion } from 'framer-motion';
+import { KeyRound } from 'lucide-react';
 
 export default function ResetPasswordPage() {
     const router = useRouter();
@@ -109,9 +110,10 @@ export default function ResetPasswordPage() {
 
                 <div className="glass p-8 rounded-3xl border border-white/5 shadow-xl shadow-black/20">
                     {!isSuccess ? (
-                        <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="text-center">
-                                <span className="text-4xl mb-4 block">🔑</span>
+                                <div className="flex justify-center mb-4">
+                                    <KeyRound className="w-9 h-9 text-white" />
+                                </div>
                                 <h2 className="text-xl font-bold text-white mb-2">New Password</h2>
                                 <p className="text-sm text-slate-400">
                                     Create a new strong password for your account.

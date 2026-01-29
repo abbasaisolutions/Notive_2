@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FileText, Frown, Inbox } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { API_URL } from '@/constants/config';
 
@@ -206,7 +207,7 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                             </div>
                         ) : error ? (
                             <div className="flex flex-col items-center justify-center h-64 gap-4">
-                                <div className="text-4xl">😔</div>
+                                <Frown className="w-8 h-8 text-white" />
                                 <p className="text-red-400">{error}</p>
                                 <button
                                     onClick={fetchCandidates}
@@ -217,7 +218,7 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                             </div>
                         ) : candidates.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-64 gap-4">
-                                <div className="text-4xl">📭</div>
+                                <Inbox className="w-8 h-8 text-white" />
                                 <p className="text-slate-400">No memories found to import.</p>
                             </div>
                         ) : (
@@ -246,8 +247,8 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                                                         className="w-full h-full object-cover"
                                                     />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-4xl">
-                                                        📝
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <FileText className="w-8 h-8 text-white" />
                                                     </div>
                                                 )}
                                             </div>
