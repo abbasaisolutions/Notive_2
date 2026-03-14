@@ -1,14 +1,18 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = process.env.OPENAI_API_KEY 
+    ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    : null;
 
 export class AIService {
     /**
      * Analyze the sentiment of text and suggest a mood
      */
     static async analyzeSentiment(text: string): Promise<string> {
+        if (!openai) {
+            console.warn('OpenAI API key not configured, returning default mood');
+            return 'thoughtful';
+        }
         const response = await openai.chat.completions.create({
             model: 'gpt-3.5-turbo',
             messages: [
@@ -36,6 +40,9 @@ export class AIService {
      * Chat with the journal using RAG (Retrieval-Augmented Generation)
      */
     static async chatWithJournal(query: string, entries: { title: string | null; content: string; createdAt: Date }[]): Promise<string> {
+        if (!openai) {
+            return 'AI features are not available. Please configure the OPENAI_API_KEY.';
+        }
         // Format entries as context
         const context = entries.map((entry, i) => {
             const date = new Date(entry.createdAt).toLocaleDateString();
@@ -71,6 +78,9 @@ ${context || 'No entries available yet.'}`,
      * Generate a writing prompt based on context
      */
     static async generatePrompt(context?: string): Promise<string> {
+        if (!openai) {
+            return 'What made you smile today?';
+        }
         const response = await openai.chat.completions.create({
             model: 'gpt-3.5-turbo',
             messages: [

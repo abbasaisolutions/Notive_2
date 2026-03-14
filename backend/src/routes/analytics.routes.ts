@@ -18,6 +18,7 @@ router.post('/events', postTelemetryEvent);
 
 // AI-powered insights
 router.get('/insights', insightsController.getInsights);
+router.get('/comprehensive-insights', insightsController.getComprehensiveInsights.bind(insightsController));
 router.post('/analyze', insightsController.analyzeEntry);
 router.get('/patterns', insightsController.getPatterns);
 

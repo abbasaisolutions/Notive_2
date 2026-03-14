@@ -14,6 +14,8 @@ import adminRoutes from './routes/admin.routes';
 import socialRoutes from './routes/social.routes';
 import importRoutes from './routes/import.routes';
 import fileRoutes from './routes/file.routes';
+import healthRoutes from './routes/health.routes';
+import { healthCronService } from './services/health-cron.service';
 
 const app: Express = express();
 const port = process.env.PORT || 8000;
@@ -73,8 +75,29 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/social', socialRoutes);
 app.use('/api/v1/import', importRoutes);
 app.use('/api/v1/files', fileRoutes);
+app.use('/api/v1/health', healthRoutes);
+
+// Global error handler
+app.use((err: any, req: Request, res: Response, next: any) => {
+    console.error('Global error:', err);
+    res.status(500).json({ message: 'Internal server error', error: err.message });
+});
+
+// Catch unhandled errors
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 // Start server
 app.listen(port, () => {
     console.log(`[server]: Server is running at http://localhost:${port}`);
+    
+    // Start health sync cron jobs
+    if (process.env.ENABLE_HEALTH_CRON !== 'false') {
+        healthCronService.start();
+    }
 });
