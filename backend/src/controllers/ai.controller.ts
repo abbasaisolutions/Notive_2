@@ -10,6 +10,7 @@ import {
     buildOpportunityOverview,
     buildOpportunityTrends,
     OpportunityEntry,
+    OpportunityProfileIdentity,
     OpportunityTemplateVariant,
 } from '../services/opportunity.service';
 import { buildProfileContextSummary } from '../services/profile-context.service';
@@ -68,24 +69,55 @@ const fetchOpportunityEntries = async (userId: string): Promise<OpportunityEntry
     }));
 };
 
-const fetchOpportunityProfileContext = async (userId: string) => {
-    const profile = await prisma.userProfile.findUnique({
-        where: { userId },
+const normalizeOpportunityIdentityValue = (value: string | null | undefined): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : null;
+};
+
+const fetchOpportunityProfileBundle = async (userId: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
         select: {
-            primaryGoal: true,
-            focusArea: true,
-            experienceLevel: true,
-            writingPreference: true,
-            starterPrompt: true,
-            importPreference: true,
-            lifeGoals: true,
-            outputGoals: true,
-            onboardingCompletedAt: true,
-            updatedAt: true,
+            name: true,
+            email: true,
+            profile: {
+                select: {
+                    bio: true,
+                    location: true,
+                    occupation: true,
+                    website: true,
+                    primaryGoal: true,
+                    focusArea: true,
+                    experienceLevel: true,
+                    writingPreference: true,
+                    starterPrompt: true,
+                    importPreference: true,
+                    lifeGoals: true,
+                    outputGoals: true,
+                    onboardingCompletedAt: true,
+                    updatedAt: true,
+                },
+            },
         },
     });
 
-    return buildProfileContextSummary(profile);
+    const profile = user?.profile || null;
+    const profileIdentity: OpportunityProfileIdentity | null = user
+        ? {
+            name: normalizeOpportunityIdentityValue(user.name),
+            email: normalizeOpportunityIdentityValue(user.email)?.toLowerCase() || null,
+            occupation: normalizeOpportunityIdentityValue(profile?.occupation),
+            location: normalizeOpportunityIdentityValue(profile?.location),
+            website: normalizeOpportunityIdentityValue(profile?.website),
+            bio: normalizeOpportunityIdentityValue(profile?.bio),
+        }
+        : null;
+
+    return {
+        profileContext: buildProfileContextSummary(profile),
+        profileIdentity,
+    };
 };
 
 /**
@@ -239,11 +271,11 @@ export const generatePersonalStatement = async (req: Request, res: Response) => 
         const rawVariant = typeof req.query.variant === 'string' ? req.query.variant : 'standard';
         const allowedVariants = new Set(['standard', 'college', 'entry_job']);
         const variant = allowedVariants.has(rawVariant) ? (rawVariant as OpportunityTemplateVariant) : 'standard';
-        const [entries, profileContext] = await Promise.all([
+        const [entries, profileBundle] = await Promise.all([
             fetchOpportunityEntries(userId),
-            fetchOpportunityProfileContext(userId),
+            fetchOpportunityProfileBundle(userId),
         ]);
-        const overview = buildOpportunityOverview(entries, profileContext);
+        const overview = buildOpportunityOverview(entries, profileBundle.profileContext, profileBundle.profileIdentity);
 
         return res.json({
             variant,
@@ -259,11 +291,11 @@ export const generatePersonalStatement = async (req: Request, res: Response) => 
 export const getOpportunityOverview = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
-        const [entries, profileContext] = await Promise.all([
+        const [entries, profileBundle] = await Promise.all([
             fetchOpportunityEntries(userId),
-            fetchOpportunityProfileContext(userId),
+            fetchOpportunityProfileBundle(userId),
         ]);
-        const overview = buildOpportunityOverview(entries, profileContext);
+        const overview = buildOpportunityOverview(entries, profileBundle.profileContext, profileBundle.profileIdentity);
         return res.json({ overview });
     } catch (error) {
         console.error('Opportunity overview error:', error);
@@ -415,11 +447,11 @@ export const exportOpportunityPack = async (req: Request, res: Response) => {
         const format = allowedFormats.has(rawFormat) ? (rawFormat as 'markdown' | 'json' | 'html') : 'markdown';
         const variant = allowedVariants.has(rawVariant) ? (rawVariant as OpportunityTemplateVariant) : 'standard';
 
-        const [entries, profileContext] = await Promise.all([
+        const [entries, profileBundle] = await Promise.all([
             fetchOpportunityEntries(userId),
-            fetchOpportunityProfileContext(userId),
+            fetchOpportunityProfileBundle(userId),
         ]);
-        const overview = buildOpportunityOverview(entries, profileContext);
+        const overview = buildOpportunityOverview(entries, profileBundle.profileContext, profileBundle.profileIdentity);
         const output = buildOpportunityExport(overview, type, format, variant);
 
         res.setHeader('Content-Type', output.contentType);

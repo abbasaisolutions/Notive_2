@@ -78,9 +78,19 @@ export type InterviewStory = {
     result: string;
 };
 
+export type OpportunityProfileIdentity = {
+    name: string | null;
+    email: string | null;
+    occupation: string | null;
+    location: string | null;
+    website: string | null;
+    bio: string | null;
+};
+
 export type OpportunityOverview = {
     generatedAt: string;
     profileContext: ProfileContextSummary | null;
+    profileIdentity: OpportunityProfileIdentity | null;
     stats: {
         entryCount: number;
         experienceCount: number;
@@ -597,7 +607,8 @@ const buildPersonalStatementVariant = (
 
 export const buildOpportunityOverview = (
     entries: OpportunityEntry[],
-    profileContext: ProfileContextSummary | null = null
+    profileContext: ProfileContextSummary | null = null,
+    profileIdentity: OpportunityProfileIdentity | null = null
 ): OpportunityOverview => {
     const experiences = entries
         .map(deriveExperienceEvidence)
@@ -632,6 +643,7 @@ export const buildOpportunityOverview = (
     const overview: OpportunityOverview = {
         generatedAt: new Date().toISOString(),
         profileContext,
+        profileIdentity,
         stats: {
             entryCount: entries.length,
             experienceCount: experiences.length,
@@ -683,6 +695,70 @@ const toTitleCaseLabel = (value: string | null | undefined): string => {
         .join(' ');
 };
 
+const normalizeIdentityText = (value: string | null | undefined): string | null => {
+    if (!hasText(value)) return null;
+    return compactWhitespace(value).slice(0, 240);
+};
+
+const stripProtocol = (value: string): string =>
+    value.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+
+const sanitizeFileStem = (value: string | null | undefined): string => {
+    const normalized = normalizeIdentityText(value);
+    if (!normalized) return 'notive';
+    const slug = normalized
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 48);
+    return slug || 'notive';
+};
+
+const getDocumentOwnerName = (overview: OpportunityOverview): string =>
+    normalizeIdentityText(overview.profileIdentity?.name) ||
+    normalizeIdentityText(overview.profileIdentity?.email?.split('@')[0]) ||
+    'Notive User';
+
+const getDocumentDescriptor = (overview: OpportunityOverview): string | null => {
+    const parts = [
+        normalizeIdentityText(overview.profileIdentity?.occupation),
+        normalizeIdentityText(overview.profileIdentity?.location),
+    ].filter(Boolean) as string[];
+
+    if (parts.length > 0) return parts.join(' | ');
+
+    if (overview.profileContext?.focusArea) {
+        return `Focus: ${toTitleCaseLabel(overview.profileContext.focusArea)}`;
+    }
+
+    return null;
+};
+
+const getDocumentContactLine = (overview: OpportunityOverview): string | null => {
+    const parts = [
+        normalizeIdentityText(overview.profileIdentity?.email),
+        overview.profileIdentity?.website ? stripProtocol(overview.profileIdentity.website) : null,
+    ].filter(Boolean) as string[];
+
+    return parts.length > 0 ? parts.join(' | ') : null;
+};
+
+const buildDocumentIdentityHeader = (
+    overview: OpportunityOverview,
+    title: string,
+    variant: OpportunityTemplateVariant
+): string[] => {
+    const lines = [`# ${getDocumentOwnerName(overview)}`];
+    const descriptor = getDocumentDescriptor(overview);
+    const contactLine = getDocumentContactLine(overview);
+
+    if (descriptor) lines.push(descriptor);
+    if (contactLine) lines.push(contactLine);
+    lines.push(`${title} · ${toTitleCaseLabel(variant)}`);
+    lines.push('');
+    return lines;
+};
+
 const formatListLabel = (values: string[], fallback = 'None yet'): string =>
     values.length > 0 ? values.join(', ') : fallback;
 
@@ -695,12 +771,41 @@ const pushSection = (lines: string[], title: string, sectionLines: string[]) => 
     lines.push('');
 };
 
+const buildIdentitySectionLines = (overview: OpportunityOverview): string[] => {
+    const identity = overview.profileIdentity;
+    if (!identity) return [];
+
+    const lines: string[] = [];
+
+    if (identity.name) {
+        lines.push(`- Name: ${identity.name}`);
+    }
+    if (identity.occupation) {
+        lines.push(`- Current role: ${identity.occupation}`);
+    }
+    if (identity.location) {
+        lines.push(`- Location: ${identity.location}`);
+    }
+    if (identity.email) {
+        lines.push(`- Contact: ${identity.email}`);
+    }
+    if (identity.website) {
+        lines.push(`- Website: ${stripProtocol(identity.website)}`);
+    }
+    if (identity.bio) {
+        lines.push(`- Profile note: ${identity.bio}`);
+    }
+
+    return lines;
+};
+
 const buildProfileSnapshotLines = (overview: OpportunityOverview): string[] => {
     const lines = [
         `- Generated: ${formatExportTimestamp(overview.generatedAt)}`,
         `- Verified evidence: ${overview.stats.verifiedCount} of ${overview.stats.experienceCount} experiences`,
         `- Top skills: ${formatListLabel(overview.topSkills)}`,
         `- Top lessons: ${formatListLabel(overview.topLessons)}`,
+        ...buildIdentitySectionLines(overview),
     ];
 
     if (overview.profileContext) {
@@ -722,6 +827,36 @@ const buildProfileSnapshotLines = (overview: OpportunityOverview): string[] => {
         if (overview.profileContext.outputGoals.length > 0) {
             lines.push(`- Output goals: ${overview.profileContext.outputGoals.map((goal) => toTitleCaseLabel(goal)).join(', ')}`);
         }
+    }
+
+    return lines;
+};
+
+const buildPersonalizationLines = (overview: OpportunityOverview): string[] => {
+    const lines: string[] = [];
+
+    if (overview.profileContext?.primaryGoal) {
+        lines.push(`- Primary goal: ${overview.profileContext.primaryGoal}`);
+    }
+
+    if (overview.profileContext?.focusArea) {
+        lines.push(`- Focus area: ${toTitleCaseLabel(overview.profileContext.focusArea)}`);
+    }
+
+    if (overview.profileContext?.experienceLevel) {
+        lines.push(`- Experience level: ${toTitleCaseLabel(overview.profileContext.experienceLevel)}`);
+    }
+
+    if (overview.profileContext?.outputGoals.length) {
+        lines.push(`- Output goals: ${overview.profileContext.outputGoals.map((goal) => toTitleCaseLabel(goal)).join(', ')}`);
+    }
+
+    if (overview.profileContext?.writingPreference) {
+        lines.push(`- Writing style: ${toTitleCaseLabel(overview.profileContext.writingPreference)}`);
+    }
+
+    if (overview.profileContext?.lifeGoals.length) {
+        lines.push(`- Long-term themes: ${overview.profileContext.lifeGoals.slice(0, 4).join(', ')}`);
     }
 
     return lines;
@@ -878,7 +1013,7 @@ const markdownToHtml = (markdown: string): string => {
     return html.join('\n');
 };
 
-const renderOpportunityHtmlDocument = (type: ExportType, markdownBody: string): string => {
+const renderOpportunityHtmlDocument = (type: ExportType, markdownBody: string, title: string): string => {
     const accents: Record<ExportType, string> = {
         resume: '#174ea6',
         statement: '#9c4221',
@@ -893,7 +1028,7 @@ const renderOpportunityHtmlDocument = (type: ExportType, markdownBody: string): 
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Notive Export</title>
+  <title>${escapeHtml(title)}</title>
   <style>
     :root {
       --accent: ${accent};
@@ -987,13 +1122,14 @@ const finalizeOpportunityDocument = (
     type: ExportType,
     format: Exclude<ExportFormat, 'json'>,
     fileName: string,
-    markdownBody: string
+    markdownBody: string,
+    title: string
 ): { fileName: string; contentType: string; body: string } => {
     if (format === 'html') {
         return {
             fileName: fileName.replace(/\.md$/i, '.html'),
             contentType: 'text/html; charset=utf-8',
-            body: renderOpportunityHtmlDocument(type, markdownBody),
+            body: renderOpportunityHtmlDocument(type, markdownBody, title),
         };
     }
 
@@ -1124,17 +1260,39 @@ export const buildOpportunityExport = (
     format: ExportFormat,
     variant: OpportunityTemplateVariant = 'standard'
 ): { fileName: string; contentType: string; body: string } => {
+    const ownerStem = sanitizeFileStem(overview.profileIdentity?.name || overview.profileIdentity?.email?.split('@')[0] || null);
+
     if (format === 'json') {
         const payload =
             type === 'resume'
-                ? { generatedAt: overview.generatedAt, variant, resumeBullets: overview.resumeBullets }
+                ? {
+                    generatedAt: overview.generatedAt,
+                    variant,
+                    profileIdentity: overview.profileIdentity,
+                    profileContext: overview.profileContext,
+                    resumeBullets: overview.resumeBullets,
+                }
                 : type === 'statement'
-                    ? { generatedAt: overview.generatedAt, variant, personalStatement: overview.statementVariants[variant] || overview.personalStatement }
+                    ? {
+                        generatedAt: overview.generatedAt,
+                        variant,
+                        profileIdentity: overview.profileIdentity,
+                        profileContext: overview.profileContext,
+                        personalStatement: overview.statementVariants[variant] || overview.personalStatement,
+                    }
                     : type === 'interview'
-                        ? { generatedAt: overview.generatedAt, variant, interviewStories: overview.interviewStories }
+                        ? {
+                            generatedAt: overview.generatedAt,
+                            variant,
+                            profileIdentity: overview.profileIdentity,
+                            profileContext: overview.profileContext,
+                            interviewStories: overview.interviewStories,
+                        }
                         : {
                             generatedAt: overview.generatedAt,
                             variant,
+                            profileIdentity: overview.profileIdentity,
+                            profileContext: overview.profileContext,
                             stats: overview.stats,
                             topSkills: overview.topSkills,
                             topLessons: overview.topLessons,
@@ -1142,7 +1300,7 @@ export const buildOpportunityExport = (
                         };
 
         return {
-            fileName: `notive-${type}-${variant}-export.json`,
+            fileName: `${ownerStem}-notive-${type}-${variant}.json`,
             contentType: 'application/json',
             body: JSON.stringify(payload, null, 2),
         };
@@ -1150,17 +1308,18 @@ export const buildOpportunityExport = (
 
     if (type === 'resume') {
         const heading = variant === 'college'
-            ? '# Notive Application Experience Pack'
+            ? 'Application Experience Pack'
             : variant === 'entry_job'
-                ? '# Notive Early-Career Resume Pack'
-                : '# Notive Resume Pack';
+                ? 'Early-Career Resume Pack'
+                : 'Resume Pack';
         const highlightExperiences = getHighlightedExperiences(overview, 4);
-        const lines = [heading, '', `Prepared for: ${toTitleCaseLabel(variant)}`, ''];
+        const lines = buildDocumentIdentityHeader(overview, heading, variant);
 
         pushSection(lines, 'Positioning Snapshot', [
             ...buildProfileSnapshotLines(overview),
             `- Resume bullets ready: ${overview.resumeBullets.length}`,
         ]);
+        pushSection(lines, 'Professional Lens', buildPersonalizationLines(overview));
 
         pushSection(
             lines,
@@ -1188,20 +1347,27 @@ export const buildOpportunityExport = (
 
         pushSection(lines, 'Refine Before Sending', buildRefinementLines(overview));
 
-        return finalizeOpportunityDocument(type, format, `notive-resume-pack-${variant}.md`, lines.join('\n'));
+        return finalizeOpportunityDocument(
+            type,
+            format,
+            `${ownerStem}-resume-pack-${variant}.md`,
+            lines.join('\n'),
+            `${getDocumentOwnerName(overview)} Resume Pack`
+        );
     }
 
     if (type === 'statement') {
         const statement = overview.statementVariants[variant] || overview.personalStatement;
         const heading = variant === 'college'
-            ? '# Notive College Statement Draft'
+            ? 'College Statement Draft'
             : variant === 'entry_job'
-                ? '# Notive Early-Career Personal Profile'
-                : '# Notive Personal Statement Draft';
+                ? 'Early-Career Personal Profile'
+                : 'Personal Statement Draft';
         const storyAnchors = getHighlightedExperiences(overview, 3);
-        const lines = [heading, '', `Prepared for: ${toTitleCaseLabel(variant)}`, ''];
+        const lines = buildDocumentIdentityHeader(overview, heading, variant);
 
         pushSection(lines, 'Narrative Frame', buildProfileSnapshotLines(overview));
+        pushSection(lines, 'Personal Context', buildPersonalizationLines(overview));
         pushSection(lines, 'Draft Statement', [
             statement || 'No statement draft is available yet. Add more evidence and a clearer profile direction.',
         ]);
@@ -1220,13 +1386,23 @@ export const buildOpportunityExport = (
         );
         pushSection(lines, 'Refine Before Sending', buildRefinementLines(overview));
 
-        return finalizeOpportunityDocument(type, format, `notive-personal-statement-${variant}.md`, lines.join('\n'));
+        return finalizeOpportunityDocument(
+            type,
+            format,
+            `${ownerStem}-personal-statement-${variant}.md`,
+            lines.join('\n'),
+            `${getDocumentOwnerName(overview)} Personal Statement`
+        );
     }
 
     if (type === 'interview') {
         const experienceMap = buildExperienceMap(overview);
-        const lines = ['# Notive Interview Story Bank', '', `Prepared for: ${toTitleCaseLabel(variant)}`, ''];
+        const lines = buildDocumentIdentityHeader(overview, 'Interview Story Bank', variant);
 
+        pushSection(lines, 'Candidate Snapshot', [
+            ...buildIdentitySectionLines(overview),
+            ...buildPersonalizationLines(overview),
+        ]);
         pushSection(lines, 'How To Use This Bank', [
             '- Choose one story that matches the role, challenge, or competency being discussed.',
             '- Keep the spoken answer to roughly 60 to 90 seconds, then expand only if the interviewer asks for more detail.',
@@ -1267,13 +1443,19 @@ export const buildOpportunityExport = (
 
         pushSection(lines, 'Refine Before Interviewing', buildRefinementLines(overview));
 
-        return finalizeOpportunityDocument(type, format, `notive-interview-stories-${variant}.md`, lines.join('\n'));
+        return finalizeOpportunityDocument(
+            type,
+            format,
+            `${ownerStem}-interview-stories-${variant}.md`,
+            lines.join('\n'),
+            `${getDocumentOwnerName(overview)} Interview Story Bank`
+        );
     }
 
     const averageConfidence = overview.experiences.length > 0
         ? overview.experiences.reduce((sum, experience) => sum + experience.confidence, 0) / overview.experiences.length
         : 0;
-    const lines = ['# Notive Growth Portfolio Report', '', `Prepared for: ${toTitleCaseLabel(variant)}`, ''];
+    const lines = buildDocumentIdentityHeader(overview, 'Growth Portfolio Report', variant);
 
     pushSection(lines, 'Portfolio Snapshot', [
         `- Generated: ${formatExportTimestamp(overview.generatedAt)}`,
@@ -1289,6 +1471,10 @@ export const buildOpportunityExport = (
                 `- Professional readiness score: ${overview.profileContext.professionalReadinessScore}%`,
             ]
             : []),
+    ]);
+    pushSection(lines, 'Personal Context', [
+        ...buildIdentitySectionLines(overview),
+        ...buildPersonalizationLines(overview),
     ]);
 
     pushSection(lines, 'Strength Themes', [
@@ -1315,5 +1501,11 @@ export const buildOpportunityExport = (
 
     pushSection(lines, 'Recommended Next Moves', buildRefinementLines(overview));
 
-    return finalizeOpportunityDocument(type, format, `notive-growth-portfolio-${variant}.md`, lines.join('\n'));
+    return finalizeOpportunityDocument(
+        type,
+        format,
+        `${ownerStem}-growth-portfolio-${variant}.md`,
+        lines.join('\n'),
+        `${getDocumentOwnerName(overview)} Growth Portfolio`
+    );
 };
