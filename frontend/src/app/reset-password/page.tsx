@@ -110,6 +110,7 @@ export default function ResetPasswordPage() {
 
                 <div className="glass p-8 rounded-3xl border border-white/5 shadow-xl shadow-black/20">
                     {!isSuccess ? (
+                        <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="text-center">
                                 <div className="flex justify-center mb-4">
                                     <KeyRound className="w-9 h-9 text-white" />

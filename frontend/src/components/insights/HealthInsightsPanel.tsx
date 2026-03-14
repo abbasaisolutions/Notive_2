@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/auth-context';
 import { 
     Moon, Footprints, Heart, Brain, TrendingUp, TrendingDown, Minus, 
-    Lightbulb, Activity, Sparkles, Link2
+    Lightbulb, Activity, Sparkles, Link2, Shield
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -44,6 +44,23 @@ interface Props {
     period?: 'week' | 'month' | 'year';
 }
 
+// Trend indicator component
+function TrendIndicator({ trend }: { trend: 'improving' | 'declining' | 'stable' }) {
+    const config = {
+        improving: { icon: TrendingUp, color: 'text-emerald-400', label: 'Improving' },
+        declining: { icon: TrendingDown, color: 'text-amber-400', label: 'Declining' },
+        stable: { icon: Minus, color: 'text-slate-500', label: 'Stable' },
+    };
+
+    const { icon: Icon, color } = config[trend];
+
+    return (
+        <div className="mt-1 flex justify-center">
+            <Icon className={`w-3 h-3 ${color}`} />
+        </div>
+    );
+}
+
 export default function HealthInsightsPanel({ period = 'month' }: Props) {
     const { accessToken } = useAuth();
     const [data, setData] = useState<ComprehensiveInsights | null>(null);
@@ -79,7 +96,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
 
     if (isLoading) {
         return (
-            <div className="bento-box p-6 animate-pulse">
+            <div className="mt-8 glass-card p-6 rounded-2xl animate-pulse">
                 <div className="h-6 bg-white/10 rounded w-1/3 mb-4" />
                 <div className="h-4 bg-white/10 rounded w-2/3 mb-2" />
                 <div className="h-4 bg-white/10 rounded w-1/2" />
@@ -88,27 +105,27 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
     }
 
     if (error || !data) {
-        return null; // Silently fail - health insights are supplementary
+        return null;
     }
 
     const { healthData } = data;
 
-    // If not connected, show CTA
+    // If not connected, show CTA with neutral styling
     if (!healthData.connected) {
         return (
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bento-box p-6 relative overflow-hidden"
+                className="mt-8 glass-card p-6 rounded-2xl relative overflow-hidden"
             >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 blur-[60px] rounded-full" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/5 blur-[60px] rounded-full" />
                 
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-                        <Activity className="w-5 h-5 text-green-400" />
+                    <div className="w-10 h-10 rounded-xl bg-slate-500/10 flex items-center justify-center">
+                        <Activity className="w-5 h-5 text-slate-400" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-white">Health Insights</h3>
+                        <h3 className="text-lg font-semibold text-white">Health & Mood Insights</h3>
                         <p className="text-xs text-slate-500">Unlock health-mood correlations</p>
                     </div>
                 </div>
@@ -117,11 +134,16 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                     Connect Google Fit to discover how your sleep and activity patterns relate to your mood.
                 </p>
 
+                <div className="flex items-center gap-2 text-[10px] text-slate-500 mb-4">
+                    <Shield className="w-3 h-3" />
+                    <span>Read-only access • Your data stays private</span>
+                </div>
+
                 <Link href="/profile">
                     <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="w-full py-3 rounded-xl bg-green-500/10 hover:bg-green-500/20 text-green-400 text-sm font-medium transition-all flex items-center justify-center gap-2"
+                        className="w-full py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-all flex items-center justify-center gap-2"
                     >
                         <Link2 className="w-4 h-4" />
                         Connect in Settings
@@ -139,16 +161,16 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bento-box p-6 md:p-8 relative overflow-hidden"
+            className="mt-8 glass-card p-6 md:p-8 rounded-2xl relative overflow-hidden"
         >
-            {/* Background decoration */}
-            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-green-500/10 to-indigo-500/10 blur-[80px] rounded-full" />
+            {/* Subtle neutral background */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-slate-500/5 blur-[80px] rounded-full" />
 
             {/* Header */}
             <div className="flex items-center justify-between mb-6 relative z-10">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500/20 to-indigo-500/20 flex items-center justify-center">
-                        <Brain className="w-5 h-5 text-green-400" />
+                    <div className="w-10 h-10 rounded-xl bg-slate-500/10 flex items-center justify-center">
+                        <Brain className="w-5 h-5 text-slate-400" />
                     </div>
                     <div>
                         <h3 className="text-lg font-semibold text-white">Health & Mood</h3>
@@ -163,11 +185,11 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                 </span>
             </div>
 
-            {/* Stats Grid */}
+            {/* Stats Grid - Neutral colors */}
             {stats && stats.daysWithData > 0 && (
                 <div className="grid grid-cols-3 gap-3 mb-6">
-                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5 text-center">
-                        <Moon className="w-5 h-5 text-indigo-400 mx-auto mb-2" />
+                    <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 text-center">
+                        <Moon className="w-5 h-5 text-slate-400 mx-auto mb-2" />
                         <p className="text-xl font-semibold text-white">
                             {stats.avgSleepHours?.toFixed(1) || '—'}
                         </p>
@@ -177,8 +199,8 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                         <TrendIndicator trend={stats.sleepTrend} />
                     </div>
 
-                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5 text-center">
-                        <Footprints className="w-5 h-5 text-green-400 mx-auto mb-2" />
+                    <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 text-center">
+                        <Footprints className="w-5 h-5 text-slate-400 mx-auto mb-2" />
                         <p className="text-xl font-semibold text-white">
                             {stats.avgSteps ? (stats.avgSteps / 1000).toFixed(1) + 'k' : '—'}
                         </p>
@@ -188,8 +210,8 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                         <TrendIndicator trend={stats.activityTrend} />
                     </div>
 
-                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5 text-center">
-                        <Heart className="w-5 h-5 text-red-400 mx-auto mb-2" />
+                    <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 text-center">
+                        <Heart className="w-5 h-5 text-slate-400 mx-auto mb-2" />
                         <p className="text-xl font-semibold text-white">
                             {stats.avgHeartRate || '—'}
                         </p>
@@ -200,11 +222,11 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                 </div>
             )}
 
-            {/* Correlations/Insights */}
+            {/* Correlations/Insights - Neutral styling */}
             {hasCorrelations && (
                 <div className="space-y-3 mb-6">
                     <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="w-4 h-4 text-amber-400" />
+                        <Sparkles className="w-4 h-4 text-slate-400" />
                         <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">
                             Discovered Patterns
                         </span>
@@ -215,11 +237,11 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                             <motion.div
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10"
+                                className="p-4 rounded-xl bg-slate-800/30 border border-slate-700/30"
                             >
                                 <div className="flex items-start gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                                        <Moon className="w-4 h-4 text-indigo-400" />
+                                    <div className="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center flex-shrink-0">
+                                        <Moon className="w-4 h-4 text-slate-400" />
                                     </div>
                                     <p className="text-sm text-slate-300 leading-relaxed">
                                         {correlations.sleepMood}
@@ -233,11 +255,11 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: 0.1 }}
-                                className="p-4 rounded-xl bg-green-500/5 border border-green-500/10"
+                                className="p-4 rounded-xl bg-slate-800/30 border border-slate-700/30"
                             >
                                 <div className="flex items-start gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                                        <Footprints className="w-4 h-4 text-green-400" />
+                                    <div className="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center flex-shrink-0">
+                                        <Footprints className="w-4 h-4 text-slate-400" />
                                     </div>
                                     <p className="text-sm text-slate-300 leading-relaxed">
                                         {correlations.activityMood}
@@ -249,11 +271,11 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                 </div>
             )}
 
-            {/* Recommendations */}
+            {/* Recommendations - Neutral */}
             {healthData.recommendations && healthData.recommendations.length > 0 && (
-                <div className="pt-4 border-t border-white/5">
+                <div className="pt-4 border-t border-slate-700/30">
                     <div className="flex items-center gap-2 mb-3">
-                        <Lightbulb className="w-4 h-4 text-amber-400" />
+                        <Lightbulb className="w-4 h-4 text-amber-400/70" />
                         <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">
                             Suggestions
                         </span>
@@ -261,7 +283,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                     <ul className="space-y-2">
                         {healthData.recommendations.slice(0, 3).map((rec, i) => (
                             <li key={i} className="text-sm text-slate-400 flex items-start gap-2">
-                                <span className="text-amber-500">•</span>
+                                <span className="text-slate-500">•</span>
                                 {rec}
                             </li>
                         ))}
@@ -271,7 +293,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
 
             {/* Low data state */}
             {stats && stats.daysWithData < 5 && (
-                <div className="p-4 rounded-xl bg-white/5 text-center">
+                <div className="p-4 rounded-xl bg-slate-800/30 border border-slate-700/30 text-center">
                     <p className="text-sm text-slate-400">
                         Keep syncing health data to unlock more insights!
                     </p>
@@ -281,22 +303,5 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                 </div>
             )}
         </motion.div>
-    );
-}
-
-// Trend indicator component
-function TrendIndicator({ trend }: { trend: 'improving' | 'declining' | 'stable' }) {
-    const config = {
-        improving: { icon: TrendingUp, color: 'text-green-400' },
-        declining: { icon: TrendingDown, color: 'text-orange-400' },
-        stable: { icon: Minus, color: 'text-slate-500' },
-    };
-
-    const { icon: Icon, color } = config[trend];
-
-    return (
-        <div className="mt-1 flex justify-center">
-            <Icon className={`w-3 h-3 ${color}`} />
-        </div>
     );
 }

@@ -3,6 +3,8 @@ import { useAuth } from '@/context/auth-context';
 import { getMoodScore } from '@/constants/moods';
 import { API_URL, MS_PER_DAY } from '@/constants/config';
 
+export type AnalyticsPeriod = 'week' | 'month' | 'year';
+
 export interface AnalyticsData {
     // Mood analytics
     moodTrend: Array<{ date: string; mood: string; score: number }>;
@@ -39,13 +41,13 @@ interface Entry {
  * Shared analytics hook - single source of truth for all analytics calculations
  * Prevents redundant API calls and expensive recalculations across pages
  */
-export function useAnalytics(period: 'week' | 'month' | 'year' = 'week') {
+export function useAnalytics(period: AnalyticsPeriod = 'week') {
     const { accessToken } = useAuth();
     const [entries, setEntries] = useState<Entry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch entries from API
+    // Fetch entries from API - use high limit to get all entries for analytics
     useEffect(() => {
         const fetchEntries = async () => {
             if (!accessToken) {
@@ -57,7 +59,7 @@ export function useAnalytics(period: 'week' | 'month' | 'year' = 'week') {
             setError(null);
 
             try {
-                const response = await fetch(`${API_URL}/entries`, {
+                const response = await fetch(`${API_URL}/entries?limit=1000`, {
                     headers: { Authorization: `Bearer ${accessToken}` },
                 });
 
@@ -77,6 +79,24 @@ export function useAnalytics(period: 'week' | 'month' | 'year' = 'week') {
 
         fetchEntries();
     }, [accessToken]);
+
+    // Auto-detect the best default period based on entry distribution
+    const suggestedPeriod = useMemo<AnalyticsPeriod>(() => {
+        if (entries.length === 0) return 'week';
+        const now = new Date();
+        const weekCutoff = new Date(now.getTime() - 7 * MS_PER_DAY);
+        const monthCutoff = new Date(now.getTime() - 30 * MS_PER_DAY);
+
+        const weekEntries = entries.filter(e => new Date(e.createdAt) >= weekCutoff).length;
+        const monthEntries = entries.filter(e => new Date(e.createdAt) >= monthCutoff).length;
+
+        // If week has a meaningful number of entries, use week
+        if (weekEntries >= 3) return 'week';
+        // If month has entries, use month
+        if (monthEntries >= 1) return 'month';
+        // Otherwise use year
+        return 'year';
+    }, [entries]);
 
     // Filter entries by period
     const filteredEntries = useMemo(() => {
@@ -231,7 +251,7 @@ export function useAnalytics(period: 'week' | 'month' | 'year' = 'week') {
 
         setIsLoading(true);
         try {
-            const response = await fetch(`${API_URL}/entries`, {
+            const response = await fetch(`${API_URL}/entries?limit=1000`, {
                 headers: { Authorization: `Bearer ${accessToken}` },
             });
             if (response.ok) {
@@ -248,6 +268,9 @@ export function useAnalytics(period: 'week' | 'month' | 'year' = 'week') {
     return {
         analytics,
         entries: filteredEntries,
+        allEntries: entries,
+        totalAllEntries: entries.length,
+        suggestedPeriod,
         isLoading,
         error,
         refresh,

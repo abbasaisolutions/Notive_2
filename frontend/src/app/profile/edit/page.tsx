@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { FadeIn, SlideUp, StaggerContainer } from '@/components/ui/animated-wrappers';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AlertTriangle, BarChart3, Box, FileText, Settings, Shield, Sparkles, User } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -25,6 +26,7 @@ export default function ProfileEditPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [activeTab, setActiveTab] = useState<'essence' | 'account' | 'preferences' | 'data'>('essence');
 
     useEffect(() => {
         if (user) {
@@ -129,8 +131,6 @@ export default function ProfileEditPage() {
         return null;
     }
 
-    const [activeTab, setActiveTab] = useState<'essence' | 'account' | 'preferences' | 'data'>('essence');
-
     return (
         <div className="min-h-screen p-6 md:p-12 relative z-10">
             <FadeIn className="max-w-4xl mx-auto space-y-8 mt-4">
@@ -147,7 +147,6 @@ export default function ProfileEditPage() {
                     </div>
                 </header>
 
-    import { AlertTriangle, BarChart3, Box, FileText, Settings, Shield, Sparkles, User } from 'lucide-react';
                 {/* Status Message */}
                 <AnimatePresence mode='wait'>
                     {message && (

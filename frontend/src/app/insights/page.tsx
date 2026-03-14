@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import type { AnalyticsPeriod } from '@/hooks/useAnalytics';
 import { getMoodIcon, getMoodColor } from '@/constants/moods';
 import { SkeletonCard, SkeletonStat } from '@/components/ui/SkeletonLoader';
 import HealthInsightsPanel from '@/components/insights/HealthInsightsPanel';
@@ -11,10 +12,19 @@ import { BarChart3, Bot, BookOpen, Flame, Frown, Heart, PenLine, Smile, Sparkles
 
 export default function InsightsPage() {
     const router = useRouter();
-    const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('week');
+    const [selectedPeriod, setSelectedPeriod] = useState<AnalyticsPeriod>('month');
+    const hasAutoSelected = useRef(false);
 
     // Use optimized analytics hook - single source of truth
-    const { analytics, isLoading, error } = useAnalytics(selectedPeriod);
+    const { analytics, isLoading, error, totalAllEntries, suggestedPeriod } = useAnalytics(selectedPeriod);
+
+    // Auto-select the best period on first load based on entry distribution
+    useEffect(() => {
+        if (!isLoading && !hasAutoSelected.current && totalAllEntries > 0) {
+            hasAutoSelected.current = true;
+            setSelectedPeriod(suggestedPeriod);
+        }
+    }, [isLoading, totalAllEntries, suggestedPeriod]);
 
     if (isLoading) {
         return (
@@ -62,8 +72,8 @@ export default function InsightsPage() {
         );
     }
 
-    // Empty state - encourage users to journal
-    if (analytics.totalEntries === 0) {
+    // Empty state - only show onboarding when user has NO entries at all
+    if (totalAllEntries === 0) {
         return (
             <div className="min-h-screen flex items-center justify-center p-4">
                 <div className="max-w-2xl w-full">
@@ -122,6 +132,74 @@ export default function InsightsPage() {
                                 <h4 className="text-sm font-bold text-white mb-1">Measure Growth</h4>
                                 <p className="text-xs text-neutral-400">Watch your progress over time</p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // No entries in selected period but user has entries overall - show period-specific message
+    if (analytics.totalEntries === 0) {
+        return (
+            <div className="min-h-screen bg-gradient-to-b from-neutral-900 to-neutral-950 pb-24">
+                <div className="max-w-6xl mx-auto px-4 py-8">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-4">
+                            <Link href="/dashboard" className="p-2 rounded-xl hover:bg-white/10 transition-colors touch-target">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-400">
+                                    <path d="m15 18-6-6 6-6" />
+                                </svg>
+                            </Link>
+                            <div>
+                                <h1 className="text-3xl font-bold text-white">Your Insights</h1>
+                                <p className="text-neutral-400">Discover patterns in your journey</p>
+                            </div>
+                        </div>
+
+                        {/* Period Selector */}
+                        <div className="flex gap-2">
+                            {(['week', 'month', 'year'] as const).map((p) => (
+                                <button
+                                    key={p}
+                                    onClick={() => setSelectedPeriod(p)}
+                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                                        selectedPeriod === p
+                                            ? 'bg-primary text-white'
+                                            : 'bg-white/5 text-neutral-400 hover:bg-white/10'
+                                    }`}
+                                >
+                                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center py-20">
+                        <BarChart3 className="w-16 h-16 text-neutral-600 mb-6" />
+                        <h2 className="text-2xl font-bold text-white mb-3">
+                            No entries this {selectedPeriod}
+                        </h2>
+                        <p className="text-neutral-400 text-center max-w-md mb-6">
+                            You have {totalAllEntries} {totalAllEntries === 1 ? 'entry' : 'entries'} total. Try selecting a longer time period or write a new entry to see insights.
+                        </p>
+                        <div className="flex gap-4">
+                            {selectedPeriod !== 'year' && (
+                                <button
+                                    onClick={() => setSelectedPeriod(selectedPeriod === 'week' ? 'month' : 'year')}
+                                    className="px-6 py-3 bg-white/10 text-white rounded-xl hover:bg-white/15 transition-all"
+                                >
+                                    Try {selectedPeriod === 'week' ? 'Month' : 'Year'} View
+                                </button>
+                            )}
+                            <Link
+                                href="/entry/new"
+                                className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2"
+                            >
+                                <PenLine className="w-4 h-4" />
+                                New Entry
+                            </Link>
                         </div>
                     </div>
                 </div>
