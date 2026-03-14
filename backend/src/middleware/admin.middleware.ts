@@ -6,7 +6,6 @@ import prisma from '../config/prisma';
  */
 export const requireAdmin = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
 
         if (!userId) {
@@ -29,8 +28,6 @@ export const requireAdmin = async (req: Request, res: Response, next: NextFuncti
         if (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN') {
             return res.status(403).json({ message: 'Admin access required' });
         }
-
-        // @ts-ignore
         req.userRole = user.role;
         next();
     } catch (error) {
@@ -44,7 +41,6 @@ export const requireAdmin = async (req: Request, res: Response, next: NextFuncti
  */
 export const requireSuperAdmin = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
 
         if (!userId) {
@@ -74,3 +70,4 @@ export const requireSuperAdmin = async (req: Request, res: Response, next: NextF
         return res.status(500).json({ message: 'Authorization failed' });
     }
 };
+

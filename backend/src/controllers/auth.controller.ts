@@ -8,6 +8,7 @@ import {
 } from '../utils/jwt';
 import crypto from 'crypto';
 import { emailService } from '../services/email.service';
+import { hashToken } from '../utils/token-security';
 
 // Calculate expiry date for refresh token (7 days)
 const getRefreshTokenExpiry = (): Date => {
@@ -16,18 +17,31 @@ const getRefreshTokenExpiry = (): Date => {
     return expiry;
 };
 
+const isMobileClient = (req: Request): boolean => {
+    const platform = (req.header('x-client-platform') || '').toLowerCase();
+    return platform === 'mobile' || platform === 'capacitor' || platform === 'native';
+};
+
+const PASSWORD_POLICY_MESSAGE = 'Password must be at least 8 characters and include uppercase, lowercase, and a number';
+const hasStrongPassword = (value: string): boolean =>
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
+
 // --- REGISTER ---
 export const register = async (req: Request, res: Response) => {
     try {
         const { email, password, name } = req.body;
+        const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
         // Validate input
-        if (!email || !password) {
+        if (!normalizedEmail || !password) {
             return res.status(400).json({ message: 'Email and password are required' });
+        }
+        if (!hasStrongPassword(password)) {
+            return res.status(400).json({ message: PASSWORD_POLICY_MESSAGE });
         }
 
         // Check if user exists
-        const existingUser = await prisma.user.findUnique({ where: { email } });
+        const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
         if (existingUser) {
             return res.status(409).json({ message: 'User already exists' });
         }
@@ -38,7 +52,7 @@ export const register = async (req: Request, res: Response) => {
         // Create user
         const user = await prisma.user.create({
             data: {
-                email,
+                email: normalizedEmail,
                 password: hashedPassword,
                 name: name || null,
             },
@@ -47,11 +61,12 @@ export const register = async (req: Request, res: Response) => {
         // Generate tokens
         const accessToken = generateAccessToken({ userId: user.id, email: user.email });
         const refreshToken = generateRefreshToken({ userId: user.id, email: user.email });
+        const refreshTokenHash = hashToken(refreshToken);
 
         // Store refresh token in DB
         await prisma.refreshToken.create({
             data: {
-                token: refreshToken,
+                token: refreshTokenHash,
                 userId: user.id,
                 expiresAt: getRefreshTokenExpiry(),
             },
@@ -68,10 +83,16 @@ export const register = async (req: Request, res: Response) => {
         return res.status(201).json({
             message: 'User registered successfully',
             accessToken,
+            ...(isMobileClient(req) ? { refreshToken } : {}),
             user: {
                 id: user.id,
                 email: user.email,
                 name: user.name,
+                avatarUrl: user.avatarUrl,
+                role: user.role,
+                hasPassword: Boolean(user.password),
+                createdAt: user.createdAt,
+                profile: null,
             },
         });
     } catch (error) {
@@ -84,16 +105,23 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
+        const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
         // Validate input
-        if (!email || !password) {
+        if (!normalizedEmail || !password) {
             return res.status(400).json({ message: 'Email and password are required' });
         }
 
         // Find user
-        const user = await prisma.user.findUnique({ where: { email } });
+        const user = await prisma.user.findUnique({
+            where: { email: normalizedEmail },
+            include: { profile: true },
+        });
         if (!user) {
             return res.status(401).json({ message: 'Invalid credentials' });
+        }
+        if (user.isBanned) {
+            return res.status(403).json({ message: 'Your account has been suspended' });
         }
 
         // Verify password (SSO users don't have passwords)
@@ -108,11 +136,12 @@ export const login = async (req: Request, res: Response) => {
         // Generate tokens
         const accessToken = generateAccessToken({ userId: user.id, email: user.email });
         const refreshToken = generateRefreshToken({ userId: user.id, email: user.email });
+        const refreshTokenHash = hashToken(refreshToken);
 
         // Store refresh token in DB
         await prisma.refreshToken.create({
             data: {
-                token: refreshToken,
+                token: refreshTokenHash,
                 userId: user.id,
                 expiresAt: getRefreshTokenExpiry(),
             },
@@ -129,10 +158,16 @@ export const login = async (req: Request, res: Response) => {
         return res.status(200).json({
             message: 'Login successful',
             accessToken,
+            ...(isMobileClient(req) ? { refreshToken } : {}),
             user: {
                 id: user.id,
                 email: user.email,
                 name: user.name,
+                avatarUrl: user.avatarUrl,
+                role: user.role,
+                hasPassword: Boolean(user.password),
+                createdAt: user.createdAt,
+                profile: user.profile,
             },
         });
     } catch (error) {
@@ -144,7 +179,8 @@ export const login = async (req: Request, res: Response) => {
 // --- REFRESH TOKEN ---
 export const refresh = async (req: Request, res: Response) => {
     try {
-        const refreshToken = req.cookies?.refreshToken;
+        // Web: sent via httpOnly cookie. Mobile (Capacitor): sent in request body.
+        const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
 
         if (!refreshToken) {
             return res.status(401).json({ message: 'Refresh token not found' });
@@ -155,16 +191,61 @@ export const refresh = async (req: Request, res: Response) => {
         if (!payload) {
             return res.status(401).json({ message: 'Invalid refresh token' });
         }
+        const refreshTokenHash = hashToken(refreshToken);
 
         // Check if token exists in database
-        const storedToken = await prisma.refreshToken.findUnique({
-            where: { token: refreshToken },
-            include: { user: true },
+        let storedToken = await prisma.refreshToken.findUnique({
+            where: { token: refreshTokenHash },
+            include: {
+                user: {
+                    include: { profile: true },
+                },
+            },
         });
+        if (!storedToken) {
+            // Transitional compatibility for sessions minted before token hashing.
+            storedToken = await prisma.refreshToken.findUnique({
+                where: { token: refreshToken },
+                include: {
+                    user: {
+                        include: { profile: true },
+                    },
+                },
+            });
+        }
 
         if (!storedToken || storedToken.expiresAt < new Date()) {
             return res.status(401).json({ message: 'Refresh token expired or invalid' });
         }
+        if (storedToken.user.isBanned) {
+            await prisma.refreshToken.deleteMany({
+                where: { userId: storedToken.user.id },
+            });
+            res.clearCookie('refreshToken');
+            return res.status(403).json({ message: 'Your account has been suspended' });
+        }
+
+        // Rotate refresh token to reduce replay risk
+        const newRefreshToken = generateRefreshToken({
+            userId: storedToken.user.id,
+            email: storedToken.user.email,
+        });
+        const newRefreshTokenHash = hashToken(newRefreshToken);
+
+        await prisma.$transaction([
+            prisma.refreshToken.deleteMany({
+                where: {
+                    token: { in: [refreshTokenHash, refreshToken] },
+                },
+            }),
+            prisma.refreshToken.create({
+                data: {
+                    token: newRefreshTokenHash,
+                    userId: storedToken.user.id,
+                    expiresAt: getRefreshTokenExpiry(),
+                },
+            }),
+        ]);
 
         // Generate new access token
         const accessToken = generateAccessToken({
@@ -172,12 +253,26 @@ export const refresh = async (req: Request, res: Response) => {
             email: storedToken.user.email,
         });
 
+        // Update cookie for web clients
+        res.cookie('refreshToken', newRefreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+
         return res.status(200).json({
             accessToken,
+            ...(isMobileClient(req) ? { refreshToken: newRefreshToken } : {}),
             user: {
                 id: storedToken.user.id,
                 email: storedToken.user.email,
                 name: storedToken.user.name,
+                avatarUrl: storedToken.user.avatarUrl,
+                role: storedToken.user.role,
+                hasPassword: Boolean(storedToken.user.password),
+                createdAt: storedToken.user.createdAt,
+                profile: storedToken.user.profile,
             },
         });
     } catch (error) {
@@ -189,12 +284,15 @@ export const refresh = async (req: Request, res: Response) => {
 // --- LOGOUT ---
 export const logout = async (req: Request, res: Response) => {
     try {
-        const refreshToken = req.cookies?.refreshToken;
+        const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
 
         if (refreshToken) {
+            const refreshTokenHash = hashToken(refreshToken);
             // Delete refresh token from database
             await prisma.refreshToken.deleteMany({
-                where: { token: refreshToken },
+                where: {
+                    token: { in: [refreshTokenHash, refreshToken] },
+                },
             });
         }
 
@@ -211,19 +309,24 @@ export const logout = async (req: Request, res: Response) => {
 // --- GET ME (Current User) ---
 export const getMe = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore - userId is set by auth middleware
         const userId = req.userId;
 
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true, email: true, name: true, avatarUrl: true, createdAt: true },
+            select: { id: true, email: true, name: true, avatarUrl: true, createdAt: true, role: true, password: true, profile: true },
         });
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        return res.status(200).json({ user });
+        const { password, ...safeUser } = user;
+        return res.status(200).json({
+            user: {
+                ...safeUser,
+                hasPassword: Boolean(password),
+            },
+        });
     } catch (error) {
         console.error('GetMe error:', error);
         return res.status(500).json({ message: 'Internal server error' });
@@ -234,12 +337,13 @@ export const getMe = async (req: Request, res: Response) => {
 export const forgotPassword = async (req: Request, res: Response) => {
     try {
         const { email } = req.body;
+        const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
-        if (!email) {
+        if (!normalizedEmail) {
             return res.status(400).json({ message: 'Email is required' });
         }
 
-        const user = await prisma.user.findUnique({ where: { email } });
+        const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
         // Always return success even if user not found to prevent enumeration attacks
         if (!user) {
@@ -253,33 +357,9 @@ export const forgotPassword = async (req: Request, res: Response) => {
         // Token expires in 1 hour
         const passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000);
 
-        // Save hashed token to DB (assuming fields exist or we store in a separate table/field)
-        // Since schema wasn't fully checked for these fields, we might need to add them or use an existing solution.
-        // Checking schema first would have been better but assuming standard User model extension for now.
-        // If these fields don't exist in Prisma schema, this will fail. Let's assume they don't and check schema next step if this fails.
-        // WAIT: I should check schema first.
-        // But to avoid wasting a turn, I'll attempt to update and if it fails I'll schema update.
-        // Actually, looking at previous context, I haven't seen the schema.
-        // To be safe, let's use a workaround if fields don't exist or just check schema now.
-        // I'll proceed with the modification but I should verify schema.
-
-        // Let's defer this specific chunk and just add imports first? 
-        // No, I'll add the functions. I'll check schema in a separate tool call if needed or just handle the error.
-
-        // Actually, I'll assume standard implementation requires these fields.
-        // I will first output the code, but I suspect I might need to update schema.prisma. 
-        // The implementation Plan didn't explicitly mention schema changes, implies maybe fields exist or I should add them.
-        // I'll assume they might NOT exist.
-
-        // Better approach: I'll try to find a way to store this.
-
-        // Let's add the fields to schema if they are missing.
-        // But for now, I'll write the code.
-
         await prisma.user.update({
             where: { id: user.id },
             data: {
-                // @ts-ignore - We might need to add these fields to schema
                 resetToken: resetTokenHash,
                 resetTokenExpiry: passwordResetExpires
             }
@@ -303,15 +383,16 @@ export const resetPassword = async (req: Request, res: Response) => {
         if (!token || !password) {
             return res.status(400).json({ message: 'Token and password are required' });
         }
+        if (!hasStrongPassword(password)) {
+            return res.status(400).json({ message: PASSWORD_POLICY_MESSAGE });
+        }
 
         const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
         // Find user with valid token
         const user = await prisma.user.findFirst({
             where: {
-                // @ts-ignore
                 resetToken: resetTokenHash,
-                // @ts-ignore
                 resetTokenExpiry: { gt: new Date() }
             }
         });
@@ -327,9 +408,7 @@ export const resetPassword = async (req: Request, res: Response) => {
             where: { id: user.id },
             data: {
                 password: hashedPassword,
-                // @ts-ignore
                 resetToken: null,
-                // @ts-ignore
                 resetTokenExpiry: null
             }
         });
@@ -341,4 +420,5 @@ export const resetPassword = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Internal server error' });
     }
 };
+
 

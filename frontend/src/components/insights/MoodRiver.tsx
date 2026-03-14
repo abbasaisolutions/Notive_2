@@ -1,49 +1,83 @@
 'use client';
 
-import React from 'react';
+import React, { useId, useMemo } from 'react';
+import { getMoodColor, getMoodEmoji, normalizeMood } from '@/constants/moods';
+import { FiTrendingUp } from 'react-icons/fi';
 
 interface MoodRiverProps {
     data: { date: string; mood: string; score: number }[];
 }
 
-const moodColors: Record<string, string> = {
-    happy: '#22c55e',
-    grateful: '#ec4899',
-    motivated: '#8b5cf6',
-    hopeful: '#fbbf24',
-    calm: '#06b6d4',
-    thoughtful: '#8b5cf6',
-    neutral: '#6b7280',
-    tired: '#64748b',
-    anxious: '#f59e0b',
-    sad: '#3b82f6',
-    angry: '#ef4444',
+const formatShortDate = (value: string) => {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value.slice(0, 10);
+    return parsed.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+    });
 };
 
+const formatMoodLabel = (mood: string) => mood.charAt(0).toUpperCase() + mood.slice(1);
+
 export default function MoodRiver({ data }: MoodRiverProps) {
-    if (data.length === 0) {
+    const chartId = useId().replace(/:/g, '');
+    const normalizedData = useMemo(
+        () =>
+            data.map((item) => ({
+                ...item,
+                mood: normalizeMood(item.mood) || 'neutral',
+            })),
+        [data]
+    );
+
+    if (normalizedData.length === 0) {
         return (
-            <div className="glass-card p-6 rounded-2xl">
-                <h3 className="text-lg font-bold text-white mb-4">Mood River</h3>
-                <p className="text-slate-400">Start journaling to see your mood flow!</p>
+            <div className="glass-card p-6 rounded-2xl text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/[0.03]">
+                    <FiTrendingUp size={24} className="text-ink-secondary" aria-hidden="true" />
+                </div>
+                <h3 className="text-lg font-bold text-white">Mood River</h3>
+                <p className="mt-1 text-sm text-ink-secondary">Add entries to reveal your emotional trajectory.</p>
             </div>
         );
     }
+
+    const averageScore = Number(
+        (normalizedData.reduce((sum, item) => sum + item.score, 0) / normalizedData.length).toFixed(1)
+    );
+    const scoreDelta = normalizedData.length > 1
+        ? Number((normalizedData[normalizedData.length - 1].score - normalizedData[0].score).toFixed(1))
+        : 0;
+
+    let trendLabel = 'Stable';
+    let trendClass = 'border-white/20 bg-white/10 text-ink-secondary';
+    if (scoreDelta > 0.3) {
+        trendLabel = 'Rising';
+        trendClass = 'border-white/15 bg-white/[0.04] text-white';
+    } else if (scoreDelta < -0.3) {
+        trendLabel = 'Falling';
+        trendClass = 'border-zinc-400/35 bg-zinc-500/12 text-zinc-200';
+    }
+
+    const moodCounts = new Map<string, number>();
+    for (const item of normalizedData) {
+        moodCounts.set(item.mood, (moodCounts.get(item.mood) || 0) + 1);
+    }
+    const dominantMood = [...moodCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || 'neutral';
+    const legendMoods = Array.from(new Set(normalizedData.map((item) => item.mood))).slice(0, 5);
 
     const maxScore = 10;
     const height = 120;
     const width = 100;
 
-    // Create smooth path
-    const points = data.map((d, i) => ({
-        x: (i / (data.length - 1 || 1)) * width,
+    const points = normalizedData.map((d, i) => ({
+        x: (i / (normalizedData.length - 1 || 1)) * width,
         y: ((maxScore - d.score) / maxScore) * height,
-        color: moodColors[d.mood] || moodColors.neutral,
+        color: getMoodColor(d.mood),
         mood: d.mood,
         date: d.date,
     }));
 
-    // Create SVG path with smooth curves
     const createPath = (pts: typeof points): string => {
         if (pts.length < 2) return '';
 
@@ -60,20 +94,51 @@ export default function MoodRiver({ data }: MoodRiverProps) {
         return path;
     };
 
-    // Create filled area path
     const createAreaPath = (pts: typeof points): string => {
         if (pts.length < 2) return '';
 
         const linePath = createPath(pts);
+        if (!linePath) return '';
         const lastPoint = pts[pts.length - 1];
         const firstPoint = pts[0];
 
         return `${linePath} L ${lastPoint.x} ${height} L ${firstPoint.x} ${height} Z`;
     };
 
+    const linePath = createPath(points);
+    const areaPath = createAreaPath(points);
+    const lineGradientId = `mood-line-${chartId}`;
+
     return (
         <div className="glass-card p-6 rounded-2xl">
-            <h3 className="text-lg font-bold text-white mb-4">Mood River</h3>
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h3 className="text-lg font-bold text-white">Mood River</h3>
+                    <p className="text-xs text-ink-muted">Emotional flow across recent entries</p>
+                </div>
+                <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${trendClass}`}>
+                    {trendLabel}
+                </span>
+            </div>
+
+            <div className="mb-4 grid grid-cols-3 gap-2">
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Avg Score</p>
+                    <p className="text-lg font-semibold text-white">{averageScore}/10</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Change</p>
+                    <p className={`text-lg font-semibold ${scoreDelta >= 0 ? 'text-ink-secondary' : 'text-zinc-300'}`}>
+                        {scoreDelta >= 0 ? '+' : ''}{scoreDelta}
+                    </p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Dominant</p>
+                    <p className="text-lg font-semibold text-white">
+                        {getMoodEmoji(dominantMood)} {formatMoodLabel(dominantMood)}
+                    </p>
+                </div>
+            </div>
 
             <div className="relative" style={{ height: `${height + 30}px` }}>
                 <svg
@@ -81,9 +146,8 @@ export default function MoodRiver({ data }: MoodRiverProps) {
                     className="w-full h-full"
                     preserveAspectRatio="none"
                 >
-                    {/* Gradient definition */}
                     <defs>
-                        <linearGradient id="moodGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <linearGradient id={lineGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
                             {points.map((p, i) => (
                                 <stop
                                     key={i}
@@ -92,28 +156,39 @@ export default function MoodRiver({ data }: MoodRiverProps) {
                                 />
                             ))}
                         </linearGradient>
-                        <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="url(#moodGradient)" stopOpacity="0.5" />
-                            <stop offset="100%" stopColor="url(#moodGradient)" stopOpacity="0.05" />
-                        </linearGradient>
                     </defs>
 
-                    {/* Filled area */}
-                    <path
-                        d={createAreaPath(points)}
-                        fill="url(#areaGradient)"
-                    />
+                    {[0, height / 2, height].map((y) => (
+                        <line
+                            key={`grid-${y}`}
+                            x1="0"
+                            y1={y}
+                            x2={width}
+                            y2={y}
+                            stroke="rgba(255,255,255,0.1)"
+                            strokeWidth="0.4"
+                            strokeDasharray="1.5 2"
+                        />
+                    ))}
 
-                    {/* Line */}
-                    <path
-                        d={createPath(points)}
-                        fill="none"
-                        stroke="url(#moodGradient)"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                    />
+                    {areaPath && (
+                        <path
+                            d={areaPath}
+                            fill={`url(#${lineGradientId})`}
+                            fillOpacity="0.18"
+                        />
+                    )}
 
-                    {/* Points */}
+                    {linePath && (
+                        <path
+                            d={linePath}
+                            fill="none"
+                            stroke={`url(#${lineGradientId})`}
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                        />
+                    )}
+
                     {points.map((p, i) => (
                         <circle
                             key={i}
@@ -123,30 +198,29 @@ export default function MoodRiver({ data }: MoodRiverProps) {
                             fill={p.color}
                             className="transition-all hover:r-5"
                         >
-                            <title>{`${p.date}: ${p.mood}`}</title>
+                            <title>{`${formatShortDate(p.date)}: ${formatMoodLabel(p.mood)} (${normalizedData[i].score}/10)`}</title>
                         </circle>
                     ))}
                 </svg>
 
-                {/* Labels */}
-                <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-slate-500">
-                    <span>{points[0]?.date}</span>
-                    <span>{points[points.length - 1]?.date}</span>
+                <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-ink-muted">
+                    <span>{formatShortDate(points[0]?.date || '')}</span>
+                    <span>{formatShortDate(points[points.length - 1]?.date || '')}</span>
                 </div>
             </div>
 
-            {/* Legend */}
             <div className="flex flex-wrap gap-2 mt-4">
-                {Array.from(new Set(data.map(d => d.mood))).slice(0, 5).map((mood) => (
-                    <div key={mood} className="flex items-center gap-1 text-xs text-slate-400">
-                        <div
-                            className="w-2 h-2 rounded-full"
-                            style={{ backgroundColor: moodColors[mood] || moodColors.neutral }}
-                        />
-                        <span className="capitalize">{mood}</span>
-                    </div>
+                {legendMoods.map((mood) => (
+                    <span
+                        key={mood}
+                        className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.03] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary"
+                    >
+                        <span style={{ color: getMoodColor(mood) }}>{getMoodEmoji(mood)}</span>
+                        <span>{formatMoodLabel(mood)}</span>
+                    </span>
                 ))}
             </div>
         </div>
     );
 }
+

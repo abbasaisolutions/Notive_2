@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
+import { TagSource } from '@prisma/client';
+import { buildTagMetaList, syncEntryTags } from '../services/tag-manager.service';
 
 // Helper to generate mock feed
 const generateMockFeed = (source: 'FACEBOOK' | 'INSTAGRAM') => {
@@ -45,7 +47,6 @@ export const getSocialFeed = async (req: Request, res: Response) => {
  */
 export const importPosts = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
         const { posts } = req.body;
 
@@ -82,6 +83,15 @@ export const importPosts = async (req: Request, res: Response) => {
                     tags: [post.source, 'Imported'],
                 }
             });
+            await syncEntryTags({
+                entryId: entry.id,
+                userId,
+                tags: buildTagMetaList([post.source, 'Imported'].map(tag => ({
+                    name: tag,
+                    source: TagSource.IMPORT,
+                    confidence: 0.7,
+                }))),
+            });
             createdEntries.push(entry);
         }
 
@@ -104,3 +114,4 @@ export const importFacebook = async (req: Request, res: Response) => {
 export const importInstagram = async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'Please use the new Connect -> Select flow' });
 };
+

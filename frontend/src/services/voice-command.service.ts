@@ -2,6 +2,7 @@
  * Voice Command Parser
  * Parses natural language commands from voice input
  */
+import { normalizeMood } from '@/constants/moods';
 
 export interface VoiceCommand {
     type: 'formatting' | 'action' | 'mood' | 'tag' | 'none';
@@ -176,14 +177,15 @@ class VoiceCommandService {
             sad: /\b(sad|depressed|down|unhappy|miserable|terrible)\b/i,
             anxious: /\b(anxious|worried|nervous|stressed|overwhelmed)\b/i,
             calm: /\b(calm|peaceful|relaxed|serene|tranquil)\b/i,
-            angry: /\b(angry|mad|furious|irritated|frustrated)\b/i,
+            frustrated: /\b(angry|mad|furious|irritated|frustrated)\b/i,
+            grateful: /\b(grateful|thankful|blessed|appreciative)\b/i,
             motivated: /\b(motivated|inspired|energized|determined)\b/i,
             tired: /\b(tired|exhausted|drained|sleepy|fatigued)\b/i,
         };
 
         for (const [mood, pattern] of Object.entries(moodKeywords)) {
             if (pattern.test(text)) {
-                return mood;
+                return normalizeMood(mood);
             }
         }
 

@@ -6,7 +6,7 @@ interface SkeletonProps {
 }
 
 export default function Skeleton({ className = '', variant = 'rectangular' }: SkeletonProps) {
-  const baseClasses = 'animate-pulse bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 bg-[length:200%_100%]';
+  const baseClasses = 'animate-pulse bg-gradient-to-r from-surface-2 via-surface-3 to-surface-2 bg-[length:200%_100%]';
 
   const variantClasses = {
     text: 'h-4 rounded',

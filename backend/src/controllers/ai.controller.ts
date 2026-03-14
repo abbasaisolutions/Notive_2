@@ -1,13 +1,98 @@
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
 import nlpService from '../services/nlp.service';
+import crypto from 'crypto';
+import { Prisma } from '@prisma/client';
+import { upsertEntryAnalysisFromNlp } from '../services/entry-analysis.service';
+import embeddingService from '../services/embedding.service';
+import {
+    buildOpportunityExport,
+    buildOpportunityOverview,
+    buildOpportunityTrends,
+    OpportunityEntry,
+    OpportunityTemplateVariant,
+} from '../services/opportunity.service';
+import { buildProfileContextSummary } from '../services/profile-context.service';
+
+const mapAnalysisRecordToInsights = (record: any) => {
+    if (!record) return null;
+    return {
+        contentHash: record.contentHash,
+        generatedAt: record.updatedAt?.toISOString?.() || new Date().toISOString(),
+        sentiment: {
+            score: record.sentimentScore,
+            label: record.sentimentLabel,
+            confidence: 0.8,
+            summary: record.summary,
+        },
+        entities: record.entities || [],
+        topics: record.topics || [],
+        suggestedMood: record.suggestedMood,
+        wordCount: record.wordCount,
+        readingTime: record.readingTime,
+        keywords: record.keywords || [],
+        emotions: record.emotions || null,
+        highlights: record.summary ? [record.summary] : [],
+    };
+};
+
+const fetchOpportunityEntries = async (userId: string): Promise<OpportunityEntry[]> => {
+    const entries = await prisma.entry.findMany({
+        where: { userId, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        select: {
+            id: true,
+            title: true,
+            content: true,
+            mood: true,
+            tags: true,
+            skills: true,
+            lessons: true,
+            reflection: true,
+            createdAt: true,
+            analysis: true,
+            analysisRecord: {
+                select: {
+                    summary: true,
+                    topics: true,
+                    keywords: true,
+                    suggestedMood: true,
+                },
+            },
+        },
+    });
+
+    return entries.map((entry: (typeof entries)[number]) => ({
+        ...entry,
+        analysisRecord: entry.analysisRecord || null,
+    }));
+};
+
+const fetchOpportunityProfileContext = async (userId: string) => {
+    const profile = await prisma.userProfile.findUnique({
+        where: { userId },
+        select: {
+            primaryGoal: true,
+            focusArea: true,
+            experienceLevel: true,
+            writingPreference: true,
+            starterPrompt: true,
+            importPreference: true,
+            lifeGoals: true,
+            outputGoals: true,
+            onboardingCompletedAt: true,
+            updatedAt: true,
+        },
+    });
+
+    return buildProfileContextSummary(profile);
+};
 
 /**
  * Chat with your journal
  */
 export const chatWithJournal = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
         const { query } = req.body;
 
@@ -15,12 +100,14 @@ export const chatWithJournal = async (req: Request, res: Response) => {
 
         // Fetch recent 10 entries for context (simple RAG)
         const entries = await prisma.entry.findMany({
-            where: { userId },
+            where: { userId, deletedAt: null },
             orderBy: { createdAt: 'desc' },
             take: 10
         });
 
-        const context = entries.map(e => `[${e.createdAt.toISOString().split('T')[0]}] ${e.content}`).join('\n\n');
+        const context = entries
+            .map((entry: (typeof entries)[number]) => `[${entry.createdAt.toISOString().split('T')[0]}] ${entry.content}`)
+            .join('\n\n');
 
         const response = await nlpService.chat(query, context);
 
@@ -36,64 +123,105 @@ export const chatWithJournal = async (req: Request, res: Response) => {
  */
 export const analyzeEntry = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
         const { entryId } = req.params;
-        const { content, mood } = req.body; // Can analyze unsaved content too
+        const { content } = req.body; // Can analyze unsaved content too
 
         if (!content && !entryId) {
             return res.status(400).json({ message: 'Content or Entry ID required' });
         }
 
         let contentToAnalyze = content;
+        let existingAnalysis: any = null;
+        let contentHash = '';
 
         // If entryId is provided, fetch from DB
         if (entryId) {
-            const entry = await prisma.entry.findUnique({
-                where: { id: entryId, userId },
+            const entry = await prisma.entry.findFirst({
+                where: { id: entryId, userId, deletedAt: null },
+                include: {
+                    analysisRecord: true,
+                },
             });
             if (!entry) return res.status(404).json({ message: 'Entry not found' });
             contentToAnalyze = entry.content;
+            contentHash = crypto.createHash('sha256').update(contentToAnalyze).digest('hex');
+            existingAnalysis = entry.analysis || null;
+
+            const contentHashFromRecord = entry.analysisRecord?.contentHash;
+            if (contentHashFromRecord === contentHash) {
+                if (existingAnalysis?.ai?.contentHash === contentHash) {
+                    return res.json({
+                        message: 'Analysis cached',
+                        cached: true,
+                        insights: existingAnalysis.ai,
+                    });
+                }
+
+                const recordInsights = mapAnalysisRecordToInsights(entry.analysisRecord);
+                if (recordInsights) {
+                    return res.json({
+                        message: 'Analysis cached',
+                        cached: true,
+                        insights: recordInsights,
+                    });
+                }
+            }
+        }
+
+        if (!contentHash) {
+            contentHash = crypto.createHash('sha256').update(contentToAnalyze).digest('hex');
         }
 
         const analysis = await nlpService.analyzeContent(contentToAnalyze);
 
-        // Map service result to frontend expectation if needed (or update frontend to match service)
-        // Frontend expects: lessons, skills, reflectionQuestions for 'mockAnalyzeEntry'
-        // But nlpService returns sentiment, entities, topics. 
-        // We really should upgrade nlp service to extract lessons/skills or just map topics -> skills/lessons?
-        // Modifying nlpService to be more capable is better but for "fix" let's just use what we have or adapt.
-
-        // Let's improve the response by just passing what we have and maybe mocking the missing parts 
-        // or asking the user to update frontend? 
-        // The user complained "insights page doesnot work correctly...also has very least insight mostly based on sentiment analysis"
-
-        // Wait, analyzeEntry is used in NewEntryPage? 
-        // Let's return the rich analysis from NLPService directly.
-        // And if we need to save it:
+        const aiInsights = {
+            contentHash,
+            generatedAt: new Date().toISOString(),
+            sentiment: analysis.sentiment,
+            entities: analysis.entities,
+            topics: analysis.topics,
+            suggestedMood: analysis.suggestedMood,
+            wordCount: analysis.wordCount,
+            readingTime: analysis.readingTime,
+            keywords: analysis.keywords || [],
+            emotions: analysis.emotions || null,
+            highlights: analysis.highlights || [],
+            evidence: analysis.evidence || null,
+            modelInfo: analysis.modelInfo || null,
+            provider: analysis.provider || null,
+        };
 
         if (entryId) {
-            // We can save metadata to 'skills' or other fields if schema supports it
-            // Current schema has 'skills' string[], 'lessons' (check schema?)
-            // Schema check required. Assuming 'skills' exists on Entry based on legacy page code.
-
             await prisma.entry.update({
                 where: { id: entryId },
                 data: {
-                    skills: analysis.topics, // Mapping topics to skills for now
-                    // sentiment: analysis.sentiment.score (if schema has it)
-                }
+                    analysis: {
+                        ...(existingAnalysis || {}),
+                        ai: aiInsights,
+                    },
+                    skills: analysis.topics || [],
+                },
+            });
+
+            await upsertEntryAnalysisFromNlp({
+                entryId,
+                userId,
+                analysis,
+                content: contentToAnalyze,
+            });
+
+            embeddingService.enqueueEntryEmbedding({
+                entryId,
+                userId,
+                content: contentToAnalyze,
             });
         }
 
         return res.json({
             message: 'Analysis complete',
-            insights: {
-                ...analysis,
-                lessons: ["Reflect on your emotions.", "Consider the patterns."], // Placeholder as nlpService doesn't give lessons yet
-                skills: analysis.topics,
-                reflectionQuestions: ["How does this make you feel?", "What can you learn?"]
-            }
+            cached: false,
+            insights: aiInsights,
         });
 
     } catch (error) {
@@ -107,50 +235,199 @@ export const analyzeEntry = async (req: Request, res: Response) => {
  */
 export const generatePersonalStatement = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
-
-        // Fetch all user entries that have skills
-        const entries = await prisma.entry.findMany({
-            where: {
-                userId,
-                skills: { isEmpty: false }
-            },
-            select: { skills: true }
-        });
-
-        const allSkills: string[] = [];
-        entries.forEach(e => allSkills.push(...e.skills));
-
-
-        // Count frequency
-        const skillCounts: Record<string, number> = {};
-        allSkills.forEach(skill => {
-            skillCounts[skill] = (skillCounts[skill] || 0) + 1;
-        });
-
-        // Top 5 skills
-        const topSkills = Object.entries(skillCounts)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([skill]) => skill);
-
-        let statement = "";
-
-        if (topSkills.length > 0) {
-            statement = `Based on your journal entries, you have consistently demonstrated strengths in ${topSkills.join(', ')}. Your reflections show a pattern of growth.`;
-        } else if (entries.length > 0) {
-            statement = "Your journey is just beginning. Continue adding depth to your entries to reveal your core strengths.";
-        } else {
-            statement = "The canvas of your legacy awaits. Start journaling to discover your profound essence.";
-        }
+        const rawVariant = typeof req.query.variant === 'string' ? req.query.variant : 'standard';
+        const allowedVariants = new Set(['standard', 'college', 'entry_job']);
+        const variant = allowedVariants.has(rawVariant) ? (rawVariant as OpportunityTemplateVariant) : 'standard';
+        const [entries, profileContext] = await Promise.all([
+            fetchOpportunityEntries(userId),
+            fetchOpportunityProfileContext(userId),
+        ]);
+        const overview = buildOpportunityOverview(entries, profileContext);
 
         return res.json({
-            topSkills,
-            statement
+            variant,
+            topSkills: overview.topSkills.slice(0, 5),
+            statement: overview.statementVariants[variant] || overview.personalStatement,
         });
     } catch (error) {
         console.error('Personal Statement generation error:', error);
         return res.status(500).json({ message: 'Failed to generate statement' });
     }
 };
+
+export const getOpportunityOverview = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const [entries, profileContext] = await Promise.all([
+            fetchOpportunityEntries(userId),
+            fetchOpportunityProfileContext(userId),
+        ]);
+        const overview = buildOpportunityOverview(entries, profileContext);
+        return res.json({ overview });
+    } catch (error) {
+        console.error('Opportunity overview error:', error);
+        return res.status(500).json({ message: 'Failed to build opportunity overview' });
+    }
+};
+
+export const updateOpportunityEvidence = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const { entryId } = req.params;
+        const {
+            verified,
+            notes,
+            title,
+            situation,
+            action,
+            lesson,
+            outcome,
+            skills,
+        } = req.body as {
+            verified?: boolean;
+            notes?: string;
+            title?: string;
+            situation?: string;
+            action?: string;
+            lesson?: string;
+            outcome?: string;
+            skills?: string[];
+        };
+
+        if (verified !== undefined && typeof verified !== 'boolean') {
+            return res.status(400).json({ message: 'verified must be a boolean' });
+        }
+        if (notes !== undefined && typeof notes !== 'string') {
+            return res.status(400).json({ message: 'notes must be a string' });
+        }
+
+        const textFields: Record<string, string | undefined> = {
+            title,
+            situation,
+            action,
+            lesson,
+            outcome,
+        };
+
+        for (const [fieldName, value] of Object.entries(textFields)) {
+            if (value !== undefined && typeof value !== 'string') {
+                return res.status(400).json({ message: `${fieldName} must be a string` });
+            }
+        }
+        if (skills !== undefined && !Array.isArray(skills)) {
+            return res.status(400).json({ message: 'skills must be an array of strings' });
+        }
+        if (skills !== undefined && !skills.every((value) => typeof value === 'string')) {
+            return res.status(400).json({ message: 'skills must contain only strings' });
+        }
+
+        const entry = await prisma.entry.findFirst({
+            where: { id: entryId, userId, deletedAt: null },
+            select: { id: true, analysis: true },
+        });
+
+        if (!entry) {
+            return res.status(404).json({ message: 'Entry not found' });
+        }
+
+        const baseAnalysis =
+            entry.analysis && typeof entry.analysis === 'object' && !Array.isArray(entry.analysis)
+                ? (entry.analysis as Prisma.JsonObject)
+                : {};
+
+        const existingOpportunity =
+            baseAnalysis.opportunity && typeof baseAnalysis.opportunity === 'object' && !Array.isArray(baseAnalysis.opportunity)
+                ? (baseAnalysis.opportunity as Prisma.JsonObject)
+                : {};
+
+        const updatedOpportunity: Prisma.JsonObject = {
+            ...existingOpportunity,
+            ...(verified !== undefined ? { verified } : {}),
+            ...(notes !== undefined ? { notes: notes.trim().slice(0, 600) } : {}),
+            ...(title !== undefined ? { title: title.trim().slice(0, 180) } : {}),
+            ...(situation !== undefined ? { situation: situation.trim().slice(0, 800) } : {}),
+            ...(action !== undefined ? { action: action.trim().slice(0, 800) } : {}),
+            ...(lesson !== undefined ? { lesson: lesson.trim().slice(0, 800) } : {}),
+            ...(outcome !== undefined ? { outcome: outcome.trim().slice(0, 800) } : {}),
+            ...(skills !== undefined
+                ? {
+                    skills: skills
+                        .map((value) => value.trim())
+                        .filter(Boolean)
+                        .slice(0, 10),
+                }
+                : {}),
+            updatedAt: new Date().toISOString(),
+        };
+
+        const updatedAnalysis: Prisma.InputJsonValue = {
+            ...baseAnalysis,
+            opportunity: updatedOpportunity,
+        };
+
+        await prisma.entry.update({
+            where: { id: entryId },
+            data: { analysis: updatedAnalysis },
+        });
+
+        return res.json({
+            message: 'Opportunity evidence updated',
+            entryId,
+            opportunity: updatedOpportunity,
+        });
+    } catch (error) {
+        console.error('Update opportunity evidence error:', error);
+        return res.status(500).json({ message: 'Failed to update opportunity evidence' });
+    }
+};
+
+export const getOpportunityTrends = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const rawPeriod = typeof req.query.period === 'string' ? req.query.period : 'month';
+        const rawWindow = Number.parseInt(String(req.query.window || '6'), 10);
+
+        const period: 'week' | 'month' = rawPeriod === 'week' ? 'week' : 'month';
+        const window = Number.isFinite(rawWindow) ? rawWindow : 6;
+
+        const entries = await fetchOpportunityEntries(userId);
+        const trends = buildOpportunityTrends(entries, period, window);
+        return res.json({ trends });
+    } catch (error) {
+        console.error('Opportunity trends error:', error);
+        return res.status(500).json({ message: 'Failed to build opportunity trends' });
+    }
+};
+
+export const exportOpportunityPack = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const rawType = typeof req.query.type === 'string' ? req.query.type : 'growth';
+        const rawFormat = typeof req.query.format === 'string' ? req.query.format : 'markdown';
+        const rawVariant = typeof req.query.variant === 'string' ? req.query.variant : 'standard';
+
+        const allowedTypes = new Set(['resume', 'statement', 'interview', 'growth']);
+        const allowedFormats = new Set(['markdown', 'json', 'html']);
+        const allowedVariants = new Set(['standard', 'college', 'entry_job']);
+
+        const type = allowedTypes.has(rawType) ? (rawType as 'resume' | 'statement' | 'interview' | 'growth') : 'growth';
+        const format = allowedFormats.has(rawFormat) ? (rawFormat as 'markdown' | 'json' | 'html') : 'markdown';
+        const variant = allowedVariants.has(rawVariant) ? (rawVariant as OpportunityTemplateVariant) : 'standard';
+
+        const [entries, profileContext] = await Promise.all([
+            fetchOpportunityEntries(userId),
+            fetchOpportunityProfileContext(userId),
+        ]);
+        const overview = buildOpportunityOverview(entries, profileContext);
+        const output = buildOpportunityExport(overview, type, format, variant);
+
+        res.setHeader('Content-Type', output.contentType);
+        res.setHeader('Content-Disposition', `attachment; filename="${output.fileName}"`);
+        return res.status(200).send(output.body);
+    } catch (error) {
+        console.error('Export opportunity pack error:', error);
+        return res.status(500).json({ message: 'Failed to export opportunity pack' });
+    }
+};
+

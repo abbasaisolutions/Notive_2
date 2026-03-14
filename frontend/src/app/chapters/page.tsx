@@ -1,11 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/auth-context';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import useApi from '@/hooks/use-api';
+import { API_URL } from '@/constants/config';
+import useAuthRedirect from '@/hooks/use-auth-redirect';
+import useContextNavigation from '@/hooks/use-context-navigation';
+import { ActionBar, AppPanel, SectionHeader, StatTile, TagPill } from '@/components/ui/surface';
+import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
+import { writeWorkspaceResume } from '@/utils/workspace-resume';
+import { FiArrowLeft, FiArrowRight, FiBook, FiEdit3, FiPlus } from 'react-icons/fi';
+import { CHAPTER_ICON_OPTIONS, CHAPTER_ICON_MAP, ChapterIconKey, getChapterIconComponent, normalizeChapterIcon } from '@/constants/chapter-icons';
 
 interface Chapter {
     id: string;
@@ -17,82 +22,75 @@ interface Chapter {
     createdAt: string;
 }
 
-const ICONS = ['📖', '📚', '✨', '💡', '🎯', '💪', '❤️', '🌟', '🔥', '🌈', '🎨', '✍️', '🧠', '🌙', '☀️', '🏔️'];
-const COLORS = ['#6366f1', '#ec4899', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
+const COLORS = ['#64748b', '#4b5563', '#6b7280', '#78716c', '#71717a', '#52525b', '#334155', '#0f172a'];
 
 export default function ChaptersPage() {
-    const router = useRouter();
-    const { user, accessToken, isLoading: authLoading } = useAuth();
+    const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
+    const { apiFetch } = useApi();
+    const { backLabel, navigateBack } = useContextNavigation('/dashboard', 'dashboard');
     const [chapters, setChapters] = useState<Chapter[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
-    const [formData, setFormData] = useState({ name: '', description: '', color: '#6366f1', icon: '📖' });
+    const [formData, setFormData] = useState<{ name: string; description: string; color: string; icon: ChapterIconKey }>({
+        name: '',
+        description: '',
+        color: '#64748b',
+        icon: 'book-open',
+    });
 
-    useEffect(() => {
-        fetchChapters();
-    }, [accessToken]);
+    const currentReturnTo = buildCurrentReturnTo('/chapters', '');
+    const captureHref = appendReturnTo('/entry/new?mode=quick', currentReturnTo);
 
-    const fetchChapters = async () => {
-        if (!accessToken) return;
+    const resetForm = () => {
+        setEditingChapter(null);
+        setFormData({ name: '', description: '', color: '#64748b', icon: 'book-open' });
+    };
 
+    const fetchChapters = async (signal?: AbortSignal) => {
         try {
-            const response = await fetch(`${API_URL}/chapters`, {
-                headers: { Authorization: `Bearer ${accessToken}` },
-            });
+            const response = await apiFetch(`${API_URL}/chapters`, { signal });
             if (response.ok) {
                 const data = await response.json();
                 setChapters(data.chapters);
             }
         } catch (error) {
+            if (signal?.aborted) return;
             console.error('Failed to fetch chapters:', error);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    useEffect(() => {
+        const controller = new AbortController();
+        fetchChapters(controller.signal);
+        return () => controller.abort();
+    }, [user, apiFetch]);
+
+    const handleSubmit = async (event: React.FormEvent) => {
+        event.preventDefault();
         if (!formData.name.trim()) return;
 
         try {
             const url = editingChapter ? `${API_URL}/chapters/${editingChapter.id}` : `${API_URL}/chapters`;
             const method = editingChapter ? 'PUT' : 'POST';
 
-            const response = await fetch(url, {
+            const response = await apiFetch(url, {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify(formData),
             });
 
             if (response.ok) {
-                fetchChapters();
+                await fetchChapters();
                 setShowModal(false);
-                setEditingChapter(null);
-                setFormData({ name: '', description: '', color: '#6366f1', icon: '📖' });
+                resetForm();
             }
         } catch (error) {
             console.error('Failed to save chapter:', error);
-        }
-    };
-
-    const handleDelete = async (id: string) => {
-        if (!confirm('Delete this chapter? Entries will be unassigned, not deleted.')) return;
-
-        try {
-            const response = await fetch(`${API_URL}/chapters/${id}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${accessToken}` },
-            });
-
-            if (response.ok) {
-                fetchChapters();
-            }
-        } catch (error) {
-            console.error('Failed to delete chapter:', error);
         }
     };
 
@@ -102,182 +100,271 @@ export default function ChaptersPage() {
             name: chapter.name,
             description: chapter.description || '',
             color: chapter.color,
-            icon: chapter.icon,
+            icon: normalizeChapterIcon(chapter.icon),
         });
         setShowModal(true);
     };
 
+    const openCreateModal = () => {
+        resetForm();
+        setShowModal(true);
+    };
+
+    const totalEntries = useMemo(
+        () => chapters.reduce((sum, chapter) => sum + chapter._count.entries, 0),
+        [chapters]
+    );
+    const emptyCollections = useMemo(
+        () => chapters.filter((chapter) => chapter._count.entries === 0).length,
+        [chapters]
+    );
+
+    useEffect(() => {
+        if (authLoading || !isAuthenticated) return;
+
+        writeWorkspaceResume({
+            key: 'chapters',
+            title: 'Collections',
+            summary: chapters.length > 0
+                ? `${chapters.length} collections · ${totalEntries} entries`
+                : 'Organize your entries into collections',
+            href: currentReturnTo,
+            updatedAt: new Date().toISOString(),
+            stage: 'organize',
+            actionLabel: 'Resume collections',
+        });
+    }, [authLoading, chapters.length, currentReturnTo, isAuthenticated, totalEntries]);
+
     if (authLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                <div className="animate-spin h-8 w-8 rounded-full border-4 border-primary border-t-transparent" />
             </div>
         );
     }
 
-    if (!user) {
-        router.push('/login');
+    if (!isAuthenticated) {
         return null;
     }
 
     return (
-        <div className="min-h-screen p-4 md:p-8">
-            {/* Background Glow */}
-            <div className="fixed top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[150px] pointer-events-none" />
-
-            <div className="max-w-6xl mx-auto relative z-10">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-4">
-                        <Link href="/dashboard" className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
-                            </svg>
-                        </Link>
-                        <div>
-                            <h1 className="text-3xl font-bold text-white">Living Volumes</h1>
-                            <p className="text-slate-400">Chapters of your life, archived as digital volumes</p>
+        <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
+            <div className="mx-auto max-w-6xl space-y-6">
+                <AppPanel className="space-y-5">
+                    <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                        <div className="flex items-start gap-3">
+                            <button
+                                type="button"
+                                onClick={navigateBack}
+                                aria-label={backLabel}
+                                title={backLabel}
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.03] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                            >
+                                <FiArrowLeft size={20} aria-hidden="true" />
+                            </button>
+                            <SectionHeader
+                                kicker="Collections"
+                                title="Collections Studio"
+                                description="Group related entries by project, season, or life context without breaking the main journal flow."
+                            />
                         </div>
-                    </div>
-                    <button
-                        onClick={() => { setShowModal(true); setEditingChapter(null); setFormData({ name: '', description: '', color: '#6366f1', icon: '📖' }); }}
-                        className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl font-medium transition-all shadow-lg shadow-primary/25 flex items-center gap-2"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="12" x2="12" y1="5" y2="19" /><line x1="5" x2="19" y1="12" y2="12" />
-                        </svg>
-                        New Chapter
-                    </button>
-                </div>
 
-                {/* Chapters Grid */}
+                        <ActionBar className="overflow-x-auto bg-black/20 border-white/10">
+                            <Link
+                                href={captureHref}
+                                className="rounded-xl px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:text-white"
+                            >
+                                Quick Capture
+                            </Link>
+                            <button
+                                type="button"
+                                onClick={openCreateModal}
+                                className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/20"
+                            >
+                                <FiPlus size={16} aria-hidden="true" />
+                                New Collection
+                            </button>
+                        </ActionBar>
+                    </div>
+
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
+                        <StatTile label="Collections" value={chapters.length} hint="Organizing surfaces you have created" />
+                        <StatTile label="Entries Assigned" value={totalEntries} hint="Entries routed into collections" tone="primary" />
+                        <StatTile label="Empty Collections" value={emptyCollections} hint="Collections ready for new entries" />
+                    </div>
+                </AppPanel>
+
                 {isLoading ? (
-                    <div className="flex justify-center py-12">
-                        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-                    </div>
+                    <AppPanel className="flex justify-center py-16">
+                        <div className="animate-spin h-8 w-8 rounded-full border-4 border-primary border-t-transparent" />
+                    </AppPanel>
                 ) : chapters.length === 0 ? (
-                    <div className="glass-card p-12 rounded-2xl text-center">
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/20 flex items-center justify-center text-4xl">📚</div>
-                        <h3 className="text-xl font-semibold text-white mb-2">No Chapters Yet</h3>
-                        <p className="text-slate-400 mb-6">Create chapters to organize your journal entries into meaningful collections.</p>
-                        <button
-                            onClick={() => setShowModal(true)}
-                            className="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl font-medium transition-all"
-                        >
-                            Create Your First Chapter
-                        </button>
-                    </div>
+                    <AppPanel className="space-y-6 text-center">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                            <FiBook size={30} aria-hidden="true" />
+                        </div>
+                        <SectionHeader
+                            kicker="Collections"
+                            title="No collections yet"
+                            description="Create collections to organize related entries, projects, or recurring life themes."
+                            className="justify-center text-center"
+                        />
+                        <div className="flex flex-wrap justify-center gap-3">
+                            <button
+                                type="button"
+                                onClick={openCreateModal}
+                                className="rounded-xl border border-primary/30 bg-primary px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
+                            >
+                                Create Your First Collection
+                            </button>
+                            <Link
+                                href={captureHref}
+                                className="rounded-xl border border-white/15 bg-white/[0.05] px-5 py-3 text-sm font-semibold text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                            >
+                                Quick Capture
+                            </Link>
+                        </div>
+                    </AppPanel>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {chapters.map((chapter) => (
-                            <div key={chapter.id} className="glass-card rounded-2xl overflow-hidden group hover:scale-[1.02] transition-transform duration-500">
-                                <div className="h-32 relative overflow-hidden bg-slate-900">
-                                    <div className="absolute inset-0 opacity-20" style={{ backgroundColor: chapter.color }} />
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <span className="text-6xl group-hover:scale-125 transition-transform duration-700">{chapter.icon}</span>
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {chapters.map((chapter) => {
+                            const ChapterIcon = getChapterIconComponent(chapter.icon);
+                            const openHref = appendReturnTo(`/chapters/view?id=${chapter.id}`, currentReturnTo);
+
+                            return (
+                                <article
+                                    key={chapter.id}
+                                    className="overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] transition-colors hover:border-white/15 hover:bg-white/[0.05]"
+                                >
+                                    <div className="relative h-32 overflow-hidden bg-surface-1">
+                                        <div className="absolute inset-0 opacity-20" style={{ backgroundColor: chapter.color }} />
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <ChapterIcon className="text-white transition-transform duration-500 group-hover:scale-110" size={60} aria-hidden="true" />
+                                        </div>
+                                        <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: chapter.color }} />
                                     </div>
-                                    <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: chapter.color }} />
-                                </div>
-                                <div className="p-6 relative">
-                                    <div className="absolute -top-4 right-6 px-3 py-1 rounded-full bg-slate-900 border border-white/10 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                        Vol. {chapter._count.entries.toString().padStart(2, '0')}
-                                    </div>
-                                    <div className="flex items-start justify-between mb-4">
+                                    <div className="space-y-4 p-5">
+                                        <div className="flex flex-wrap gap-2">
+                                            <TagPill tone="primary">{chapter._count.entries} entries</TagPill>
+                                            <TagPill>Started {new Date(chapter.createdAt).getFullYear()}</TagPill>
+                                        </div>
                                         <div>
-                                            <h3 className="text-xl font-bold text-white mb-1">{chapter.name}</h3>
-                                            <div className="flex items-center gap-2 text-xs text-slate-500">
-                                                <span>{chapter._count.entries} entries</span>
-                                                <span className="w-1 h-1 rounded-full bg-slate-700" />
-                                                <span>Started {new Date(chapter.createdAt).getFullYear()}</span>
-                                            </div>
+                                            <h3 className="text-xl font-semibold text-white">{chapter.name}</h3>
+                                            <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                                                {chapter.description || 'A focused collection for related entries and moments.'}
+                                            </p>
                                         </div>
-                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => openEditModal(chapter)} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                    <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                                                </svg>
+                                        <div className="flex flex-col gap-2 sm:flex-row">
+                                            <button
+                                                type="button"
+                                                onClick={() => openEditModal(chapter)}
+                                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2.5 text-sm font-semibold text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                            >
+                                                <FiEdit3 size={15} aria-hidden="true" />
+                                                Edit
                                             </button>
+                                            <Link
+                                                href={openHref}
+                                                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/20"
+                                            >
+                                                Open Collection
+                                                <FiArrowRight size={15} aria-hidden="true" />
+                                            </Link>
                                         </div>
                                     </div>
-                                    {chapter.description && <p className="text-slate-400 text-sm mb-6 line-clamp-2 italic">"{chapter.description}"</p>}
-                                    <Link href={`/chapters/view?id=${chapter.id}`} className="flex items-center justify-center w-full py-2.5 rounded-xl border border-white/5 bg-white/5 hover:bg-primary hover:text-white transition-all text-sm font-medium gap-2">
-                                        Open Volume
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-                                        </svg>
-                                    </Link>
-                                </div>
-                            </div>
-                        ))}
+                                </article>
+                            );
+                        })}
                     </div>
                 )}
             </div>
 
-            {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="glass-card rounded-2xl p-6 w-full max-w-md">
-                        <h2 className="text-xl font-bold text-white mb-6">{editingChapter ? 'Edit Chapter' : 'New Chapter'}</h2>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+                    <AppPanel className="w-full max-w-xl space-y-5">
+                        <SectionHeader
+                            kicker="Collections"
+                            title={editingChapter ? 'Edit collection' : 'New collection'}
+                            description="Name the collection, give it a short description, then choose the icon and color that make it easy to recognize."
+                        />
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-2">Name</label>
+                                <label className="mb-2 block text-sm font-medium text-ink-muted">Name</label>
                                 <input
                                     type="text"
                                     value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="My Chapter"
-                                    className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                    onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+                                    placeholder="My collection"
+                                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-2">Description</label>
+                                <label className="mb-2 block text-sm font-medium text-ink-muted">Description</label>
                                 <textarea
                                     value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    placeholder="What's this chapter about?"
-                                    rows={2}
-                                    className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                                    onChange={(event) => setFormData({ ...formData, description: event.target.value })}
+                                    placeholder="What belongs in this collection?"
+                                    rows={3}
+                                    className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-2">Icon</label>
+                                <label className="mb-2 block text-sm font-medium text-ink-muted">Icon</label>
                                 <div className="flex flex-wrap gap-2">
-                                    {ICONS.map((icon) => (
-                                        <button
-                                            key={icon}
-                                            type="button"
-                                            onClick={() => setFormData({ ...formData, icon })}
-                                            className={`w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all ${formData.icon === icon ? 'bg-primary' : 'bg-white/5 hover:bg-white/10'}`}
-                                        >
-                                            {icon}
-                                        </button>
-                                    ))}
+                                    {CHAPTER_ICON_OPTIONS.map(({ key, label }) => {
+                                        const Icon = CHAPTER_ICON_MAP[key];
+                                        return (
+                                            <button
+                                                key={key}
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, icon: key })}
+                                                title={label}
+                                                className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
+                                                    formData.icon === key
+                                                        ? 'bg-primary text-white'
+                                                        : 'bg-white/5 text-ink-secondary hover:bg-white/10 hover:text-white'
+                                                }`}
+                                            >
+                                                <Icon size={18} aria-hidden="true" />
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-2">Color</label>
+                                <label className="mb-2 block text-sm font-medium text-ink-muted">Color</label>
                                 <div className="flex flex-wrap gap-2">
                                     {COLORS.map((color) => (
                                         <button
                                             key={color}
                                             type="button"
                                             onClick={() => setFormData({ ...formData, color })}
-                                            className={`w-8 h-8 rounded-full transition-all ${formData.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900' : ''}`}
+                                            className={`h-8 w-8 rounded-full transition-all ${formData.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-surface-1' : ''}`}
                                             style={{ backgroundColor: color }}
                                         />
                                     ))}
                                 </div>
                             </div>
-                            <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 rounded-xl bg-white/5 text-white hover:bg-white/10 transition-all">
+                            <div className="flex flex-wrap gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowModal(false);
+                                        resetForm();
+                                    }}
+                                    className="flex-1 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                >
                                     Cancel
                                 </button>
-                                <button type="submit" className="flex-1 px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-all">
-                                    {editingChapter ? 'Save Changes' : 'Create Chapter'}
+                                <button
+                                    type="submit"
+                                    className="flex-1 rounded-xl border border-primary/30 bg-primary px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
+                                >
+                                    {editingChapter ? 'Save Changes' : 'Create Collection'}
                                 </button>
                             </div>
                         </form>
-                    </div>
+                    </AppPanel>
                 </div>
             )}
         </div>

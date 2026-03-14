@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
+import { buildEntryStorySignal } from '../services/opportunity.service';
 
 /**
  * Create a new chapter
  */
 export const createChapter = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
         const { name, description, color, icon } = req.body;
 
@@ -41,7 +41,6 @@ export const createChapter = async (req: Request, res: Response) => {
  */
 export const getChapters = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
 
         const chapters = await prisma.chapter.findMany({
@@ -66,7 +65,6 @@ export const getChapters = async (req: Request, res: Response) => {
  */
 export const getChapter = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
         const { id } = req.params;
 
@@ -95,7 +93,6 @@ export const getChapter = async (req: Request, res: Response) => {
  */
 export const updateChapter = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
         const { id } = req.params;
         const { name, description, color, icon } = req.body;
@@ -135,7 +132,6 @@ export const updateChapter = async (req: Request, res: Response) => {
  */
 export const deleteChapter = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
         const { id } = req.params;
 
@@ -163,7 +159,6 @@ export const deleteChapter = async (req: Request, res: Response) => {
  */
 export const getChapterEntries = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
         const { id } = req.params;
 
@@ -184,9 +179,33 @@ export const getChapterEntries = async (req: Request, res: Response) => {
             orderBy: { createdAt: 'desc' },
         });
 
-        return res.json({ chapter, entries });
+        return res.json({
+            chapter,
+            entries: entries.map((entry) => {
+                const responseEntry = Object.fromEntries(
+                    Object.entries(entry).filter(([key]) => key !== 'analysis' && key !== 'reflection')
+                ) as Omit<typeof entry, 'analysis' | 'reflection'>;
+
+                return {
+                    ...responseEntry,
+                    storySignal: buildEntryStorySignal({
+                        id: entry.id,
+                        title: entry.title,
+                        content: entry.content,
+                        mood: entry.mood,
+                        tags: entry.tags,
+                        skills: entry.skills,
+                        lessons: entry.lessons,
+                        reflection: entry.reflection,
+                        createdAt: entry.createdAt,
+                        analysis: entry.analysis,
+                    }),
+                };
+            }),
+        });
     } catch (error) {
         console.error('Get chapter entries error:', error);
         return res.status(500).json({ message: 'Failed to fetch chapter entries' });
     }
 };
+

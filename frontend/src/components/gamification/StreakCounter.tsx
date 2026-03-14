@@ -2,7 +2,7 @@
 
 import { useGamification } from '@/context/gamification-context';
 import { cn } from '@/utils/cn';
-import { Flame } from 'lucide-react';
+import { LuFlame } from 'react-icons/lu';
 
 export default function StreakCounter() {
     const { stats, isLoading } = useGamification();
@@ -22,10 +22,10 @@ export default function StreakCounter() {
         <div className={cn(
             "flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-500",
             streak > 0
-                ? "bg-orange-500/10 border-orange-500/30 text-orange-400 shadow-lg shadow-orange-500/10"
-                : "bg-white/5 border-white/10 text-slate-500"
+                ? "bg-primary/10 border-primary/30 text-primary shadow-lg shadow-primary/10"
+                : "bg-white/5 border-white/10 text-ink-muted"
         )}>
-            <Flame className={cn(
+            <LuFlame className={cn(
                 "w-4 h-4",
                 streak > 0 && "animate-bounce"
             )} />

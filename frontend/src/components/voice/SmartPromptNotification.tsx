@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { contextService } from '@/services/context.service';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
+import { FiMic, FiX } from 'react-icons/fi';
 
 export default function SmartPromptNotification() {
     const router = useRouter();
@@ -67,11 +68,7 @@ export default function SmartPromptNotification() {
                 {/* Icon */}
                 <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                            <line x1="12" x2="12" y1="19" y2="22" />
-                        </svg>
+                        <FiMic size={20} className="text-white" aria-hidden="true" />
                     </div>
 
                     {/* Content */}
@@ -79,7 +76,7 @@ export default function SmartPromptNotification() {
                         <h3 className="text-sm font-medium text-white mb-1">
                             Time to reflect?
                         </h3>
-                        <p className="text-sm text-slate-300 mb-3">
+                        <p className="text-sm text-ink-secondary mb-3">
                             {prompt}
                         </p>
 
@@ -93,7 +90,7 @@ export default function SmartPromptNotification() {
                             </button>
                             <button
                                 onClick={handleDismiss}
-                                className="py-2 px-3 text-slate-400 hover:text-white text-sm transition-colors"
+                                className="py-2 px-3 text-ink-secondary hover:text-white text-sm transition-colors"
                             >
                                 Later
                             </button>
@@ -103,11 +100,9 @@ export default function SmartPromptNotification() {
                     {/* Close button */}
                     <button
                         onClick={handleDismiss}
-                        className="text-slate-400 hover:text-white transition-colors"
+                        className="text-ink-secondary hover:text-white transition-colors"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M18 6 6 18M6 6l12 12" />
-                        </svg>
+                        <FiX size={18} aria-hidden="true" />
                     </button>
                 </div>
             </div>

@@ -8,10 +8,12 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { API_URL, DEBOUNCE_DELAY } from '@/constants/config';
 import { getMoodEmoji } from '@/constants/moods';
+import useApi from '@/hooks/use-api';
+import { FiSearch, FiX, FiXCircle } from 'react-icons/fi';
 
 interface SearchResult {
     id: string;
-    title: string;
+    title: string | null;
     content: string;
     mood: string | null;
     createdAt: string;
@@ -20,6 +22,7 @@ interface SearchResult {
 
 export function SmartSearch() {
     const { accessToken } = useAuth();
+    const { apiFetch } = useApi();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -45,9 +48,7 @@ export function SmartSearch() {
 
         setIsSearching(true);
         try {
-            const response = await fetch(`${API_URL}/entries/search?q=${encodeURIComponent(searchQuery)}`, {
-                headers: { Authorization: `Bearer ${accessToken}` },
-            });
+            const response = await apiFetch(`${API_URL}/entries/search?q=${encodeURIComponent(searchQuery)}`);
 
             if (response.ok) {
                 const data = await response.json();
@@ -59,20 +60,43 @@ export function SmartSearch() {
         } finally {
             setIsSearching(false);
         }
-    }, [accessToken]);
+    }, [accessToken, apiFetch]);
 
-    const highlightText = (text: string, query: string): string => {
-        if (!query) return text;
+    const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-        const words = query.split(/\s+/).filter(w => w.length > 2);
-        let highlighted = text;
-
-        words.forEach(word => {
-            const regex = new RegExp(`(${word})`, 'gi');
-            highlighted = highlighted.replace(regex, '<mark class="bg-yellow-300 text-black">$1</mark>');
+    const extractQueryTerms = (value: string): string[] => {
+        const uniqueTerms = new Set<string>();
+        value.split(/\s+/).forEach((term) => {
+            const normalized = term.trim();
+            if (normalized.length > 2) {
+                uniqueTerms.add(normalized);
+            }
         });
+        return Array.from(uniqueTerms);
+    };
 
-        return highlighted;
+    const highlightText = (text: string, currentQuery: string): React.ReactNode => {
+        if (!currentQuery) return text;
+
+        const terms = extractQueryTerms(currentQuery);
+        if (terms.length === 0) return text;
+
+        const escapedTerms = terms.map(escapeRegExp);
+        const regex = new RegExp(`(${escapedTerms.join('|')})`, 'gi');
+        const termLookup = new Set(terms.map((term) => term.toLowerCase()));
+        const parts = text.split(regex);
+
+        return parts.map((part, index) => {
+            if (!part) return null;
+            if (!termLookup.has(part.toLowerCase())) {
+                return <React.Fragment key={`text-${index}`}>{part}</React.Fragment>;
+            }
+            return (
+                <mark key={`mark-${index}`} className="bg-primary/25 text-white">
+                    {part}
+                </mark>
+            );
+        });
     };
 
     return (
@@ -85,25 +109,15 @@ export function SmartSearch() {
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => query && setShowResults(true)}
                     placeholder="Search your journal... (e.g., 'happy memories', 'work stress')"
-                    className="w-full px-5 py-4 pl-14 pr-14 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                    className="w-full px-5 py-4 pl-14 pr-14 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                 />
 
                 {/* Search Icon */}
-                <svg
-                    className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                >
-                    <circle cx="11" cy="11" r="8" />
-                    <path d="m21 21-4.3-4.3" />
-                </svg>
+                <FiSearch
+                    className="absolute left-5 top-1/2 -translate-y-1/2 text-ink-secondary"
+                    size={20}
+                    aria-hidden="true"
+                />
 
                 {/* Loading / Clear */}
                 <div className="absolute right-5 top-1/2 -translate-y-1/2">
@@ -115,13 +129,9 @@ export function SmartSearch() {
                                 setQuery('');
                                 setShowResults(false);
                             }}
-                            className="text-slate-400 hover:text-white transition-colors"
+                            className="text-ink-secondary hover:text-white transition-colors"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10" />
-                                <path d="m15 9-6 6" />
-                                <path d="m9 9 6 6" />
-                            </svg>
+                            <FiXCircle size={20} aria-hidden="true" />
                         </button>
                     ) : null}
                 </div>
@@ -131,17 +141,14 @@ export function SmartSearch() {
             {showResults && results.length > 0 && (
                 <div className="absolute top-full mt-2 w-full glass-card rounded-2xl p-4 z-50 max-h-[500px] overflow-y-auto">
                     <div className="flex items-center justify-between mb-4 px-2">
-                        <span className="text-sm text-slate-400">
+                        <span className="text-sm text-ink-secondary">
                             Found {results.length} {results.length === 1 ? 'entry' : 'entries'}
                         </span>
                         <button
                             onClick={() => setShowResults(false)}
-                            className="text-slate-400 hover:text-white transition-colors"
+                            className="text-ink-secondary hover:text-white transition-colors"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M18 6 6 18" />
-                                <path d="m6 6 12 12" />
-                            </svg>
+                            <FiX size={16} aria-hidden="true" />
                         </button>
                     </div>
 
@@ -166,25 +173,23 @@ export function SmartSearch() {
                                         {result.title && (
                                             <h4
                                                 className="font-bold text-white mb-1 group-hover:text-primary transition-colors"
-                                                dangerouslySetInnerHTML={{
-                                                    __html: highlightText(result.title, query)
-                                                }}
-                                            />
+                                            >
+                                                {highlightText(result.title, query)}
+                                            </h4>
                                         )}
 
                                         {/* Content Preview */}
                                         <p
-                                            className="text-sm text-slate-400 line-clamp-2"
-                                            dangerouslySetInnerHTML={{
-                                                __html: highlightText(
-                                                    result.content.substring(0, 150) + '...',
-                                                    query
-                                                )
-                                            }}
-                                        />
+                                            className="text-sm text-ink-secondary line-clamp-2"
+                                        >
+                                            {highlightText(
+                                                result.content.substring(0, 150) + '...',
+                                                query
+                                            )}
+                                        </p>
 
                                         {/* Metadata */}
-                                        <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                                        <div className="flex items-center gap-3 mt-2 text-xs text-ink-muted">
                                             <span>{new Date(result.createdAt).toLocaleDateString()}</span>
                                             {result.relevance && (
                                                 <>
@@ -203,7 +208,7 @@ export function SmartSearch() {
                     {results.length >= 20 && (
                         <div className="mt-4 pt-4 border-t border-white/10">
                             <Link
-                                href={`/search?q=${encodeURIComponent(query)}`}
+                                href={`/timeline?q=${encodeURIComponent(query)}`}
                                 className="block text-center text-primary hover:text-primary/80 transition-colors text-sm font-medium"
                                 onClick={() => setShowResults(false)}
                             >
@@ -217,9 +222,11 @@ export function SmartSearch() {
             {/* No Results */}
             {showResults && query && !isSearching && results.length === 0 && (
                 <div className="absolute top-full mt-2 w-full glass-card rounded-2xl p-8 z-50 text-center">
-                    <div className="text-4xl mb-3">🔍</div>
+                    <div className="mb-3 inline-flex items-center justify-center rounded-full bg-white/5 p-3 text-ink-secondary">
+                        <FiSearch size={24} aria-hidden="true" />
+                    </div>
                     <h4 className="text-white font-bold mb-2">No entries found</h4>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-ink-secondary text-sm">
                         Try different keywords or check your spelling
                     </p>
                 </div>

@@ -2,6 +2,7 @@
  * AI Content Analyzer Service
  * Automatically extracts metadata from journal entry content
  */
+import { normalizeMood } from '@/constants/moods';
 
 export interface ContentAnalysis {
     suggestedTitle: string;
@@ -174,8 +175,12 @@ class AIContentAnalyzerService {
                 keywords: /\b(calm|peaceful|relaxed|serene|tranquil|content|comfortable|easy|gentle|quiet)\b/gi,
                 weight: 0,
             },
-            angry: {
+            frustrated: {
                 keywords: /\b(angry|mad|furious|irritated|frustrated|annoyed|upset|rage|pissed|livid)\b/gi,
+                weight: 0,
+            },
+            grateful: {
+                keywords: /\b(grateful|thankful|blessed|appreciative|fortunate)\b/gi,
                 weight: 0,
             },
             motivated: {
@@ -209,7 +214,7 @@ class AIContentAnalyzerService {
             }
         }
 
-        return detectedMood;
+        return normalizeMood(detectedMood);
     }
 
     /**

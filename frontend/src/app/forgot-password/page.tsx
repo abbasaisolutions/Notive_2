@@ -4,7 +4,11 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Input, Button } from '@/components/ui/form-elements';
 import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
+import { AppPanel } from '@/components/ui/surface';
 import { motion } from 'framer-motion';
+import { API_URL } from '@/constants/config';
+import { getErrorMessage } from '@/utils/http';
+import { FiArrowLeft, FiLock, FiMail } from 'react-icons/fi';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
@@ -18,29 +22,26 @@ export default function ForgotPasswordPage() {
         setIsLoading(true);
 
         try {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
             const res = await fetch(`${API_URL}/auth/forgot-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email }),
             });
 
-            const data = await res.json();
-
             if (!res.ok) {
-                throw new Error(data.message || 'Failed to send reset email');
+                throw new Error(await getErrorMessage(res, 'Failed to send reset email'));
             }
 
             setIsSubmitted(true);
-        } catch (err: any) {
-            setError(err.message || 'Failed to send reset email. Please try again.');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to send reset email. Please try again.');
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-slate-950">
+        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
             {/* Background Glow Effects */}
             <motion.div
                 animate={{
@@ -78,16 +79,18 @@ export default function ForgotPasswordPage() {
                             Notive.
                         </motion.h1>
                     </Link>
-                    <p className="text-slate-400 mt-2">Recover your account.</p>
+                    <p className="text-ink-secondary mt-2">Recover your account.</p>
                 </div>
 
-                <div className="glass p-8 rounded-3xl border border-white/5 shadow-xl shadow-black/20">
+                <AppPanel className="p-8 rounded-3xl border-white/10 shadow-xl shadow-black/20">
                     {!isSubmitted ? (
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="text-center">
-                                <span className="text-4xl mb-4 block">🔐</span>
+                                <span className="mb-4 inline-flex rounded-full bg-white/5 p-3 text-ink-secondary">
+                                    <FiLock size={24} aria-hidden="true" />
+                                </span>
                                 <h2 className="text-xl font-bold text-white mb-2">Forgot Password?</h2>
-                                <p className="text-sm text-slate-400">
+                                <p className="text-sm text-ink-secondary">
                                     Enter your email address and we'll send you instructions to reset your password.
                                 </p>
                             </div>
@@ -96,7 +99,7 @@ export default function ForgotPasswordPage() {
                                 <motion.div
                                     initial={{ opacity: 0, y: -10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm"
+                                    className="bg-surface-2/55 border border-white/15 text-foreground px-4 py-3 rounded-xl text-sm"
                                 >
                                     {error}
                                 </motion.div>
@@ -123,9 +126,9 @@ export default function ForgotPasswordPage() {
                             <SlideUp delay={0.3} className="text-center">
                                 <Link
                                     href="/login"
-                                    className="text-sm text-slate-400 hover:text-white transition-colors flex items-center justify-center gap-2"
+                                    className="text-sm text-ink-secondary hover:text-white transition-colors flex items-center justify-center gap-2"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                                    <FiArrowLeft size={16} aria-hidden="true" />
                                     Back to Login
                                 </Link>
                             </SlideUp>
@@ -136,18 +139,18 @@ export default function ForgotPasswordPage() {
                             animate={{ opacity: 1, scale: 1 }}
                             className="text-center space-y-6"
                         >
-                            <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto text-4xl">
-                                ✉️
+                            <div className="w-20 h-20 bg-surface-2/55 rounded-full flex items-center justify-center mx-auto text-foreground">
+                                <FiMail size={32} aria-hidden="true" />
                             </div>
                             <div>
                                 <h2 className="text-2xl font-bold text-white mb-2">Check your email</h2>
-                                <p className="text-slate-400">
+                                <p className="text-ink-secondary">
                                     We've sent password reset instructions to <span className="text-white font-medium">{email}</span>
                                 </p>
                             </div>
 
-                            <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-200 text-xs text-left">
-                                <p><strong>Note for Developer:</strong> Since email service is mocked, check the backend console for the reset link.</p>
+                            <div className="p-4 bg-white/[0.03] border border-white/10 rounded-xl text-ink-secondary text-xs text-left">
+                                <p><strong>Local environment:</strong> if email delivery is mocked, check backend logs for the reset link.</p>
                             </div>
 
                             <Button
@@ -166,8 +169,10 @@ export default function ForgotPasswordPage() {
                             </Link>
                         </motion.div>
                     )}
-                </div>
+                </AppPanel>
             </FadeIn>
         </div>
     );
 }
+
+

@@ -4,11 +4,18 @@
     "private": true,
     "scripts": {
         "start": "node dist/index.js",
-        "dev": "nodemon src/index.ts",
-        "build": "tsc"
+        "dev": "nodemon --exec \"ts-node --files\" src/index.ts",
+        "build": "tsc",
+        "typecheck": "tsc --noEmit",
+        "audit:runtime": "npm audit --omit=dev --omit=peer --omit=optional --audit-level=high",
+        "audit:full": "npm audit",
+        "backfill:tags": "ts-node scripts/backfill-tags.ts",
+        "backfill:embeddings": "ts-node scripts/backfill-embeddings.ts",
+        "backfill:opportunity": "ts-node scripts/backfill-opportunity-evidence.ts"
     },
     "dependencies": {
-        "@prisma/client": "^5.22.0",
+        "@prisma/adapter-pg": "^7.4.1",
+        "@prisma/client": "^7.4.1",
         "axios": "^1.13.2",
         "bcrypt": "^6.0.0",
         "bcryptjs": "^3.0.3",
@@ -22,7 +29,6 @@
         "multer": "^2.0.2",
         "openai": "^6.10.0",
         "pg": "^8.11.3",
-        "prisma": "^5.22.0",
         "redis": "^4.6.12"
     },
     "devDependencies": {
@@ -36,10 +42,13 @@
         "@types/node": "^20.11.16",
         "@types/pg": "^8.11.0",
         "nodemon": "^3.0.3",
+        "prisma": "^7.4.1",
         "ts-node": "^10.9.2",
         "typescript": "^5.3.3"
     },
-    "prisma": {
-        "seed": "ts-node prisma/seed.ts"
+    "overrides": {
+        "gaxios": {
+            "rimraf": "^6.0.1"
+        }
     }
 }

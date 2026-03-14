@@ -1,11 +1,19 @@
 import { Request, Response } from 'express';
-import { OAuth2Client } from 'google-auth-library';
 import prisma from '../config/prisma';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
+import { hashToken } from '../utils/token-security';
+import { verifyGoogleCredential } from '../utils/google-auth';
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const getRefreshTokenExpiry = (): Date => {
+    const expiry = new Date();
+    expiry.setDate(expiry.getDate() + 7);
+    return expiry;
+};
 
-const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+const isMobileClient = (req: Request): boolean => {
+    const platform = (req.header('x-client-platform') || '').toLowerCase();
+    return platform === 'mobile' || platform === 'capacitor' || platform === 'native';
+};
 
 /**
  * Google Sign-In
@@ -18,29 +26,15 @@ export const googleSignIn = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Google credential is required' });
         }
 
-        // Verify the Google token
-        const ticket = await client.verifyIdToken({
-            idToken: credential,
-            audience: GOOGLE_CLIENT_ID,
-        });
-
-        const payload = ticket.getPayload();
-        if (!payload) {
-            return res.status(400).json({ message: 'Invalid Google token' });
-        }
-
-        const { sub: googleId, email, name, picture } = payload;
-
-        if (!email) {
-            return res.status(400).json({ message: 'Email not provided by Google' });
-        }
+        const { googleId, email, name, picture } = await verifyGoogleCredential(credential);
+        const normalizedEmail = email.toLowerCase();
 
         // Check if user exists
         let user = await prisma.user.findFirst({
             where: {
                 OR: [
                     { googleId },
-                    { email },
+                    { email: normalizedEmail },
                 ],
             },
         });
@@ -62,9 +56,9 @@ export const googleSignIn = async (req: Request, res: Response) => {
             // Create new user
             user = await prisma.user.create({
                 data: {
-                    email,
+                    email: normalizedEmail,
                     googleId,
-                    name: name || email.split('@')[0],
+                    name: name || normalizedEmail.split('@')[0],
                     avatarUrl: picture,
                 },
             });
@@ -73,14 +67,14 @@ export const googleSignIn = async (req: Request, res: Response) => {
         // Generate tokens
         const accessToken = generateAccessToken({ userId: user.id, email: user.email });
         const refreshToken = generateRefreshToken({ userId: user.id, email: user.email });
+        const refreshTokenHash = hashToken(refreshToken);
 
         // Save refresh token
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 30);
+        const expiresAt = getRefreshTokenExpiry();
 
         await prisma.refreshToken.create({
             data: {
-                token: refreshToken,
+                token: refreshTokenHash,
                 userId: user.id,
                 expiresAt,
             },
@@ -91,18 +85,27 @@ export const googleSignIn = async (req: Request, res: Response) => {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: 30 * 24 * 60 * 60 * 1000,
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+
+        const userWithProfile = await prisma.user.findUnique({
+            where: { id: user.id },
+            include: { profile: true },
         });
 
         return res.json({
             message: 'Login successful',
             accessToken,
+            ...(isMobileClient(req) ? { refreshToken } : {}),
             user: {
-                id: user.id,
-                email: user.email,
-                name: user.name,
-                avatarUrl: user.avatarUrl,
-                role: user.role,
+                id: userWithProfile?.id || user.id,
+                email: userWithProfile?.email || user.email,
+                name: userWithProfile?.name || user.name,
+                avatarUrl: userWithProfile?.avatarUrl || user.avatarUrl,
+                role: userWithProfile?.role || user.role,
+                hasPassword: Boolean(userWithProfile?.password || user.password),
+                createdAt: userWithProfile?.createdAt || user.createdAt,
+                profile: userWithProfile?.profile || null,
             },
         });
     } catch (error) {

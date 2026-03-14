@@ -6,13 +6,18 @@ import prisma from '../config/prisma';
 import nlpService from '../services/nlp.service';
 
 class InsightsController {
+    constructor() {
+        this.getInsights = this.getInsights.bind(this);
+        this.analyzeEntry = this.analyzeEntry.bind(this);
+        this.getPatterns = this.getPatterns.bind(this);
+    }
+
     /**
      * Get AI-generated insights for user's entries
      * GET /api/v1/analytics/insights
      */
     async getInsights(req: Request, res: Response) {
         try {
-            // @ts-ignore
             const userId = req.userId;
             const period = req.query.period as string || 'month';
 
@@ -41,13 +46,12 @@ class InsightsController {
 
             // Generate NLP insights
             const nlpInsights = await nlpService.generateInsights(
-                entries.map(e => ({
-                    content: e.content,
-                    mood: e.mood || undefined,
-                    createdAt: e.createdAt,
-                    skills: e.skills || undefined, /* skills are string[] ?? */
-                    lessons: e.lessons || undefined /* lessons are string[] ?? */
-                    // Check if skills/lessons exist on Entry type 
+                entries.map((entry: (typeof entries)[number]) => ({
+                    content: entry.content,
+                    mood: entry.mood || undefined,
+                    createdAt: entry.createdAt,
+                    skills: entry.skills || undefined,
+                    lessons: entry.lessons || undefined,
                 }))
             );
 
@@ -133,7 +137,6 @@ class InsightsController {
      */
     async getPatterns(req: Request, res: Response) {
         try {
-            // @ts-ignore
             const userId = req.userId;
 
             // Get entries from last 30 days
@@ -227,3 +230,4 @@ class InsightsController {
 }
 
 export default new InsightsController();
+

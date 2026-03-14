@@ -3,6 +3,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
+import useApi from '@/hooks/use-api';
+import useSpeechRecognition from '@/hooks/use-speech-recognition';
+import { API_URL } from '@/constants/config';
+import { FiMic, FiX } from 'react-icons/fi';
 
 interface FloatingVoiceButtonProps {
     onQuickCapture?: (text: string) => void;
@@ -11,82 +15,66 @@ interface FloatingVoiceButtonProps {
 export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceButtonProps) {
     const router = useRouter();
     const { user } = useAuth();
+    const { apiFetch } = useApi();
+    const [hasMounted, setHasMounted] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [isExpanded, setIsExpanded] = useState(false);
     const [audioLevel, setAudioLevel] = useState(0);
-    const recognitionRef = useRef<any>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
+    const mediaStreamRef = useRef<MediaStream | null>(null);
     const animationFrameRef = useRef<number>();
+    const [voiceError, setVoiceError] = useState<string | null>(null);
+
+    const {
+        isSupported: isVoiceSupported,
+        start: startSpeech,
+        stop: stopSpeech,
+        error: speechError,
+    } = useSpeechRecognition({
+        language: 'en-US',
+        interimResults: true,
+        continuous: true,
+        autoRestart: true,
+        onFinal: (text) => {
+            if (text.trim()) {
+                setTranscript(prev => prev + text.trim() + ' ');
+            }
+        },
+    });
 
     useEffect(() => {
-        // Initialize speech recognition
-        const SpeechRecognitionAPI =
-            (window as any).SpeechRecognition ||
-            (window as any).webkitSpeechRecognition;
+        setHasMounted(true);
+    }, []);
 
-        if (SpeechRecognitionAPI) {
-            recognitionRef.current = new SpeechRecognitionAPI();
-            recognitionRef.current.continuous = true;
-            recognitionRef.current.interimResults = true;
-            recognitionRef.current.lang = 'en-US';
-
-            recognitionRef.current.onresult = (event: any) => {
-                let finalTranscript = '';
-                let interimTranscript = '';
-
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    const result = event.results[i];
-                    if (result.isFinal) {
-                        finalTranscript += result[0].transcript + ' ';
-                    } else {
-                        interimTranscript += result[0].transcript;
-                    }
-                }
-
-                if (finalTranscript) {
-                    setTranscript(prev => prev + finalTranscript);
-                }
-            };
-
-            recognitionRef.current.onerror = (event: any) => {
-                console.error('Speech recognition error:', event.error);
-                stopRecording();
-            };
-
-            recognitionRef.current.onend = () => {
-                if (isRecording) {
-                    // Auto-restart if still in recording mode
-                    try {
-                        recognitionRef.current.start();
-                    } catch (e) {
-                        // Ignore
-                    }
-                }
-            };
+    useEffect(() => {
+        if (speechError) {
+            setVoiceError(speechError);
         }
+    }, [speechError]);
 
+    useEffect(() => {
+        if (!isVoiceSupported) {
+            setVoiceError('Speech recognition not supported on this device.');
+        }
+    }, [isVoiceSupported]);
+
+    useEffect(() => {
         return () => {
-            if (recognitionRef.current) {
-                recognitionRef.current.stop();
-            }
-            if (audioContextRef.current) {
-                audioContextRef.current.close();
-            }
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
-            }
+            cleanupAudioResources();
         };
-    }, [isRecording]);
+    }, []);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
 
     const startRecording = async () => {
-        if (!user) {
-            router.push('/login');
+        if (!user) return;
+
+        if (!isVoiceSupported) {
+            setVoiceError('Speech recognition not supported on this device.');
             return;
         }
 
@@ -97,12 +85,13 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaStreamRef.current = stream;
 
             // Start visualization
             startAudioVisualization(stream);
 
             // Start Speech Recognition
-            recognitionRef.current?.start();
+            startSpeech();
 
             // Start Media Recorder
             const mediaRecorder = new MediaRecorder(stream);
@@ -123,7 +112,7 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
 
     const stopRecording = () => {
         setIsRecording(false);
-        recognitionRef.current?.stop();
+        stopSpeech();
 
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             mediaRecorderRef.current.stop();
@@ -146,6 +135,8 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
         if (animationFrameRef.current) {
             cancelAnimationFrame(animationFrameRef.current);
         }
+
+        stopMediaStream();
     };
 
     const processRecording = async (audioBlob: Blob | null) => {
@@ -157,14 +148,10 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
             if (audioBlob) {
                 try {
                     const formData = new FormData();
-                    formData.append('image', audioBlob, 'voice-note.webm'); // Field name 'image' because backend uses upload.single('image') as generic
+                    formData.append('file', audioBlob, 'voice-note.webm');
 
-                    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
-                    const response = await fetch(`${API_URL}/entries/upload`, {
+                                        const response = await apiFetch(`${API_URL}/files/upload`, {
                         method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('accessToken')}` // Simple auth retrieval
-                        },
                         body: formData
                     });
 
@@ -185,6 +172,7 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                 } else {
                     // Navigate to new entry with pre-filled content
                     const params = new URLSearchParams();
+                    params.set('mode', 'quick');
                     params.set('voice', transcript);
                     if (audioUrl) {
                         params.set('audioUrl', audioUrl);
@@ -227,30 +215,58 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
 
     const handleDiscard = () => {
         setIsRecording(false);
-        recognitionRef.current?.stop();
+        stopSpeech();
+
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+        }
+
         setTranscript('');
         setIsExpanded(false);
+        setIsProcessing(false);
+        setAudioLevel(0);
+
+        cleanupAudioResources();
+    };
+
+    const stopMediaStream = () => {
+        if (mediaStreamRef.current) {
+            mediaStreamRef.current.getTracks().forEach(track => track.stop());
+            mediaStreamRef.current = null;
+        }
+    };
+
+    const cleanupAudioResources = () => {
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = undefined;
+        }
 
         if (audioContextRef.current) {
             audioContextRef.current.close();
             audioContextRef.current = null;
         }
+
+        analyserRef.current = null;
+        stopMediaStream();
     };
 
-    if (!user) return null;
+    if (!user || !hasMounted) return null;
 
     return (
         <>
             {/* Floating Button */}
-            <div className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ${isExpanded ? 'w-80' : 'w-16'
-                }`}>
+            <div
+                className={`fixed right-4 md:right-6 z-40 transition-all duration-300 ${isExpanded ? 'w-[min(19rem,calc(100vw-1.5rem))] md:w-80' : 'w-12 sm:w-14 md:w-16'}`}
+                style={{ bottom: 'var(--app-floating-voice-bottom, 1.5rem)' }}
+            >
                 {isExpanded ? (
                     // Expanded Recording View
                     <div className="glass-card rounded-2xl p-4 shadow-2xl">
                         {/* Header */}
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
-                                <div className={`w-3 h-3 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-green-500'
+                                <div className={`w-3 h-3 rounded-full ${isRecording ? 'bg-white/60 animate-pulse' : 'bg-neutral-400'
                                     }`} />
                                 <span className="text-sm font-medium text-white">
                                     {isRecording ? 'Recording...' : isProcessing ? 'Processing...' : 'Ready'}
@@ -258,12 +274,10 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                             </div>
                             <button
                                 onClick={handleDiscard}
-                                className="text-slate-400 hover:text-white transition-colors"
+                                className="text-ink-secondary hover:text-white transition-colors"
                                 disabled={isProcessing}
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M18 6 6 18M6 6l12 12" />
-                                </svg>
+                                <FiX size={20} aria-hidden="true" />
                             </button>
                         </div>
 
@@ -283,18 +297,23 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                         )}
 
                         {/* Transcript Preview */}
-                        <div className="bg-slate-800/50 rounded-lg p-3 mb-3 min-h-[60px] max-h-[120px] overflow-y-auto">
-                            <p className="text-sm text-slate-300">
+                        <div className="bg-surface-2/50 rounded-lg p-3 mb-3 min-h-[60px] max-h-[120px] overflow-y-auto">
+                            <p className="text-sm text-ink-secondary">
                                 {transcript || (isRecording ? 'Start speaking...' : 'Tap the mic to start')}
                             </p>
                         </div>
+                        {voiceError && (
+                            <p className="text-xs text-zinc-300 mb-3">
+                                {voiceError}
+                            </p>
+                        )}
 
                         {/* Action Buttons */}
                         <div className="flex gap-2">
                             {isRecording ? (
                                 <button
                                     onClick={stopRecording}
-                                    className="flex-1 py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                                    className="flex-1 py-2 px-4 bg-primary hover:bg-primary/85 text-white rounded-lg font-medium transition-colors"
                                 >
                                     Stop & Save
                                 </button>
@@ -310,28 +329,14 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                     // Collapsed Button
                     <button
                         onClick={startRecording}
-                        className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-secondary shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center group"
+                        className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full bg-gradient-to-br from-primary to-secondary shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center group"
                         aria-label="Start voice recording"
                     >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="28"
-                            height="28"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="white"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="group-hover:scale-110 transition-transform"
-                        >
-                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                            <line x1="12" x2="12" y1="19" y2="22" />
-                        </svg>
+                        <FiMic size={24} className="text-white group-hover:scale-110 transition-transform md:h-7 md:w-7" aria-hidden="true" />
                     </button>
                 )}
             </div>
         </>
     );
 }
+

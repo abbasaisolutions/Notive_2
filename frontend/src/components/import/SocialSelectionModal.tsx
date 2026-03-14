@@ -1,14 +1,21 @@
-// Social Import Selection Modal
-// File: frontend/src/components/import/SocialSelectionModal.tsx
-
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '@/context/auth-context';
-import { API_URL } from '@/constants/config';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import useApi from '@/hooks/use-api';
+import { FiCheck } from 'react-icons/fi';
 
-interface Candidate {
+interface ImportCandidate {
+    id: string;
+    provider: 'instagram' | 'facebook';
+    text: string;
+    imageUrl: string | null;
+    createdAt: string;
+    sourceLink: string | null;
+    tags: string[];
+}
+
+interface LegacyCandidate {
     id: string;
     caption?: string;
     message?: string;
@@ -16,6 +23,8 @@ interface Candidate {
     full_picture?: string;
     timestamp?: string;
     created_time?: string;
+    permalink?: string;
+    permalink_url?: string;
 }
 
 interface SocialSelectionModalProps {
@@ -25,73 +34,142 @@ interface SocialSelectionModalProps {
     onImportComplete: (result: { imported: number; skipped: number }) => void;
 }
 
+const toSafeDate = (value: string | undefined): string => {
+    if (!value) return new Date().toISOString();
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+};
+
+const normalizeCandidate = (
+    raw: ImportCandidate | LegacyCandidate,
+    provider: 'instagram' | 'facebook'
+): ImportCandidate => {
+    const candidate = raw as Partial<ImportCandidate> & LegacyCandidate;
+    const text = (candidate.text || candidate.caption || candidate.message || '').trim() || 'Untitled memory';
+    const imageUrl = candidate.imageUrl || candidate.media_url || candidate.full_picture || null;
+    const createdAt = toSafeDate(candidate.createdAt || candidate.timestamp || candidate.created_time);
+    const sourceLink = candidate.sourceLink || candidate.permalink || candidate.permalink_url || null;
+    const tags = Array.isArray(candidate.tags)
+        ? candidate.tags.filter((tag): tag is string => typeof tag === 'string')
+        : [];
+
+    return {
+        id: String(candidate.id),
+        provider,
+        text,
+        imageUrl,
+        createdAt,
+        sourceLink,
+        tags,
+    };
+};
+
+const formatDate = (value: string): string =>
+    new Date(value).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+
 export function SocialSelectionModal({ isOpen, onClose, provider, onImportComplete }: SocialSelectionModalProps) {
-    const { accessToken } = useAuth();
-    const [candidates, setCandidates] = useState<Candidate[]>([]);
+    const { apiFetch } = useApi();
+    const [candidates, setCandidates] = useState<ImportCandidate[]>([]);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [search, setSearch] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch candidates when modal opens
-    useEffect(() => {
-        if (isOpen && accessToken) {
-            fetchCandidates();
-        }
-    }, [isOpen, accessToken, provider]);
+    const providerName = provider === 'instagram' ? 'Instagram' : 'Facebook';
+    const providerGradient = provider === 'instagram'
+        ? 'from-primary via-accent to-secondary'
+        : 'from-primary/90 via-accent to-secondary';
+    const providerAccent = provider === 'instagram'
+        ? 'border-white/15 bg-white/[0.03] text-white'
+        : 'border-white/15 bg-white/[0.03] text-white';
 
-    const fetchCandidates = async () => {
+    const visibleCandidates = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return candidates;
+        return candidates.filter((candidate) => {
+            const textMatch = candidate.text.toLowerCase().includes(q);
+            const tagMatch = candidate.tags.some((tag) => tag.toLowerCase().includes(q));
+            return textMatch || tagMatch;
+        });
+    }, [candidates, search]);
+
+    const fetchCandidates = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${API_URL}/import/candidates?provider=${provider}`, {
-                headers: { Authorization: `Bearer ${accessToken}` },
-            });
-
+            const response = await apiFetch(`/import/candidates?provider=${provider}`);
+            const data = await response.json().catch(() => null);
             if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.message || 'Failed to load memories');
+                throw new Error(data?.message || 'Failed to load import candidates.');
             }
 
-            const data = await response.json();
-            setCandidates(data.candidates || []);
+            const list = Array.isArray(data?.candidates)
+                ? (data.candidates as Array<ImportCandidate | LegacyCandidate>)
+                : [];
+            const normalized = list.map((candidate) => normalizeCandidate(candidate, provider));
+            setCandidates(normalized);
+            setSelectedIds(new Set(normalized.map((candidate) => candidate.id)));
         } catch (err: any) {
-            setError(err.message);
+            setError(err?.message || 'Failed to load import candidates.');
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [apiFetch, provider]);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setCandidates([]);
+            setSelectedIds(new Set());
+            setSearch('');
+            setError(null);
+            return;
+        }
+        fetchCandidates();
+    }, [fetchCandidates, isOpen]);
 
     const toggleSelection = (id: string) => {
-        setSelectedIds(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(id)) {
-                newSet.delete(id);
+        setSelectedIds((previous) => {
+            const next = new Set(previous);
+            if (next.has(id)) {
+                next.delete(id);
             } else {
-                newSet.add(id);
+                next.add(id);
             }
-            return newSet;
+            return next;
         });
     };
 
     const selectAll = () => {
-        setSelectedIds(new Set(candidates.map(c => c.id)));
+        setSelectedIds(new Set(candidates.map((candidate) => candidate.id)));
     };
 
-    const deselectAll = () => {
+    const clearAll = () => {
         setSelectedIds(new Set());
+    };
+
+    const selectVisible = () => {
+        setSelectedIds((previous) => {
+            const next = new Set(previous);
+            visibleCandidates.forEach((candidate) => next.add(candidate.id));
+            return next;
+        });
     };
 
     const handleImport = async () => {
         if (selectedIds.size === 0) return;
 
         setIsImporting(true);
+        setError(null);
         try {
-            const response = await fetch(`${API_URL}/import/batch`, {
+            const response = await apiFetch('/import/batch', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify({
                     provider,
@@ -99,31 +177,22 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                 }),
             });
 
+            const result = await response.json().catch(() => null);
             if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.message || 'Import failed');
+                throw new Error(result?.message || 'Import failed.');
             }
 
-            const result = await response.json();
-            onImportComplete(result);
+            onImportComplete({
+                imported: Number(result?.imported) || 0,
+                skipped: Number(result?.skipped) || 0,
+            });
             onClose();
         } catch (err: any) {
-            setError(err.message);
+            setError(err?.message || 'Import failed.');
         } finally {
             setIsImporting(false);
         }
     };
-
-    const getImageUrl = (c: Candidate) => c.media_url || c.full_picture;
-    const getCaption = (c: Candidate) => c.caption || c.message || 'No caption';
-    const getDate = (c: Candidate) => {
-        const dateStr = c.timestamp || c.created_time;
-        if (!dateStr) return '';
-        return new Date(dateStr).toLocaleDateString();
-    };
-
-    const providerName = provider === 'instagram' ? 'Instagram' : 'Facebook';
-    const providerColor = provider === 'instagram' ? 'from-pink-500 to-purple-600' : 'from-blue-500 to-indigo-600';
 
     if (!isOpen) return null;
 
@@ -133,145 +202,177 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
                 onClick={onClose}
             >
                 <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                    className="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl"
-                    onClick={(e) => e.stopPropagation()}
+                    initial={{ opacity: 0, scale: 0.96, y: 14 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: 10 }}
+                    transition={{ duration: 0.22 }}
+                    className="w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-3xl border border-white/10 bg-surface-1 shadow-[0_28px_120px_rgba(0,0,0,0.6)] flex flex-col"
+                    onClick={(event) => event.stopPropagation()}
                 >
-                    {/* Header */}
-                    <div className={`p-6 bg-gradient-to-r ${providerColor} rounded-t-3xl`}>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
-                                    {provider === 'instagram' ? (
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
-                                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
-                                        </svg>
-                                    ) : (
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
-                                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                                        </svg>
-                                    )}
-                                </div>
-                                <div>
-                                    <h2 className="text-2xl font-bold text-white">Select {providerName} Memories</h2>
-                                    <p className="text-white/80 text-sm">Choose the moments you want to import</p>
-                                </div>
+                    <header className={`bg-gradient-to-r ${providerGradient} p-6`}>
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-2">
+                                <p className="text-xs uppercase tracking-[0.16em] text-white/80">Step 2: Select Memories</p>
+                                <h2 className="text-2xl font-semibold text-white">{providerName} Import Queue</h2>
+                                <p className="text-sm text-white/85">Choose memories to map into your timeline entries.</p>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all"
+                                className="rounded-xl border border-white/40 bg-white/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/30"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18" />
-                                    <line x1="6" y1="6" x2="18" y2="18" />
-                                </svg>
+                                Close
                             </button>
                         </div>
-                    </div>
+                    </header>
 
-                    {/* Selection Controls */}
-                    <div className="p-4 border-b border-white/10 flex items-center justify-between bg-slate-800/50">
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={selectAll}
-                                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-medium text-white transition-all"
-                            >
-                                Select All
-                            </button>
-                            <button
-                                onClick={deselectAll}
-                                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-medium text-white transition-all"
-                            >
-                                Deselect All
-                            </button>
-                        </div>
-                        <div className="text-sm text-slate-400">
-                            <span className="text-white font-bold">{selectedIds.size}</span> of <span className="text-white font-bold">{candidates.length}</span> selected
-                        </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 overflow-y-auto p-6">
-                        {isLoading ? (
-                            <div className="flex flex-col items-center justify-center h-64 gap-4">
-                                <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full" />
-                                <p className="text-slate-400">Loading your memories...</p>
+                    <section className="border-b border-white/10 bg-surface-1/80 p-4">
+                        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(event) => setSearch(event.target.value)}
+                                    placeholder="Filter by text or tag"
+                                    className="w-full rounded-xl border border-white/15 bg-white/[0.03] px-4 py-2.5 text-sm text-white placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                />
                             </div>
-                        ) : error ? (
-                            <div className="flex flex-col items-center justify-center h-64 gap-4">
-                                <div className="text-4xl">😔</div>
-                                <p className="text-red-400">{error}</p>
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    onClick={selectAll}
+                                    className="rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/[0.08]"
+                                >
+                                    Select All
+                                </button>
+                                <button
+                                    onClick={selectVisible}
+                                    className="rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/[0.08]"
+                                >
+                                    Select Visible
+                                </button>
+                                <button
+                                    onClick={clearAll}
+                                    className="rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/[0.08]"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between text-xs">
+                            <span className="text-ink-secondary">
+                                Showing {visibleCandidates.length} of {candidates.length}
+                            </span>
+                            <span className={`rounded-full border px-2.5 py-1 ${providerAccent}`}>
+                                {selectedIds.size} selected
+                            </span>
+                        </div>
+                    </section>
+
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6">
+                        {isLoading && (
+                            <div className="flex h-52 items-center justify-center">
+                                <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                            </div>
+                        )}
+
+                        {!isLoading && error && (
+                            <div className="rounded-2xl border border-white/15 bg-white/[0.03] p-5 text-sm text-white">
+                                <p>{error}</p>
                                 <button
                                     onClick={fetchCandidates}
-                                    className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/80 text-white font-medium transition-all"
+                                    className="mt-3 rounded-lg border border-white/15 bg-white/[0.05] px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]"
                                 >
                                     Retry
                                 </button>
                             </div>
-                        ) : candidates.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-64 gap-4">
-                                <div className="text-4xl">📭</div>
-                                <p className="text-slate-400">No memories found to import.</p>
+                        )}
+
+                        {!isLoading && !error && visibleCandidates.length === 0 && (
+                            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center">
+                                <p className="text-sm text-ink-secondary">No memories match this filter.</p>
                             </div>
-                        ) : (
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {candidates.map((candidate) => {
-                                    const isSelected = selectedIds.has(candidate.id);
-                                    const imageUrl = getImageUrl(candidate);
+                        )}
+
+                        {!isLoading && !error && visibleCandidates.length > 0 && (
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                                {visibleCandidates.map((candidate) => {
+                                    const selected = selectedIds.has(candidate.id);
 
                                     return (
                                         <motion.div
                                             key={candidate.id}
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.98 }}
                                             onClick={() => toggleSelection(candidate.id)}
-                                            className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all border-2 ${isSelected
-                                                    ? 'border-primary ring-2 ring-primary/50'
-                                                    : 'border-transparent hover:border-white/20'
-                                                }`}
+                                            onKeyDown={(event) => {
+                                                if (event.key === 'Enter' || event.key === ' ') {
+                                                    event.preventDefault();
+                                                    toggleSelection(candidate.id);
+                                                }
+                                            }}
+                                            role="button"
+                                            tabIndex={0}
+                                            whileHover={{ y: -2 }}
+                                            whileTap={{ scale: 0.995 }}
+                                            className={`relative overflow-hidden rounded-2xl border text-left transition ${
+                                                selected
+                                                    ? 'border-primary/70 bg-primary/[0.08] shadow-[0_0_0_1px_rgba(127,90,240,0.3)]'
+                                                    : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                                            }`}
                                         >
-                                            {/* Image */}
-                                            <div className="aspect-square bg-slate-800">
-                                                {imageUrl ? (
+                                            <div className="relative aspect-[4/3] overflow-hidden bg-surface-1">
+                                                {candidate.imageUrl ? (
                                                     <img
-                                                        src={imageUrl}
+                                                        src={candidate.imageUrl}
                                                         alt=""
-                                                        className="w-full h-full object-cover"
+                                                        className="h-full w-full object-cover"
                                                     />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-4xl">
-                                                        📝
-                                                    </div>
+                                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.26),_transparent_58%),linear-gradient(130deg,rgba(15,23,42,0.95),rgba(2,6,23,1))]" />
                                                 )}
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                                                <div className="absolute right-3 top-3">
+                                                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${
+                                                        selected
+                                                            ? 'border-primary bg-primary text-white'
+                                                            : 'border-white/40 bg-black/45 text-white'
+                                                    }`}>
+                                                        {selected && (
+                                                            <FiCheck size={12} aria-hidden="true" />
+                                                        )}
+                                                    </span>
+                                                </div>
                                             </div>
 
-                                            {/* Overlay */}
-                                            <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-3 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-80'
-                                                }`}>
-                                                <p className="text-white text-xs line-clamp-2 font-medium">
-                                                    {getCaption(candidate)}
-                                                </p>
-                                                <p className="text-white/60 text-[10px] mt-1">
-                                                    {getDate(candidate)}
-                                                </p>
-                                            </div>
-
-                                            {/* Selection Indicator */}
-                                            <div className={`absolute top-3 right-3 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected
-                                                    ? 'bg-primary border-primary'
-                                                    : 'bg-black/50 border-white/50'
-                                                }`}>
-                                                {isSelected && (
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                        <polyline points="20 6 9 17 4 12" />
-                                                    </svg>
+                                            <div className="space-y-3 p-3">
+                                                <p className="line-clamp-3 text-sm text-white">{candidate.text}</p>
+                                                <div className="flex items-center justify-between gap-2 text-xs text-ink-secondary">
+                                                    <span>{formatDate(candidate.createdAt)}</span>
+                                                    {candidate.sourceLink && (
+                                                        <a
+                                                            href={candidate.sourceLink}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            onClick={(event) => event.stopPropagation()}
+                                                            className="rounded-md border border-white/20 bg-white/[0.04] px-2 py-1 uppercase tracking-[0.08em] text-white hover:bg-white/[0.08]"
+                                                        >
+                                                            Source
+                                                        </a>
+                                                    )}
+                                                </div>
+                                                {candidate.tags.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {candidate.tags.slice(0, 3).map((tag) => (
+                                                            <span
+                                                                key={`${candidate.id}-${tag}`}
+                                                                className="rounded-full border border-white/15 bg-white/[0.03] px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-ink-secondary"
+                                                            >
+                                                                #{tag}
+                                                            </span>
+                                                        ))}
+                                                    </div>
                                                 )}
                                             </div>
                                         </motion.div>
@@ -281,41 +382,27 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                         )}
                     </div>
 
-                    {/* Footer */}
-                    <div className="p-4 border-t border-white/10 bg-slate-800/50">
-                        <div className="flex items-center justify-between">
-                            <button
-                                onClick={onClose}
-                                className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-all"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleImport}
-                                disabled={selectedIds.size === 0 || isImporting}
-                                className={`px-8 py-3 rounded-xl font-bold text-white transition-all flex items-center gap-2 ${selectedIds.size === 0 || isImporting
-                                        ? 'bg-slate-700 cursor-not-allowed opacity-50'
-                                        : `bg-gradient-to-r ${providerColor} hover:opacity-90 shadow-lg`
-                                    }`}
-                            >
-                                {isImporting ? (
-                                    <>
-                                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                                        Importing...
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                            <polyline points="7 10 12 15 17 10" />
-                                            <line x1="12" y1="15" x2="12" y2="3" />
-                                        </svg>
-                                        Import {selectedIds.size} {selectedIds.size === 1 ? 'Memory' : 'Memories'}
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </div>
+                    <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-surface-1/80 p-4">
+                        <button
+                            onClick={onClose}
+                            className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/[0.08]"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleImport}
+                            disabled={selectedIds.size === 0 || isImporting}
+                            className={`rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.09em] text-white transition ${
+                                selectedIds.size === 0 || isImporting
+                                    ? 'cursor-not-allowed bg-surface-2/80 opacity-60'
+                                    : `bg-gradient-to-r ${providerGradient} shadow-lg`
+                            }`}
+                        >
+                            {isImporting
+                                ? 'Importing...'
+                                : `Import ${selectedIds.size} ${selectedIds.size === 1 ? 'memory' : 'memories'}`}
+                        </button>
+                    </footer>
                 </motion.div>
             </motion.div>
         </AnimatePresence>
@@ -323,3 +410,4 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
 }
 
 export default SocialSelectionModal;
+

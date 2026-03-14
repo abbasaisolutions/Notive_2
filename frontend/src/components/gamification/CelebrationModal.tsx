@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useGamification, BADGES } from '@/context/gamification-context';
+import { useGamification } from '@/context/gamification-context';
+import { FiAward, FiTrendingUp } from 'react-icons/fi';
 
 const Confetti = () => {
     const [particles, setParticles] = useState<Array<{ id: number; x: number; color: string; delay: number }>>([]);
 
     useEffect(() => {
-        const colors = ['#6366f1', '#ec4899', '#22c55e', '#f59e0b', '#06b6d4', '#8b5cf6'];
+        const colors = ['#64748b', '#6b7280', '#78716c', '#52525b', '#334155', '#94a3b8'];
         const newParticles = Array.from({ length: 50 }, (_, i) => ({
             id: i,
             x: Math.random() * 100,
@@ -46,28 +47,37 @@ export default function CelebrationModal() {
                 <div className="glass-card p-8 rounded-3xl text-center max-w-sm animate-celebration" onClick={(e) => e.stopPropagation()}>
                     {celebrationType === 'badge' && newBadge && (
                         <>
-                            <div className="text-6xl mb-4 animate-bounce">{newBadge.icon}</div>
+                            <div className="mb-4 flex items-center justify-center text-primary animate-bounce">
+                                {(() => {
+                                    const BadgeIcon = newBadge.icon;
+                                    return <BadgeIcon size={56} aria-hidden="true" />;
+                                })()}
+                            </div>
                             <h2 className="text-2xl font-bold text-white mb-2">Badge Unlocked!</h2>
                             <p className="text-xl text-primary mb-2">{newBadge.name}</p>
-                            <p className="text-slate-400 mb-6">{newBadge.description}</p>
+                            <p className="text-ink-secondary mb-6">{newBadge.description}</p>
                         </>
                     )}
 
                     {celebrationType === 'levelup' && (
                         <>
-                            <div className="text-6xl mb-4">🎉</div>
+                            <div className="mb-4 flex items-center justify-center text-primary">
+                                <FiAward size={56} aria-hidden="true" />
+                            </div>
                             <h2 className="text-2xl font-bold text-white mb-2">Level Up!</h2>
                             <p className="text-5xl font-bold text-primary mb-2">{stats?.level}</p>
-                            <p className="text-slate-400 mb-6">You're becoming a journaling master!</p>
+                            <p className="text-ink-secondary mb-6">You're becoming a journaling master!</p>
                         </>
                     )}
 
                     {celebrationType === 'streak' && (
                         <>
-                            <div className="text-6xl mb-4">🔥</div>
+                            <div className="mb-4 flex items-center justify-center text-primary">
+                                <FiTrendingUp size={56} aria-hidden="true" />
+                            </div>
                             <h2 className="text-2xl font-bold text-white mb-2">Streak Milestone!</h2>
-                            <p className="text-5xl font-bold text-orange-500 mb-2">{stats?.currentStreak} Days</p>
-                            <p className="text-slate-400 mb-6">Keep the momentum going!</p>
+                            <p className="text-5xl font-bold text-primary mb-2">{stats?.currentStreak} Days</p>
+                            <p className="text-ink-secondary mb-6">Keep the momentum going!</p>
                         </>
                     )}
 
@@ -75,7 +85,7 @@ export default function CelebrationModal() {
                         onClick={dismissCelebration}
                         className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-all"
                     >
-                        Awesome! 🚀
+                        Awesome
                     </button>
                 </div>
             </div>

@@ -89,49 +89,41 @@ export interface StructuredEntryData {
 class StructuredDataService {
     // Enhanced Emotion patterns with intensity weights
     private emotionPatterns = {
-        joy: {
-            keywords: ['happy', 'joyful', 'excited', 'thrilled', 'delighted', 'ecstatic', 'cheerful', 'content', 'pleased', 'radiant', 'elated'],
-            intensity: [7, 8, 8, 9, 8, 10, 7, 6, 6, 9, 10]
+        happy: {
+            keywords: ['happy', 'joyful', 'excited', 'thrilled', 'delighted', 'ecstatic', 'cheerful', 'pleased', 'radiant', 'elated', 'hopeful', 'optimistic'],
+            intensity: [7, 8, 8, 9, 8, 10, 7, 6, 9, 10, 7, 8]
         },
-        sadness: {
-            keywords: ['sad', 'unhappy', 'depressed', 'miserable', 'heartbroken', 'devastated', 'gloomy', 'down', 'melancholy', 'grief'],
-            intensity: [6, 6, 8, 8, 9, 10, 6, 5, 7, 10]
+        sad: {
+            keywords: ['sad', 'unhappy', 'depressed', 'miserable', 'heartbroken', 'devastated', 'gloomy', 'down', 'melancholy', 'grief', 'lonely', 'isolated'],
+            intensity: [6, 6, 8, 8, 9, 10, 6, 5, 7, 10, 7, 8]
         },
-        anxiety: {
-            keywords: ['anxious', 'worried', 'nervous', 'stressed', 'overwhelmed', 'panicked', 'tense', 'uneasy', 'fearful', 'dread'],
-            intensity: [7, 6, 6, 7, 9, 10, 6, 5, 8, 9]
+        anxious: {
+            keywords: ['anxious', 'worried', 'nervous', 'stressed', 'overwhelmed', 'panicked', 'tense', 'uneasy', 'fearful', 'dread', 'uncertain', 'unsure'],
+            intensity: [7, 6, 6, 7, 9, 10, 6, 5, 8, 9, 6, 6]
         },
-        peace: {
+        calm: {
             keywords: ['calm', 'peaceful', 'relaxed', 'serene', 'tranquil', 'content', 'comfortable', 'at ease', 'mindful', 'grounded'],
             intensity: [7, 8, 7, 9, 9, 6, 6, 7, 8, 8]
         },
-        anger: {
+        frustrated: {
             keywords: ['angry', 'furious', 'irritated', 'frustrated', 'annoyed', 'livid', 'mad', 'upset', 'rage', 'resentful'],
             intensity: [7, 10, 5, 7, 5, 10, 6, 6, 10, 8]
         },
-        drive: {
+        motivated: {
             keywords: ['motivated', 'inspired', 'driven', 'determined', 'ambitious', 'energized', 'focused', 'productive', 'unstoppable'],
             intensity: [8, 8, 8, 8, 7, 8, 7, 7, 10]
         },
-        gratitude: {
+        grateful: {
             keywords: ['grateful', 'thankful', 'blessed', 'appreciative', 'fortunate', 'lucky', 'humbled', 'moved'],
             intensity: [8, 8, 9, 7, 7, 6, 8, 7]
         },
-        exhaustion: {
+        tired: {
             keywords: ['tired', 'exhausted', 'drained', 'fatigued', 'burned out', 'weary', 'sleepy', 'lethargic'],
             intensity: [5, 9, 8, 7, 9, 7, 4, 6]
         },
-        hope: {
-            keywords: ['hopeful', 'optimistic', 'positive', 'confident', 'encouraged', 'expectant', 'looking forward'],
-            intensity: [7, 8, 6, 7, 7, 7, 7]
-        },
-        loneliness: {
-            keywords: ['lonely', 'isolated', 'alone', 'disconnected', 'abandoned', 'forgotten', 'invisible'],
-            intensity: [7, 8, 5, 7, 9, 8, 8]
-        },
-        confusion: {
-            keywords: ['confused', 'lost', 'uncertain', 'unsure', 'perplexed', 'conflicted', 'torn'],
-            intensity: [6, 8, 7, 6, 7, 8, 8]
+        thoughtful: {
+            keywords: ['thoughtful', 'reflective', 'reflecting', 'pondering', 'considering', 'contemplating', 'realizing', 'confused', 'perplexed', 'conflicted', 'torn'],
+            intensity: [6, 7, 7, 7, 6, 7, 7, 6, 7, 8, 8]
         }
     };
 
@@ -224,7 +216,7 @@ class StructuredDataService {
             wordCount: this.countWords(cleanContent),
             readingTime: Math.ceil(this.countWords(cleanContent) / 200),
 
-            primaryEmotion: emotions[0] || { emotion: 'neutral', intensity: 5 },
+            primaryEmotion: emotions[0] || { emotion: 'calm', intensity: 4 },
             secondaryEmotions: emotions.slice(1),
             overallSentiment: sentiment.type,
             sentimentScore: sentiment.score,
@@ -237,7 +229,7 @@ class StructuredDataService {
             growthPoints,
             emotionalIntelligence,
 
-            suggestedTags: this.extractTags(cleanContent, growthPoints),
+            suggestedTags: this.extractTags(cleanContent, growthPoints, emotions),
             suggestedChapter: this.suggestChapter(cleanContent),
             timeReferences: this.extractTimeReferences(cleanContent),
             keyPhrases: this.extractKeyPhrases(cleanContent),
@@ -582,7 +574,7 @@ class StructuredDataService {
     /**
      * Extract tags
      */
-    private extractTags(content: string, growthPoints?: GrowthPoint[]): string[] {
+    private extractTags(content: string, growthPoints?: GrowthPoint[], emotions?: ExtractedEmotion[]): string[] {
         const tags = new Set<string>();
         const lowerContent = content.toLowerCase();
 
@@ -609,6 +601,14 @@ class StructuredDataService {
         if (growthPoints) {
             if (growthPoints.some(g => g.category === 'professional')) tags.add('professional-growth');
             if (growthPoints.some(g => g.category === 'personal')) tags.add('personal-growth');
+        }
+
+        // Add canonical emotion tags from strongest signals.
+        if (emotions && emotions.length > 0) {
+            emotions
+                .filter(e => e.intensity >= 6)
+                .slice(0, 3)
+                .forEach(e => tags.add(e.emotion));
         }
 
         return Array.from(tags).slice(0, 5);

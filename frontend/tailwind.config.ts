@@ -9,24 +9,36 @@ const config: Config = {
     theme: {
         extend: {
             fontFamily: {
-                sans: ["var(--font-inter)", "sans-serif"],
+                sans: ["var(--font-sans)", "sans-serif"],
                 serif: ["var(--font-serif)", "serif"],
             },
             colors: {
-                background: "rgb(var(--background-start))",
-                foreground: "rgb(var(--foreground))",
+                background: "rgb(var(--bg-canvas))",
+                foreground: "rgb(var(--text-primary))",
                 primary: {
-                    DEFAULT: "rgb(var(--primary))",
+                    DEFAULT: "rgb(var(--brand))",
                     foreground: "#FFFFFF"
                 },
                 secondary: {
-                    DEFAULT: "rgb(var(--secondary))",
+                    DEFAULT: "rgb(var(--brand-2))",
                     foreground: "#FFFFFF"
                 },
                 accent: {
-                    DEFAULT: "rgb(var(--accent))",
+                    DEFAULT: "rgb(var(--brand-3))",
                     foreground: "#FFFFFF"
                 },
+                surface: {
+                    1: "rgb(var(--surface-1))",
+                    2: "rgb(var(--surface-2))",
+                    3: "rgb(var(--surface-3))",
+                },
+                ink: {
+                    DEFAULT: "rgb(var(--text-primary))",
+                    secondary: "rgb(var(--text-secondary))",
+                    muted: "rgb(var(--text-muted))",
+                },
+                success: "rgb(var(--success))",
+                danger: "rgb(var(--danger))",
                 glass: "var(--glass-bg)",
             },
             backgroundImage: {

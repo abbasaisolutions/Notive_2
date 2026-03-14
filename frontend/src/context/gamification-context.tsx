@@ -2,24 +2,40 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './auth-context';
+import useApi from '@/hooks/use-api';
+import { API_URL } from '@/constants/config';
+import {
+    FiActivity,
+    FiAward,
+    FiBook,
+    FiBookOpen,
+    FiBookmark,
+    FiEdit,
+    FiEdit3,
+    FiFeather,
+    FiLayers,
+    FiMoon,
+    FiRefreshCw,
+    FiSunrise,
+    FiTrendingUp,
+} from 'react-icons/fi';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 // Badge definitions
 export const BADGES = {
-    first_entry: { id: 'first_entry', name: 'The First Spark', icon: '🌱', description: 'Began the journey of documentation' },
-    streak_3: { id: 'streak_3', name: 'Rhythm of Thought', icon: '🌊', description: 'Maintained a 3-day flow' },
-    streak_7: { id: 'streak_7', name: 'Synchronized', icon: '🔄', description: 'A full week of self-alignment' },
-    streak_30: { id: 'streak_30', name: 'Architect of Habit', icon: '🏛️', description: 'A month of dedication to your legacy' },
-    entries_10: { id: 'entries_10', name: 'Chronicle I', icon: '🔖', description: 'Authored 10 chapters of your story' },
-    entries_50: { id: 'entries_50', name: 'Life Historian', icon: '🏛️', description: 'Documented 50 significant moments' },
-    entries_100: { id: 'entries_100', name: 'Master Reflector', icon: '🧘', description: 'A century of captured insights' },
-    words_1000: { id: 'words_1000', name: 'Eloquent Mind', icon: '✨', description: 'Synthesized 1,000 words of truth' },
-    words_10000: { id: 'words_10000', name: 'The Silver Tongue', icon: '🖋️', description: 'Wove 10,000 words of personal wisdom' },
-    chapter_first: { id: 'chapter_first', name: 'Curator', icon: '🎨', description: 'Began curating your life volumes' },
-    mood_tracker: { id: 'mood_tracker', name: 'Emotional Intel', icon: '🌡️', description: 'Mapped your emotional landscape 10 times' },
-    night_owl: { id: 'night_owl', name: 'Lunar Reflections', icon: '🌙', description: 'Documented wisdom in the quiet of the night' },
-    early_bird: { id: 'early_bird', name: 'Dawn Insight', icon: '🌅', description: 'Captured clarity at the first light' },
+    first_entry: { id: 'first_entry', name: 'The First Spark', icon: FiFeather, description: 'Began the journey of documentation' },
+    streak_3: { id: 'streak_3', name: 'Rhythm of Thought', icon: FiTrendingUp, description: 'Maintained a 3-day flow' },
+    streak_7: { id: 'streak_7', name: 'Synchronized', icon: FiRefreshCw, description: 'A full week of self-alignment' },
+    streak_30: { id: 'streak_30', name: 'Architect of Habit', icon: FiAward, description: 'A month of dedication to your legacy' },
+    entries_10: { id: 'entries_10', name: 'Chronicle I', icon: FiBookmark, description: 'Authored 10 chapters of your story' },
+    entries_50: { id: 'entries_50', name: 'Life Historian', icon: FiBook, description: 'Documented 50 significant moments' },
+    entries_100: { id: 'entries_100', name: 'Master Reflector', icon: FiBookOpen, description: 'A century of captured insights' },
+    words_1000: { id: 'words_1000', name: 'Eloquent Mind', icon: FiEdit3, description: 'Synthesized 1,000 words of truth' },
+    words_10000: { id: 'words_10000', name: 'The Silver Tongue', icon: FiEdit, description: 'Wove 10,000 words of personal wisdom' },
+    chapter_first: { id: 'chapter_first', name: 'Curator', icon: FiLayers, description: 'Began curating your life volumes' },
+    mood_tracker: { id: 'mood_tracker', name: 'Emotional Intel', icon: FiActivity, description: 'Mapped your emotional landscape 10 times' },
+    night_owl: { id: 'night_owl', name: 'Lunar Reflections', icon: FiMoon, description: 'Documented wisdom in the quiet of the night' },
+    early_bird: { id: 'early_bird', name: 'Dawn Insight', icon: FiSunrise, description: 'Captured clarity at the first light' },
 };
 
 // XP values
@@ -74,6 +90,7 @@ const GamificationContext = createContext<GamificationContextType | null>(null);
 
 export function GamificationProvider({ children }: { children: React.ReactNode }) {
     const { accessToken, user } = useAuth();
+    const { apiFetch } = useApi();
     const [stats, setStats] = useState<UserStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [newBadge, setNewBadge] = useState<typeof BADGES[keyof typeof BADGES] | null>(null);
@@ -111,9 +128,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
         if (!accessToken) return;
 
         try {
-            const response = await fetch(`${API_URL}/analytics/stats`, {
-                headers: { Authorization: `Bearer ${accessToken}` },
-            });
+            const response = await apiFetch(`${API_URL}/analytics/stats`);
             if (response.ok) {
                 const data = await response.json();
                 setStats(prev => {
@@ -163,7 +178,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
         } catch (error) {
             console.error('Failed to refresh stats:', error);
         }
-    }, [accessToken]);
+    }, [accessToken, apiFetch]);
 
     const awardXP = useCallback((amount: number, reason: string) => {
         setStats(prev => {
@@ -212,3 +227,4 @@ export function useGamification() {
     }
     return context;
 }
+

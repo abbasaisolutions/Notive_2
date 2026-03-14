@@ -45,6 +45,10 @@ class ContextDetectionService {
      */
     async getLocationContext(): Promise<LocationContext> {
         try {
+            const canUseLocation = await this.hasLocationPermission();
+            if (!canUseLocation) {
+                return 'unknown';
+            }
             const position = await this.getCurrentPosition();
 
             // Check if this is a new location
@@ -68,6 +72,31 @@ class ContextDetectionService {
             return 'unknown';
         } catch (error) {
             return 'unknown';
+        }
+    }
+
+    /**
+     * Only use location when permission is already granted.
+     * This prevents intrusive prompt loops during passive prompt checks.
+     */
+    private async hasLocationPermission(): Promise<boolean> {
+        if (typeof navigator === 'undefined' || !navigator.geolocation) {
+            return false;
+        }
+
+        const permissionsApi = (navigator as Navigator & {
+            permissions?: { query: (descriptor: PermissionDescriptor) => Promise<PermissionStatus> };
+        }).permissions;
+
+        if (!permissionsApi || typeof permissionsApi.query !== 'function') {
+            return false;
+        }
+
+        try {
+            const status = await permissionsApi.query({ name: 'geolocation' as PermissionName });
+            return status.state === 'granted';
+        } catch {
+            return false;
         }
     }
 

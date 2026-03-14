@@ -2,10 +2,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/auth-context';
+import useApi from '@/hooks/use-api';
+import { API_URL } from '@/constants/config';
+import useAuthRedirect from '@/hooks/use-auth-redirect';
+import useContextNavigation from '@/hooks/use-context-navigation';
+import { ActionBar, AppPanel, EmptyState, SectionHeader, TagPill } from '@/components/ui/surface';
+import { FiArrowLeft, FiCpu, FiMessageSquare, FiSend } from 'react-icons/fi';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -13,8 +16,9 @@ interface Message {
 }
 
 export default function ChatPage() {
-    const router = useRouter();
-    const { user, accessToken, isLoading: authLoading } = useAuth();
+    const { isLoading: authLoading, isAuthenticated } = useAuthRedirect();
+    const { apiFetch } = useApi();
+    const { backLabel, navigateBack } = useContextNavigation('/dashboard', 'dashboard');
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -33,11 +37,10 @@ export default function ChatPage() {
         setIsLoading(true);
 
         try {
-            const response = await fetch(`${API_URL}/ai/chat`, {
+            const response = await apiFetch(`${API_URL}/ai/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify({ query: userMessage }),
             });
@@ -72,135 +75,124 @@ export default function ChatPage() {
         );
     }
 
-    if (!user) {
-        router.push('/login');
+    if (!isAuthenticated) {
         return null;
     }
 
+    const suggestions = [
+        'When was I last happy?',
+        'What stressed me out recently?',
+        'Summarize my week',
+        'What are my recurring themes?',
+    ];
+
     return (
-        <div className="min-h-screen flex flex-col">
-            {/* Background Glow */}
-            <div className="fixed top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[150px] pointer-events-none" />
-            <div className="fixed bottom-0 right-1/4 w-96 h-96 bg-secondary/10 rounded-full blur-[150px] pointer-events-none" />
-
-            {/* Header */}
-            <header className="p-4 md:p-6 border-b border-white/5 glass relative z-10">
-                <div className="max-w-4xl mx-auto flex items-center gap-4">
-                    <Link
-                        href="/dashboard"
-                        className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="m12 19-7-7 7-7" />
-                            <path d="M19 12H5" />
-                        </svg>
-                    </Link>
-                    <div>
-                        <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-                                <path d="M12 8V4H8" />
-                                <rect width="16" height="12" x="4" y="8" rx="2" />
-                                <path d="M2 14h2" />
-                                <path d="M20 14h2" />
-                                <path d="M15 13v2" />
-                                <path d="M9 13v2" />
-                            </svg>
-                            Chat with Your Journal
-                        </h1>
-                        <p className="text-sm text-slate-400">Ask questions about your past entries</p>
+        <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
+            <div className="mx-auto max-w-5xl space-y-4">
+                <AppPanel className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={navigateBack}
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.03] text-ink-secondary hover:text-white hover:bg-white/10 transition-colors"
+                            aria-label={backLabel}
+                            title={backLabel}
+                        >
+                            <FiArrowLeft size={20} aria-hidden="true" />
+                        </button>
+                        <SectionHeader
+                            title="AI Coach"
+                            description="Ask questions about your journal history."
+                            kicker="Reflect"
+                            className="items-center"
+                        />
                     </div>
-                </div>
-            </header>
+                    <TagPill tone="primary" className="gap-1">
+                        <FiCpu size={12} aria-hidden="true" />
+                        Context Aware
+                    </TagPill>
+                </AppPanel>
 
-            {/* Chat Messages */}
-            <main className="flex-1 overflow-y-auto p-4 md:p-6 relative z-10">
-                <div className="max-w-4xl mx-auto space-y-6">
-                    {messages.length === 0 ? (
-                        <div className="text-center py-12">
-                            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                                </svg>
-                            </div>
-                            <h2 className="text-2xl font-bold text-white mb-2">Ask Your Journal Anything</h2>
-                            <p className="text-slate-400 max-w-md mx-auto mb-8">
-                                I can help you reflect on your past entries. Try asking me things like:
-                            </p>
-                            <div className="flex flex-wrap justify-center gap-3">
-                                {[
-                                    'When was I last happy?',
-                                    'What stressed me out recently?',
-                                    'Summarize my week',
-                                    'What are my recurring themes?',
-                                ].map((suggestion) => (
-                                    <button
-                                        key={suggestion}
-                                        onClick={() => setInput(suggestion)}
-                                        className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white transition-all text-sm"
-                                    >
-                                        {suggestion}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    ) : (
-                        messages.map((message, index) => (
-                            <div
-                                key={index}
-                                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                            >
+                <AppPanel className="min-h-[60vh]">
+                    <div className="space-y-4">
+                        {messages.length === 0 ? (
+                            <EmptyState
+                                title="Ask Your Journal Anything"
+                                description="Use the suggestions below or type your own reflection question."
+                                className="py-12"
+                            />
+                        ) : (
+                            messages.map((message, index) => (
                                 <div
-                                    className={`max-w-[80%] px-4 py-3 rounded-2xl ${message.role === 'user'
-                                            ? 'bg-primary text-white rounded-br-sm'
-                                            : 'glass-card text-slate-200 rounded-bl-sm'
-                                        }`}
+                                    key={index}
+                                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
-                                    <p className="whitespace-pre-wrap">{message.content}</p>
+                                    <div
+                                        className={`max-w-[84%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                                            message.role === 'user'
+                                                ? 'rounded-br-sm border border-primary/30 bg-primary/15 text-white'
+                                                : 'rounded-bl-sm border border-white/12 bg-white/[0.04] text-ink-secondary'
+                                        }`}
+                                    >
+                                        <p className="whitespace-pre-wrap">{message.content}</p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+
+                        {isLoading && (
+                            <div className="flex justify-start">
+                                <div className="rounded-2xl rounded-bl-sm border border-white/12 bg-white/[0.04] px-4 py-3">
+                                    <div className="flex gap-1">
+                                        <span className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+                                        <span className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+                                        <span className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    </div>
                                 </div>
                             </div>
-                        ))
-                    )}
+                        )}
 
-                    {isLoading && (
-                        <div className="flex justify-start">
-                            <div className="glass-card px-4 py-3 rounded-2xl rounded-bl-sm">
-                                <div className="flex gap-1">
-                                    <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                    <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                    <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                        <div ref={messagesEndRef} />
+                    </div>
+                </AppPanel>
 
-                    <div ref={messagesEndRef} />
-                </div>
-            </main>
+                <ActionBar className="justify-between">
+                    <div className="flex flex-wrap gap-2">
+                        {suggestions.map((suggestion) => (
+                            <button
+                                key={suggestion}
+                                type="button"
+                                onClick={() => setInput(suggestion)}
+                                className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs text-ink-secondary hover:text-white hover:bg-white/10 transition-colors"
+                            >
+                                {suggestion}
+                            </button>
+                        ))}
+                    </div>
+                </ActionBar>
 
-            {/* Input */}
-            <footer className="p-4 md:p-6 border-t border-white/5 glass relative z-10">
-                <div className="max-w-4xl mx-auto flex gap-4">
-                    <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Ask me anything about your journal..."
-                        rows={1}
-                        className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-                    />
-                    <button
-                        onClick={handleSend}
-                        disabled={isLoading || !input.trim()}
-                        className="px-6 py-3 rounded-xl bg-primary text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-all flex items-center gap-2"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="m22 2-7 20-4-9-9-4Z" />
-                            <path d="M22 2 11 13" />
-                        </svg>
-                        Send
-                    </button>
-                </div>
-            </footer>
+                <AppPanel className="p-3">
+                    <div className="flex gap-3">
+                        <textarea
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Ask me anything about your journal..."
+                            rows={1}
+                            className="flex-1 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
+                        />
+                        <button
+                            onClick={handleSend}
+                            disabled={isLoading || !input.trim()}
+                            className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/15 px-5 py-3 text-sm font-semibold text-white hover:bg-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            <FiSend size={16} aria-hidden="true" />
+                            Send
+                        </button>
+                    </div>
+                </AppPanel>
+            </div>
         </div>
     );
 }
+

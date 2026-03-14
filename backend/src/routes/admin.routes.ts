@@ -7,6 +7,7 @@ import {
     getUserDetails,
     updateUserRole,
     toggleUserBan,
+    revokeUserSessions,
     deleteUser,
 } from '../controllers/admin.controller';
 
@@ -22,6 +23,7 @@ router.get('/stats', getPlatformStats);
 router.get('/users/:userId', getUserDetails);
 router.put('/users/:userId/role', updateUserRole);
 router.put('/users/:userId/ban', toggleUserBan);
+router.post('/users/:userId/revoke-sessions', revokeUserSessions);
 
 // Superadmin only
 router.delete('/users/:userId', requireSuperAdmin, deleteUser);

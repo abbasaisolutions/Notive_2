@@ -1,11 +1,18 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/context/auth-context';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import useApi from '@/hooks/use-api';
+import { API_URL } from '@/constants/config';
+import useAuthRedirect from '@/hooks/use-auth-redirect';
+import useContextNavigation from '@/hooks/use-context-navigation';
+import { AppPanel, EmptyState, SectionHeader, StatTile, TagPill } from '@/components/ui/surface';
+import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
+import { writeWorkspaceResume } from '@/utils/workspace-resume';
+import { FiArrowLeft } from 'react-icons/fi';
+import { getChapterIconComponent } from '@/constants/chapter-icons';
+import { formatStoryConfidence, storyStatusClassName, storyStatusLabel, type StorySignal } from '@/utils/story-engine';
 
 interface Chapter {
     id: string;
@@ -23,13 +30,16 @@ interface Entry {
     tags: string[];
     coverImage: string | null;
     createdAt: string;
+    storySignal?: StorySignal;
 }
 
 function ChapterDetailContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const id = searchParams.get('id');
-    const { user, accessToken, isLoading: authLoading } = useAuth();
+    const { isLoading: authLoading, isAuthenticated } = useAuthRedirect();
+    const { apiFetch } = useApi();
+    const { backHref, backLabel, navigateBack } = useContextNavigation('/chapters', 'collections');
     const [chapter, setChapter] = useState<Chapter | null>(null);
     const [entries, setEntries] = useState<Entry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -40,15 +50,16 @@ function ChapterDetailContent() {
             return;
         }
 
-        const fetchChapterEntries = async () => {
-            if (!accessToken) return;
+        const controller = new AbortController();
+        let mounted = true;
 
+        const fetchChapterEntries = async () => {
             try {
-                const response = await fetch(`${API_URL}/chapters/${id}/entries`, {
-                    headers: { Authorization: `Bearer ${accessToken}` },
+                const response = await apiFetch(`${API_URL}/chapters/${id}/entries`, {
+                    signal: controller.signal,
                 });
 
-                if (response.ok) {
+                if (mounted && response.ok) {
                     const data = await response.json();
                     setChapter(data.chapter);
                     setEntries(data.entries);
@@ -56,25 +67,52 @@ function ChapterDetailContent() {
                     router.push('/chapters');
                 }
             } catch (error) {
+                if (controller.signal.aborted) return;
                 console.error('Failed to fetch chapter:', error);
             } finally {
-                setIsLoading(false);
+                if (mounted) {
+                    setIsLoading(false);
+                }
             }
         };
 
         fetchChapterEntries();
-    }, [accessToken, id, router]);
+
+        return () => {
+            mounted = false;
+            controller.abort();
+        };
+    }, [id, router, apiFetch]);
+
+    const currentReturnTo = useMemo(
+        () => buildCurrentReturnTo('/chapters/view', id ? `?id=${id}` : ''),
+        [id]
+    );
+    const captureHref = appendReturnTo('/entry/new?mode=quick', currentReturnTo);
+
+    useEffect(() => {
+        if (authLoading || !isAuthenticated || !chapter) return;
+
+        writeWorkspaceResume({
+            key: 'chapter',
+            title: chapter.name,
+            summary: `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} in this collection`,
+            href: currentReturnTo,
+            updatedAt: new Date().toISOString(),
+            stage: 'organize',
+            actionLabel: 'Resume collection',
+        });
+    }, [authLoading, chapter, currentReturnTo, entries.length, isAuthenticated]);
 
     if (authLoading || isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                <div className="animate-spin h-8 w-8 rounded-full border-4 border-primary border-t-transparent" />
             </div>
         );
     }
 
-    if (!user) {
-        router.push('/login');
+    if (!isAuthenticated) {
         return null;
     }
 
@@ -82,68 +120,116 @@ function ChapterDetailContent() {
         return null;
     }
 
+    const ChapterIcon = getChapterIconComponent(chapter.icon);
+
     return (
-        <div className="min-h-screen p-4 md:p-8">
-            {/* Background Glow */}
-            <div className="fixed top-0 left-1/4 w-96 h-96 rounded-full blur-[150px] pointer-events-none" style={{ backgroundColor: `${chapter.color}20` }} />
-
-            <div className="max-w-6xl mx-auto relative z-10">
-                {/* Header */}
-                <div className="flex items-center gap-4 mb-8">
-                    <Link href="/chapters" className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
-                        </svg>
-                    </Link>
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl" style={{ backgroundColor: `${chapter.color}20` }}>
-                            {chapter.icon}
-                        </div>
-                        <div>
-                            <h1 className="text-3xl font-bold text-white">{chapter.name}</h1>
-                            {chapter.description && <p className="text-slate-400">{chapter.description}</p>}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Entries */}
-                {entries.length === 0 ? (
-                    <div className="glass-card p-12 rounded-2xl text-center">
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/10 flex items-center justify-center text-4xl">📝</div>
-                        <h3 className="text-xl font-semibold text-white mb-2">No Entries Yet</h3>
-                        <p className="text-slate-400 mb-6">Add entries to this chapter from the entry editor.</p>
-                        <Link href="/entry/new" className="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl font-medium transition-all inline-block">
-                            Create Entry
-                        </Link>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {entries.map((entry) => (
-                            <Link key={entry.id} href={`/entry/view?id=${entry.id}`} className="glass-card rounded-2xl hover:bg-white/5 transition-all group overflow-hidden flex flex-col h-full">
-                                {entry.coverImage && (
-                                    <div className="h-48 w-full overflow-hidden">
-                                        <img src={entry.coverImage} alt={entry.title || 'Entry'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                    </div>
-                                )}
-                                <div className="p-6 flex-1 flex flex-col">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="text-sm text-slate-400">
-                                            {new Date(entry.createdAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                                        </div>
-                                        {entry.mood && <span className="px-2 py-1 rounded-lg bg-white/10 text-xs text-slate-300 capitalize">{entry.mood}</span>}
-                                    </div>
-                                    <h4 className="text-lg font-bold text-white mb-2 group-hover:text-primary transition-colors line-clamp-1">
-                                        {entry.title || 'Untitled Entry'}
-                                    </h4>
-                                    <p className="text-slate-400 text-sm line-clamp-3 mb-4 flex-1">{entry.content}</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {entry.tags.map((tag) => (
-                                            <span key={tag} className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-md">#{tag}</span>
-                                        ))}
-                                    </div>
+        <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
+            <div className="mx-auto max-w-6xl space-y-6">
+                <AppPanel className="space-y-5">
+                    <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                        <div className="flex items-start gap-3">
+                            <button
+                                type="button"
+                                onClick={navigateBack}
+                                aria-label={backLabel}
+                                title={backLabel}
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.03] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                            >
+                                <FiArrowLeft size={20} aria-hidden="true" />
+                            </button>
+                            <div className="flex items-start gap-4">
+                                <div
+                                    className="flex h-14 w-14 items-center justify-center rounded-2xl"
+                                    style={{ backgroundColor: `${chapter.color}20` }}
+                                >
+                                    <ChapterIcon className="text-white" size={28} aria-hidden="true" />
                                 </div>
+                                <SectionHeader
+                                    kicker="Collection View"
+                                    title={chapter.name}
+                                    description={chapter.description || 'A focused stream of entries grouped into one collection.'}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                            <TagPill tone="primary">{entries.length} entries</TagPill>
+                            <Link
+                                href={captureHref}
+                                className="rounded-xl border border-primary/30 bg-primary/12 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/20"
+                            >
+                                Add Entry
                             </Link>
-                        ))}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
+                        <StatTile label="Entries" value={entries.length} hint="Items currently in this collection" />
+                        <StatTile
+                            label="Recent Entry"
+                            value={entries[0] ? new Date(entries[0].createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'None'}
+                            hint="Most recent entry date"
+                            tone="primary"
+                        />
+                        <StatTile label="Theme Color" value={<span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full" style={{ backgroundColor: chapter.color }} /> Active</span>} hint="Visual anchor for this collection" />
+                    </div>
+                </AppPanel>
+
+                {entries.length === 0 ? (
+                    <EmptyState
+                        title="No entries in this collection yet"
+                        description="Add entries from quick capture or the entry editor and route them into this collection as you go."
+                        actionLabel="Create Entry"
+                        actionHref={captureHref}
+                    />
+                ) : (
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {entries.map((entry) => {
+                            const entryHref = appendReturnTo(`/entry/view?id=${entry.id}`, currentReturnTo);
+
+                            return (
+                                <Link
+                                    key={entry.id}
+                                    href={entryHref}
+                                    className="overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] transition-colors hover:border-white/15 hover:bg-white/[0.05]"
+                                >
+                                    {entry.coverImage && (
+                                        <div className="h-48 w-full overflow-hidden">
+                                            <img
+                                                src={entry.coverImage}
+                                                alt={entry.title || 'Entry'}
+                                                className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                                            />
+                                        </div>
+                                    )}
+                                    <div className="space-y-4 p-5">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <TagPill>{new Date(entry.createdAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</TagPill>
+                                            {entry.mood && <TagPill tone="primary">{entry.mood}</TagPill>}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-white">{entry.title || 'Untitled Entry'}</h3>
+                                            <p className="mt-2 line-clamp-3 text-sm leading-7 text-ink-secondary">{entry.content}</p>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {entry.storySignal && (
+                                                <>
+                                                    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs uppercase tracking-[0.1em] ${storyStatusClassName[entry.storySignal.status]}`}>
+                                                        {storyStatusLabel[entry.storySignal.status]}
+                                                    </span>
+                                                    <TagPill>
+                                                        {entry.storySignal.completenessScore}% ready / {formatStoryConfidence(entry.storySignal.confidence)} confidence
+                                                    </TagPill>
+                                                </>
+                                            )}
+                                            {entry.tags.slice(0, 4).map((tag) => (
+                                                <TagPill key={tag}>#{tag}</TagPill>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </Link>
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -153,7 +239,13 @@ function ChapterDetailContent() {
 
 export default function ChapterDetailPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+        <Suspense
+            fallback={(
+                <div className="min-h-screen flex items-center justify-center">
+                    <div className="animate-spin h-8 w-8 rounded-full border-4 border-primary border-t-transparent" />
+                </div>
+            )}
+        >
             <ChapterDetailContent />
         </Suspense>
     );

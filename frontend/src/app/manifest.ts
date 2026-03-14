@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
         description: 'Your AI-powered journaling companion.',
         start_url: '/',
         display: 'standalone',
-        background_color: '#0f172a',
-        theme_color: '#6d28d9',
+        background_color: '#0c0f14',
+        theme_color: '#64748b',
         icons: [
             {
                 src: '/icon-192.png',

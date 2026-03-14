@@ -5,16 +5,31 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/context/auth-context';
-import { API_URL } from '@/constants/config';
+import type { IconType } from 'react-icons';
+import {
+    FiActivity,
+    FiArrowRight,
+    FiAward,
+    FiBarChart2,
+    FiMoon,
+    FiRefreshCw,
+    FiStar,
+    FiSun,
+    FiTarget,
+    FiTrendingUp,
+    FiX,
+    FiZap,
+} from 'react-icons/fi';
+import { appendReturnTo } from '@/utils/navigation';
 
 interface Insight {
     id: string;
     type: 'motivation' | 'wellness' | 'suggestion' | 'achievement' | 'pattern';
-    icon: string;
+    iconKey: keyof typeof INSIGHT_ICONS;
     title: string;
     message: string;
     priority: 'high' | 'medium' | 'low';
+    signals?: Array<{ label: string; value: string }>;
     action?: {
         label: string;
         href: string;
@@ -29,7 +44,27 @@ interface AnalyticsData {
     topThemes: Array<{ theme: string; count: number }>;
 }
 
-export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) {
+const INSIGHT_ICONS = {
+    award: FiAward,
+    streak: FiTrendingUp,
+    restart: FiRefreshCw,
+    wellness: FiActivity,
+    positive: FiSun,
+    sunrise: FiSun,
+    moon: FiMoon,
+    target: FiTarget,
+    milestone: FiStar,
+    century: FiBarChart2,
+    signal: FiZap,
+} satisfies Record<string, IconType>;
+
+export function PredictiveInsights({
+    analytics,
+    currentReturnTo,
+}: {
+    analytics: AnalyticsData;
+    currentReturnTo?: string;
+}) {
     const [insights, setInsights] = useState<Insight[]>([]);
     const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
@@ -48,29 +83,35 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
             insights.push({
                 id: 'streak-week',
                 type: 'achievement',
-                icon: '🏆',
-                title: 'Weekly Champion!',
-                message: `You've journaled for ${data.currentStreak} days straight! You're building an incredible habit.`,
+                iconKey: 'award',
+                title: 'Weekly streak unlocked',
+                message: 'Consistency is compounding.',
                 priority: 'high',
+                signals: [{ label: 'Streak', value: `${data.currentStreak}d` }],
             });
         } else if (data.currentStreak >= 3 && data.currentStreak < 7) {
             insights.push({
                 id: 'streak-progress',
                 type: 'motivation',
-                icon: '🔥',
-                title: `${7 - data.currentStreak} more days to weekly goal!`,
-                message: 'Keep going! Consistency is key to self-discovery.',
+                iconKey: 'streak',
+                title: `${7 - data.currentStreak} days to weekly goal`,
+                message: 'Keep your rhythm today.',
                 priority: 'medium',
+                signals: [
+                    { label: 'Streak', value: `${data.currentStreak}d` },
+                    { label: 'Goal', value: '7d' },
+                ],
                 action: { label: 'Write now', href: '/entry/new' },
             });
         } else if (data.currentStreak === 0) {
             insights.push({
                 id: 'streak-restart',
                 type: 'motivation',
-                icon: '✨',
-                title: 'Start fresh today!',
-                message: "Every journey begins with a single step. Let's restart your streak.",
+                iconKey: 'restart',
+                title: 'Reset and restart',
+                message: 'One entry brings momentum back.',
                 priority: 'high',
+                signals: [{ label: 'Streak', value: '0d' }],
                 action: { label: 'Begin', href: '/entry/new' },
             });
         }
@@ -85,20 +126,22 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
                 insights.push({
                     id: 'mood-check',
                     type: 'wellness',
-                    icon: '💙',
-                    title: 'Checking in with you',
-                    message: "Your recent entries suggest you might be going through a tough time. Remember, it's okay to not be okay.",
+                    iconKey: 'wellness',
+                    title: 'Low mood cluster detected',
+                    message: 'Open a quick check-in to process it.',
                     priority: 'high',
+                    signals: [{ label: 'Last 7 low', value: String(negativeCount) }],
                     action: { label: 'Talk to Chat', href: '/chat' },
                 });
             } else if (positiveCount >= 5) {
                 insights.push({
                     id: 'mood-positive',
                     type: 'pattern',
-                    icon: '☀️',
-                    title: 'You\'re on a roll!',
-                    message: `Your mood has been consistently positive lately. Keep doing what you're doing!`,
+                    iconKey: 'positive',
+                    title: 'Positive run detected',
+                    message: 'Recent entries trend resilient.',
                     priority: 'low',
+                    signals: [{ label: 'Last 7 positive', value: String(positiveCount) }],
                 });
             }
         }
@@ -108,20 +151,22 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
             insights.push({
                 id: 'morning-reflection',
                 type: 'suggestion',
-                icon: '🌅',
+                iconKey: 'sunrise',
                 title: 'Morning reflection',
-                message: 'Start your day with intention. What are you grateful for this morning?',
+                message: 'Capture one intention before the day starts.',
                 priority: 'medium',
+                signals: [{ label: 'Window', value: 'Morning' }],
                 action: { label: 'Reflect', href: '/entry/new' },
             });
         } else if (hour >= 21 || hour < 2) {
             insights.push({
                 id: 'evening-review',
                 type: 'suggestion',
-                icon: '🌙',
+                iconKey: 'moon',
                 title: 'Evening wind-down',
-                message: 'Take a moment to reflect on your day before rest.',
+                message: 'Close the day with a short review.',
                 priority: 'medium',
+                signals: [{ label: 'Window', value: 'Evening' }],
                 action: { label: 'Review day', href: '/entry/new' },
             });
         }
@@ -133,11 +178,12 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
                 insights.push({
                     id: 'theme-focus',
                     type: 'pattern',
-                    icon: '🎯',
-                    title: `Focused on "${topTheme.theme}"`,
-                    message: `This theme appears ${topTheme.count} times in your entries. It seems important to you right now.`,
+                    iconKey: 'target',
+                    title: `Theme focus: ${topTheme.theme}`,
+                    message: 'A recurring theme is shaping your narrative.',
                     priority: 'low',
-                    action: { label: 'Explore', href: `/search?q=${topTheme.theme}` },
+                    signals: [{ label: 'Mentions', value: String(topTheme.count) }],
+                    action: { label: 'Explore', href: `/timeline?q=${encodeURIComponent(topTheme.theme)}` },
                 });
             }
         }
@@ -147,28 +193,31 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
             insights.push({
                 id: 'milestone-10',
                 type: 'achievement',
-                icon: '🎉',
+                iconKey: 'milestone',
                 title: 'Double digits!',
-                message: "You've written 10 entries! Your journal is starting to paint a picture of your journey.",
+                message: 'Your first pattern set is now visible.',
                 priority: 'high',
+                signals: [{ label: 'Entries', value: '10' }],
             });
         } else if (data.totalEntries === 50) {
             insights.push({
                 id: 'milestone-50',
                 type: 'achievement',
-                icon: '🌟',
+                iconKey: 'milestone',
                 title: '50 entries milestone!',
-                message: 'Half a century of reflections! Your dedication to self-discovery is inspiring.',
+                message: 'Your journal now has depth for trend analysis.',
                 priority: 'high',
+                signals: [{ label: 'Entries', value: '50' }],
             });
         } else if (data.totalEntries === 100) {
             insights.push({
                 id: 'milestone-100',
                 type: 'achievement',
-                icon: '💎',
+                iconKey: 'century',
                 title: 'Century mark!',
-                message: '100 entries! You have a treasure trove of personal insights waiting to be explored.',
+                message: 'You have a rich memory corpus to mine.',
                 priority: 'high',
+                signals: [{ label: 'Entries', value: '100' }],
             });
         }
 
@@ -180,7 +229,11 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
     };
 
     const dismissInsight = (id: string) => {
-        setDismissed(prev => new Set([...prev, id]));
+        setDismissed(prev => {
+            const next = new Set(prev);
+            next.add(id);
+            return next;
+        });
     };
 
     const visibleInsights = insights.filter(i => !dismissed.has(i.id));
@@ -189,68 +242,89 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
         return null;
     }
 
+    const priorityStyles: Record<Insight['priority'], string> = {
+        high: 'border-primary/30 bg-gradient-to-br from-primary/12 to-secondary/12',
+        medium: 'border-white/12 bg-surface-1/60',
+        low: 'border-white/10 bg-surface-1/35',
+    };
+
+    const typeStyles: Record<Insight['type'], string> = {
+        achievement: 'bg-zinc-500/20 text-zinc-200 border border-zinc-400/30',
+        wellness: 'bg-white/[0.07] text-white border border-white/15',
+        motivation: 'bg-neutral-500/20 text-neutral-200 border border-neutral-400/30',
+        pattern: 'bg-stone-500/20 text-stone-200 border border-stone-400/30',
+        suggestion: 'bg-white/10 text-ink-secondary border border-white/15',
+    };
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between px-2">
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <span className="text-xl">🔮</span>
-                    AI Insights
+                    <FiZap size={20} aria-hidden="true" />
+                    Insight Signals
                 </h3>
-                <span className="text-xs text-slate-500">Personalized for you</span>
+                <span className="text-xs text-ink-muted">Live</span>
             </div>
 
             <div className="grid gap-4">
                 {visibleInsights.map((insight) => (
                     <div
                         key={insight.id}
-                        className={`relative p-5 rounded-2xl border transition-all hover:scale-[1.01] ${insight.priority === 'high'
-                                ? 'bg-gradient-to-br from-primary/10 to-secondary/10 border-primary/20'
-                                : insight.priority === 'medium'
-                                    ? 'bg-white/5 border-white/10'
-                                    : 'bg-white/[0.02] border-white/5'
-                            }`}
+                        className={`relative rounded-2xl border p-4 transition-all hover:scale-[1.01] ${priorityStyles[insight.priority]}`}
                     >
-                        {/* Dismiss button */}
+                        {(() => {
+                            const InsightIcon = INSIGHT_ICONS[insight.iconKey];
+                            return (
+                        <>
                         <button
                             onClick={() => dismissInsight(insight.id)}
-                            className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10 transition-colors text-slate-500 hover:text-white"
+                            className="absolute right-3 top-3 rounded-full p-1 text-ink-muted transition-colors hover:bg-white/10 hover:text-white"
+                            aria-label="Dismiss insight"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-                            </svg>
+                            <FiX size={14} aria-hidden="true" />
                         </button>
 
-                        <div className="flex items-start gap-4">
-                            <div className="text-3xl flex-shrink-0">{insight.icon}</div>
-                            <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-white mb-1">{insight.title}</h4>
-                                <p className="text-sm text-slate-400 leading-relaxed">{insight.message}</p>
-
-                                {insight.action && (
-                                    <Link
-                                        href={insight.action.href}
-                                        className="inline-flex items-center gap-2 mt-3 text-sm text-primary hover:text-primary/80 font-medium transition-colors"
-                                    >
-                                        {insight.action.label}
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="m9 18 6-6-6-6" />
-                                        </svg>
-                                    </Link>
-                                )}
+                        <div className="flex items-start gap-3">
+                            <div className="rounded-xl bg-white/5 p-2 text-white">
+                                <InsightIcon size={22} aria-hidden="true" />
+                            </div>
+                            <div className="min-w-0 flex-1 pr-7">
+                                <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                                    <h4 className="font-bold text-white">{insight.title}</h4>
+                                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-[0.14em] ${typeStyles[insight.type]}`}>
+                                        {insight.type}
+                                    </span>
+                                    <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-xs uppercase tracking-[0.14em] text-ink-muted">
+                                        {insight.priority}
+                                    </span>
+                                </div>
+                                <p className="line-clamp-2 text-sm leading-relaxed text-ink-secondary">{insight.message}</p>
                             </div>
                         </div>
 
-                        {/* Type badge */}
-                        <div className="absolute bottom-3 right-3">
-                            <span className={`text-[9px] uppercase tracking-widest font-bold px-2 py-1 rounded-full ${insight.type === 'achievement' ? 'bg-yellow-500/20 text-yellow-400' :
-                                    insight.type === 'wellness' ? 'bg-blue-500/20 text-blue-400' :
-                                        insight.type === 'motivation' ? 'bg-green-500/20 text-green-400' :
-                                            insight.type === 'pattern' ? 'bg-purple-500/20 text-purple-400' :
-                                                'bg-white/10 text-slate-400'
-                                }`}>
-                                {insight.type}
-                            </span>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                            {(insight.signals || []).map((signal) => (
+                                <span
+                                    key={`${insight.id}-${signal.label}`}
+                                    className="rounded-full border border-white/15 bg-white/[0.03] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary"
+                                >
+                                    {signal.label}: <span className="text-white">{signal.value}</span>
+                                </span>
+                            ))}
+
+                            {insight.action && (
+                                <Link
+                                    href={appendReturnTo(insight.action.href, currentReturnTo)}
+                                    className="inline-flex items-center gap-1 rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
+                                >
+                                    {insight.action.label}
+                                    <FiArrowRight size={12} aria-hidden="true" />
+                                </Link>
+                            )}
                         </div>
+                        </>
+                            );
+                        })()}
                     </div>
                 ))}
             </div>
@@ -259,3 +333,4 @@ export function PredictiveInsights({ analytics }: { analytics: AnalyticsData }) 
 }
 
 export default PredictiveInsights;
+

@@ -7,7 +7,6 @@ import crypto from 'crypto';
  */
 export const createEntryShareLink = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
         const { id } = req.params;
         const { expiresIn } = req.body; // Optional: hours until expiry
@@ -51,7 +50,6 @@ export const createEntryShareLink = async (req: Request, res: Response) => {
  */
 export const createChapterShareLink = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
         const { id } = req.params;
         const { expiresIn } = req.body;
@@ -155,7 +153,6 @@ export const getSharedContent = async (req: Request, res: Response) => {
  */
 export const revokeShareLink = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
         const { token } = req.params;
 
@@ -184,3 +181,4 @@ export const revokeShareLink = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Failed to revoke share link' });
     }
 };
+

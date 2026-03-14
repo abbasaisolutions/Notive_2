@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
+import type { IconType } from 'react-icons';
+import { FiCalendar, FiCheckSquare, FiEdit3, FiHeart, FiMoon, FiMessageSquare, FiX } from 'react-icons/fi';
 
 interface Template {
     id: string;
     name: string;
-    icon: string;
+    icon: IconType;
     description: string;
     prompts: string[];
 }
@@ -14,7 +16,7 @@ const TEMPLATES: Template[] = [
     {
         id: 'gratitude',
         name: 'Gratitude',
-        icon: '🙏',
+        icon: FiHeart,
         description: 'Focus on what you\'re thankful for',
         prompts: [
             '3 things I\'m grateful for today:',
@@ -30,7 +32,7 @@ const TEMPLATES: Template[] = [
     {
         id: 'reflection',
         name: 'Daily Reflection',
-        icon: '🌙',
+        icon: FiMoon,
         description: 'End-of-day thoughts and insights',
         prompts: [
             'How am I feeling right now?',
@@ -45,7 +47,7 @@ const TEMPLATES: Template[] = [
     {
         id: 'goals',
         name: 'Goals & Intentions',
-        icon: '🎯',
+        icon: FiCheckSquare,
         description: 'Plan and track your progress',
         prompts: [
             'My main focus today:',
@@ -61,14 +63,14 @@ const TEMPLATES: Template[] = [
     {
         id: 'freewrite',
         name: 'Free Write',
-        icon: '✍️',
+        icon: FiEdit3,
         description: 'Just let it flow',
         prompts: [],
     },
     {
         id: 'mood',
         name: 'Mood Check-In',
-        icon: '💭',
+        icon: FiMessageSquare,
         description: 'Explore your emotions',
         prompts: [
             'Current mood (1-10):',
@@ -83,7 +85,7 @@ const TEMPLATES: Template[] = [
     {
         id: 'weekly',
         name: 'Weekly Review',
-        icon: '📅',
+        icon: FiCalendar,
         description: 'Reflect on your week',
         prompts: [
             'Highlight of the week:',
@@ -117,24 +119,29 @@ export default function TemplatesModal({ isOpen, onClose, onSelect }: TemplatesM
             <div className="glass-card p-6 rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-white">Choose a Template</h2>
-                    <button onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-                        </svg>
+                    <button onClick={onClose} className="p-2 rounded-lg text-ink-secondary hover:text-white hover:bg-white/10 transition-all">
+                        <FiX size={20} aria-hidden="true" />
                     </button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                     {TEMPLATES.map((template) => (
+                        (() => {
+                            const Icon = template.icon;
+                            return (
                         <button
                             key={template.id}
                             onClick={() => handleSelect(template)}
                             className="p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-left group"
                         >
-                            <span className="text-3xl mb-2 block">{template.icon}</span>
+                            <span className="mb-2 inline-flex rounded-lg bg-white/5 p-2 text-white">
+                                <Icon size={22} aria-hidden="true" />
+                            </span>
                             <h3 className="text-white font-medium group-hover:text-primary transition-colors">{template.name}</h3>
-                            <p className="text-slate-400 text-sm">{template.description}</p>
+                            <p className="text-ink-secondary text-sm">{template.description}</p>
                         </button>
+                            );
+                        })()
                     ))}
                 </div>
             </div>

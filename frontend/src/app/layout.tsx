@@ -1,19 +1,17 @@
-import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans, Fraunces } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth-context";
 import { SmartProvider } from "@/context/smart-context";
 import { GamificationProvider } from "@/context/gamification-context";
 import { ThemeProvider } from "@/context/theme-context";
-import ContextPrompt from "@/components/smart/ContextPrompt";
-import MobileNav from "@/components/layout/MobileNav";
-import Sidebar from "@/components/layout/Sidebar";
-import CelebrationModal from "@/components/gamification/CelebrationModal";
-import FloatingVoiceButton from "@/components/voice/FloatingVoiceButton";
-import SmartPromptNotification from "@/components/voice/SmartPromptNotification";
+import AppChrome from "@/components/layout/AppChrome";
+import RouteHeader from "@/components/layout/RouteHeader";
+import OnboardingGuard from "@/components/onboarding/OnboardingGuard";
 
-const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
-const playfair = Playfair_Display({ subsets: ["latin"], variable: '--font-serif' });
+const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: '--font-sans' });
+const fraunces = Fraunces({ subsets: ["latin"], variable: '--font-serif' });
 
 export const metadata: Metadata = {
     title: "Notive | Your AI-Powered Journaling Companion",
@@ -21,16 +19,21 @@ export const metadata: Metadata = {
     keywords: ["journaling", "AI", "mood tracking", "self-improvement", "privacy", "notes"],
     authors: [{ name: "Notive Team" }],
     manifest: '/manifest.json',
+    metadataBase: new URL('https://notive.app'),
+    icons: {
+        icon: [
+            { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+            { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+        ],
+        apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    },
     appleWebApp: {
         capable: true,
         statusBarStyle: 'black-translucent',
         title: 'Notive',
     },
-    viewport: {
-        width: 'device-width',
-        initialScale: 1,
-        maximumScale: 1,
-        userScalable: false, // Prevents input zoom on mobile
+    other: {
+        'mobile-web-app-capable': 'yes',
     },
     openGraph: {
         title: "Notive | Your AI-Powered Journaling Companion",
@@ -55,6 +58,11 @@ export const metadata: Metadata = {
     },
 };
 
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
+};
+
 const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -71,7 +79,23 @@ const jsonLd = {
 
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'your-google-client-id';
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+const isValidGoogleClientId = (value?: string) =>
+    !!value &&
+    value !== 'your-google-client-id' &&
+    /\.apps\.googleusercontent\.com$/i.test(value);
+
+function GoogleProviderWrapper({ children }: { children: React.ReactNode }) {
+    if (!isValidGoogleClientId(GOOGLE_CLIENT_ID)) {
+        return <>{children}</>;
+    }
+
+    return (
+        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID!}>
+            {children}
+        </GoogleOAuthProvider>
+    );
+}
 
 export default function RootLayout({
     children,
@@ -80,32 +104,39 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
-            <body className={`${inter.variable} ${playfair.variable} font-sans`}>
-                <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+            <body className={`${jakarta.variable} ${fraunces.variable} font-sans tracking-[0.005em]`}>
+                <GoogleProviderWrapper>
                     <ThemeProvider>
                         <AuthProvider>
                             <GamificationProvider>
                                 <SmartProvider>
+                                    <OnboardingGuard />
                                     <script
                                         type="application/ld+json"
                                         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                                     />
+                                    <a href="#main-content" className="skip-link">
+                                        Skip to main content
+                                    </a>
                                     <div className="flex min-h-screen relative overflow-hidden cosmic-bg">
-                                        <Sidebar />
-                                        <div className="flex-1 w-full relative z-10">
+                                        <AppChrome />
+                                        <main
+                                            id="main-content"
+                                            className="flex-1 w-full relative z-10 app-shell spotlight-grid"
+                                            tabIndex={-1}
+                                            style={{ paddingBottom: 'var(--app-bottom-clearance, 0px)' }}
+                                        >
+                                            <Suspense fallback={null}>
+                                                <RouteHeader />
+                                            </Suspense>
                                             {children}
-                                        </div>
+                                        </main>
                                     </div>
-                                    <ContextPrompt />
-                                    <MobileNav />
-                                    <CelebrationModal />
-                                    <FloatingVoiceButton />
-                                    <SmartPromptNotification />
                                 </SmartProvider>
                             </GamificationProvider>
                         </AuthProvider>
                     </ThemeProvider>
-                </GoogleOAuthProvider>
+                </GoogleProviderWrapper>
             </body>
         </html>
     );

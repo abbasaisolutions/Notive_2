@@ -1,257 +1,411 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import dynamic from 'next/dynamic';
-import { useAuth } from '@/context/auth-context';
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import useApi from '@/hooks/use-api';
+import useAuthRedirect from '@/hooks/use-auth-redirect';
+import { StructuredEntryData } from '@/services/structured-data.service';
+import useEntryDraft from '@/hooks/use-entry-draft';
+import useEntryAnalysis from '@/hooks/use-entry-analysis';
+import useContextNavigation from '@/hooks/use-context-navigation';
+import useSpeechRecognition from '@/hooks/use-speech-recognition';
+import useUploadQueue from '@/hooks/use-upload-queue';
+import { API_URL } from '@/constants/config';
 import { useGamification } from '@/context/gamification-context';
-import { structuredDataService, StructuredEntryData } from '@/services/structured-data.service';
-
-const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
-    ssr: false,
-    loading: () => <div className="glass-card rounded-2xl h-[300px] animate-pulse" />,
-});
+import { useAuth } from '@/context/auth-context';
+import { useRouter, useSearchParams } from 'next/navigation';
+import EntryTopBar from '@/components/entry/new/EntryTopBar';
+import EntryEditorCard from '@/components/entry/new/EntryEditorCard';
+import EntryInsightsPanel from '@/components/entry/new/EntryInsightsPanel';
+import { getStarterPrompt, getWritingSuggestions, polishEntryText, polishTitle } from '@/utils/writing-assistant';
+import {
+    DEFAULT_LIFE_AREA_BY_CATEGORY,
+    LIFE_AREA_OPTIONS,
+    EntryCategory,
+    normalizeCategory,
+    normalizeLifeArea,
+} from '@/constants/life-areas';
+import type { IconType } from 'react-icons';
+import {
+    FiAlertCircle,
+    FiAlertTriangle,
+    FiFrown,
+    FiHeart,
+    FiHelpCircle,
+    FiMoon,
+    FiSmile,
+    FiSun,
+    FiTrendingUp,
+    FiXCircle,
+    FiZap,
+} from 'react-icons/fi';
 
 const MOODS = [
-    { emoji: '😊', label: 'Happy', value: 'happy' },
-    { emoji: '😌', label: 'Calm', value: 'calm' },
-    { emoji: '😔', label: 'Sad', value: 'sad' },
-    { emoji: '😰', label: 'Anxious', value: 'anxious' },
-    { emoji: '😤', label: 'Frustrated', value: 'frustrated' },
-    { emoji: '🤔', label: 'Thoughtful', value: 'thoughtful' },
-    { emoji: '💪', label: 'Motivated', value: 'motivated' },
-    { emoji: '😴', label: 'Tired', value: 'tired' },
-    { emoji: '🙏', label: 'Grateful', value: 'grateful' },
-];
+    { icon: FiSmile, label: 'Happy', value: 'happy' },
+    { icon: FiSun, label: 'Calm', value: 'calm' },
+    { icon: FiFrown, label: 'Sad', value: 'sad' },
+    { icon: FiAlertCircle, label: 'Anxious', value: 'anxious' },
+    { icon: FiXCircle, label: 'Frustrated', value: 'frustrated' },
+    { icon: FiHelpCircle, label: 'Thoughtful', value: 'thoughtful' },
+    { icon: FiTrendingUp, label: 'Motivated', value: 'motivated' },
+    { icon: FiMoon, label: 'Tired', value: 'tired' },
+    { icon: FiHeart, label: 'Grateful', value: 'grateful' },
+] satisfies Array<{ icon: IconType; label: string; value: string }>;
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+type DraftConflict = {
+    seededText: string;
+    seededAudioUrl: string | null;
+};
 
-export default function NewEntryPage() {
+type CollectionOption = {
+    id: string;
+    name: string;
+};
+
+function NewEntryPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, accessToken, isLoading: authLoading } = useAuth();
+    const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
+    const { logout } = useAuth();
     const { awardXP, refreshStats } = useGamification();
+    const { apiFetch } = useApi();
+    const { enqueueUpload, processQueue, queueCount, recentUploads, clearUploadResult } = useUploadQueue();
+    const { loadDraft, saveDraft, clearDraft } = useEntryDraft(user?.id ?? null);
+    const { backHref, backLabel, navigateBack } = useContextNavigation('/dashboard', 'dashboard');
+    const isQuickMode = searchParams.get('mode') === 'quick';
 
-    // Core content - use ref to avoid stale closures
     const [content, setContent] = useState('');
     const [contentHtml, setContentHtml] = useState('');
     const contentRef = useRef('');
 
-    // AI-extracted metadata
-    const [extractedData, setExtractedData] = useState<StructuredEntryData | null>(null);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-    // Override fields
     const [titleOverride, setTitleOverride] = useState('');
     const [moodOverride, setMoodOverride] = useState<string | null>(null);
     const [tagsOverride, setTagsOverride] = useState<string[]>([]);
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
+    const [category, setCategory] = useState<EntryCategory>('PERSONAL');
+    const [lifeArea, setLifeArea] = useState<string>(DEFAULT_LIFE_AREA_BY_CATEGORY.PERSONAL);
+    const [collectionId, setCollectionId] = useState<string | null>(null);
+    const [collections, setCollections] = useState<CollectionOption[]>([]);
+    const [voiceError, setVoiceError] = useState<string | null>(null);
 
-    // Voice recording state
-    const [isRecording, setIsRecording] = useState(false);
-    const [interimText, setInterimText] = useState('');
-    const isRecordingRef = useRef(false);
-    const recognitionRef = useRef<any>(null);
-
-    // UI state
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [error, setError] = useState('');
-    const [showDetails, setShowDetails] = useState(false);
+    const [showAdvancedTools, setShowAdvancedTools] = useState(false);
+    const [showInsightDetails, setShowInsightDetails] = useState(false);
     const [entryId, setEntryId] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [isSigningOut, setIsSigningOut] = useState(false);
+    const [draftRestored, setDraftRestored] = useState(false);
+    const [pendingSync, setPendingSync] = useState(false);
+    const [polishNotice, setPolishNotice] = useState<string | null>(null);
+    const [draftConflict, setDraftConflict] = useState<DraftConflict | null>(null);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
-    const analysisTimeoutRef = useRef<NodeJS.Timeout>();
+    const polishNoticeTimeoutRef = useRef<NodeJS.Timeout>();
+    const draftInitRef = useRef(false);
 
-    // Sync content ref
+    const {
+        extractedData,
+        setExtractedData,
+        isAnalyzing,
+        aiInsights,
+        setAiInsights,
+        isAiLoading,
+        aiError,
+        buildAnalysisPayload,
+        handleDeepInsight,
+        aiEmotionEntries,
+        aiEmotionMax,
+    } = useEntryAnalysis({
+        content,
+        contentHtml,
+        entryId,
+        apiFetch,
+        saveDraft,
+        titleOverride,
+        moodOverride,
+        tagsOverride,
+        audioUrl,
+        category,
+        lifeArea,
+        chapterId: collectionId,
+        pendingSync,
+    });
+
     useEffect(() => {
         contentRef.current = content;
     }, [content]);
 
-    // Sync recording ref
+    const handleVoiceFinal = useCallback((text: string) => {
+        if (!text.trim()) return;
+        const current = contentRef.current;
+        const separator = current && !current.endsWith(' ') ? ' ' : '';
+        setContent(current + separator + text.trim());
+    }, []);
+
+    const {
+        isSupported: isVoiceSupported,
+        isListening: isRecording,
+        interimText,
+        error: speechError,
+        start: startRecording,
+        stop: stopRecording,
+    } = useSpeechRecognition({
+        language: 'en-US',
+        interimResults: true,
+        continuous: true,
+        autoRestart: true,
+        onFinal: handleVoiceFinal,
+    });
+
     useEffect(() => {
-        isRecordingRef.current = isRecording;
-    }, [isRecording]);
+        if (speechError) setVoiceError(speechError);
+    }, [speechError]);
 
-    // Initialize speech recognition ONCE
     useEffect(() => {
-        const SpeechRecognitionAPI =
-            (window as any).SpeechRecognition ||
-            (window as any).webkitSpeechRecognition;
+        if (!isVoiceSupported) {
+            setVoiceError('Speech recognition not supported in this browser.');
+        }
+    }, [isVoiceSupported]);
 
-        if (!SpeechRecognitionAPI) return;
+    useEffect(() => {
+        if (typeof navigator !== 'undefined' && navigator.onLine) {
+            processQueue();
+        }
+    }, [processQueue]);
 
-        const recognition = new SpeechRecognitionAPI();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
+    useEffect(() => {
+        if (!user) return;
+        const controller = new AbortController();
+        let mounted = true;
 
-        recognition.onresult = (event: any) => {
-            let interim = '';
-            let final = '';
-
-            // Process results correctly - only add FINAL results to content
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                const result = event.results[i];
-                if (result.isFinal) {
-                    final += result[0].transcript + ' ';
-                } else {
-                    interim += result[0].transcript;
-                }
-            }
-
-            // Show interim text for visual feedback
-            setInterimText(interim);
-
-            // Only add final transcripts to content
-            if (final.trim()) {
-                const currentContent = contentRef.current;
-                const separator = currentContent && !currentContent.endsWith(' ') ? ' ' : '';
-                setContent(currentContent + separator + final.trim());
-                setInterimText('');
-            }
-        };
-
-        recognition.onerror = (event: any) => {
-            console.error('Speech recognition error:', event.error);
-            if (event.error !== 'no-speech') {
-                setIsRecording(false);
-            }
-        };
-
-        recognition.onend = () => {
-            // Only restart if still recording
-            if (isRecordingRef.current) {
-                try {
-                    recognition.start();
-                } catch (e) {
-                    // Ignore - already started or browser issue
-                }
-            }
-        };
-
-        recognitionRef.current = recognition;
-
-        return () => {
+        const fetchCollections = async () => {
             try {
-                recognition.stop();
-            } catch (e) {
-                // Ignore
+                const response = await apiFetch(`${API_URL}/chapters`, { signal: controller.signal });
+                if (!response.ok) return;
+                const data = await response.json();
+                if (!mounted) return;
+                const options = Array.isArray(data?.chapters)
+                    ? data.chapters
+                        .map((chapter: any) => ({
+                            id: String(chapter.id),
+                            name: String(chapter.name || 'Untitled'),
+                        }))
+                        .filter((item: CollectionOption) => !!item.id)
+                    : [];
+                setCollections(options);
+            } catch (error) {
+                if (controller.signal.aborted) return;
+                console.error('Failed to load collections', error);
             }
         };
-    }, []); // Empty dependency - only run once
 
-    // Process voice input from URL params
+        fetchCollections();
+        return () => {
+            mounted = false;
+            controller.abort();
+        };
+    }, [user, apiFetch]);
+
     useEffect(() => {
+        return () => {
+            if (polishNoticeTimeoutRef.current) {
+                clearTimeout(polishNoticeTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!user || draftInitRef.current) return;
+        draftInitRef.current = true;
+
         const voiceText = searchParams.get('voice');
         const promptText = searchParams.get('prompt');
         const audioParam = searchParams.get('audioUrl');
+        const seededText = voiceText || promptText || '';
+        const savedDraft = loadDraft();
 
-        if (voiceText) {
-            setContent(voiceText);
-            if (audioParam) setAudioUrl(audioParam);
-        } else if (promptText) {
-            setContent(promptText);
-        }
-    }, [searchParams]);
+        if (seededText) {
+            if (savedDraft?.content?.trim()) {
+                setContent(savedDraft.content);
+                setContentHtml(savedDraft.contentHtml || '');
+                setTitleOverride(savedDraft.title || '');
+                setMoodOverride(savedDraft.mood || null);
+                setTagsOverride(savedDraft.tags || []);
+                setAudioUrl(savedDraft.audioUrl || null);
+                const draftCategory = normalizeCategory(savedDraft.category);
+                setCategory(draftCategory);
+                setLifeArea(normalizeLifeArea(savedDraft.lifeArea, draftCategory));
+                setCollectionId(savedDraft.chapterId || null);
+                if (savedDraft.analysis?.deterministic) {
+                    setExtractedData(savedDraft.analysis.deterministic as StructuredEntryData);
+                }
+                if (savedDraft.analysis?.ai) {
+                    setAiInsights(savedDraft.analysis.ai);
+                }
+                setDraftRestored(true);
+                setPendingSync(savedDraft.pendingSync);
+                setDraftConflict({
+                    seededText,
+                    seededAudioUrl: audioParam || null,
+                });
+                return;
+            }
 
-    // Real-time content analysis
-    const analyzeContent = useCallback(async (text: string) => {
-        if (text.length < 30) {
-            setExtractedData(null);
+            setContent(seededText);
+            if (audioParam) {
+                setAudioUrl(audioParam);
+            }
+            clearDraft();
             return;
         }
 
-        setIsAnalyzing(true);
-        try {
-            const data = await structuredDataService.extractStructuredData(text);
-            setExtractedData(data);
-        } catch (error) {
-            console.error('Analysis failed:', error);
-        } finally {
-            setIsAnalyzing(false);
+        if (savedDraft?.content) {
+            setContent(savedDraft.content);
+            setContentHtml(savedDraft.contentHtml || '');
+            setTitleOverride(savedDraft.title || '');
+            setMoodOverride(savedDraft.mood || null);
+            setTagsOverride(savedDraft.tags || []);
+            setAudioUrl(savedDraft.audioUrl || null);
+            const draftCategory = normalizeCategory(savedDraft.category);
+            setCategory(draftCategory);
+            setLifeArea(normalizeLifeArea(savedDraft.lifeArea, draftCategory));
+            setCollectionId(savedDraft.chapterId || null);
+            if (savedDraft.analysis?.deterministic) {
+                setExtractedData(savedDraft.analysis.deterministic as StructuredEntryData);
+            }
+            if (savedDraft.analysis?.ai) {
+                setAiInsights(savedDraft.analysis.ai);
+            }
+            setDraftRestored(true);
+            setPendingSync(savedDraft.pendingSync);
         }
+    }, [user, searchParams, loadDraft, clearDraft, setExtractedData, setAiInsights]);
+
+    const handleKeepDraft = useCallback(() => {
+        setDraftConflict(null);
     }, []);
 
-    // Debounced analysis
-    useEffect(() => {
-        if (analysisTimeoutRef.current) {
-            clearTimeout(analysisTimeoutRef.current);
-        }
-
-        analysisTimeoutRef.current = setTimeout(() => {
-            analyzeContent(content);
-        }, 1000); // Faster feedback (1s)
-
-        return () => {
-            if (analysisTimeoutRef.current) {
-                clearTimeout(analysisTimeoutRef.current);
-            }
-        };
-    }, [content, analyzeContent]);
-
-    const startRecording = () => {
-        if (!recognitionRef.current) {
-            setError('Speech recognition not supported in this browser');
-            return;
-        }
-
-        setIsRecording(true);
-        setInterimText('');
-        try {
-            recognitionRef.current.start();
-        } catch (error: any) {
-            if (error.message?.includes('already started')) {
-                // Already running, that's fine
-            } else {
-                console.error('Failed to start recording:', error);
-                setIsRecording(false);
-            }
-        }
-    };
-
-    const stopRecording = () => {
-        setIsRecording(false);
-        setInterimText('');
-        if (recognitionRef.current) {
-            try {
-                recognitionRef.current.stop();
-            } catch (e) {
-                // Ignore
-            }
-        }
-    };
+    const handleReplaceDraftWithPrompt = useCallback(() => {
+        if (!draftConflict) return;
+        setContent(draftConflict.seededText);
+        setContentHtml('');
+        setTitleOverride('');
+        setMoodOverride(null);
+        setTagsOverride([]);
+        setAudioUrl(draftConflict.seededAudioUrl);
+        setCategory('PERSONAL');
+        setLifeArea(DEFAULT_LIFE_AREA_BY_CATEGORY.PERSONAL);
+        setCollectionId(null);
+        setExtractedData(null);
+        setAiInsights(null);
+        setPendingSync(false);
+        setDraftRestored(false);
+        setEntryId(null);
+        clearDraft();
+        setDraftConflict(null);
+    }, [draftConflict, clearDraft, setExtractedData, setAiInsights]);
 
     const handleEditorChange = useCallback((text: string, html: string) => {
         setContent(text);
         setContentHtml(html);
     }, []);
 
-    // Auto-save logic
-    useEffect(() => {
-        // Don't auto-save if empty or just loaded
-        if (!content.trim() || isSaving) return;
+    const handlePolishWriting = useCallback(() => {
+        if (!content.trim()) return;
 
-        if (autoSaveTimeoutRef.current) {
-            clearTimeout(autoSaveTimeoutRef.current);
+        const polishedContent = polishEntryText(content);
+        const polishedTitle = titleOverride ? polishTitle(titleOverride) : '';
+        const contentChanged = polishedContent !== content;
+        const titleChanged = !!titleOverride && polishedTitle !== titleOverride;
+
+        if (contentChanged) {
+            setContent(polishedContent);
+        }
+        if (titleChanged) {
+            setTitleOverride(polishedTitle);
         }
 
-        autoSaveTimeoutRef.current = setTimeout(() => {
-            handleSave(true); // true = isAutoSave
-        }, 3000); // Auto-save after 3 seconds of inactivity
+        setPolishNotice(contentChanged || titleChanged
+            ? 'Writing polished: grammar, spacing, and sentence flow improved.'
+            : 'Your writing already looks clean.');
+        if (polishNoticeTimeoutRef.current) clearTimeout(polishNoticeTimeoutRef.current);
+        polishNoticeTimeoutRef.current = setTimeout(() => setPolishNotice(null), 3500);
+    }, [content, titleOverride]);
 
-        return () => {
-            if (autoSaveTimeoutRef.current) {
-                clearTimeout(autoSaveTimeoutRef.current);
-            }
-        };
-    }, [content, titleOverride, moodOverride, tagsOverride, audioUrl, extractedData]);
+    const persistDraftSnapshot = useCallback((pendingSyncOverride: boolean) => {
+        saveDraft({
+            content,
+            contentHtml,
+            title: titleOverride,
+            mood: moodOverride,
+            tags: tagsOverride,
+            audioUrl,
+            category,
+            lifeArea,
+            chapterId: collectionId,
+            analysis: buildAnalysisPayload(),
+            updatedAt: Date.now(),
+            pendingSync: pendingSyncOverride,
+        });
+    }, [
+        audioUrl,
+        buildAnalysisPayload,
+        category,
+        collectionId,
+        content,
+        contentHtml,
+        lifeArea,
+        moodOverride,
+        saveDraft,
+        tagsOverride,
+        titleOverride,
+    ]);
 
-    const handleSave = async (isAutoSave = false) => {
+    const buildCaptureModeHref = useCallback((mode: 'quick' | 'full') => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (mode === 'quick') {
+            params.set('mode', 'quick');
+        } else {
+            params.delete('mode');
+        }
+
+        const nextQuery = params.toString();
+        return nextQuery ? `/entry/new?${nextQuery}` : '/entry/new';
+    }, [searchParams]);
+
+    const handleOpenFullStudio = useCallback(() => {
+        router.replace(buildCaptureModeHref('full'), { scroll: false });
+    }, [buildCaptureModeHref, router]);
+
+    const handleFinishLater = useCallback(() => {
+        const hasDraftableContent = Boolean(
+            content.trim() ||
+            titleOverride.trim() ||
+            audioUrl ||
+            tagsOverride.length > 0
+        );
+
+        if (hasDraftableContent) {
+            const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+            persistDraftSnapshot(pendingSync || offline);
+        }
+
+        navigateBack();
+    }, [audioUrl, content, navigateBack, pendingSync, persistDraftSnapshot, tagsOverride.length, titleOverride]);
+
+    const handleSave = useCallback(async (isAutoSave = false) => {
         if (!content.trim()) {
             if (!isAutoSave) setError('Please write or speak something before saving.');
+            return;
+        }
+
+        const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+        if (offline) {
+            persistDraftSnapshot(true);
+            setPendingSync(true);
+            if (!isAutoSave) setError('You are offline. Draft saved locally and will sync when online.');
             return;
         }
 
@@ -261,50 +415,48 @@ export default function NewEntryPage() {
         const finalTitle = titleOverride || extractedData?.title || null;
         const finalMood = moodOverride || extractedData?.primaryEmotion?.emotion || null;
         const finalTags = tagsOverride.length > 0 ? tagsOverride : (extractedData?.suggestedTags || []);
+        const analysis = buildAnalysisPayload();
 
         try {
             const method = entryId ? 'PUT' : 'POST';
             const url = entryId ? `${API_URL}/entries/${entryId}` : `${API_URL}/entries`;
 
-            const response = await fetch(url, {
+            const response = await apiFetch(url, {
                 method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${accessToken}`,
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title: finalTitle,
                     content,
                     contentHtml,
                     mood: finalMood,
+                    category,
+                    lifeArea,
+                    chapterId: collectionId,
                     tags: finalTags,
                     audioUrl,
-                    extractedData,
+                    analysis,
                 }),
             });
 
             const data = await response.json();
-
             if (!response.ok) {
                 throw new Error(data.message || 'Failed to save entry');
             }
 
-            // If created, set entry ID for future updates
-            if (!entryId && data.entry?.id) {
-                setEntryId(data.entry.id);
-            }
-
+            if (!entryId && data.entry?.id) setEntryId(data.entry.id);
             setLastSaved(new Date());
+            setPendingSync(false);
 
             if (!isAutoSave) {
                 localStorage.setItem('lastEntryTime', Date.now().toString());
                 if (!entryId) {
-                    // Only award XP on first manual save/creation if we decide auto-save shouldn't grant XP repeatedly
-                    // But actually, XP logic should probably handle this or be on first creation only.
                     awardXP(50, 'Entry created');
                     refreshStats();
                 }
-                router.push('/dashboard');
+                clearDraft();
+                router.push(backHref);
+            } else {
+                persistDraftSnapshot(false);
             }
         } catch (err: any) {
             console.error('Save error:', err);
@@ -312,69 +464,148 @@ export default function NewEntryPage() {
         } finally {
             setIsSaving(false);
         }
-    };
+    }, [
+        content,
+        contentHtml,
+        titleOverride,
+        moodOverride,
+        tagsOverride,
+        audioUrl,
+        category,
+        lifeArea,
+        collectionId,
+        extractedData,
+        buildAnalysisPayload,
+        entryId,
+        apiFetch,
+        awardXP,
+        refreshStats,
+        clearDraft,
+        backHref,
+        router,
+        persistDraftSnapshot,
+    ]);
 
-    const addTag = (tag: string) => {
-        if (tag && !tagsOverride.includes(tag)) {
-            setTagsOverride([...tagsOverride, tag]);
+    useEffect(() => {
+        if (!content.trim() || isSaving) return;
+
+        if (autoSaveTimeoutRef.current) {
+            clearTimeout(autoSaveTimeoutRef.current);
         }
-    };
 
-    const removeTag = (tag: string) => {
-        setTagsOverride(tagsOverride.filter(t => t !== tag));
-    };
+        autoSaveTimeoutRef.current = setTimeout(() => {
+            const offline = typeof navigator !== 'undefined' && !navigator.onLine;
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+            persistDraftSnapshot(pendingSync || offline);
+
+            if (offline) {
+                setPendingSync(true);
+                return;
+            }
+
+            handleSave(true);
+        }, 3000);
+
+        return () => {
+            if (autoSaveTimeoutRef.current) {
+                clearTimeout(autoSaveTimeoutRef.current);
+            }
+        };
+    }, [content, isSaving, pendingSync, persistDraftSnapshot, handleSave]);
+
+    useEffect(() => {
+        const onOnline = () => {
+            if (pendingSync && content.trim()) {
+                handleSave(true);
+            }
+            processQueue();
+        };
+
+        window.addEventListener('online', onOnline);
+        return () => window.removeEventListener('online', onOnline);
+    }, [pendingSync, content, handleSave, processQueue]);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+                event.preventDefault();
+                if (!isSaving && content.trim()) {
+                    void handleSave(false);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [content, isSaving, handleSave]);
+
+    const addTag = useCallback((tag: string) => {
+        if (tag && !tagsOverride.includes(tag)) {
+            setTagsOverride(prev => [...prev, tag]);
+        }
+    }, [tagsOverride]);
+
+    const removeTag = useCallback((tag: string) => {
+        setTagsOverride(prev => prev.filter(t => t !== tag));
+    }, []);
+
+    const insertUploadedImage = useCallback((url: string, id: string) => {
+        setContent(prev => `${prev}\n![Image](${url})\n`);
+        clearUploadResult(id);
+    }, [clearUploadResult]);
+
+    const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+
+        const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+        if (offline) {
+            await enqueueUpload({
+                endpoint: `${API_URL}/files/upload`,
+                fieldName: 'file',
+                file,
+                fileName: file.name,
+                fileType: file.type,
+            });
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            setError('You are offline. Image upload queued and will retry when online.');
+            return;
+        }
 
         setIsUploading(true);
         try {
             const formData = new FormData();
             formData.append('file', file);
 
-            const response = await fetch(`${API_URL}/files/upload`, {
+            const response = await apiFetch(`${API_URL}/files/upload`, {
                 method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
                 body: formData,
             });
-
             const data = await response.json();
 
             if (!response.ok) {
                 throw new Error(data.message || 'Failed to upload image');
             }
 
-            // Append image to content (Tiptap handles this better with extensions, but for now specific markdown/html)
-            // Or ideally store as `coverImage` if first one, or insert into content.
-            // Let's insert into content as markdown image for simplicity with text-based editor fallback
-            // But since we use Tiptap, inserting HTML is better if Tiptap supports it via props or we append.
-            // Current Tiptap setup seems basic. Let's append to content.
-
-            // Actually, TiptapEditor likely updates `contentHtml`?
-            // Since we don't have direct access to editor instance here without refactor, 
-            // let's append HTML image tag to `contentHtml` and `content` text.
-
-            const imageMarkdown = `\n![Image](${data.url})\n`;
-            const newContent = content + imageMarkdown;
-            setContent(newContent);
-
-            // Also set as cover image if none set
-            // Note: coverImage state wasn't explicitly managed in NewEntryPage before (it was in props/body but not state)
-            // We should add state for it or just ignore for now.
-            // Let's just append to body.
-
-            // Reset input
+            setContent(prev => `${prev}\n![Image](${data.url})\n`);
             if (fileInputRef.current) fileInputRef.current.value = '';
-
         } catch (err: any) {
-            setError(err.message || 'Failed to upload image');
+            if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                await enqueueUpload({
+                    endpoint: `${API_URL}/files/upload`,
+                    fieldName: 'file',
+                    file,
+                    fileName: file.name,
+                    fileType: file.type,
+                });
+                setError('Upload queued. We will retry when you are online.');
+            } else {
+                setError(err.message || 'Failed to upload image');
+            }
         } finally {
             setIsUploading(false);
         }
-    };
+    }, [apiFetch, enqueueUpload]);
 
     if (authLoading) {
         return (
@@ -384,412 +615,344 @@ export default function NewEntryPage() {
         );
     }
 
-    if (!user) {
-        router.push('/login');
-        return null;
-    }
+    if (!isAuthenticated) return null;
 
     const displayTitle = titleOverride || extractedData?.title || '';
     const displayMood = moodOverride || extractedData?.primaryEmotion?.emotion || null;
     const displayTags = tagsOverride.length > 0 ? tagsOverride : (extractedData?.suggestedTags || []);
+    const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+    const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
+    const availableLifeAreas = LIFE_AREA_OPTIONS.filter((item) => item.category === category);
+    const starterPrompt = getStarterPrompt(new Date(), displayMood);
+    const writingSuggestions = getWritingSuggestions(content);
+    const editorPlaceholder = content.trim()
+        ? 'Keep going...'
+        : `Try this: ${starterPrompt.text}`;
+
+    const handleCategorySelect = (nextCategory: EntryCategory) => {
+        setCategory(nextCategory);
+        setLifeArea((current) => normalizeLifeArea(current, nextCategory));
+    };
+
+    const handleUseStarterPrompt = () => {
+        if (content.trim()) return;
+        setContent(`${starterPrompt.text}\n\n`);
+    };
+
+    const handleSignOut = async () => {
+        if (isSigningOut) return;
+        setIsSigningOut(true);
+        try {
+            await logout();
+            router.replace('/login');
+        } finally {
+            setIsSigningOut(false);
+        }
+    };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-white selection:bg-primary/30">
+        <div className="entry-studio min-h-screen text-white selection:bg-primary/30">
             <div className="fixed top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[150px] pointer-events-none" />
-            <div className="fixed bottom-0 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="fixed bottom-0 right-1/4 w-64 h-64 bg-secondary/10 rounded-full blur-[120px] pointer-events-none" />
 
-            <div className="max-w-3xl mx-auto px-4 py-8 relative z-10">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-4">
-                        <Link href="/dashboard" className="p-3 -ml-2 rounded-2xl text-slate-400 hover:text-white hover:bg-white/10 transition-all">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="m15 18-6-6 6-6" />
-                            </svg>
-                        </Link>
+            <div className="max-w-3xl mx-auto px-4 pt-8 pb-28 md:pb-8 relative z-10">
+                <EntryTopBar
+                    onBack={navigateBack}
+                    backLabel={backLabel}
+                    isSaving={isSaving}
+                    lastSaved={lastSaved}
+                    canSave={!isSaving && !!content.trim()}
+                    onSave={() => handleSave(false)}
+                    onSignOut={handleSignOut}
+                    isSigningOut={isSigningOut}
+                    error={error}
+                    draftRestored={draftRestored}
+                    pendingSync={pendingSync}
+                    wordCount={wordCount}
+                    readingTimeMinutes={readingTimeMinutes}
+                    showAdvancedTools={showAdvancedTools}
+                    onToggleAdvancedTools={() => setShowAdvancedTools((prev) => !prev)}
+                    polishNotice={polishNotice}
+                    isQuickMode={isQuickMode}
+                    onFinishLater={handleFinishLater}
+                    onOpenFullStudio={handleOpenFullStudio}
+                />
 
-                        {/* Status Indicator */}
-                        <div className="text-xs font-medium text-slate-500 animate-fade-in flex items-center gap-2">
-                            {isSaving ? (
-                                <>
-                                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                                    Saving...
-                                </>
-                            ) : lastSaved ? (
-                                <>
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                    Draft Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </>
-                            ) : (
-                                <span className="opacity-0">Ready</span>
-                            )}
+                {isQuickMode && (
+                    <section className="mb-5 rounded-2xl border border-white/10 bg-surface-2/45 p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Fast Path</p>
+                                <h2 className="mt-1 text-lg font-semibold text-white">Capture now. Shape later.</h2>
+                                <p className="mt-1 text-sm text-ink-secondary">
+                                    Type or dictate one thought, save it fast, and come back later for tags, polish, or AI insight.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleOpenFullStudio}
+                                className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white hover:bg-white/[0.08] transition-colors"
+                            >
+                                Open Full Studio
+                            </button>
                         </div>
-                    </div>
+                    </section>
+                )}
 
+                <EntryEditorCard
+                    isRecording={isRecording}
+                    isVoiceSupported={isVoiceSupported}
+                    voiceError={voiceError}
+                    interimText={interimText}
+                    onStartRecording={startRecording}
+                    onStopRecording={stopRecording}
+                    fileInputRef={fileInputRef}
+                    onImageUpload={handleImageUpload}
+                    isUploading={isUploading}
+                    queueCount={queueCount}
+                    recentUploads={recentUploads}
+                    onInsertUploadedImage={insertUploadedImage}
+                    onDismissUploaded={clearUploadResult}
+                    audioUrl={audioUrl}
+                    content={content}
+                    editorPlaceholder={editorPlaceholder}
+                    onEditorChange={handleEditorChange}
+                    autoFocus={isQuickMode}
+                    minimalEditor={isQuickMode}
+                    showImageUpload={!isQuickMode}
+                />
+
+                {!isQuickMode && (
+                    <section className="mb-6 rounded-2xl border border-white/10 bg-surface-2/45 p-4">
                     <button
-                        onClick={() => handleSave(false)}
-                        disabled={isSaving || !content.trim()}
-                        className="px-6 py-3 rounded-2xl bg-gradient-to-r from-primary to-purple-600 text-white font-semibold 
-                                   disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-primary/25 hover:scale-105
-                                   transition-all flex items-center gap-2 active:scale-95"
+                        type="button"
+                        onClick={() => setShowAdvancedTools((prev) => !prev)}
+                        className="w-full text-left"
                     >
-                        {isSaving ? (
-                            <>
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Saving...
-                            </>
-                        ) : (
-                            <>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                                </svg>
-                                {entryId ? 'Update Entry' : 'Save Entry'}
-                            </>
-                        )}
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Add Details</p>
+                                <h3 className="text-sm font-semibold text-white">
+                                    Category, collection, polish, mood, tags, and AI insight
+                                </h3>
+                                <p className="mt-1 text-sm text-ink-secondary">
+                                    Start with writing. Open this when you want to add structure or explore signals.
+                                </p>
+                            </div>
+                            <span className="rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-xs uppercase tracking-[0.08em] text-ink-secondary">
+                                {showAdvancedTools ? 'Hide Details' : 'Open Details'}
+                            </span>
+                        </div>
                     </button>
-                </div>
 
-                {error && (
-                    <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-300 px-6 py-4 rounded-2xl text-sm flex items-center gap-3 backdrop-blur-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
-                        {error}
-                    </div>
-                )}
-
-                {/* Main Capture Area */}
-                <div className="relative mb-6 group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-purple-600/20 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                    <div className="relative glass-card rounded-[2rem] p-8 border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl">
-                        {/* Voice Control - Floating Centered */}
-                        <div className="flex flex-col items-center justify-center mb-8">
-                            <button
-                                onClick={isRecording ? stopRecording : startRecording}
-                                className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${isRecording
-                                    ? 'bg-red-500 scale-110 shadow-[0_0_40px_rgba(239,68,68,0.4)]'
-                                    : 'bg-gradient-to-br from-primary to-purple-600 hover:shadow-[0_0_30px_rgba(59,130,246,0.4)] hover:scale-105'
-                                    }`}
-                            >
-                                {isRecording ? (
-                                    <div className="relative">
-                                        <div className="absolute inset-0 animate-ping opacity-75 bg-white rounded-full"></div>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="white" className="relative z-10">
-                                            <rect x="6" y="6" width="12" height="12" rx="2" />
-                                        </svg>
+                    <div className={`transition-all duration-300 ease-in-out ${showAdvancedTools ? 'max-h-[2400px] opacity-100 mt-4' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                        <div className="space-y-4 border-t border-white/10 pt-4">
+                            <div className="grid gap-4 md:grid-cols-3">
+                                <div>
+                                    <label className="mb-2 block text-xs uppercase tracking-[0.1em] text-ink-muted">Category</label>
+                                    <div className="flex gap-2">
+                                        {(['PERSONAL', 'PROFESSIONAL'] as EntryCategory[]).map((option) => {
+                                            const active = category === option;
+                                            return (
+                                                <button
+                                                    key={option}
+                                                    type="button"
+                                                    onClick={() => handleCategorySelect(option)}
+                                                    className={`rounded-xl border px-3 py-2 text-xs uppercase tracking-[0.08em] transition ${
+                                                        active
+                                                            ? 'border-primary/40 bg-primary/15 text-primary'
+                                                            : 'border-white/15 bg-white/[0.03] text-ink-secondary hover:text-white'
+                                                    }`}
+                                                >
+                                                    {option === 'PERSONAL' ? 'Personal' : 'Professional'}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
-                                ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                                        <line x1="12" x2="12" y1="19" y2="22" />
-                                    </svg>
-                                )}
-                            </button>
+                                </div>
 
-                            <div className="mt-4 h-6 flex flex-col items-center">
-                                {isRecording ? (
-                                    <div className="flex items-center gap-2">
-                                        <span className="relative flex h-3 w-3">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                                        </span>
-                                        <span className="text-red-300 text-sm font-medium tracking-wide uppercase">Recording</span>
-                                    </div>
-                                ) : (
-                                    <span className="text-slate-500 text-sm font-medium">Tap to speak</span>
-                                )}
+                                <div>
+                                    <label className="mb-2 block text-xs uppercase tracking-[0.1em] text-ink-muted">Life Area</label>
+                                    <select
+                                        value={lifeArea}
+                                        onChange={(event) => setLifeArea(normalizeLifeArea(event.target.value, category))}
+                                        className="w-full rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                    >
+                                        {availableLifeAreas.map((option) => (
+                                            <option key={option.value} value={option.value} className="bg-surface-1">
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="mb-2 block text-xs uppercase tracking-[0.1em] text-ink-muted">Collection</label>
+                                    <select
+                                        value={collectionId || ''}
+                                        onChange={(event) => setCollectionId(event.target.value || null)}
+                                        className="w-full rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                    >
+                                        <option value="" className="bg-surface-1">No collection</option>
+                                        {collections.map((collection) => (
+                                            <option key={collection.id} value={collection.id} className="bg-surface-1">
+                                                {collection.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Toolbar */}
-                        <div className="flex justify-end mb-4 px-2">
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                className="hidden"
-                                accept="image/*"
-                                onChange={handleImageUpload}
-                            />
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isUploading}
-                                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all flex items-center gap-2 text-sm"
-                                title="Upload Image"
-                            >
-                                {isUploading ? (
-                                    <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
-                                )}
-                                <span>Add Image</span>
-                            </button>
-                        </div>
-
-                        {/* Interim Text Display */}
-                        {interimText && (
-                            <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/5 text-center">
-                                <p className="text-slate-300 italic text-lg animate-pulse">"{interimText}"</p>
-                            </div>
-                        )}
-
-
-                        {/* Audio Player */}
-                        {audioUrl && (
-                            <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/5">
-                                <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider">Voice Recording</p>
-                                <audio controls src={audioUrl} className="w-full h-10" />
-                            </div>
-                        )}
-
-                        {/* Editor */}
-                        <div className="relative">
-                            <TiptapEditor
-                                onChange={handleEditorChange}
-                                placeholder="Start writing or speaking..."
-                                content={content}
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* AI Intelligence Panel */}
-                {(extractedData || isAnalyzing) && (
-                    <div className="relative group transition-all duration-300">
-                        <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl blur opacity-75 group-hover:opacity-100 transition-opacity" />
-
-                        <div className="relative glass-card rounded-2xl overflow-hidden border border-white/10 bg-slate-900/60 backdrop-blur-xl">
-                            <button
-                                onClick={() => setShowDetails(!showDetails)}
-                                className="w-full p-5 flex items-center justify-between text-left hover:bg-white/5 transition-colors"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg ${isAnalyzing ? 'animate-pulse' : ''}`}>
-                                        <span className="text-lg">✨</span>
-                                    </div>
+                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
-                                        <div className="text-white font-semibold flex items-center gap-2">
-                                            AI Insights
-                                            {isAnalyzing && (
-                                                <span className="text-xs font-normal text-cyan-300 animate-pulse bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
-                                                    Analyzing...
+                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Enhance Writing</p>
+                                        <p className="text-sm text-ink-secondary">
+                                            Polish grammar and spacing only when you want a cleanup pass.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handlePolishWriting}
+                                        disabled={!content.trim()}
+                                        className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2 text-sm text-white hover:bg-white/[0.08] disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Polish Writing
+                                    </button>
+                                </div>
+                                {!content.trim() && (
+                                    <p className="mt-3 text-xs text-ink-muted">
+                                        Write a few lines first to unlock suggestions, mood, tags, and AI insight.
+                                    </p>
+                                )}
+                            </div>
+
+                            {content.trim().length > 0 && writingSuggestions.length > 0 && (
+                                <div className="rounded-2xl border border-white/10 bg-surface-2/45 p-4">
+                                    <div className="mb-2 flex items-center justify-between gap-2">
+                                        <div className="text-xs uppercase tracking-[0.12em] text-ink-muted">Writing Signals</div>
+                                        <span className="rounded-full border border-white/15 bg-white/[0.03] px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-ink-secondary">
+                                            {writingSuggestions.length}
+                                        </span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {writingSuggestions.map((item) => (
+                                            <div
+                                                key={item.id}
+                                                className="rounded-xl border border-white/12 bg-surface-2/55 px-3 py-2 text-sm text-foreground"
+                                            >
+                                                <span className="mr-1" aria-hidden="true">
+                                                    {item.severity === 'warning'
+                                                        ? <FiAlertTriangle className="inline" size={14} />
+                                                        : <FiZap className="inline" size={14} />}
                                                 </span>
-                                            )}
-                                        </div>
-                                        {extractedData && (
-                                            <div className="text-slate-400 text-xs mt-1 flex items-center gap-2">
-                                                <span>{extractedData.wordCount} words</span>
-                                                {displayMood && (
-                                                    <>
-                                                        <span className="w-1 h-1 rounded-full bg-slate-600" />
-                                                        <span className="text-white bg-white/10 px-1.5 py-0.5 rounded-md flex items-center gap-1">
-                                                            {MOODS.find(m => m.value === displayMood)?.emoji} {displayMood}
-                                                        </span>
-                                                    </>
-                                                )}
+                                                <span className="line-clamp-2">{item.message}</span>
                                             </div>
-                                        )}
+                                        ))}
                                     </div>
                                 </div>
-                                <div className={`w-8 h-8 rounded-full bg-white/5 flex items-center justify-center transition-transform duration-300 ${showDetails ? 'rotate-180 bg-white/10' : ''}`}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-400"><path d="m6 9 6 6 6-6" /></svg>
-                                </div>
-                            </button>
+                            )}
 
-                            {/* Expanded Details */}
-                            <div className={`transition-all duration-300 ease-in-out ${showDetails ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-                                <div className="p-5 space-y-6 border-t border-white/5 bg-black/20">
-                                    {extractedData && (
-                                        <>
-                                            {/* Insights Grid */}
-                                            {extractedData.insights.length > 0 && (
-                                                <div className="grid gap-3 p-4 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20">
-                                                    <label className="text-xs font-semibold text-indigo-300 uppercase tracking-wider mb-1">Key Insights</label>
-                                                    {extractedData.insights.map((insight, i) => (
-                                                        <div key={i} className="flex items-start gap-3 text-sm text-slate-200">
-                                                            <span className="mt-1 text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 capitalize">
-                                                                {insight.type}
-                                                            </span>
-                                                            <span className="leading-relaxed">{insight.content}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            {/* Growth & Patterns (Social Science Model) */}
-                                            {extractedData.growthPoints && extractedData.growthPoints.length > 0 && (
-                                                <div className="grid gap-3 p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <label className="text-xs font-semibold text-emerald-300 uppercase tracking-wider">Growth & Patterns</label>
-                                                        <span className="text-[10px] text-emerald-400/50 bg-emerald-500/10 px-1.5 rounded border border-emerald-500/10">Social Science Model</span>
-                                                    </div>
-                                                    {extractedData.growthPoints.map((point, i) => (
-                                                        <div key={i} className="flex items-start gap-3 text-sm text-slate-200">
-                                                            <span className={`mt-1 text-xs px-2 py-0.5 rounded border capitalize whitespace-nowrap ${point.category === 'professional' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
-                                                                point.category === 'relational' ? 'bg-pink-500/20 text-pink-300 border-pink-500/30' :
-                                                                    point.category === 'spiritual' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
-                                                                        'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                                                                }`}>
-                                                                {point.category}
-                                                            </span>
-                                                            <div className="flex-1">
-                                                                <p className="leading-relaxed opacity-90">{point.insight}</p>
-                                                                {point.actionable && (
-                                                                    <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 mt-1 font-medium opacity-80">
-                                                                        🚀 Actionable Step
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            {/* EQ Metrics */}
-                                            {extractedData.emotionalIntelligence && (
-                                                <div className="p-5 rounded-xl bg-white/5 border border-white/5 transition-all hover:bg-white/[0.07]">
-                                                    <div className="flex items-center justify-between mb-5">
-                                                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Emotional Intelligence</label>
-                                                        <span className="text-xs px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 capitalize font-medium">
-                                                            Dominant: {extractedData.emotionalIntelligence.dominantTrait}
-                                                        </span>
-                                                    </div>
-                                                    <div className="space-y-4">
-                                                        {/* Self Awareness */}
-                                                        <div>
-                                                            <div className="flex justify-between text-xs text-slate-300 mb-2">
-                                                                <span>Self Awareness</span>
-                                                                <span className="opacity-70">{extractedData.emotionalIntelligence.selfAwareness}/10</span>
-                                                            </div>
-                                                            <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
-                                                                <div
-                                                                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.3)]"
-                                                                    style={{ width: `${extractedData.emotionalIntelligence.selfAwareness * 10}%` }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        {/* Regulation */}
-                                                        <div>
-                                                            <div className="flex justify-between text-xs text-slate-300 mb-2">
-                                                                <span>Self Regulation</span>
-                                                                <span className="opacity-70">{extractedData.emotionalIntelligence.regulation}/10</span>
-                                                            </div>
-                                                            <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
-                                                                <div
-                                                                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.3)]"
-                                                                    style={{ width: `${extractedData.emotionalIntelligence.regulation * 10}%` }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        {/* Social Awareness */}
-                                                        <div>
-                                                            <div className="flex justify-between text-xs text-slate-300 mb-2">
-                                                                <span>Social Awareness</span>
-                                                                <span className="opacity-70">{extractedData.emotionalIntelligence.socialAwareness}/10</span>
-                                                            </div>
-                                                            <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
-                                                                <div
-                                                                    className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.3)]"
-                                                                    style={{ width: `${extractedData.emotionalIntelligence.socialAwareness * 10}%` }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Smart Fields */}
-                                            <div className="grid md:grid-cols-2 gap-6">
-                                                <div className="space-y-4">
-                                                    <div>
-                                                        <label className="text-xs font-medium text-slate-400 mb-2 block uppercase tracking-wider">Suggested Title</label>
-                                                        <input
-                                                            type="text"
-                                                            value={displayTitle}
-                                                            onChange={(e) => setTitleOverride(e.target.value)}
-                                                            className="w-full bg-white/5 hover:bg-white/10 transition-colors rounded-xl px-4 py-3 text-white placeholder-slate-500 border border-white/10 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
-                                                        />
-                                                    </div>
-
-                                                    <div>
-                                                        <label className="text-xs font-medium text-slate-400 mb-2 block uppercase tracking-wider">Mood</label>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {MOODS.map((m) => (
-                                                                <button
-                                                                    key={m.value}
-                                                                    onClick={() => setMoodOverride(moodOverride === m.value ? null : m.value)}
-                                                                    className={`px-3 py-2 rounded-xl text-sm flex items-center gap-2 transition-all border ${displayMood === m.value
-                                                                        ? 'bg-primary border-primary text-white shadow-lg shadow-primary/25'
-                                                                        : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10 hover:border-white/10'
-                                                                        }`}
-                                                                >
-                                                                    <span>{m.emoji}</span>
-                                                                    <span>{m.label}</span>
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-4">
-                                                    {(extractedData.people.length > 0 || extractedData.places.length > 0) && (
-                                                        <div>
-                                                            <label className="text-xs font-medium text-slate-400 mb-2 block uppercase tracking-wider">Deteceted Entities</label>
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {extractedData.people.map((p, i) => (
-                                                                    <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-300 border border-blue-500/20 text-sm">
-                                                                        👤 {p.name} <span className="text-blue-500/50 text-xs">({p.relationship})</span>
-                                                                    </span>
-                                                                ))}
-                                                                {extractedData.places.map((p, i) => (
-                                                                    <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-sm">
-                                                                        📍 {p.name}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    <div>
-                                                        <label className="text-xs font-medium text-slate-400 mb-2 block uppercase tracking-wider">Tags</label>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {displayTags.map((tag) => (
-                                                                <span key={tag} className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 text-sm transition-colors">
-                                                                    #{tag}
-                                                                    <button onClick={() => removeTag(tag)} className="text-slate-500 hover:text-red-400 ml-1">×</button>
-                                                                </span>
-                                                            ))}
-                                                            <input
-                                                                type="text"
-                                                                placeholder="+ Tag"
-                                                                className="px-3 py-1.5 rounded-lg bg-transparent text-sm text-white placeholder-slate-600 border border-white/10 focus:border-primary/50 focus:outline-none w-24 hover:bg-white/5 focus:bg-white/5 transition-colors"
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') {
-                                                                        addTag((e.target as HTMLInputElement).value.trim());
-                                                                        (e.target as HTMLInputElement).value = '';
-                                                                    }
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
+                            <EntryInsightsPanel
+                                showDetails={showInsightDetails}
+                                setShowDetails={setShowInsightDetails}
+                                isAnalyzing={isAnalyzing}
+                                extractedData={extractedData}
+                                displayMood={displayMood}
+                                moods={MOODS}
+                                content={content}
+                                isAiLoading={isAiLoading}
+                                onDeepInsight={handleDeepInsight}
+                                aiError={aiError}
+                                aiInsights={aiInsights}
+                                aiEmotionEntries={aiEmotionEntries}
+                                aiEmotionMax={aiEmotionMax}
+                                displayTitle={displayTitle}
+                                setTitleOverride={setTitleOverride}
+                                moodOverride={moodOverride}
+                                setMoodOverride={setMoodOverride}
+                                displayTags={displayTags}
+                                removeTag={removeTag}
+                                addTag={addTag}
+                            />
                         </div>
                     </div>
+                    </section>
                 )}
 
-                {/* Empty State Hint */}
-                {!content && !isRecording && (
+                {!isQuickMode && !content && !isRecording && (
                     <div className="mt-12 text-center">
-                        <p className="text-slate-500 text-sm font-medium">
-                            <span className="text-primary">Tip:</span> Just speak naturally. AI will capture, format, and organize everything for you.
-                        </p>
+                        <div className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-surface-2/40 p-5">
+                            <div className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">{starterPrompt.label}</div>
+                            <p className="text-sm text-ink-secondary">{starterPrompt.text}</p>
+                            <div className="mt-4 flex items-center justify-center gap-2">
+                                <button
+                                    onClick={handleUseStarterPrompt}
+                                    className="rounded-xl border border-primary/35 bg-primary/15 px-3 py-2 text-sm text-primary hover:bg-primary/25 transition-colors"
+                                >
+                                    Use Prompt
+                                </button>
+                                <span className="text-xs text-ink-muted">or tap mic to dictate</span>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
+
+            <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-surface-1/90 backdrop-blur-xl p-3 md:hidden">
+                <div className={`grid gap-2 ${isQuickMode ? 'grid-cols-2' : 'grid-cols-[1fr_1.6fr]'}`}>
+                    <button
+                        onClick={isQuickMode ? handleFinishLater : () => setShowAdvancedTools((prev) => !prev)}
+                        className="px-3 py-3 rounded-xl bg-surface-2/70 border border-white/15 text-foreground text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isQuickMode ? 'Finish Later' : (showAdvancedTools ? 'Hide Details' : 'Add Details')}
+                    </button>
+                    <button
+                        onClick={() => handleSave(false)}
+                        disabled={isSaving || !content.trim()}
+                        className="px-5 py-3 rounded-xl primary-cta text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                        {isSaving ? 'Saving...' : (entryId ? 'Update Entry' : isQuickMode ? 'Save Quick Entry' : 'Save Entry')}
+                    </button>
+                </div>
+            </div>
+
+            {draftConflict && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-surface-1/95 p-5 shadow-2xl">
+                        <p className="text-xs uppercase tracking-[0.15em] text-ink-muted">Draft Detected</p>
+                        <h2 className="mt-2 text-xl font-semibold text-white">Keep your existing draft or replace it?</h2>
+                        <p className="mt-2 text-sm text-ink-secondary">
+                            A saved draft exists for this account. A prompt link was also opened. Choose how to proceed.
+                        </p>
+
+                        <div className="mt-5 grid gap-2">
+                            <button
+                                onClick={handleKeepDraft}
+                                className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-left text-sm text-white hover:bg-white/10"
+                            >
+                                Continue existing draft
+                            </button>
+                            <button
+                                onClick={handleReplaceDraftWithPrompt}
+                                className="rounded-xl border border-primary/30 bg-primary/15 px-4 py-3 text-left text-sm text-primary hover:bg-primary/25"
+                            >
+                                Replace draft with prompt
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+
+export default function NewEntryPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen" />}>
+            <NewEntryPageContent />
+        </Suspense>
+    );
+}
+
+

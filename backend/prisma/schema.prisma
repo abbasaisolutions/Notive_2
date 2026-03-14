@@ -7,7 +7,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -19,6 +18,21 @@ enum Role {
 enum Category {
   PERSONAL
   PROFESSIONAL
+}
+
+enum TagSource {
+  USER
+  AI
+  NLP
+  IMPORT
+  SYSTEM
+}
+
+enum AnalysisSource {
+  DETERMINISTIC
+  NLP
+  AI
+  IMPORT
 }
 
 model User {
@@ -45,6 +59,12 @@ model User {
   
   // Journal entries
   entries       Entry[]
+
+  // Tag/analysis relations
+  entryTags     EntryTag[]
+  entryAnalyses EntryAnalysis[]
+  entryEmbeddings EntryEmbedding[]
+  personalizationEvents PersonalizationEvent[]
   
   // Chapters
   chapters      Chapter[]
@@ -71,12 +91,18 @@ model Entry {
   audioUrl    String?
   mood        String?
   tags        String[]
+  analysis    Json?
+  contentVector Unsupported("tsvector")? @map("content_vector")
   category    Category @default(PERSONAL)
+  lifeArea    String?  @db.VarChar(64)
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   chapterId   String?
   chapter     Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
   shareLinks  ShareLink[]
+  entryTags   EntryTag[]
+  analysisRecord EntryAnalysis?
+  entryEmbeddings EntryEmbedding[]
   
   // Phase 2: Insights & Sharing
   lessons     String[]
@@ -92,6 +118,85 @@ model Entry {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   deletedAt   DateTime?
+
+  @@index([userId, deletedAt, createdAt])
+  @@index([userId, source, externalId])
+  @@index([userId, chapterId, createdAt])
+  @@index([userId, mood, createdAt])
+  @@index([userId, lifeArea, createdAt])
+}
+
+model Tag {
+  id         String     @id @default(cuid())
+  name       String
+  normalized String     @unique
+  entryTags  EntryTag[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([normalized])
+}
+
+model EntryTag {
+  id         String    @id @default(cuid())
+  entryId    String
+  tagId      String
+  userId     String
+  source     TagSource @default(USER)
+  confidence Float     @default(1.0)
+  createdAt  DateTime  @default(now())
+
+  entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  tag   Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, tagId])
+  @@index([userId, createdAt])
+  @@index([tagId])
+}
+
+model EntryAnalysis {
+  id             String         @id @default(cuid())
+  entryId        String         @unique
+  userId         String
+  source         AnalysisSource @default(NLP)
+  contentHash    String?
+  summary        String?        @db.Text
+  sentimentScore Float?
+  sentimentLabel String?
+  emotions       Json?
+  entities       Json?
+  topics         String[]
+  keywords       String[]
+  suggestedMood  String?
+  wordCount      Int?
+  readingTime    Int?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+}
+
+model EntryEmbedding {
+  id         String   @id @default(cuid())
+  entryId    String
+  userId     String
+  model      String   @default("text-embedding-3-small")
+  dimensions Int      @default(1536)
+  contentHash String
+  embedding  Unsupported("vector(1536)")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, model, dimensions])
+  @@index([userId, updatedAt])
+  @@index([userId, model, dimensions])
 }
 
 enum EntrySource {
@@ -110,7 +215,39 @@ model UserProfile {
   website     String?
   birthDate   DateTime?
   lifeGoals   String[]
+  primaryGoal String?
+  focusArea   String?
+  experienceLevel String?
+  writingPreference String?
+  starterPrompt String? @db.Text
+  outputGoals String[] @default([])
+  importPreference String?
+  personalizationSignals Json?
+  onboardingCompletedAt DateTime?
+  personalizationEvents PersonalizationEvent[]
   updatedAt   DateTime  @updatedAt
+}
+
+model PersonalizationEvent {
+  id         String   @id @default(cuid())
+  userId     String
+  profileId  String?
+  eventType  String
+  questionId String?
+  field      String?
+  value      String?  @db.Text
+  pathname   String?
+  metadata   Json?
+  occurredAt DateTime
+  fingerprint String  @db.VarChar(64)
+  createdAt  DateTime @default(now())
+
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile UserProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, fingerprint])
+  @@index([userId, occurredAt])
+  @@index([userId, eventType, occurredAt])
 }
 
 model Chapter {

@@ -1,5 +1,5 @@
+import 'dotenv/config';
 import express, { Express, Request, Response } from 'express';
-import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
@@ -15,17 +15,42 @@ import socialRoutes from './routes/social.routes';
 import importRoutes from './routes/import.routes';
 import fileRoutes from './routes/file.routes';
 
-dotenv.config();
-
 const app: Express = express();
 const port = process.env.PORT || 8000;
+const isProd = process.env.NODE_ENV === 'production';
+
+if (isProd && (!process.env.JWT_ACCESS_SECRET || !process.env.JWT_REFRESH_SECRET)) {
+    throw new Error('JWT secrets are required in production');
+}
+
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
 
 // Middleware
 app.use(cors({
-    origin: true, // Allow all origins for development (mobile apps, web, etc.)
-    credentials: true, // Allow cookies
+    origin: (origin, callback) => {
+        if (!origin) {
+            callback(null, true);
+            return;
+        }
+
+        if (!isProd) {
+            callback(null, true);
+            return;
+        }
+
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+            return;
+        }
+
+        callback(new Error('Origin not allowed by CORS'));
+    },
+    credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
 // Serve uploaded files

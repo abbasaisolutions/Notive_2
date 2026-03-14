@@ -3,10 +3,28 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { API_URL } from '@/constants/config';
+import { sanitizeHtml } from '@/utils/sanitize-html';
+import { AppPanel, TagPill } from '@/components/ui/surface';
+
+interface SharedUser {
+    name?: string | null;
+}
+
+interface SharedEntryContent {
+    user?: SharedUser;
+    createdAt: string;
+    title?: string | null;
+    mood?: string | null;
+    tags?: string[];
+    coverImage?: string | null;
+    contentHtml?: string | null;
+    content?: string;
+}
 
 interface SharedContent {
     type: 'entry' | 'chapter';
-    content: any;
+    content: SharedEntryContent;
 }
 
 function SharedPageContent() {
@@ -23,9 +41,13 @@ function SharedPageContent() {
             return;
         }
 
+        const controller = new AbortController();
+
         const fetchSharedContent = async () => {
             try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/share/${token}`);
+                const response = await fetch(`${API_URL}/share/${token}`, {
+                    signal: controller.signal,
+                });
 
                 if (response.ok) {
                     const result = await response.json();
@@ -34,6 +56,7 @@ function SharedPageContent() {
                     setError('This link is invalid or has expired.');
                 }
             } catch (err) {
+                if (controller.signal.aborted) return;
                 setError('Failed to load shared content.');
             } finally {
                 setIsLoading(false);
@@ -41,11 +64,15 @@ function SharedPageContent() {
         };
 
         fetchSharedContent();
+
+        return () => {
+            controller.abort();
+        };
     }, [token]);
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-950">
+            <div className="min-h-screen flex items-center justify-center">
                 <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
             </div>
         );
@@ -53,9 +80,9 @@ function SharedPageContent() {
 
     if (error || !data) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 p-4 text-center">
+            <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center">
                 <h1 className="text-2xl font-bold text-white mb-2">Oops!</h1>
-                <p className="text-slate-400 mb-6">{error || 'Content not found'}</p>
+                <p className="text-ink-secondary mb-6">{error || 'Content not found'}</p>
                 <Link href="/" className="px-6 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-all">
                     Go to Notive
                 </Link>
@@ -66,15 +93,15 @@ function SharedPageContent() {
     const { content } = data;
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-primary/30">
+        <div className="min-h-screen text-ink-secondary selection:bg-primary/30">
             {/* Top Bar with Branding */}
-            <div className="border-b border-white/5 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+            <div className="border-b border-white/10 bg-surface-1/80 backdrop-blur-md sticky top-0 z-50">
                 <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
+                        <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                             Notive.
                         </h1>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-slate-400">Shared Memory</span>
+                        <TagPill tone="muted">Shared Memory</TagPill>
                     </div>
 
                     <Link href="/register" className="text-sm font-medium text-white hover:text-primary transition-colors">
@@ -87,15 +114,15 @@ function SharedPageContent() {
                 {/* Background Glow */}
                 <div className="fixed top-20 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-primary/20 blur-[120px] rounded-full pointer-events-none" />
 
-                <div className="relative z-10 glass-card p-8 md:p-12 rounded-2xl border border-white/10 shadow-2xl">
+                <AppPanel className="relative z-10 p-8 md:p-12 rounded-2xl border border-white/10 shadow-2xl">
                     {/* User Info */}
                     <div className="flex items-center gap-3 mb-8 pb-8 border-b border-white/5">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-lg font-bold text-white shadow-lg">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-lg font-bold text-white shadow-lg">
                             {content.user?.name?.charAt(0) || 'U'}
                         </div>
                         <div>
                             <div className="text-white font-medium">{content.user?.name || 'Anonymous User'}</div>
-                            <div className="text-sm text-slate-400">
+                            <div className="text-sm text-ink-secondary">
                                 shared a memory from {new Date(content.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
                             </div>
                         </div>
@@ -109,12 +136,12 @@ function SharedPageContent() {
 
                         <div className="flex flex-wrap gap-2 mb-8 not-prose">
                             {content.mood && (
-                                <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm font-medium">
+                                <span className="px-3 py-1 rounded-full border border-primary/30 bg-primary/15 text-primary text-sm font-medium">
                                     {content.mood}
                                 </span>
                             )}
                             {content.tags?.map((tag: string) => (
-                                <span key={tag} className="px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-sm border border-white/5">
+                                <span key={tag} className="px-3 py-1 rounded-full border border-white/12 bg-white/[0.03] text-ink-secondary text-sm">
                                     #{tag}
                                 </span>
                             ))}
@@ -125,16 +152,16 @@ function SharedPageContent() {
                         )}
 
                         {content.contentHtml ? (
-                            <div dangerouslySetInnerHTML={{ __html: content.contentHtml }} />
+                            <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.contentHtml) }} />
                         ) : (
-                            <div className="whitespace-pre-wrap text-slate-300 leading-relaxed">
+                            <div className="whitespace-pre-wrap text-ink-secondary leading-relaxed">
                                 {content.content}
                             </div>
                         )}
                     </article>
-                </div>
+                </AppPanel>
 
-                <div className="mt-12 text-center text-slate-500 text-sm">
+                <div className="mt-12 text-center text-ink-muted text-sm">
                     Powered by <span className="text-primary font-semibold">Notive</span> - The Intelligent Journal for Personal Growth
                 </div>
             </main>
@@ -144,7 +171,7 @@ function SharedPageContent() {
 
 export default function SharedPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-950"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
             <SharedPageContent />
         </Suspense>
     );

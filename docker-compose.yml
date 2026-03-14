@@ -1,5 +1,11 @@
 
 services:
+  nlp:
+    build:
+      context: ./backend/nlp_service
+    ports:
+      - "8001:8001"
+
   postgres:
     image: ankane/pgvector:latest
     ports:

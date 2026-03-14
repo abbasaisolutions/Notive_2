@@ -39,6 +39,24 @@ export class EmailService {
         console.log(`Welcome to Notive. Your journey of self-reflection begins now.`);
         console.log('---------------------------------------------------------');
     }
+
+    async sendEmailChangeAlert(input: {
+        previousEmail: string;
+        nextEmail: string;
+        name?: string | null;
+    }): Promise<void> {
+        console.log('---------------------------------------------------------');
+        console.log(`[Email Mock] Sending Email Change Alert`);
+        console.log(`Previous email: ${input.previousEmail}`);
+        console.log(`Next email: ${input.nextEmail}`);
+        console.log(`Body:`);
+        console.log(`Hello ${input.name || 'Traveler'},`);
+        console.log(`Your Notive sign-in email was changed from ${input.previousEmail} to ${input.nextEmail}.`);
+        console.log(`If you did not make this change, secure your account immediately.`);
+        console.log('---------------------------------------------------------');
+
+        await new Promise(resolve => setTimeout(resolve, 300));
+    }
 }
 
 export const emailService = new EmailService();

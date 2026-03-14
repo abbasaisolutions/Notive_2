@@ -1,13 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Input, Button } from '@/components/ui/form-elements';
 import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
+import { AppPanel } from '@/components/ui/surface';
 import { motion } from 'framer-motion';
+import { API_URL } from '@/constants/config';
+import { getErrorMessage } from '@/utils/http';
+import { FiCheckCircle, FiKey } from 'react-icons/fi';
 
-export default function ResetPasswordPage() {
+function ResetPasswordPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const token = searchParams.get('token');
@@ -17,12 +21,21 @@ export default function ResetPasswordPage() {
     const [isSuccess, setIsSuccess] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         if (!token) {
             setError('Invalid or missing reset token.');
         }
     }, [token]);
+
+    useEffect(() => {
+        return () => {
+            if (redirectTimeoutRef.current) {
+                clearTimeout(redirectTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -41,32 +54,29 @@ export default function ResetPasswordPage() {
         setIsLoading(true);
 
         try {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
             const res = await fetch(`${API_URL}/auth/reset-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token, password }),
             });
 
-            const data = await res.json();
-
             if (!res.ok) {
-                throw new Error(data.message || 'Failed to reset password');
+                throw new Error(await getErrorMessage(res, 'Failed to reset password'));
             }
 
             setIsSuccess(true);
-            setTimeout(() => {
+            redirectTimeoutRef.current = setTimeout(() => {
                 router.push('/login');
             }, 3000);
-        } catch (err: any) {
-            setError(err.message || 'Failed to reset password. Link may be expired.');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to reset password. Link may be expired.');
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-slate-950">
+        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
             {/* Background Glow Effects */}
             <motion.div
                 animate={{
@@ -104,16 +114,18 @@ export default function ResetPasswordPage() {
                             Notive.
                         </motion.h1>
                     </Link>
-                    <p className="text-slate-400 mt-2">Reset your password.</p>
+                    <p className="text-ink-secondary mt-2">Reset your password.</p>
                 </div>
 
-                <div className="glass p-8 rounded-3xl border border-white/5 shadow-xl shadow-black/20">
+                <AppPanel className="p-8 rounded-3xl border-white/10 shadow-xl shadow-black/20">
                     {!isSuccess ? (
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="text-center">
-                                <span className="text-4xl mb-4 block">🔑</span>
+                                <span className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/[0.03]">
+                                    <FiKey size={24} className="text-ink-secondary" aria-hidden="true" />
+                                </span>
                                 <h2 className="text-xl font-bold text-white mb-2">New Password</h2>
-                                <p className="text-sm text-slate-400">
+                                <p className="text-sm text-ink-secondary">
                                     Create a new strong password for your account.
                                 </p>
                             </div>
@@ -122,7 +134,7 @@ export default function ResetPasswordPage() {
                                 <motion.div
                                     initial={{ opacity: 0, y: -10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm"
+                                    className="bg-surface-2/55 border border-white/15 text-foreground px-4 py-3 rounded-xl text-sm"
                                 >
                                     {error}
                                 </motion.div>
@@ -164,19 +176,29 @@ export default function ResetPasswordPage() {
                             animate={{ opacity: 1, scale: 1 }}
                             className="text-center space-y-6"
                         >
-                            <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto text-4xl">
-                                ✅
+                            <div className="w-20 h-20 bg-surface-2/55 rounded-full flex items-center justify-center mx-auto">
+                                <FiCheckCircle size={34} className="text-foreground" aria-hidden="true" />
                             </div>
                             <div>
                                 <h2 className="text-2xl font-bold text-white mb-2">Password Reset!</h2>
-                                <p className="text-slate-400">
+                                <p className="text-ink-secondary">
                                     Your password has been successfully updated. Redirecting you to login...
                                 </p>
                             </div>
                         </motion.div>
                     )}
-                </div>
+                </AppPanel>
             </FadeIn>
         </div>
     );
 }
+
+export default function ResetPasswordPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen" />}>
+            <ResetPasswordPageContent />
+        </Suspense>
+    );
+}
+
+

@@ -2,6 +2,7 @@ import React from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, HTMLMotionProps, AnimatePresence } from 'framer-motion';
+import { FiLoader } from 'react-icons/fi';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
     return twMerge(clsx(inputs));
@@ -13,10 +14,12 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export function Input({ label, error, className, id, ...props }: InputProps) {
+    const errorId = id ? `${id}-error` : undefined;
+
     return (
         <div className="w-full">
             {label && (
-                <label htmlFor={id} className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label htmlFor={id} className="block text-sm font-medium text-ink-secondary mb-1.5">
                     {label}
                 </label>
             )}
@@ -27,12 +30,14 @@ export function Input({ label, error, className, id, ...props }: InputProps) {
             >
                 <input
                     id={id}
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={error && errorId ? errorId : props['aria-describedby']}
                     className={cn(
-                        'w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-white/10',
-                        'text-white placeholder-slate-500',
+                        'w-full px-4 py-3 rounded-xl bg-surface-1/70 border border-white/15',
+                        'text-white placeholder-ink-muted',
                         'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50',
-                        'transition-all duration-200',
-                        error && 'border-red-500/50 focus:ring-red-500/50',
+                        'transition-all duration-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]',
+                        error && 'border-white/35 focus:ring-white/25',
                         className
                     )}
                     {...props}
@@ -41,10 +46,12 @@ export function Input({ label, error, className, id, ...props }: InputProps) {
             <AnimatePresence>
                 {error && (
                     <motion.p
+                        id={errorId}
+                        role="alert"
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="mt-1.5 text-sm text-red-400 overflow-hidden"
+                        className="mt-1.5 text-sm text-ink-secondary overflow-hidden"
                     >
                         {error}
                     </motion.p>
@@ -69,14 +76,14 @@ export function Button({
     ...props
 }: ButtonProps) {
     const baseStyles =
-        'px-6 py-3 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed';
+        'px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200';
 
     const variants = {
         primary:
-            'bg-primary text-white shadow-lg shadow-primary/25',
+            'bg-gradient-to-r from-primary to-primary/80 text-white border border-white/20 shadow-lg shadow-primary/30 hover:brightness-105',
         secondary:
-            'bg-slate-700 text-white border border-white/10',
-        ghost: 'bg-transparent text-slate-300 hover:text-white',
+            'bg-surface-2/80 text-white border border-white/15 hover:bg-surface-2',
+        ghost: 'bg-transparent text-ink-secondary hover:text-white hover:bg-white/5',
     };
 
     return (
@@ -88,26 +95,7 @@ export function Button({
             {...props}
         >
             {isLoading && (
-                <svg
-                    className="animate-spin h-5 w-5"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                >
-                    <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                    ></circle>
-                    <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                </svg>
+                <FiLoader className="animate-spin h-5 w-5" aria-hidden="true" />
             )}
             {children}
         </motion.button>

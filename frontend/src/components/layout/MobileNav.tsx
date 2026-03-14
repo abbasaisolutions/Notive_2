@@ -1,91 +1,142 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-
-const mainNavItems = [
-    {
-        href: '/dashboard',
-        label: 'Home',
-        icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
-        ),
-    },
-    {
-        href: '/timeline',
-        label: 'Journey',
-        icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-            </svg>
-        ),
-    },
-    {
-        href: '/entry/new',
-        label: 'New',
-        icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" x2="12" y1="5" y2="19" />
-                <line x1="5" x2="19" y1="12" y2="12" />
-            </svg>
-        ),
-        isMain: true,
-    },
-    {
-        href: '/chat',
-        label: 'Chat',
-        icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-        ),
-    },
-];
-
-const moreNavItems = [
-    {
-        href: '/insights',
-        label: 'Insights',
-        icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                <polyline points="16 7 22 7 22 13" />
-            </svg>
-        ),
-    },
-    {
-        href: '/chapters',
-        label: 'Chapters',
-        icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
-            </svg>
-        ),
-    },
-    {
-        href: '/profile',
-        label: 'Profile',
-        icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="8" r="5" />
-                <path d="M20 21a8 8 0 1 0-16 0" />
-            </svg>
-        ),
-    },
-];
+import { useAuth } from '@/context/auth-context';
+import { buildProfileContextSummary } from '@/services/profile-context.service';
+import { FiMoreHorizontal } from 'react-icons/fi';
+import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
+import {
+    filterNavItemsByRole,
+    filterNavSectionsByRole,
+    getProfileReadinessAction,
+    isNavItemActive,
+    mobileMainNavItems,
+    mobileMoreNavSections,
+    shouldHideGlobalNav,
+    utilityActions,
+} from './nav-config';
 
 export default function MobileNav() {
     const pathname = usePathname();
+    const router = useRouter();
+    const { user, logout } = useAuth();
+    const navRef = useRef<HTMLElement | null>(null);
     const [isMoreOpen, setIsMoreOpen] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const mainNavItems = filterNavItemsByRole(mobileMainNavItems, user?.role ?? null);
+    const moreNavSections = filterNavSectionsByRole(mobileMoreNavSections, user?.role ?? null);
+    const profileSummary = buildProfileContextSummary(user?.profile ?? null);
+    const readinessAction = getProfileReadinessAction(profileSummary.completionScore);
+    const moreSectionItems = useMemo(
+        () => moreNavSections.flatMap((section) => section.items),
+        [moreNavSections]
+    );
+    const isMoreSectionActive = moreSectionItems.some((item) => isNavItemActive(pathname, item));
+    const currentReturnTo = useMemo(
+        () => buildCurrentReturnTo(pathname, typeof window !== 'undefined' ? window.location.search : ''),
+        [pathname]
+    );
 
-    // Don't show on auth pages or share pages
-    if (pathname?.startsWith('/login') || pathname?.startsWith('/register') || pathname?.startsWith('/share')) {
+    useEffect(() => {
+        setIsMoreOpen(false);
+    }, [pathname]);
+
+    useEffect(() => {
+        if (!isMoreOpen) return;
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setIsMoreOpen(false);
+            }
+        };
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        window.addEventListener('keydown', handleEscape);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', handleEscape);
+        };
+    }, [isMoreOpen]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const root = document.documentElement;
+        const mediaQuery = window.matchMedia('(max-width: 767px)');
+        let animationFrameId = 0;
+        let resizeObserver: ResizeObserver | null = null;
+
+        const clearOffsets = () => {
+            root.style.removeProperty('--app-bottom-clearance');
+            root.style.removeProperty('--app-floating-voice-bottom');
+        };
+
+        const updateOffsets = () => {
+            if (!mediaQuery.matches || !navRef.current) {
+                clearOffsets();
+                return;
+            }
+
+            const rect = navRef.current.getBoundingClientRect();
+            const occupiedHeight = Math.max(window.innerHeight - rect.top, 0);
+            const clearance = Math.ceil(occupiedHeight + 16);
+            const floatingOffset = Math.ceil(occupiedHeight + 20);
+
+            root.style.setProperty('--app-bottom-clearance', `${clearance}px`);
+            root.style.setProperty('--app-floating-voice-bottom', `${floatingOffset}px`);
+        };
+
+        const scheduleOffsetUpdate = () => {
+            if (animationFrameId) {
+                window.cancelAnimationFrame(animationFrameId);
+            }
+
+            animationFrameId = window.requestAnimationFrame(() => {
+                animationFrameId = 0;
+                updateOffsets();
+            });
+        };
+
+        scheduleOffsetUpdate();
+        mediaQuery.addEventListener('change', scheduleOffsetUpdate);
+        window.addEventListener('resize', scheduleOffsetUpdate);
+
+        if (typeof ResizeObserver !== 'undefined' && navRef.current) {
+            resizeObserver = new ResizeObserver(() => {
+                scheduleOffsetUpdate();
+            });
+            resizeObserver.observe(navRef.current);
+        }
+
+        return () => {
+            mediaQuery.removeEventListener('change', scheduleOffsetUpdate);
+            window.removeEventListener('resize', scheduleOffsetUpdate);
+            if (animationFrameId) {
+                window.cancelAnimationFrame(animationFrameId);
+            }
+            resizeObserver?.disconnect();
+            clearOffsets();
+        };
+    }, []);
+
+    const handleLogout = async () => {
+        if (isLoggingOut) return;
+        setIsLoggingOut(true);
+        try {
+            await logout();
+            setIsMoreOpen(false);
+            router.replace('/login');
+        } finally {
+            setIsLoggingOut(false);
+        }
+    };
+
+    if (shouldHideGlobalNav(pathname)) {
         return null;
     }
 
@@ -98,19 +149,94 @@ export default function MobileNav() {
                         initial={{ opacity: 0, y: 100 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 100 }}
-                        className="fixed bottom-28 right-6 z-50 flex flex-col gap-2 md:hidden"
+                        id="mobile-more-drawer"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="More navigation"
+                        className="fixed bottom-28 right-6 z-50 w-[260px] rounded-2xl border border-white/15 bg-surface-1/95 p-3 shadow-xl backdrop-blur-xl md:hidden"
                     >
-                        {moreNavItems.map((item) => (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                onClick={() => setIsMoreOpen(false)}
-                                className="flex items-center gap-3 bg-slate-900/90 backdrop-blur-xl border border-white/10 p-4 rounded-xl shadow-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
-                            >
-                                {item.icon}
-                                <span className="text-sm font-semibold">{item.label}</span>
-                            </Link>
+                        {user && (
+                            <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs uppercase tracking-[0.16em] text-ink-muted">Profile Readiness</p>
+                                    <span className="text-xs font-semibold text-white">{profileSummary.completionScore}%</span>
+                                </div>
+                                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                    <div
+                                        className="h-full rounded-full bg-gradient-to-r from-primary via-accent to-secondary"
+                                        style={{ width: `${profileSummary.completionScore}%` }}
+                                    />
+                                </div>
+                                <Link
+                                    href={readinessAction.href}
+                                    onClick={() => setIsMoreOpen(false)}
+                                    className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-primary/30 bg-primary/12 px-2 py-1.5 text-xs uppercase tracking-[0.12em] text-primary"
+                                >
+                                    {readinessAction.label}
+                                </Link>
+                            </div>
+                        )}
+
+                        <div className="mb-2">
+                            <div className="px-2 pb-1 text-xs uppercase tracking-[0.18em] text-ink-muted">
+                                Quick Actions
+                            </div>
+                            <div className="grid grid-cols-3 gap-1.5">
+                                {utilityActions.map((action) => (
+                                    <Link
+                                        key={action.href}
+                                        href={appendReturnTo(action.href, currentReturnTo)}
+                                        onClick={() => setIsMoreOpen(false)}
+                                        className="rounded-lg border border-white/10 bg-white/[0.03] px-1.5 py-2 text-center text-xs uppercase tracking-[0.08em] text-ink-secondary hover:text-white hover:bg-white/10 transition-colors"
+                                    >
+                                        {action.shortLabel || action.label}
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+
+                        {moreNavSections.map((section) => (
+                            <div key={section.id} className="mb-2 last:mb-0">
+                                <div className="px-2 pb-1 text-xs uppercase tracking-[0.18em] text-ink-muted">
+                                    {section.label}
+                                </div>
+                                <div className="space-y-1">
+                                    {section.items.map((item) => {
+                                        const isActive = isNavItemActive(pathname, item);
+                                        return (
+                                            <Link
+                                                key={item.href}
+                                                href={item.href}
+                                                onClick={() => setIsMoreOpen(false)}
+                                                aria-current={isActive ? 'page' : undefined}
+                                                className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${isActive
+                                                    ? 'border-primary/35 bg-primary/15 text-white'
+                                                    : 'border-white/10 text-ink-secondary hover:text-white hover:bg-white/10'
+                                                    }`}
+                                            >
+                                                {item.icon}
+                                                <span className="text-sm font-semibold">{item.label}</span>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         ))}
+                        {user && (
+                            <div className="mt-3 border-t border-white/10 pt-3">
+                                <div className="px-2 pb-2 text-xs uppercase tracking-[0.18em] text-ink-muted">
+                                    Session
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleLogout}
+                                    disabled={isLoggingOut}
+                                    className="w-full rounded-xl border border-white/15 bg-white/[0.03] px-3 py-3 text-left text-sm font-semibold text-ink-secondary disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                    {isLoggingOut ? 'Signing out...' : 'Sign out'}
+                                </button>
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -127,19 +253,28 @@ export default function MobileNav() {
                 )}
             </AnimatePresence>
 
-            <nav className="fixed bottom-6 left-6 right-6 z-50 md:hidden">
-                <div className="bg-slate-900/40 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] px-4 py-3 shadow-2xl flex items-center justify-around relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent pointer-events-none" />
+            <nav
+                ref={navRef}
+                className="fixed left-4 right-4 z-50 md:hidden"
+                style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+                aria-label="Mobile navigation"
+            >
+                <div className="bg-surface-1/80 backdrop-blur-2xl border border-white/15 rounded-[2.5rem] px-4 py-3 shadow-2xl flex items-center justify-around relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-secondary/10 pointer-events-none" />
 
                     {mainNavItems.map((item) => {
-                        const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href));
+                        const isActive = isNavItemActive(pathname, item);
 
                         if (item.isMain) {
+                            const quickCaptureHref = item.href === '/entry/new'
+                                ? appendReturnTo('/entry/new?mode=quick', currentReturnTo)
+                                : appendReturnTo(item.href, currentReturnTo);
                             return (
                                 <Link
                                     key={item.href}
-                                    href={item.href}
-                                    className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-white shadow-xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all relative z-10 mx-2"
+                                    href={quickCaptureHref}
+                                    aria-label={item.label}
+                                    className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary text-white shadow-xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all relative z-10 mx-2"
                                 >
                                     {item.icon}
                                 </Link>
@@ -150,7 +285,8 @@ export default function MobileNav() {
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative z-10 flex-1 ${isActive ? 'text-primary' : 'text-slate-500 hover:text-white'
+                                aria-current={isActive ? 'page' : undefined}
+                                className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative z-10 flex-1 ${isActive ? 'text-primary' : 'text-ink-muted hover:text-white'
                                     }`}
                             >
                                 <div className={`${isActive ? 'opacity-100 scale-110' : 'opacity-70'} transition-transform duration-200`}>
@@ -159,8 +295,8 @@ export default function MobileNav() {
                                         strokeWidth: isActive ? 2.5 : 2
                                     })}
                                 </div>
-                                <span className={`text-[10px] mt-1 font-bold uppercase tracking-widest ${isActive ? 'opacity-100' : 'opacity-40'}`}>
-                                    {item.label}
+                                <span className={`text-xs mt-1 font-bold uppercase tracking-widest ${isActive ? 'opacity-100' : 'opacity-40'}`}>
+                                    {item.shortLabel || item.label}
                                 </span>
                             </Link>
                         );
@@ -168,15 +304,18 @@ export default function MobileNav() {
 
                     {/* More Button */}
                     <button
+                        type="button"
                         onClick={() => setIsMoreOpen(!isMoreOpen)}
-                        className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative z-10 flex-1 ${isMoreOpen ? 'text-white' : 'text-slate-500 hover:text-white'}`}
+                        aria-expanded={isMoreOpen}
+                        aria-controls="mobile-more-drawer"
+                        aria-current={isMoreSectionActive ? 'page' : undefined}
+                        aria-label="Open more navigation"
+                        className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative z-10 flex-1 ${(isMoreOpen || isMoreSectionActive) ? 'text-white' : 'text-ink-muted hover:text-white'}`}
                     >
-                        <div className={`${isMoreOpen ? 'opacity-100 scale-110' : 'opacity-70'} transition-transform duration-200`}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" />
-                            </svg>
+                        <div className={`${(isMoreOpen || isMoreSectionActive) ? 'opacity-100 scale-110' : 'opacity-70'} transition-transform duration-200`}>
+                            <FiMoreHorizontal size={24} aria-hidden="true" />
                         </div>
-                        <span className={`text-[10px] mt-1 font-bold uppercase tracking-widest ${isMoreOpen ? 'opacity-100' : 'opacity-40'}`}>
+                        <span className={`text-xs mt-1 font-bold uppercase tracking-widest ${(isMoreOpen || isMoreSectionActive) ? 'opacity-100' : 'opacity-40'}`}>
                             More
                         </span>
                     </button>
@@ -185,4 +324,5 @@ export default function MobileNav() {
         </>
     );
 }
+
 

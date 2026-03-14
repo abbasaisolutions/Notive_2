@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import { FiFeather, FiZap } from 'react-icons/fi';
 
 interface InsightCardProps {
     type: 'lesson' | 'skill';
@@ -20,29 +21,29 @@ export default function InsightCard({ type, text, delay = 0 }: InsightCardProps)
             className={`
                 relative p-4 rounded-xl border backdrop-blur-md overflow-hidden group hover:scale-[1.02] transition-transform
                 ${isLesson
-                    ? 'bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20'
-                    : 'bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20'
+                    ? 'bg-zinc-500/10 border-zinc-500/20 hover:bg-zinc-500/20'
+                    : 'bg-white/[0.03] border-white/15 hover:bg-white/[0.07]'
                 }
             `}
         >
             {/* Icon Background */}
             <div className={`
                 absolute -right-4 -bottom-4 w-20 h-20 rounded-full opacity-10
-                ${isLesson ? 'bg-amber-500' : 'bg-emerald-500'}
+                ${isLesson ? 'bg-zinc-500' : 'bg-primary'}
             `} />
 
             <div className="flex items-start gap-3 relative z-10">
                 <div className={`
                     w-8 h-8 rounded-lg flex items-center justify-center text-lg shadow-lg
-                    ${isLesson ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}
+                    ${isLesson ? 'bg-zinc-500/20 text-zinc-300' : 'bg-white/[0.07] text-ink-secondary'}
                 `}>
-                    {isLesson ? '💡' : '⚡'}
+                    {isLesson ? <FiFeather size={16} aria-hidden="true" /> : <FiZap size={16} aria-hidden="true" />}
                 </div>
                 <div>
-                    <h4 className={`text-xs font-bold uppercase tracking-wider mb-1 ${isLesson ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    <h4 className={`text-xs font-bold uppercase tracking-wider mb-1 ${isLesson ? 'text-zinc-300' : 'text-ink-secondary'}`}>
                         {isLesson ? 'Lesson Learned' : 'Skill Acquired'}
                     </h4>
-                    <p className="text-sm text-slate-200 font-medium leading-relaxed">
+                    <p className="text-sm text-white font-medium leading-relaxed">
                         {text}
                     </p>
                 </div>

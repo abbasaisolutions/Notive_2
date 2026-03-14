@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-type Theme = 'dark' | 'light';
+type Theme = 'dark';
 
 interface ThemeContextType {
     theme: Theme;
@@ -16,22 +16,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [theme, setThemeState] = useState<Theme>('dark');
 
     useEffect(() => {
-        const stored = localStorage.getItem('notive_theme') as Theme | null;
-        if (stored) {
-            setThemeState(stored);
-            document.documentElement.classList.toggle('light', stored === 'light');
-        }
+        // Keep the current release locked to the neutral dark theme.
+        setThemeState('dark');
+        localStorage.setItem('notive_theme', 'dark');
+        document.documentElement.classList.remove('light');
     }, []);
 
     const setTheme = useCallback((newTheme: Theme) => {
-        setThemeState(newTheme);
-        localStorage.setItem('notive_theme', newTheme);
-        document.documentElement.classList.toggle('light', newTheme === 'light');
+        setThemeState(newTheme || 'dark');
+        localStorage.setItem('notive_theme', 'dark');
+        document.documentElement.classList.remove('light');
     }, []);
 
     const toggleTheme = useCallback(() => {
-        setTheme(theme === 'dark' ? 'light' : 'dark');
-    }, [theme, setTheme]);
+        setTheme('dark');
+    }, [setTheme]);
 
     return (
         <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>

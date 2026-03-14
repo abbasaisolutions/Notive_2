@@ -1,12 +1,127 @@
 import { Request, Response } from 'express';
+import { createHash } from 'crypto';
 import prisma from '../config/prisma';
+import { buildProfileContextSummary } from '../services/profile-context.service';
+import { buildAnalyticsSummary, type AnalyticsPeriod } from '../services/analytics-summary.service';
+import { buildTimelineSignatureSummary } from '../services/timeline-signature.service';
+import { buildEntryListWhere, normalizeEntrySearch, normalizeEntrySource, normalizeLifeArea } from '../utils/entry-filters';
+
+const clampDays = (value: number): number => {
+    if (!Number.isFinite(value)) return 30;
+    return Math.min(365, Math.max(7, Math.floor(value)));
+};
+
+const normalizeAnalyticsPeriod = (value: unknown): AnalyticsPeriod =>
+    value === 'month' || value === 'year' ? value : 'week';
+
+const buildTelemetryFingerprint = (input: {
+    userId: string;
+    eventType: string;
+    field?: string | null;
+    value?: string | null;
+    pathname?: string | null;
+    occurredAt: Date;
+    metadata?: unknown;
+}) => createHash('sha256').update(JSON.stringify(input)).digest('hex');
+
+export const getSummary = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const period = normalizeAnalyticsPeriod(req.query.period);
+
+        const [entries, profile] = await Promise.all([
+            prisma.entry.findMany({
+                where: { userId, deletedAt: null },
+                orderBy: { createdAt: 'desc' },
+                select: {
+                    id: true,
+                    title: true,
+                    content: true,
+                    mood: true,
+                    tags: true,
+                    skills: true,
+                    lessons: true,
+                    source: true,
+                    createdAt: true,
+                },
+            }),
+            prisma.userProfile.findUnique({
+                where: { userId },
+                select: {
+                    primaryGoal: true,
+                    focusArea: true,
+                    experienceLevel: true,
+                    writingPreference: true,
+                    starterPrompt: true,
+                    importPreference: true,
+                    lifeGoals: true,
+                    outputGoals: true,
+                    onboardingCompletedAt: true,
+                    updatedAt: true,
+                },
+            }),
+        ]);
+
+        const summary = buildAnalyticsSummary({
+            entries,
+            profileContext: buildProfileContextSummary(profile),
+            period,
+        });
+
+        return res.json({
+            period,
+            summary,
+        });
+    } catch (error) {
+        console.error('Get analytics summary error:', error);
+        return res.status(500).json({ message: 'Failed to fetch analytics summary' });
+    }
+};
+
+export const getTimelineSummary = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const source = normalizeEntrySource(req.query.source);
+        const lifeArea = normalizeLifeArea(req.query.lifeArea);
+        const search = normalizeEntrySearch(req.query.search);
+        const where = buildEntryListWhere({
+            userId,
+            search,
+            source,
+            lifeArea,
+        });
+
+        const entries = await prisma.entry.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            select: {
+                id: true,
+                title: true,
+                content: true,
+                mood: true,
+                tags: true,
+                skills: true,
+                lessons: true,
+                lifeArea: true,
+                source: true,
+                createdAt: true,
+            },
+        });
+
+        return res.json({
+            summary: buildTimelineSignatureSummary(entries),
+        });
+    } catch (error) {
+        console.error('Get timeline summary error:', error);
+        return res.status(500).json({ message: 'Failed to fetch timeline summary' });
+    }
+};
 
 /**
  * Get overall statistics
  */
 export const getStats = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
 
         // Total entries
@@ -82,7 +197,26 @@ export const getStats = async (req: Request, res: Response) => {
             where: { userId, deletedAt: null },
             select: { content: true },
         });
-        const totalWords = allContent.reduce((acc, e) => acc + e.content.split(/\s+/).length, 0);
+        const totalWords = allContent.reduce(
+            (acc: number, entry: (typeof allContent)[number]) => acc + entry.content.split(/\s+/).length,
+            0
+        );
+
+        const profile = await prisma.userProfile.findUnique({
+            where: { userId },
+            select: {
+                primaryGoal: true,
+                focusArea: true,
+                experienceLevel: true,
+                writingPreference: true,
+                starterPrompt: true,
+                importPreference: true,
+                lifeGoals: true,
+                outputGoals: true,
+                onboardingCompletedAt: true,
+                updatedAt: true,
+            },
+        });
 
         return res.json({
             totalEntries,
@@ -91,6 +225,7 @@ export const getStats = async (req: Request, res: Response) => {
             currentStreak,
             longestStreak,
             totalWords,
+            profileContext: buildProfileContextSummary(profile),
         });
     } catch (error) {
         console.error('Get stats error:', error);
@@ -103,7 +238,6 @@ export const getStats = async (req: Request, res: Response) => {
  */
 export const getMoodTrends = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
 
         const entries = await prisma.entry.findMany({
@@ -138,7 +272,6 @@ export const getMoodTrends = async (req: Request, res: Response) => {
  */
 export const getActivity = async (req: Request, res: Response) => {
     try {
-        // @ts-ignore
         const userId = req.userId;
 
         // Get entries from last 90 days
@@ -167,3 +300,133 @@ export const getActivity = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Failed to fetch activity' });
     }
 };
+
+export const postTelemetryEvent = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const {
+            eventType,
+            field,
+            value,
+            pathname,
+            metadata,
+            occurredAt,
+        } = req.body || {};
+
+        if (typeof eventType !== 'string' || !eventType.trim()) {
+            return res.status(400).json({ message: 'eventType is required.' });
+        }
+
+        const profile = await prisma.userProfile.findUnique({
+            where: { userId },
+            select: { id: true },
+        });
+
+        const occurred = occurredAt ? new Date(occurredAt) : new Date();
+        if (Number.isNaN(occurred.getTime())) {
+            return res.status(400).json({ message: 'occurredAt must be a valid date.' });
+        }
+
+        await prisma.personalizationEvent.create({
+            data: {
+                userId,
+                profileId: profile?.id || null,
+                eventType: eventType.trim().slice(0, 80),
+                field: typeof field === 'string' ? field.slice(0, 80) : null,
+                value: typeof value === 'string' ? value.slice(0, 500) : null,
+                pathname: typeof pathname === 'string' ? pathname.slice(0, 200) : null,
+                metadata: metadata && typeof metadata === 'object' ? metadata : undefined,
+                occurredAt: occurred,
+                fingerprint: buildTelemetryFingerprint({
+                    userId,
+                    eventType: eventType.trim().slice(0, 80),
+                    field: typeof field === 'string' ? field.slice(0, 80) : null,
+                    value: typeof value === 'string' ? value.slice(0, 500) : null,
+                    pathname: typeof pathname === 'string' ? pathname.slice(0, 200) : null,
+                    occurredAt: occurred,
+                    metadata: metadata && typeof metadata === 'object' ? metadata : null,
+                }),
+            },
+        });
+
+        return res.status(201).json({ ok: true });
+    } catch (error: any) {
+        if (error?.code === 'P2002') {
+            return res.status(200).json({ ok: true, duplicate: true });
+        }
+
+        console.error('Post telemetry event error:', error);
+        return res.status(500).json({ message: 'Failed to capture telemetry event' });
+    }
+};
+
+/**
+ * Get personalization telemetry timeline
+ */
+export const getPersonalizationTelemetry = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const daysParam = typeof req.query.days === 'string' ? Number(req.query.days) : NaN;
+        const days = clampDays(daysParam);
+
+        const since = new Date();
+        since.setDate(since.getDate() - days);
+
+        const events = await prisma.personalizationEvent.findMany({
+            where: {
+                userId,
+                occurredAt: { gte: since },
+            },
+            orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
+            take: 1000,
+            select: {
+                id: true,
+                eventType: true,
+                questionId: true,
+                field: true,
+                value: true,
+                pathname: true,
+                metadata: true,
+                occurredAt: true,
+                createdAt: true,
+            },
+        });
+
+        const summaryByType: Record<string, number> = {};
+        const answeredByField: Record<string, number> = {};
+        const timelineMap: Record<string, Record<string, number>> = {};
+
+        for (const event of events) {
+            summaryByType[event.eventType] = (summaryByType[event.eventType] || 0) + 1;
+
+            if (event.eventType === 'ANSWER_CAPTURED' && event.field) {
+                answeredByField[event.field] = (answeredByField[event.field] || 0) + 1;
+            }
+
+            const day = event.occurredAt.toISOString().slice(0, 10);
+            if (!timelineMap[day]) {
+                timelineMap[day] = {};
+            }
+            timelineMap[day][event.eventType] = (timelineMap[day][event.eventType] || 0) + 1;
+        }
+
+        const timeline = Object.entries(timelineMap)
+            .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+            .map(([date, counts]) => ({ date, counts }));
+
+        return res.json({
+            rangeDays: days,
+            from: since.toISOString(),
+            to: new Date().toISOString(),
+            totalEvents: events.length,
+            summaryByType,
+            answeredByField,
+            timeline,
+            recentEvents: events.slice(0, 50),
+        });
+    } catch (error) {
+        console.error('Get personalization telemetry error:', error);
+        return res.status(500).json({ message: 'Failed to fetch personalization telemetry' });
+    }
+};
+
