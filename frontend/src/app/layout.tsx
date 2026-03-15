@@ -9,6 +9,8 @@ import { ThemeProvider } from "@/context/theme-context";
 import AppChrome from "@/components/layout/AppChrome";
 import RouteHeader from "@/components/layout/RouteHeader";
 import OnboardingGuard from "@/components/onboarding/OnboardingGuard";
+import { getCredentialSsoClientId } from "@/utils/sso";
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: '--font-sans' });
 const fraunces = Fraunces({ subsets: ["latin"], variable: '--font-serif' });
@@ -76,22 +78,15 @@ const jsonLd = {
     },
     "description": "A stunning, modern note-taking experience with AI insights and mood tracking."
 };
-
-import { GoogleOAuthProvider } from '@react-oauth/google';
-
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-const isValidGoogleClientId = (value?: string) =>
-    !!value &&
-    value !== 'your-google-client-id' &&
-    /\.apps\.googleusercontent\.com$/i.test(value);
-
 function GoogleProviderWrapper({ children }: { children: React.ReactNode }) {
-    if (!isValidGoogleClientId(GOOGLE_CLIENT_ID)) {
+    const googleClientId = getCredentialSsoClientId('google');
+
+    if (!googleClientId) {
         return <>{children}</>;
     }
 
     return (
-        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID!}>
+        <GoogleOAuthProvider clientId={googleClientId}>
             {children}
         </GoogleOAuthProvider>
     );

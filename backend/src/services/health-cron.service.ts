@@ -3,6 +3,7 @@
 
 import { healthSyncService } from './health-sync.service';
 import { healthInsightsService } from './health-insights.service';
+import { getHealthFeatureState } from './health-feature.service';
 
 // Simple cron implementation using setInterval
 // For production, consider using node-cron or bull queue
@@ -37,9 +38,15 @@ class HealthCronService {
     /**
      * Start all cron jobs
      */
-    start(): void {
+    async start(): Promise<void> {
         if (this.isRunning) {
             console.log('Health cron jobs already running');
+            return;
+        }
+
+        const state = await getHealthFeatureState();
+        if (!state.available) {
+            console.log(`Health cron jobs skipped: ${state.message || 'Health features are unavailable.'}`);
             return;
         }
 
@@ -89,6 +96,12 @@ class HealthCronService {
      * Daily health sync - Fetch yesterday's data for all connected users
      */
     private async dailyHealthSync(): Promise<void> {
+        const state = await getHealthFeatureState();
+        if (!state.connectAvailable) {
+            console.log(`Skipping daily health sync: ${state.message || 'Google Fit connection flow is unavailable.'}`);
+            return;
+        }
+
         const result = await healthSyncService.syncAllUsers();
         console.log(`Daily health sync: ${result.success} synced, ${result.failed} failed`);
     }
@@ -98,6 +111,12 @@ class HealthCronService {
      */
     private async generateWeeklyInsights(): Promise<void> {
         try {
+            const state = await getHealthFeatureState();
+            if (!state.available) {
+                console.log(`Skipping weekly health insights: ${state.message || 'Health features are unavailable.'}`);
+                return;
+            }
+
             // Only run on Sundays (or whenever this is called after a week)
             const today = new Date();
             if (today.getDay() === 0) { // Sunday
@@ -113,6 +132,11 @@ class HealthCronService {
      * Manual trigger for health sync (for testing or manual refresh)
      */
     async triggerSync(userId?: string): Promise<{ success: number; failed: number }> {
+        const state = await getHealthFeatureState();
+        if (!state.connectAvailable) {
+            return { success: 0, failed: userId ? 1 : 0 };
+        }
+
         if (userId) {
             const result = await healthSyncService.syncUserHealth(userId);
             return { success: result ? 1 : 0, failed: result ? 0 : 1 };

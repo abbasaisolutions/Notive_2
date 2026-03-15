@@ -2,12 +2,8 @@
 // File: backend/src/services/health-insights.service.ts
 
 import prisma from '../config/prisma';
-import OpenAI from 'openai';
+import { aiRuntime, createLlmChatCompletion, hasLlmProvider } from '../config/ai';
 import { healthSyncService } from './health-sync.service';
-
-const openai = process.env.OPENAI_API_KEY
-    ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-    : null;
 
 interface MoodHealthCorrelation {
     sleepHours: number;
@@ -171,7 +167,7 @@ export class HealthInsightsService {
             avgHeartRate: number | null;
         }
     ): Promise<string | null> {
-        if (!openai || (!healthContext.sleepHours && !healthContext.activityLevel)) {
+        if (!hasLlmProvider() || (!healthContext.sleepHours && !healthContext.activityLevel)) {
             return null;
         }
 
@@ -191,8 +187,8 @@ export class HealthInsightsService {
                 healthContext.activityLevel ? `${healthContext.activityLevel} activity level` : null,
             ].filter(Boolean).join(', ');
 
-            const response = await openai.chat.completions.create({
-                model: 'gpt-3.5-turbo',
+            const response = await createLlmChatCompletion({
+                model: aiRuntime.healthModel,
                 messages: [
                     {
                         role: 'system',
@@ -215,6 +211,10 @@ Generate a brief, gentle observation about how today's health context might rela
                 max_tokens: 100,
                 temperature: 0.5,
             });
+
+            if (!response) {
+                return null;
+            }
 
             const insight = response.choices[0]?.message?.content?.trim();
             if (insight && insight !== 'null' && insight.length > 10) {

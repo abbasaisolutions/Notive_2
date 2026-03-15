@@ -6,7 +6,7 @@ const force = process.argv.includes('--force');
 
 const run = async () => {
     if (!embeddingService.isEnabled()) {
-        console.log('Embedding backfill skipped: USE_EMBEDDINGS=true and OPENAI_API_KEY are required.');
+        console.log('Embedding backfill skipped: enable USE_EMBEDDINGS and configure a supported embedding provider.');
         return;
     }
 

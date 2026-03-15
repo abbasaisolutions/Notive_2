@@ -4,6 +4,7 @@ import {
     chatWithJournal,
     exportOpportunityPack,
     generatePersonalStatement,
+    getAiCoachStatus,
     getOpportunityOverview,
     getOpportunityTrends,
     updateOpportunityEvidence,
@@ -13,6 +14,7 @@ import { authMiddleware } from '../middleware/auth.middleware';
 const router = Router();
 
 
+router.get('/status', authMiddleware, getAiCoachStatus);
 router.post('/chat', authMiddleware, chatWithJournal);
 router.post('/analyze/:entryId?', authMiddleware, analyzeEntry);
 router.get('/statement', authMiddleware, generatePersonalStatement);

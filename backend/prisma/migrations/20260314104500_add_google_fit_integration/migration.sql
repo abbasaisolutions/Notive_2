@@ -1,14 +1,11 @@
--- Google Fit Integration Migration
--- Add health tracking tables for Google Fit integration
-
--- CreateTable: GoogleFitConnection
+-- CreateTable
 CREATE TABLE IF NOT EXISTS "GoogleFitConnection" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "accessToken" TEXT NOT NULL,
     "refreshToken" TEXT NOT NULL,
     "expiresAt" TIMESTAMP(3) NOT NULL,
-    "scopes" TEXT[],
+    "scopes" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
     "connectedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "lastSyncAt" TIMESTAMP(3),
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -16,7 +13,7 @@ CREATE TABLE IF NOT EXISTS "GoogleFitConnection" (
     CONSTRAINT "GoogleFitConnection_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable: HealthContext
+-- CreateTable
 CREATE TABLE IF NOT EXISTS "HealthContext" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -36,7 +33,7 @@ CREATE TABLE IF NOT EXISTS "HealthContext" (
     CONSTRAINT "HealthContext_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable: HealthInsight
+-- CreateTable
 CREATE TABLE IF NOT EXISTS "HealthInsight" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -50,26 +47,53 @@ CREATE TABLE IF NOT EXISTS "HealthInsight" (
     CONSTRAINT "HealthInsight_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex: Unique user for GoogleFitConnection
+-- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "GoogleFitConnection_userId_key" ON "GoogleFitConnection"("userId");
 
--- CreateIndex: Unique userId + date for HealthContext
+-- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "HealthContext_userId_date_key" ON "HealthContext"("userId", "date");
 
--- CreateIndex: HealthContext userId + date index for fast lookups
+-- CreateIndex
 CREATE INDEX IF NOT EXISTS "HealthContext_userId_date_idx" ON "HealthContext"("userId", "date");
 
--- CreateIndex: HealthInsight userId + type index
+-- CreateIndex
 CREATE INDEX IF NOT EXISTS "HealthInsight_userId_type_idx" ON "HealthInsight"("userId", "type");
 
--- AddForeignKey: GoogleFitConnection -> User
-ALTER TABLE "GoogleFitConnection" ADD CONSTRAINT "GoogleFitConnection_userId_fkey" 
-    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'GoogleFitConnection_userId_fkey'
+    ) THEN
+        ALTER TABLE "GoogleFitConnection"
+            ADD CONSTRAINT "GoogleFitConnection_userId_fkey"
+            FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey: HealthContext -> User
-ALTER TABLE "HealthContext" ADD CONSTRAINT "HealthContext_userId_fkey" 
-    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'HealthContext_userId_fkey'
+    ) THEN
+        ALTER TABLE "HealthContext"
+            ADD CONSTRAINT "HealthContext_userId_fkey"
+            FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey: HealthInsight -> User
-ALTER TABLE "HealthInsight" ADD CONSTRAINT "HealthInsight_userId_fkey" 
-    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'HealthInsight_userId_fkey'
+    ) THEN
+        ALTER TABLE "HealthInsight"
+            ADD CONSTRAINT "HealthInsight_userId_fkey"
+            FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;

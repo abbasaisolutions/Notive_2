@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import prisma from '../config/prisma';
 import crypto from 'crypto';
 
+const buildShareUrl = (token: string) => `/share/view?token=${encodeURIComponent(token)}`;
+
 /**
  * Create a share link for an entry
  */
@@ -26,7 +28,7 @@ export const createEntryShareLink = async (req: Request, res: Response) => {
         });
 
         if (existing) {
-            return res.json({ shareLink: existing, url: `/share/${existing.token}` });
+            return res.json({ shareLink: existing, url: buildShareUrl(existing.token) });
         }
 
         // Create new share link
@@ -38,7 +40,7 @@ export const createEntryShareLink = async (req: Request, res: Response) => {
             },
         });
 
-        return res.status(201).json({ shareLink, url: `/share/${shareLink.token}` });
+        return res.status(201).json({ shareLink, url: buildShareUrl(shareLink.token) });
     } catch (error) {
         console.error('Create share link error:', error);
         return res.status(500).json({ message: 'Failed to create share link' });
@@ -67,7 +69,7 @@ export const createChapterShareLink = async (req: Request, res: Response) => {
         });
 
         if (existing) {
-            return res.json({ shareLink: existing, url: `/share/${existing.token}` });
+            return res.json({ shareLink: existing, url: buildShareUrl(existing.token) });
         }
 
         const shareLink = await prisma.shareLink.create({
@@ -78,7 +80,7 @@ export const createChapterShareLink = async (req: Request, res: Response) => {
             },
         });
 
-        return res.status(201).json({ shareLink, url: `/share/${shareLink.token}` });
+        return res.status(201).json({ shareLink, url: buildShareUrl(shareLink.token) });
     } catch (error) {
         console.error('Create chapter share link error:', error);
         return res.status(500).json({ message: 'Failed to create share link' });

@@ -5,9 +5,19 @@ import { Request, Response } from 'express';
 import { googleFitOAuthService } from '../services/googlefit-oauth.service';
 import { healthSyncService } from '../services/health-sync.service';
 import { healthInsightsService } from '../services/health-insights.service';
-import { healthCronService } from '../services/health-cron.service';
+import { buildHealthFeaturePayload, getHealthFeatureState } from '../services/health-feature.service';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+const respondWithUnavailableHealthFeature = async (res: Response, requiresConnectionFlow = false) => {
+    const state = await getHealthFeatureState();
+    const available = requiresConnectionFlow ? state.connectAvailable : state.available;
+    if (available) {
+        return null;
+    }
+
+    return res.status(503).json(buildHealthFeaturePayload(state));
+};
 
 /**
  * Get Google Fit connection status
@@ -15,11 +25,22 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
  */
 export const getConnectionStatus = async (req: Request, res: Response) => {
     try {
+        const state = await getHealthFeatureState();
+        if (!state.available) {
+            return res.json({
+                connected: false,
+                ...buildHealthFeaturePayload(state),
+            });
+        }
+
         // @ts-ignore
         const userId = req.userId;
 
         const status = await googleFitOAuthService.getConnectionStatus(userId);
-        return res.json(status);
+        return res.json({
+            ...status,
+            ...buildHealthFeaturePayload(state),
+        });
     } catch (error) {
         console.error('Get connection status error:', error);
         return res.status(500).json({ message: 'Failed to get connection status' });
@@ -32,6 +53,11 @@ export const getConnectionStatus = async (req: Request, res: Response) => {
  */
 export const initiateConnection = async (req: Request, res: Response) => {
     try {
+        const unavailableResponse = await respondWithUnavailableHealthFeature(res, true);
+        if (unavailableResponse) {
+            return unavailableResponse;
+        }
+
         // @ts-ignore
         const userId = req.userId;
 
@@ -49,6 +75,11 @@ export const initiateConnection = async (req: Request, res: Response) => {
  */
 export const handleCallback = async (req: Request, res: Response) => {
     try {
+        const healthState = await getHealthFeatureState();
+        if (!healthState.connectAvailable) {
+            return res.redirect(`${FRONTEND_URL}/profile?googlefit=error&reason=${healthState.reason}`);
+        }
+
         const { code, state, error } = req.query;
 
         if (error) {
@@ -96,6 +127,11 @@ export const handleCallback = async (req: Request, res: Response) => {
  */
 export const disconnect = async (req: Request, res: Response) => {
     try {
+        const unavailableResponse = await respondWithUnavailableHealthFeature(res);
+        if (unavailableResponse) {
+            return unavailableResponse;
+        }
+
         // @ts-ignore
         const userId = req.userId;
 
@@ -117,6 +153,11 @@ export const disconnect = async (req: Request, res: Response) => {
  */
 export const getHealthContext = async (req: Request, res: Response) => {
     try {
+        const unavailableResponse = await respondWithUnavailableHealthFeature(res);
+        if (unavailableResponse) {
+            return unavailableResponse;
+        }
+
         // @ts-ignore
         const userId = req.userId;
         const { date } = req.params;
@@ -150,6 +191,11 @@ export const getHealthContext = async (req: Request, res: Response) => {
  */
 export const getHealthContextRange = async (req: Request, res: Response) => {
     try {
+        const unavailableResponse = await respondWithUnavailableHealthFeature(res);
+        if (unavailableResponse) {
+            return unavailableResponse;
+        }
+
         // @ts-ignore
         const userId = req.userId;
         const { start, end } = req.query;
@@ -176,6 +222,11 @@ export const getHealthContextRange = async (req: Request, res: Response) => {
  */
 export const getHealthStats = async (req: Request, res: Response) => {
     try {
+        const unavailableResponse = await respondWithUnavailableHealthFeature(res);
+        if (unavailableResponse) {
+            return unavailableResponse;
+        }
+
         // @ts-ignore
         const userId = req.userId;
         const days = parseInt(req.query.days as string) || 30;
@@ -195,6 +246,11 @@ export const getHealthStats = async (req: Request, res: Response) => {
  */
 export const getHealthInsights = async (req: Request, res: Response) => {
     try {
+        const unavailableResponse = await respondWithUnavailableHealthFeature(res);
+        if (unavailableResponse) {
+            return unavailableResponse;
+        }
+
         // @ts-ignore
         const userId = req.userId;
         const days = parseInt(req.query.days as string) || 30;
@@ -225,6 +281,11 @@ export const getHealthInsights = async (req: Request, res: Response) => {
  */
 export const getWeeklySummary = async (req: Request, res: Response) => {
     try {
+        const unavailableResponse = await respondWithUnavailableHealthFeature(res);
+        if (unavailableResponse) {
+            return unavailableResponse;
+        }
+
         // @ts-ignore
         const userId = req.userId;
 
@@ -253,6 +314,11 @@ export const getWeeklySummary = async (req: Request, res: Response) => {
  */
 export const triggerSync = async (req: Request, res: Response) => {
     try {
+        const unavailableResponse = await respondWithUnavailableHealthFeature(res, true);
+        if (unavailableResponse) {
+            return unavailableResponse;
+        }
+
         // @ts-ignore
         const userId = req.userId;
 
@@ -281,6 +347,11 @@ export const triggerSync = async (req: Request, res: Response) => {
  */
 export const backfillData = async (req: Request, res: Response) => {
     try {
+        const unavailableResponse = await respondWithUnavailableHealthFeature(res, true);
+        if (unavailableResponse) {
+            return unavailableResponse;
+        }
+
         // @ts-ignore
         const userId = req.userId;
         const days = Math.min(parseInt(req.body.days) || 30, 90); // Max 90 days
@@ -303,6 +374,11 @@ export const backfillData = async (req: Request, res: Response) => {
  */
 export const deleteHealthData = async (req: Request, res: Response) => {
     try {
+        const unavailableResponse = await respondWithUnavailableHealthFeature(res);
+        if (unavailableResponse) {
+            return unavailableResponse;
+        }
+
         // @ts-ignore
         const userId = req.userId;
 

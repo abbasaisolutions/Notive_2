@@ -1,20 +1,16 @@
-import OpenAI from 'openai';
-
-const openai = process.env.OPENAI_API_KEY 
-    ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-    : null;
+import { aiRuntime, createLlmChatCompletion, hasLlmProvider } from '../config/ai';
 
 export class AIService {
     /**
      * Analyze the sentiment of text and suggest a mood
      */
     static async analyzeSentiment(text: string): Promise<string> {
-        if (!openai) {
-            console.warn('OpenAI API key not configured, returning default mood');
+        if (!hasLlmProvider()) {
+            console.warn('No LLM provider configured, returning default mood');
             return 'thoughtful';
         }
-        const response = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
+        const response = await createLlmChatCompletion({
+            model: aiRuntime.sentimentModel,
             messages: [
                 {
                     role: 'system',
@@ -29,6 +25,10 @@ export class AIService {
             temperature: 0.3,
         });
 
+        if (!response) {
+            return 'thoughtful';
+        }
+
         const mood = response.choices[0]?.message?.content?.trim().toLowerCase() || 'thoughtful';
 
         // Validate the mood is in our allowed list
@@ -40,8 +40,8 @@ export class AIService {
      * Chat with the journal using RAG (Retrieval-Augmented Generation)
      */
     static async chatWithJournal(query: string, entries: { title: string | null; content: string; createdAt: Date }[]): Promise<string> {
-        if (!openai) {
-            return 'AI features are not available. Please configure the OPENAI_API_KEY.';
+        if (!hasLlmProvider()) {
+            return 'AI features are not available. Please configure a supported LLM provider.';
         }
         // Format entries as context
         const context = entries.map((entry, i) => {
@@ -51,8 +51,8 @@ Title: ${entry.title || 'Untitled'}
 ${entry.content}`;
         }).join('\n\n---\n\n');
 
-        const response = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
+        const response = await createLlmChatCompletion({
+            model: aiRuntime.chatModel,
             messages: [
                 {
                     role: 'system',
@@ -71,6 +71,10 @@ ${context || 'No entries available yet.'}`,
             temperature: 0.7,
         });
 
+        if (!response) {
+            return 'I apologize, but I was unable to generate a response. Please try again.';
+        }
+
         return response.choices[0]?.message?.content || 'I apologize, but I was unable to generate a response. Please try again.';
     }
 
@@ -78,11 +82,11 @@ ${context || 'No entries available yet.'}`,
      * Generate a writing prompt based on context
      */
     static async generatePrompt(context?: string): Promise<string> {
-        if (!openai) {
+        if (!hasLlmProvider()) {
             return 'What made you smile today?';
         }
-        const response = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
+        const response = await createLlmChatCompletion({
+            model: aiRuntime.promptModel,
             messages: [
                 {
                     role: 'system',
@@ -96,6 +100,10 @@ ${context || 'No entries available yet.'}`,
             max_tokens: 100,
             temperature: 0.9,
         });
+
+        if (!response) {
+            return 'What made you smile today?';
+        }
 
         return response.choices[0]?.message?.content || 'What made you smile today?';
     }

@@ -148,7 +148,7 @@ export const mapPayloadToEntryAnalysis = (payload: AnalysisPayload | undefined, 
 
 export const mapNlpResultToEntryAnalysis = (analysis: AnalysisResult, content: string) => {
     const contentHash = hashContent(content);
-    const source = analysis.provider === 'openai' ? AnalysisSource.AI : AnalysisSource.NLP;
+    const source = analysis.provider === 'llm' ? AnalysisSource.AI : AnalysisSource.NLP;
 
     return {
         source,

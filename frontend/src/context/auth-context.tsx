@@ -5,6 +5,7 @@ import logger from '@/utils/logger';
 import secureStorage from '@/utils/secure-storage';
 import { API_URL } from '@/constants/config';
 import { clearOnboardingState } from '@/utils/onboarding';
+import type { CredentialSsoProvider } from '@/utils/sso';
 
 interface UserProfile {
     bio?: string;
@@ -41,6 +42,7 @@ interface AuthContextType {
     accessToken: string | null;
     isLoading: boolean;
     login: (email: string, password: string) => Promise<User>;
+    loginWithSsoCredential: (provider: CredentialSsoProvider, credential: string) => Promise<User>;
     loginWithGoogleCredential: (credential: string) => Promise<User>;
     register: (email: string, password: string, name?: string) => Promise<User>;
     logout: () => Promise<void>;
@@ -175,9 +177,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return data.user as User;
     };
 
-    const loginWithGoogleCredential = async (credential: string): Promise<User> => {
+    const loginWithSsoCredential = async (provider: CredentialSsoProvider, credential: string): Promise<User> => {
         const isNative = isNativePlatform();
-        const response = await fetch(`${API_URL}/user/google`, {
+        const response = await fetch(`${API_URL}/auth/sso/${provider}/credential`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -202,6 +204,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         return data.user as User;
     };
+
+    const loginWithGoogleCredential = async (credential: string): Promise<User> =>
+        loginWithSsoCredential('google', credential);
 
     const register = async (email: string, password: string, name?: string): Promise<User> => {
         const isNative = isNativePlatform();
@@ -302,7 +307,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, accessToken, isLoading, login, loginWithGoogleCredential, register, logout, refreshUser, refreshSession: performRefresh }}>
+        <AuthContext.Provider value={{ user, accessToken, isLoading, login, loginWithSsoCredential, loginWithGoogleCredential, register, logout, refreshUser, refreshSession: performRefresh }}>
             {children}
         </AuthContext.Provider>
     );

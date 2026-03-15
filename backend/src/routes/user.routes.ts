@@ -16,7 +16,7 @@ import { googleSignIn } from '../controllers/google.controller';
 
 const router = Router();
 
-// Google SSO (public)
+// Legacy Google SSO alias. New clients should prefer /api/v1/auth/sso/google/credential.
 router.post('/google', googleSignIn);
 
 // Protected routes

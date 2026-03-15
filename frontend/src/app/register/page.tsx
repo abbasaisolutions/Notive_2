@@ -11,6 +11,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { clearOnboardingState } from '@/utils/onboarding';
 import { sanitizeReturnTo } from '@/utils/redirect';
 import { resolvePostAuthDestination } from '@/utils/auth-routing';
+import { isCredentialSsoEnabled } from '@/utils/sso';
 
 type RegisterFieldErrors = {
     name?: string;
@@ -38,7 +39,7 @@ const hasStrongPassword = (value: string): boolean =>
 
 export default function RegisterPage() {
     const router = useRouter();
-    const { register, loginWithGoogleCredential, user, isLoading: authLoading } = useAuth();
+    const { register, loginWithSsoCredential, user, isLoading: authLoading } = useAuth();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -47,10 +48,7 @@ export default function RegisterPage() {
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
     const [isLoading, setIsLoading] = useState(false);
-    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    const isGoogleEnabled = !!googleClientId &&
-        googleClientId !== 'your-google-client-id' &&
-        /\.apps\.googleusercontent\.com$/i.test(googleClientId);
+    const isGoogleEnabled = isCredentialSsoEnabled('google');
     const [safeReturnTo, setSafeReturnTo] = useState<string | null>(null);
 
     const passwordChecks = useMemo(() => ({
@@ -147,7 +145,7 @@ export default function RegisterPage() {
                 throw new Error('Please accept the Terms of Service and Privacy Policy to continue.');
             }
 
-            const registeredUser = await loginWithGoogleCredential(credentialResponse.credential);
+            const registeredUser = await loginWithSsoCredential('google', credentialResponse.credential);
             clearOnboardingState(registeredUser.id);
             router.replace(resolvePostAuthRoute(registeredUser));
         } catch (err: any) {

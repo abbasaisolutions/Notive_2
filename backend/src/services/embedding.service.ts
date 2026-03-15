@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import OpenAI from 'openai';
+import { aiRuntime, createEmbedding, hasEmbeddingProvider } from '../config/ai';
 import prisma from '../config/prisma';
 
 type UpsertEntryEmbeddingInput = {
@@ -24,19 +24,13 @@ const SCHEMA_EMBEDDING_DIMS = 1536;
 const configuredDims = parsePositiveInt(process.env.EMBEDDING_DIMS, SCHEMA_EMBEDDING_DIMS);
 const EMBEDDING_DIMS = configuredDims === SCHEMA_EMBEDDING_DIMS ? configuredDims : SCHEMA_EMBEDDING_DIMS;
 
-type EmbeddingProvider = 'local_hash' | 'openai';
-const embeddingProvider: EmbeddingProvider =
-    process.env.EMBEDDING_PROVIDER === 'openai' ? 'openai' : 'local_hash';
+const embeddingProvider = aiRuntime.embeddingVendor;
 
-const OPENAI_EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'text-embedding-3-small';
+const OPENAI_EMBEDDING_MODEL = aiRuntime.embeddingModel;
 const LOCAL_EMBEDDING_MODEL = 'local-hash-v1';
 const ACTIVE_EMBEDDING_MODEL = embeddingProvider === 'openai' ? OPENAI_EMBEDDING_MODEL : LOCAL_EMBEDDING_MODEL;
 
 const USE_EMBEDDINGS = process.env.USE_EMBEDDINGS === 'true';
-const openaiClient =
-    USE_EMBEDDINGS && embeddingProvider === 'openai' && process.env.OPENAI_API_KEY
-        ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-        : null;
 
 const buildEmbeddingText = (content: string, title?: string | null) => {
     const safeContent = String(content || '').trim();
@@ -92,18 +86,18 @@ const localHashEmbedding = (text: string, dimensions: number) => {
 export class EmbeddingService {
     isEnabled() {
         if (!USE_EMBEDDINGS) return false;
-        if (embeddingProvider === 'openai') return !!openaiClient;
+        if (embeddingProvider === 'openai') return hasEmbeddingProvider();
         return true;
     }
 
     private async generateEmbedding(embeddingText: string): Promise<number[] | null> {
         if (embeddingProvider === 'openai') {
-            if (!openaiClient) return null;
-            const response = await openaiClient.embeddings.create({
+            const response = await createEmbedding({
                 model: OPENAI_EMBEDDING_MODEL,
                 input: embeddingText,
                 dimensions: EMBEDDING_DIMS,
             });
+            if (!response) return null;
             const rawEmbedding = response.data?.[0]?.embedding;
             if (!Array.isArray(rawEmbedding) || rawEmbedding.length !== EMBEDDING_DIMS) {
                 return null;

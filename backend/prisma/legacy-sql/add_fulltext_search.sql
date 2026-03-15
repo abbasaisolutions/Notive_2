@@ -1,5 +1,11 @@
--- Migration: Add Full-Text Search and Performance Indexes
--- File: backend/prisma/migrations/add_fulltext_search/migration.sql
+-- Archived SQL reference.
+-- This script predates the timestamped Prisma migration workflow and is kept only
+-- as historical context. Its active pieces were superseded by:
+-- - 20260206190000_tag_entry_analysis (content_vector + GIN index)
+-- - 20260214101000_optimize_entry_indexes (entry access-path indexes)
+-- - 20260220113000_add_trigram_search_indexes (pg_trgm indexes)
+--
+-- Do not treat this file as a pending migration.
 
 BEGIN;
 

@@ -41,6 +41,8 @@ interface ComprehensiveInsights {
     };
     healthData: {
         connected: boolean;
+        available?: boolean;
+        connectAvailable?: boolean;
         stats?: HealthStats;
         correlations?: HealthCorrelations;
         patterns?: string[];
@@ -140,7 +142,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                 </div>
 
                 <p className="text-sm text-slate-400 mb-4">
-                    Connect Google Fit to discover how your sleep and activity patterns relate to your mood.
+                    {healthData.message || 'Connect Google Fit to discover how your sleep and activity patterns relate to your mood.'}
                 </p>
 
                 <div className="flex items-center gap-2 text-[10px] text-slate-500 mb-4">
@@ -148,16 +150,22 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                     <span>Read-only access • Your data stays private</span>
                 </div>
 
-                <Link href="/profile">
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="w-full py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-all flex items-center justify-center gap-2"
-                    >
-                        <FiLink className="w-4 h-4" />
-                        Connect in Settings
-                    </motion.button>
-                </Link>
+                {healthData.connectAvailable === false ? (
+                    <div className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm text-slate-300">
+                        Unavailable in this environment
+                    </div>
+                ) : (
+                    <Link href="/profile">
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="w-full py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-all flex items-center justify-center gap-2"
+                        >
+                            <FiLink className="w-4 h-4" />
+                            Connect in Settings
+                        </motion.button>
+                    </Link>
+                )}
             </motion.div>
         );
     }

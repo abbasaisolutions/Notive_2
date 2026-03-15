@@ -1,7 +1,7 @@
 // NLP Analysis Service - Deterministic + Optional LLM + Optional Python microservice
 // File: backend/src/services/nlp.service.ts
 
-import OpenAI from 'openai';
+import { aiRuntime, createLlmChatCompletion, hasLlmProvider, type AnalysisProvider } from '../config/ai';
 
 export interface SentimentResult {
     score: number; // -1 (negative) to 1 (positive)
@@ -33,7 +33,7 @@ export interface AnalysisResult {
         outcome?: { text?: string; confidence?: number; source?: string } | null;
     };
     modelInfo?: Record<string, string>;
-    provider?: 'python' | 'deterministic' | 'openai';
+    provider?: AnalysisProvider;
 }
 
 export interface OpportunityEvidenceSynthesis {
@@ -43,12 +43,18 @@ export interface OpportunityEvidenceSynthesis {
     outcome: string;
     skills: string[];
     confidence: number;
-    provider: 'openai' | 'deterministic';
+    provider: 'llm' | 'deterministic';
 }
 
-const openaiClient = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
-const allowLLM = process.env.USE_LLM_NLP === 'true' && !!openaiClient;
-const evidenceModel = process.env.OPPORTUNITY_EVIDENCE_MODEL || 'gpt-4o-mini';
+export interface ChatAvailability {
+    available: boolean;
+    provider: 'llm' | 'huggingface' | 'disabled';
+    vendor: string;
+    model?: string;
+    message?: string;
+}
+
+const allowLLM = process.env.USE_LLM_NLP === 'true' && hasLlmProvider();
 
 const parseFloatInRange = (value: string | undefined, fallback: number, min: number, max: number) => {
     const parsed = Number.parseFloat(String(value || ''));
@@ -167,8 +173,66 @@ const mergeAnalysis = (baseline: AnalysisResult, llm: AnalysisResult): AnalysisR
 });
 
 export class NLPService {
-    private canUseOpenAiEvidence = !!openaiClient;
-    private loggedEvidenceLlmDisable = false;
+    private canUseLlmEvidence = hasLlmProvider();
+    private loggedEvidenceProviderDisable = false;
+
+    getChatAvailability(): ChatAvailability {
+        if (hasLlmProvider()) {
+            return {
+                available: true,
+                provider: 'llm',
+                vendor: aiRuntime.llmVendor,
+                model: aiRuntime.chatModel,
+            };
+        }
+
+        const hfToken = (process.env.HF_API_KEY || process.env.HUGGINGFACE_API_KEY || '').trim();
+        if (hfToken) {
+            return {
+                available: true,
+                provider: 'huggingface',
+                vendor: 'huggingface',
+                model: 'mistralai/Mistral-7B-Instruct-v0.2',
+            };
+        }
+
+        return {
+            available: false,
+            provider: 'disabled',
+            vendor: 'disabled',
+            message: 'AI Coach is not enabled yet for this environment.',
+        };
+    }
+
+    private extractRecentEntryDates(context: string): string[] {
+        const matches = context.match(/\[(\d{4}-\d{2}-\d{2})\]/g) || [];
+        return [...new Set(matches.map((value) => value.slice(1, -1)))].slice(0, 3);
+    }
+
+    private buildManagedChatFallback(context: string): string {
+        const normalizedContext = context.trim();
+        if (!normalizedContext) {
+            return 'AI Coach is temporarily running in limited mode, and there is not enough recent journal context to answer well yet.';
+        }
+
+        const analysis = this.analyzeDeterministic(normalizedContext);
+        const dates = this.extractRecentEntryDates(normalizedContext);
+        const topics = (analysis.topics || []).filter(Boolean).slice(0, 3);
+        const parts = ['AI Coach is temporarily running in limited mode while the live model reconnects.'];
+
+        if (dates.length > 0) {
+            parts.push(`I can still see recent entries from ${dates.join(', ')}.`);
+        }
+        if (topics.length > 0) {
+            parts.push(`Your recent themes include ${topics.join(', ')}.`);
+        }
+        if (analysis.suggestedMood) {
+            parts.push(`The overall tone looks ${analysis.suggestedMood}.`);
+        }
+
+        parts.push('Use Timeline or Insights for a fuller review, then try this question again shortly.');
+        return parts.join(' ');
+    }
 
     private async analyzeWithPython(content: string, title?: string): Promise<AnalysisResult | null> {
         const serviceUrl = process.env.NLP_SERVICE_URL;
@@ -315,11 +379,11 @@ export class NLPService {
     }
 
     private async analyzeWithLLM(content: string): Promise<AnalysisResult | null> {
-        if (!openaiClient) return null;
+        if (!hasLlmProvider()) return null;
 
         try {
-            const response = await openaiClient.chat.completions.create({
-                model: 'gpt-3.5-turbo',
+            const response = await createLlmChatCompletion({
+                model: aiRuntime.analysisModel,
                 messages: [
                     {
                         role: 'system',
@@ -339,6 +403,8 @@ export class NLPService {
                 max_tokens: 200,
                 temperature: 0.3,
             });
+
+            if (!response) throw new Error('Empty response from configured LLM');
 
             const resultText = response.choices[0]?.message?.content?.trim();
             if (!resultText) throw new Error('Empty response from AI');
@@ -364,7 +430,7 @@ export class NLPService {
                 highlights: aiData.highlights || [],
                 evidence: aiData.evidence || undefined,
                 modelInfo: aiData.modelInfo || undefined,
-                provider: 'openai',
+                provider: 'llm',
             };
         } catch (error) {
             console.error('LLM analysis failed:', error);
@@ -691,7 +757,7 @@ export class NLPService {
         if (normalizedContent.length < 5) return null;
 
         const deterministic = this.deterministicOpportunityEvidence(normalizedContent, seed);
-        if (!openaiClient || !this.canUseOpenAiEvidence) return deterministic;
+        if (!hasLlmProvider() || !this.canUseLlmEvidence) return deterministic;
 
         try {
             const seedPayload = {
@@ -704,8 +770,8 @@ export class NLPService {
                 keywords: Array.isArray(seed?.keywords) ? seed?.keywords.slice(0, 8) : [],
             };
 
-            const response = await openaiClient.chat.completions.create({
-                model: evidenceModel,
+            const response = await createLlmChatCompletion({
+                model: aiRuntime.evidenceModel,
                 temperature: 0.2,
                 response_format: { type: 'json_object' },
                 max_tokens: 420,
@@ -740,6 +806,8 @@ Rules:
                 ],
             });
 
+            if (!response) return deterministic;
+
             const payload = response.choices[0]?.message?.content?.trim();
             if (!payload) return deterministic;
 
@@ -751,7 +819,7 @@ Rules:
                 outcome: this.ensureSentence(this.normalizeEvidenceText(parsed.outcome)),
                 skills: this.sanitizeSkills(parsed.skills, deterministic.skills),
                 confidence: Math.min(0.98, Math.max(0, Number(parsed.confidence) || 0.65)),
-                provider: 'openai',
+                provider: 'llm',
             };
 
             (['situation', 'action', 'lesson', 'outcome'] as const).forEach((field) => {
@@ -772,10 +840,10 @@ Rules:
             const code = (error as any)?.code;
             const type = (error as any)?.type;
             if (status === 429 || code === 'insufficient_quota' || type === 'insufficient_quota') {
-                this.canUseOpenAiEvidence = false;
-                if (!this.loggedEvidenceLlmDisable) {
-                    this.loggedEvidenceLlmDisable = true;
-                    console.warn('Opportunity evidence synthesis: disabling OpenAI path due to quota/rate-limit; using deterministic fallback.');
+                this.canUseLlmEvidence = false;
+                if (!this.loggedEvidenceProviderDisable) {
+                    this.loggedEvidenceProviderDisable = true;
+                    console.warn('Opportunity evidence synthesis: disabling the configured LLM path due to quota/rate-limit; using deterministic fallback.');
                 }
             } else {
                 console.error('Opportunity evidence synthesis failed:', error);
@@ -785,14 +853,18 @@ Rules:
     }
 
     /**
-     * Chat with journal context using OpenAI or HuggingFace
+     * Chat with journal context using the configured LLM provider or HuggingFace
      */
     async chat(query: string, context: string): Promise<string> {
         try {
-            // Try OpenAI first if Key exists
-            if (openaiClient) {
-                const response = await openaiClient.chat.completions.create({
-                    model: 'gpt-3.5-turbo',
+            const availability = this.getChatAvailability();
+            if (!availability.available) {
+                return availability.message || 'AI Coach is not enabled yet for this environment.';
+            }
+
+            if (availability.provider === 'llm') {
+                const response = await createLlmChatCompletion({
+                    model: aiRuntime.chatModel,
                     messages: [
                         {
                             role: 'system',
@@ -816,8 +888,8 @@ Rules:
                 return response?.choices[0]?.message?.content || "I couldn't generate a response.";
             }
 
-            // Fallback to HuggingFace Inference API (if HF_API_KEY is present or we try public)
-            const hfToken = process.env.HF_API_KEY || process.env.HUGGINGFACE_API_KEY;
+            // Fallback to HuggingFace Inference API when explicitly configured.
+            const hfToken = (process.env.HF_API_KEY || process.env.HUGGINGFACE_API_KEY || '').trim();
             const hfModel = "mistralai/Mistral-7B-Instruct-v0.2";
 
             const prompt = `<s>[INST] You are a helpful and empathetic AI journaling assistant. 
@@ -854,7 +926,7 @@ User Question: ${query} [/INST]`;
 
         } catch (error) {
             console.error('AI Chat failed:', error);
-            return "I'm having trouble connecting to my brain right now. Please try again later.";
+            return this.buildManagedChatFallback(context);
         }
     }
 

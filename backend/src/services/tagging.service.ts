@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import { aiRuntime, createLlmChatCompletion, hasLlmProvider } from '../config/ai';
 import nlpService from './nlp.service';
 
 interface TagSuggestion {
@@ -7,8 +7,7 @@ interface TagSuggestion {
     source?: 'user' | 'nlp' | 'ai';
 }
 
-const allowLLMTagging = process.env.USE_LLM_TAGGING === 'true' && !!process.env.OPENAI_API_KEY;
-const openai = allowLLMTagging ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+const allowLLMTagging = process.env.USE_LLM_TAGGING === 'true' && hasLlmProvider();
 const llmTaggingMinLocalTags = Number.parseInt(process.env.LLM_TAGGING_MIN_LOCAL_TAGS || '3', 10) || 3;
 
 const STOPWORDS = new Set([
@@ -119,7 +118,7 @@ export class TaggingService {
         const deterministicTags = this.mapTagScores(this.collectDeterministicTags(text, analysis), 'nlp');
 
         // Local-first: only call LLM if deterministic extraction is sparse.
-        if (!allowLLMTagging || !openai || deterministicTags.length >= llmTaggingMinLocalTags) {
+        if (!allowLLMTagging || deterministicTags.length >= llmTaggingMinLocalTags) {
             return deterministicTags;
         }
 
@@ -130,8 +129,8 @@ export class TaggingService {
 
     private async suggestTagsWithLLM(text: string): Promise<TagSuggestion[]> {
         try {
-            const response = await openai?.chat.completions.create({
-                model: 'gpt-3.5-turbo',
+            const response = await createLlmChatCompletion({
+                model: aiRuntime.taggingModel,
                 messages: [
                     {
                         role: 'system',

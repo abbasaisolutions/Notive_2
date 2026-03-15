@@ -23,6 +23,12 @@ interface ConnectionStatus {
     connectedAt?: string;
     lastSyncAt?: string;
     scopes?: string[];
+    available?: boolean;
+    connectAvailable?: boolean;
+    configured?: boolean;
+    schemaReady?: boolean;
+    reason?: string;
+    message?: string;
 }
 
 interface HealthStats {
@@ -62,7 +68,7 @@ export default function GoogleFitConnection() {
                 const data = await response.json();
                 setStatus(data);
 
-                if (data.connected) {
+                if (data.connected && data.available !== false) {
                     const statsResponse = await fetch(`${API_URL}/health/stats?days=30`, {
                         headers: { Authorization: `Bearer ${accessToken}` },
                     });
@@ -97,6 +103,11 @@ export default function GoogleFitConnection() {
     }, [accessToken, fetchStatus]);
 
     const handleConnect = async () => {
+        if (status?.connectAvailable === false) {
+            setError(status.message || 'Google Fit is not available in this environment yet.');
+            return;
+        }
+
         setIsConnecting(true);
         setError(null);
 
@@ -109,7 +120,8 @@ export default function GoogleFitConnection() {
                 const { authUrl } = await response.json();
                 window.location.href = authUrl;
             } else {
-                throw new Error('Failed to get authorization URL');
+                const data = await response.json().catch(() => null);
+                throw new Error(data?.message || 'Failed to get authorization URL');
             }
         } catch (err: any) {
             setError(err.message || 'Failed to initiate connection');
@@ -159,7 +171,8 @@ export default function GoogleFitConnection() {
                 setSuccessMessage('Health data synced successfully');
                 fetchStatus();
             } else {
-                throw new Error('Failed to sync');
+                const data = await response.json().catch(() => null);
+                throw new Error(data?.message || 'Failed to sync');
             }
         } catch (err: any) {
             setError(err.message || 'Failed to sync health data');
@@ -338,16 +351,22 @@ export default function GoogleFitConnection() {
                             <span>Read-only access • Never shared • Disconnect anytime</span>
                         </div>
 
+                        {status?.message && (
+                            <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-300">
+                                {status.message}
+                            </div>
+                        )}
+
                         {/* Connect button - neutral/muted */}
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleConnect}
-                            disabled={isConnecting}
-                            className="w-full py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-slate-900/50 mt-auto"
+                            disabled={isConnecting || status?.connectAvailable === false}
+                            className="w-full py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-slate-900/50 mt-auto"
                         >
                             <FiLink className="w-4 h-4" />
-                            {isConnecting ? 'Connecting...' : 'Connect Google Fit'}
+                            {status?.connectAvailable === false ? 'Unavailable Here' : isConnecting ? 'Connecting...' : 'Connect Google Fit'}
                         </motion.button>
                     </div>
                 )}

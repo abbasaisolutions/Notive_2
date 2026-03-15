@@ -120,6 +120,11 @@ const fetchOpportunityProfileBundle = async (userId: string) => {
     };
 };
 
+export const getAiCoachStatus = async (_req: Request, res: Response) => {
+    const status = nlpService.getChatAvailability();
+    return res.status(status.available ? 200 : 503).json(status);
+};
+
 /**
  * Chat with your journal
  */
@@ -127,8 +132,15 @@ export const chatWithJournal = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
         const { query } = req.body;
+        const availability = nlpService.getChatAvailability();
 
         if (!query) return res.status(400).json({ message: 'Query is required' });
+        if (!availability.available) {
+            return res.status(503).json({
+                ...availability,
+                response: availability.message || 'AI Coach is not enabled yet for this environment.',
+            });
+        }
 
         // Fetch recent 10 entries for context (simple RAG)
         const entries = await prisma.entry.findMany({
@@ -143,7 +155,12 @@ export const chatWithJournal = async (req: Request, res: Response) => {
 
         const response = await nlpService.chat(query, context);
 
-        return res.json({ response });
+        return res.json({
+            response,
+            provider: availability.provider,
+            vendor: availability.vendor,
+            model: availability.model,
+        });
     } catch (error) {
         console.error('Chat error:', error);
         return res.status(500).json({ message: 'Failed to chat with journal' });

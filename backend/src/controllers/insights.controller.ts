@@ -7,6 +7,7 @@ import nlpService from '../services/nlp.service';
 import { healthInsightsService } from '../services/health-insights.service';
 import { healthSyncService } from '../services/health-sync.service';
 import { googleFitOAuthService } from '../services/googlefit-oauth.service';
+import { getHealthFeatureState } from '../services/health-feature.service';
 
 class InsightsController {
     constructor() {
@@ -116,9 +117,12 @@ class InsightsController {
             const userId = req.userId;
             const period = req.query.period as string || 'month';
             const periodDays = period === 'week' ? 7 : period === 'month' ? 30 : 365;
+            const healthState = await getHealthFeatureState();
 
             // Check if user has Google Fit connected
-            const hasHealthData = await googleFitOAuthService.isConnected(userId);
+            const hasHealthData = healthState.available
+                ? await googleFitOAuthService.isConnected(userId)
+                : false;
 
             // Get base insights
             const now = new Date();
@@ -201,7 +205,9 @@ class InsightsController {
                     recommendations: healthInsights?.recommendations || [],
                 } : {
                     connected: false,
-                    message: 'Connect Google Fit to see health-mood correlations',
+                    available: healthState.available,
+                    connectAvailable: healthState.connectAvailable,
+                    message: healthState.message || 'Connect Google Fit to see health-mood correlations',
                 },
                 period,
                 generatedAt: new Date().toISOString(),

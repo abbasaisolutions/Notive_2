@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { register, login, refresh, logout, getMe, forgotPassword, resetPassword } from '../controllers/auth.controller';
+import { googleSignIn } from '../controllers/google.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -7,6 +8,7 @@ const router = Router();
 // Public routes
 router.post('/register', register);
 router.post('/login', login);
+router.post('/sso/google/credential', googleSignIn);
 router.post('/refresh', refresh);
 router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);

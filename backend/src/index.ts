@@ -48,7 +48,9 @@ app.use(cors({
             return;
         }
 
-        callback(new Error('Origin not allowed by CORS'));
+        const corsError = new Error('Origin not allowed by CORS') as Error & { status?: number };
+        corsError.status = 403;
+        callback(corsError);
     },
     credentials: true,
 }));
@@ -80,7 +82,12 @@ app.use('/api/v1/health', healthRoutes);
 // Global error handler
 app.use((err: any, req: Request, res: Response, next: any) => {
     console.error('Global error:', err);
-    res.status(500).json({ message: 'Internal server error', error: err.message });
+    const status = Number.isInteger(err?.status) ? err.status : 500;
+    const message = status >= 500 && isProd
+        ? 'Internal server error'
+        : (err?.message || 'Internal server error');
+
+    res.status(status).json({ message });
 });
 
 // Catch unhandled errors
@@ -98,6 +105,6 @@ app.listen(port, () => {
     
     // Start health sync cron jobs
     if (process.env.ENABLE_HEALTH_CRON !== 'false') {
-        healthCronService.start();
+        void healthCronService.start();
     }
 });

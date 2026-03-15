@@ -1,18 +1,24 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
 import useApi from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useContextNavigation from '@/hooks/use-context-navigation';
 import { ActionBar, AppPanel, EmptyState, SectionHeader, TagPill } from '@/components/ui/surface';
-import { FiArrowLeft, FiCpu, FiMessageSquare, FiSend } from 'react-icons/fi';
-
+import { FiArrowLeft, FiCpu, FiSend } from 'react-icons/fi';
 
 interface Message {
     role: 'user' | 'assistant';
     content: string;
+}
+
+interface CoachStatus {
+    available: boolean;
+    provider: 'llm' | 'huggingface' | 'disabled';
+    vendor: string;
+    model?: string;
+    message?: string;
 }
 
 export default function ChatPage() {
@@ -22,14 +28,49 @@ export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [coachStatus, setCoachStatus] = useState<CoachStatus | null>(null);
+    const [isStatusLoading, setIsStatusLoading] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
+    useEffect(() => {
+        let mounted = true;
+
+        const fetchCoachStatus = async () => {
+            try {
+                const response = await apiFetch(`${API_URL}/ai/status`);
+                const data = await response.json().catch(() => null);
+                if (!mounted || !data) return;
+                setCoachStatus(data);
+            } catch (error) {
+                console.error('Failed to fetch AI Coach status:', error);
+                if (mounted) {
+                    setCoachStatus({
+                        available: false,
+                        provider: 'disabled',
+                        vendor: 'disabled',
+                        message: 'AI Coach status could not be loaded for this environment.',
+                    });
+                }
+            } finally {
+                if (mounted) {
+                    setIsStatusLoading(false);
+                }
+            }
+        };
+
+        fetchCoachStatus();
+
+        return () => {
+            mounted = false;
+        };
+    }, [apiFetch]);
+
     const handleSend = async () => {
-        if (!input.trim() || isLoading) return;
+        if (!input.trim() || isLoading || coachStatus?.available === false) return;
 
         const userMessage = input.trim();
         setInput('');
@@ -45,15 +86,19 @@ export default function ChatPage() {
                 body: JSON.stringify({ query: userMessage }),
             });
 
-            if (!response.ok) throw new Error('Failed to get response');
-
-            const data = await response.json();
+            const data = await response.json().catch(() => null);
+            if (!response.ok) {
+                throw new Error(data?.message || data?.response || 'Failed to get response');
+            }
             setMessages((prev) => [...prev, { role: 'assistant', content: data.response }]);
         } catch (error) {
             console.error('Chat error:', error);
             setMessages((prev) => [
                 ...prev,
-                { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' },
+                {
+                    role: 'assistant',
+                    content: error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.',
+                },
             ]);
         } finally {
             setIsLoading(false);
@@ -67,7 +112,7 @@ export default function ChatPage() {
         }
     };
 
-    if (authLoading) {
+    if (authLoading || isStatusLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -85,6 +130,8 @@ export default function ChatPage() {
         'Summarize my week',
         'What are my recurring themes?',
     ];
+    const coachAvailable = coachStatus?.available !== false;
+    const coachMessage = coachStatus?.message || 'AI Coach is not enabled yet for this environment.';
 
     return (
         <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
@@ -102,23 +149,31 @@ export default function ChatPage() {
                         </button>
                         <SectionHeader
                             title="AI Coach"
-                            description="Ask questions about your journal history."
+                            description={coachAvailable ? 'Ask questions about your journal history.' : 'This environment is running without a live AI coach provider.'}
                             kicker="Reflect"
                             className="items-center"
                         />
                     </div>
-                    <TagPill tone="primary" className="gap-1">
+                    <TagPill tone={coachAvailable ? 'primary' : 'muted'} className="gap-1">
                         <FiCpu size={12} aria-hidden="true" />
-                        Context Aware
+                        {coachAvailable ? 'Context Aware' : 'Unavailable'}
                     </TagPill>
                 </AppPanel>
 
                 <AppPanel className="min-h-[60vh]">
                     <div className="space-y-4">
+                        {!coachAvailable && (
+                            <div className="rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-4 text-sm text-ink-secondary">
+                                <p className="font-medium text-white">AI Coach is paused here.</p>
+                                <p className="mt-2">{coachMessage}</p>
+                                <p className="mt-2">You can still use Timeline, Insights, and Portfolio while we finish the provider setup.</p>
+                            </div>
+                        )}
+
                         {messages.length === 0 ? (
                             <EmptyState
                                 title="Ask Your Journal Anything"
-                                description="Use the suggestions below or type your own reflection question."
+                                description={coachAvailable ? 'Use the suggestions below or type your own reflection question.' : 'Return once an AI provider is enabled to use chat.'}
                                 className="py-12"
                             />
                         ) : (
@@ -158,7 +213,7 @@ export default function ChatPage() {
 
                 <ActionBar className="justify-between">
                     <div className="flex flex-wrap gap-2">
-                        {suggestions.map((suggestion) => (
+                        {coachAvailable && suggestions.map((suggestion) => (
                             <button
                                 key={suggestion}
                                 type="button"
@@ -177,17 +232,18 @@ export default function ChatPage() {
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Ask me anything about your journal..."
+                            placeholder={coachAvailable ? 'Ask me anything about your journal...' : 'AI Coach is unavailable in this environment.'}
                             rows={1}
+                            disabled={!coachAvailable}
                             className="flex-1 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
                         />
                         <button
                             onClick={handleSend}
-                            disabled={isLoading || !input.trim()}
+                            disabled={isLoading || !input.trim() || !coachAvailable}
                             className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/15 px-5 py-3 text-sm font-semibold text-white hover:bg-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             <FiSend size={16} aria-hidden="true" />
-                            Send
+                            {coachAvailable ? 'Send' : 'Unavailable'}
                         </button>
                     </div>
                 </AppPanel>

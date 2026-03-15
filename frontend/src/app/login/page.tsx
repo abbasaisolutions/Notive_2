@@ -10,6 +10,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { sanitizeReturnTo } from '@/utils/redirect';
 import { resolvePostAuthDestination } from '@/utils/auth-routing';
+import { isCredentialSsoEnabled } from '@/utils/sso';
 
 type LoginFieldErrors = {
     email?: string;
@@ -30,17 +31,14 @@ const FLOW_STEPS = [
 
 export default function LoginPage() {
     const router = useRouter();
-    const { login, loginWithGoogleCredential, user, isLoading: authLoading } = useAuth();
+    const { login, loginWithSsoCredential, user, isLoading: authLoading } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [notice, setNotice] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
     const [isLoading, setIsLoading] = useState(false);
-    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    const isGoogleEnabled = !!googleClientId &&
-        googleClientId !== 'your-google-client-id' &&
-        /\.apps\.googleusercontent\.com$/i.test(googleClientId);
+    const isGoogleEnabled = isCredentialSsoEnabled('google');
     const [safeReturnTo, setSafeReturnTo] = useState<string | null>(null);
 
     useEffect(() => {
@@ -109,7 +107,7 @@ export default function LoginPage() {
         try {
             setIsLoading(true);
             if (credentialResponse.credential) {
-                const authenticatedUser = await loginWithGoogleCredential(credentialResponse.credential);
+                const authenticatedUser = await loginWithSsoCredential('google', credentialResponse.credential);
                 router.replace(resolvePostAuthRoute(authenticatedUser));
             }
         } catch (err: any) {

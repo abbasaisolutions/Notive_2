@@ -1,14 +1,20 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+const devServerUrl = process.env.CAPACITOR_DEV_SERVER_URL?.trim();
+
 const config: CapacitorConfig = {
   appId: 'com.notive.app',
   appName: 'Notive',
   webDir: 'out',
-  server: {
-    // Use your computer's LAN IP for development
-    url: 'http://192.168.1.101:3000',
-    cleartext: true, // Allow HTTP (not HTTPS) for development
-  },
+  ...(devServerUrl
+    ? {
+        server: {
+          // Only use a live dev server when explicitly provided.
+          url: devServerUrl,
+          cleartext: /^http:\/\//i.test(devServerUrl),
+        },
+      }
+    : {}),
 };
 
 export default config;
