@@ -1,14 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/auth-context';
-
-interface HealthContextSummary {
-    date: string;
-    sleepHours: number | null;
-    sleepQuality: string | null;
-    steps: number | null;
-    activityLevel: 'low' | 'moderate' | 'high' | null;
-    avgHeartRate: number | null;
-}
+import type { HealthContextSummary } from '@/types/health';
 
 interface HealthConnectionStatus {
     connected: boolean;

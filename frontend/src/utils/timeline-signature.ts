@@ -43,6 +43,34 @@ export type ConstellationModel = {
     links: ConstellationLink[];
 };
 
+export type TimelineStoryArcMoment = {
+    id: string;
+    title: string | null;
+    contentSnippet: string;
+    createdAt: string;
+    mood: string | null;
+    themes: string[];
+};
+
+export type TimelineStoryArc = {
+    title: string;
+    summary: string;
+    spanDays: number;
+    entryCount: number;
+    opening: TimelineStoryArcMoment;
+    turningPoint: TimelineStoryArcMoment | null;
+    current: TimelineStoryArcMoment;
+    carriedThemes: string[];
+    emergingThemes: string[];
+    moodShift: {
+        from: string | null;
+        to: string | null;
+        direction: 'up' | 'down' | 'steady';
+        label: string;
+    };
+    prompt: string;
+};
+
 export type TimelineSignatureSummary = {
     totalEntries: number;
     activeDays: number;
@@ -50,6 +78,7 @@ export type TimelineSignatureSummary = {
     startDate: string | null;
     endDate: string | null;
     seasons: TimelineLifeSeason[];
+    storyArc: TimelineStoryArc | null;
     constellation: ConstellationModel;
 };
 
@@ -60,6 +89,7 @@ export const EMPTY_TIMELINE_SIGNATURE_SUMMARY: TimelineSignatureSummary = {
     startDate: null,
     endDate: null,
     seasons: [],
+    storyArc: null,
     constellation: {
         headline: 'Capture a few entries and your meaning graph will begin to take shape.',
         nodes: [{

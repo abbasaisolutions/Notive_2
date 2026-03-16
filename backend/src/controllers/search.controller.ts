@@ -1,35 +1,15 @@
-// Search Controller - Full-text search endpoint
-// File: backend/src/controllers/search.controller.ts
-
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
-
-type SearchRow = {
-    id: string;
-    title: string | null;
-    content_preview: string;
-    mood: string | null;
-    created_at: Date;
-    relevance: number | null;
-};
+import semanticSearchService from '../services/semantic-search.service';
+import { executeHybridSearch } from '../services/hybrid-search.service';
+import retrievalInsightsService from '../services/retrieval-insights.service';
 
 export class SearchController {
-    /**
-     * Search entries using PostgreSQL full-text search (no extra DB columns required).
-     *
-     * GET /api/v1/entries/search?q=query&limit=20
-     *
-     * Notes:
-     * - We compute `to_tsvector(...)` on-the-fly for compatibility.
-     * - Later we can add a GENERATED `tsvector` column + GIN index for speed.
-     */
     async searchEntries(req: Request, res: Response) {
         try {
             const userId = req.userId;
             const query = (req.query.q ?? req.query.search) as string | undefined;
-
-            // Cap limit to avoid expensive queries / large payloads on mobile networks.
-            const limitRaw = parseInt(req.query.limit as string) || 20;
+            const limitRaw = parseInt(req.query.limit as string, 10) || 20;
             const limit = Math.min(Math.max(limitRaw, 1), 50);
 
             if (!userId) {
@@ -43,98 +23,13 @@ export class SearchController {
                 });
             }
 
-            // Hybrid lexical + fuzzy retrieval:
-            // - `ts_rank` from full-text vectors for precise matching
-            // - trigram similarity for typo tolerance / natural-language phrasing
-            const results = await prisma.$queryRaw<SearchRow[]>`
-                WITH q AS (
-                    SELECT websearch_to_tsquery('english', ${normalized}) AS tsq
-                )
-                SELECT
-                    e.id,
-                    e.title,
-                    LEFT(e.content, 600) as content_preview,
-                    e.mood,
-                    e."createdAt" as created_at,
-                    (
-                        (COALESCE(ts_rank(e."content_vector", q.tsq), 0) * 0.78) +
-                        (GREATEST(
-                            similarity(COALESCE(e.title, ''), ${normalized}),
-                            similarity(e.content, ${normalized})
-                        ) * 0.22)
-                    )::REAL as relevance
-                FROM "Entry" e
-                CROSS JOIN q
-                WHERE
-                    e."userId" = ${userId}
-                    AND e."deletedAt" IS NULL
-                    AND (
-                        e."content_vector" @@ q.tsq
-                        OR similarity(COALESCE(e.title, ''), ${normalized}) > 0.24
-                        OR similarity(e.content, ${normalized}) > 0.09
-                    )
-                ORDER BY relevance DESC, e."createdAt" DESC
-                LIMIT ${limit};
-            `;
-
-            // Fallback for edge cases (emoji-only, numbers, etc) where tsvector returns nothing.
-            if (!results || results.length === 0) {
-                const tokens = normalized
-                    .split(/\s+/)
-                    .map(t => t.trim())
-                    .filter(t => t.length >= 2)
-                    .slice(0, 10);
-
-                const fallback = await prisma.entry.findMany({
-                    where: {
-                        userId,
-                        deletedAt: null,
-                        OR: [
-                            { title: { contains: normalized, mode: 'insensitive' } },
-                            { content: { contains: normalized, mode: 'insensitive' } },
-                            ...(tokens.length > 0 ? [
-                                { tags: { hasSome: tokens } },
-                                { entryTags: { some: { tag: { normalized: { in: tokens } } } } },
-                            ] : []),
-                        ],
-                    },
-                    orderBy: { createdAt: 'desc' },
-                    take: limit,
-                    select: {
-                        id: true,
-                        title: true,
-                        content: true,
-                        mood: true,
-                        createdAt: true,
-                    },
-                });
-
-                return res.json({
-                    results: fallback.map((entry: (typeof fallback)[number]) => ({
-                        id: entry.id,
-                        title: entry.title,
-                        content: entry.content.slice(0, 600),
-                        mood: entry.mood,
-                        createdAt: entry.createdAt,
-                        relevance: 0,
-                    })),
-                    count: fallback.length,
-                    query: normalized,
-                });
-            }
-
-            return res.json({
-                results: results.map((row: SearchRow) => ({
-                    id: row.id,
-                    title: row.title,
-                    content: row.content_preview,
-                    mood: row.mood,
-                    createdAt: row.created_at,
-                    relevance: row.relevance ?? 0,
-                })),
-                count: results.length,
+            const result = await executeHybridSearch({
+                userId,
                 query: normalized,
+                limit,
             });
+
+            return res.json(result);
         } catch (error: any) {
             console.error('Search error:', error);
             return res.status(500).json({
@@ -143,11 +38,159 @@ export class SearchController {
         }
     }
 
-    /**
-     * Get search suggestions based on tags and moods.
-     *
-     * GET /api/v1/entries/search/suggestions?limit=10
-     */
+    async getRelatedEntries(req: Request, res: Response) {
+        try {
+            const userId = req.userId;
+            const { id } = req.params;
+            const limitRaw = parseInt(req.query.limit as string, 10) || 4;
+            const limit = Math.min(Math.max(limitRaw, 1), 8);
+
+            if (!userId) {
+                return res.status(401).json({ message: 'Unauthorized' });
+            }
+
+            const entry = await prisma.entry.findFirst({
+                where: {
+                    id,
+                    userId,
+                    deletedAt: null,
+                },
+                select: {
+                    id: true,
+                    title: true,
+                    content: true,
+                    mood: true,
+                    tags: true,
+                },
+            });
+
+            if (!entry) {
+                return res.status(404).json({ message: 'Entry not found' });
+            }
+
+            const relatedEntries = await semanticSearchService.findRelatedEntries({
+                userId,
+                entryId: entry.id,
+                title: entry.title,
+                content: entry.content,
+                mood: entry.mood,
+                tags: entry.tags,
+                limit,
+            });
+
+            return res.json({
+                entryId: entry.id,
+                relatedEntries,
+                strategy: relatedEntries.some((item) => item.rerankScore)
+                    ? 'dense_rerank'
+                    : relatedEntries.length > 0
+                        ? 'dense'
+                        : 'none',
+            });
+        } catch (error: any) {
+            console.error('Related entries error:', error);
+            return res.status(500).json({
+                message: 'Failed to fetch related entries',
+            });
+        }
+    }
+
+    async checkDuplicateCandidates(req: Request, res: Response) {
+        try {
+            const userId = req.userId;
+            const { content, title, entryId } = req.body as {
+                content?: string;
+                title?: string | null;
+                entryId?: string | null;
+            };
+
+            if (!userId) {
+                return res.status(401).json({ message: 'Unauthorized' });
+            }
+
+            const normalizedContent = String(content || '').trim();
+            if (normalizedContent.length < 60) {
+                return res.json({
+                    duplicates: [],
+                    hasNearDuplicate: false,
+                    message: 'Write a little more to check for duplicates.',
+                });
+            }
+
+            const duplicates = await retrievalInsightsService.findDuplicateCandidates({
+                userId,
+                content: normalizedContent,
+                title: typeof title === 'string' ? title : null,
+                excludeEntryId: typeof entryId === 'string' ? entryId : null,
+                limit: 4,
+            });
+
+            return res.json({
+                duplicates,
+                hasNearDuplicate: duplicates.some((candidate) => candidate.duplicateKind === 'near_duplicate'),
+            });
+        } catch (error: any) {
+            console.error('Duplicate check error:', error);
+            return res.status(500).json({
+                message: 'Failed to check for duplicates',
+            });
+        }
+    }
+
+    async getResurfacedEntries(req: Request, res: Response) {
+        try {
+            const userId = req.userId;
+            const limitRaw = parseInt(req.query.limit as string, 10) || 3;
+            const limit = Math.min(Math.max(limitRaw, 1), 6);
+
+            if (!userId) {
+                return res.status(401).json({ message: 'Unauthorized' });
+            }
+
+            const resurfaced = await retrievalInsightsService.getResurfacedMoments({
+                userId,
+                limit,
+            });
+
+            return res.json({
+                resurfaced,
+                count: resurfaced.length,
+            });
+        } catch (error: any) {
+            console.error('Resurfaced entries error:', error);
+            return res.status(500).json({
+                message: 'Failed to fetch resurfaced entries',
+            });
+        }
+    }
+
+    async getThemeClusters(req: Request, res: Response) {
+        try {
+            const userId = req.userId;
+            const limitRaw = parseInt(req.query.limit as string, 10) || 4;
+            const limit = Math.min(Math.max(limitRaw, 1), 8);
+
+            if (!userId) {
+                return res.status(401).json({ message: 'Unauthorized' });
+            }
+
+            const clusters = await retrievalInsightsService.getThemeClusters({
+                userId,
+                limit,
+            });
+
+            return res.json({
+                clusters,
+                count: clusters.length,
+            });
+        } catch (error: any) {
+            console.error('Theme cluster error:', error);
+            return res.status(500).json({
+                message: 'Failed to fetch theme clusters',
+            });
+        }
+    }
+
     async getSearchSuggestions(req: Request, res: Response) {
         try {
             const userId = req.userId;
@@ -156,10 +199,9 @@ export class SearchController {
                 return res.status(401).json({ message: 'Unauthorized' });
             }
 
-            const limitRaw = parseInt(req.query.limit as string) || 10;
+            const limitRaw = parseInt(req.query.limit as string, 10) || 10;
             const limit = Math.min(Math.max(limitRaw, 1), 25);
 
-            // Tags are stored as a PostgreSQL text[] (Prisma String[]). We can unnest for counts.
             let topTags = await prisma.$queryRaw<Array<{ tag: string; count: bigint }>>`
                 SELECT
                     t.name as tag,

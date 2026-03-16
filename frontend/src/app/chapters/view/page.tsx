@@ -7,6 +7,7 @@ import useApi from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useContextNavigation from '@/hooks/use-context-navigation';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { AppPanel, EmptyState, SectionHeader, StatTile, TagPill } from '@/components/ui/surface';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import { writeWorkspaceResume } from '@/utils/workspace-resume';
@@ -100,7 +101,7 @@ function ChapterDetailContent() {
             href: currentReturnTo,
             updatedAt: new Date().toISOString(),
             stage: 'organize',
-            actionLabel: 'Resume collection',
+            actionLabel: `Resume ${NOTIVE_VOICE.surfaces.storyCollections.toLowerCase()}`,
         });
     }, [authLoading, chapter, currentReturnTo, entries.length, isAuthenticated]);
 

@@ -1,0 +1,46 @@
+{
+  "entries": [
+    {
+      "id": "entry_promotion",
+      "title": "Career Win",
+      "text": "Today I got promoted after weeks of prep. I felt proud, relieved, and excited about the next chapter at work."
+    },
+    {
+      "id": "entry_pet_loss",
+      "title": "Missing Milo",
+      "text": "I am still grieving Milo. Losing my dog has made the apartment feel so quiet and heavy."
+    },
+    {
+      "id": "entry_team_conflict",
+      "title": "Hard Meeting",
+      "text": "The meeting with the team was tense. I left frustrated and kept replaying the conflict in my head."
+    },
+    {
+      "id": "entry_trip",
+      "title": "First Day in Chicago",
+      "text": "Walking through a new city felt energizing. I loved exploring unfamiliar streets and small cafes."
+    },
+    {
+      "id": "entry_burnout",
+      "title": "Running on Empty",
+      "text": "I have been exhausted from too many deadlines. The pressure is building and I feel worn out."
+    }
+  ],
+  "queries": [
+    {
+      "id": "q_career_success",
+      "text": "feeling happy about a promotion at work",
+      "relevant": ["entry_promotion"]
+    },
+    {
+      "id": "q_grief",
+      "text": "grieving after losing a pet",
+      "relevant": ["entry_pet_loss"]
+    },
+    {
+      "id": "q_team_tension",
+      "text": "stress after conflict with coworkers",
+      "relevant": ["entry_team_conflict", "entry_burnout"]
+    }
+  ]
+}

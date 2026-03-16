@@ -131,9 +131,29 @@ type ExportPreview = {
     content: string;
 };
 
+type ExperienceMeta = {
+    experience: Experience;
+    completeness: EvidenceCompleteness;
+    state: Exclude<EvidenceFilter, 'all'>;
+    createdAtMs: number;
+};
+
 const exportTypes: ExportType[] = ['resume', 'statement', 'interview', 'growth'];
 const evidenceFilters: EvidenceFilter[] = ['all', 'needs_attention', 'ready_to_verify', 'ready_to_export', 'verified'];
 const portfolioViews: PortfolioView[] = ['export', 'evidence', 'interview', 'growth'];
+const EMPTY_FILTER_COUNTS: Record<EvidenceFilter, number> = {
+    all: 0,
+    needs_attention: 0,
+    ready_to_verify: 0,
+    ready_to_export: 0,
+    verified: 0,
+};
+const EXPERIENCE_STATE_RANK: Record<Exclude<EvidenceFilter, 'all'>, number> = {
+    needs_attention: 0,
+    ready_to_verify: 1,
+    ready_to_export: 2,
+    verified: 3,
+};
 
 const statementVariantLabels: Record<StatementVariant, string> = {
     standard: 'Standard',
@@ -142,17 +162,17 @@ const statementVariantLabels: Record<StatementVariant, string> = {
 };
 
 const exportTypeLabels: Record<ExportType, string> = {
-    resume: 'Resume Pack',
-    statement: 'Statement',
-    interview: 'Interview Bank',
-    growth: 'Growth Report',
+    resume: 'Work Stories',
+    statement: 'My Story Draft',
+    interview: 'Practice Stories',
+    growth: 'Progress Report',
 };
 
 const exportTypeDescriptions: Record<ExportType, string> = {
-    resume: 'Ready-to-paste bullets and evidence anchors for applications.',
-    statement: 'A cleaner narrative draft with supporting stories and direction.',
-    interview: 'Focused STAR stories you can review or practice live.',
-    growth: 'A reflective summary of progress, themes, and verified proof points.',
+    resume: 'Short stories and bullet points you can reuse for resumes, school, and applications.',
+    statement: 'A longer story draft that turns lived moments into direction, identity, and voice.',
+    interview: 'Simple STAR-style stories for practice, interviews, and speaking clearly.',
+    growth: 'A simple progress view with repeated topics, checked proof, and what is changing next.',
 };
 
 const exportTypeIcons: Record<ExportType, IconType> = {
@@ -163,18 +183,18 @@ const exportTypeIcons: Record<ExportType, IconType> = {
 };
 
 const evidenceFilterLabels: Record<EvidenceFilter, string> = {
-    all: 'All Evidence',
-    needs_attention: 'Needs Attention',
-    ready_to_verify: 'Ready To Verify',
-    ready_to_export: 'Ready To Export',
-    verified: 'Verified',
+    all: 'All Stories',
+    needs_attention: 'Needs More Detail',
+    ready_to_verify: 'Ready to Check',
+    ready_to_export: 'Ready to Use',
+    verified: 'Checked',
 };
 
 const portfolioViewLabels: Record<PortfolioView, string> = {
-    export: 'Export',
-    evidence: 'Evidence',
-    interview: 'Interview',
-    growth: 'Growth',
+    export: 'Use Stories',
+    evidence: 'Fix Stories',
+    interview: 'Practice',
+    growth: 'Progress',
 };
 
 const portfolioViewIcons: Record<PortfolioView, IconType> = {
@@ -188,7 +208,7 @@ const EVIDENCE_FIELD_LABELS: Record<EvidenceField, string> = {
     situation: 'Situation',
     action: 'Action',
     lesson: 'Lesson',
-    outcome: 'Outcome',
+    outcome: 'Result',
     skills: 'Skills',
 };
 
@@ -306,21 +326,41 @@ const getDraftCompleteness = (draft: Draft): EvidenceCompleteness =>
         skills: parseSkillsInput(draft.skillsText),
     });
 
-const getExperienceState = (experience: Experience): Exclude<EvidenceFilter, 'all'> => {
+const getExperienceMeta = (experience: Experience): ExperienceMeta => {
     const completeness = getExperienceCompleteness(experience);
-    if (experience.verified) return 'verified';
-    if (completeness.readyForExport) return 'ready_to_export';
-    if (completeness.readyForVerification) return 'ready_to_verify';
-    return 'needs_attention';
+    const state = experience.verified
+        ? 'verified'
+        : completeness.readyForExport
+            ? 'ready_to_export'
+            : completeness.readyForVerification
+                ? 'ready_to_verify'
+                : 'needs_attention';
+
+    return {
+        experience,
+        completeness,
+        state,
+        createdAtMs: Date.parse(experience.createdAt) || 0,
+    };
 };
 
 const getRecommendedExportType = (overview: Overview | null): ExportType => {
     if (!overview) return 'resume';
 
     const outputGoals = overview.profileContext?.outputGoals.map((goal) => goal.toLowerCase()) || [];
-    if (outputGoals.some((goal) => goal.includes('college'))) return 'statement';
-    if (outputGoals.some((goal) => goal.includes('interview'))) return 'interview';
-    if (outputGoals.some((goal) => goal.includes('resume') || goal.includes('portfolio'))) return 'resume';
+    let hasCollegeGoal = false;
+    let hasInterviewGoal = false;
+    let hasResumeGoal = false;
+
+    outputGoals.forEach((goal) => {
+        if (goal.includes('college')) hasCollegeGoal = true;
+        if (goal.includes('interview')) hasInterviewGoal = true;
+        if (goal.includes('resume') || goal.includes('portfolio')) hasResumeGoal = true;
+    });
+
+    if (hasCollegeGoal) return 'statement';
+    if (hasInterviewGoal) return 'interview';
+    if (hasResumeGoal) return 'resume';
     if (overview.profileContext?.track === 'personal') return 'growth';
     if (overview.interviewStories.length >= 3) return 'interview';
     if (overview.resumeBullets.length > 0) return 'resume';
@@ -335,8 +375,18 @@ const getRecommendedPortfolioView = (
     if (counts.needs_attention > 0 || counts.ready_to_verify > 0) return 'evidence';
 
     const outputGoals = overview.profileContext?.outputGoals.map((goal) => goal.toLowerCase()) || [];
-    if (outputGoals.some((goal) => goal.includes('interview'))) return 'interview';
-    if (outputGoals.some((goal) => goal.includes('resume') || goal.includes('portfolio') || goal.includes('college'))) {
+    let prefersInterview = false;
+    let prefersExport = false;
+
+    outputGoals.forEach((goal) => {
+        if (goal.includes('interview')) prefersInterview = true;
+        if (goal.includes('resume') || goal.includes('portfolio') || goal.includes('college')) {
+            prefersExport = true;
+        }
+    });
+
+    if (prefersInterview) return 'interview';
+    if (prefersExport) {
         return 'export';
     }
 
@@ -353,10 +403,10 @@ const buildResumeLabel = (session: PortfolioSessionState) => {
     }
 
     if (session.view === 'interview') {
-        return `${portfolioViewLabels.interview} · Story practice`;
+        return `${portfolioViewLabels.interview} · Guided rehearsal`;
     }
 
-    return `${portfolioViewLabels.growth} · Reflection view`;
+    return `${portfolioViewLabels.growth} · Progress view`;
 };
 
 export default function PortfolioWorkspace() {
@@ -654,33 +704,66 @@ export default function PortfolioWorkspace() {
         loadExportPreview(exportPreview.type);
     }, [exportPreview?.type, loadExportPreview, statementVariant]);
 
-    const evidenceSummary = useMemo(() => {
+    const {
+        evidenceSummary,
+        filterCounts,
+        experienceByEntryId,
+        experienceMetaByEntryId,
+        experienceMetas,
+        interviewStoryByEntryId,
+    } = useMemo(() => {
         if (!overview || overview.experiences.length === 0) {
-            return { avgScore: 0, readyForVerification: 0, readyForExport: 0, total: 0 };
+            return {
+                evidenceSummary: { avgScore: 0, readyForVerification: 0, readyForExport: 0, total: 0 },
+                filterCounts: { ...EMPTY_FILTER_COUNTS },
+                experienceByEntryId: new Map<string, Experience>(),
+                experienceMetaByEntryId: new Map<string, ExperienceMeta>(),
+                experienceMetas: [] as ExperienceMeta[],
+                interviewStoryByEntryId: new Map<string, Overview['interviewStories'][number]>(),
+            };
         }
 
-        const details = overview.experiences.map((experience) => getExperienceCompleteness(experience));
-        const total = details.length;
-        const avgScore = Math.round(details.reduce((sum, detail) => sum + detail.score, 0) / total);
+        const nextFilterCounts: Record<EvidenceFilter, number> = { ...EMPTY_FILTER_COUNTS };
+        const nextExperienceByEntryId = new Map<string, Experience>();
+        const nextExperienceMetaByEntryId = new Map<string, ExperienceMeta>();
+        const nextInterviewStoryByEntryId = new Map<string, Overview['interviewStories'][number]>();
+        const nextExperienceMetas = overview.experiences.map((experience) => {
+            const meta = getExperienceMeta(experience);
+            nextFilterCounts.all += 1;
+            nextFilterCounts[meta.state] += 1;
+            nextExperienceByEntryId.set(experience.entryId, experience);
+            nextExperienceMetaByEntryId.set(experience.entryId, meta);
+            return meta;
+        });
+
+        overview.interviewStories.forEach((story) => {
+            nextInterviewStoryByEntryId.set(story.entryId, story);
+        });
+
+        const total = nextExperienceMetas.length;
+        let scoreTotal = 0;
+        let readyForVerification = 0;
+        let readyForExport = 0;
+
+        nextExperienceMetas.forEach(({ completeness }) => {
+            scoreTotal += completeness.score;
+            readyForVerification += completeness.readyForVerification ? 1 : 0;
+            readyForExport += completeness.readyForExport ? 1 : 0;
+        });
 
         return {
-            avgScore,
-            readyForVerification: details.filter((detail) => detail.readyForVerification).length,
-            readyForExport: details.filter((detail) => detail.readyForExport).length,
-            total,
+            evidenceSummary: {
+                avgScore: Math.round(scoreTotal / total),
+                readyForVerification,
+                readyForExport,
+                total,
+            },
+            filterCounts: nextFilterCounts,
+            experienceByEntryId: nextExperienceByEntryId,
+            experienceMetaByEntryId: nextExperienceMetaByEntryId,
+            experienceMetas: nextExperienceMetas,
+            interviewStoryByEntryId: nextInterviewStoryByEntryId,
         };
-    }, [overview]);
-
-    const filterCounts = useMemo<Record<EvidenceFilter, number>>(() => {
-        if (!overview) {
-            return { all: 0, needs_attention: 0, ready_to_verify: 0, ready_to_export: 0, verified: 0 };
-        }
-
-        return overview.experiences.reduce<Record<EvidenceFilter, number>>((counts, experience) => {
-            counts.all += 1;
-            counts[getExperienceState(experience)] += 1;
-            return counts;
-        }, { all: 0, needs_attention: 0, ready_to_verify: 0, ready_to_export: 0, verified: 0 });
     }, [overview]);
 
     const recommendedView = useMemo(() => getRecommendedPortfolioView(overview, filterCounts), [filterCounts, overview]);
@@ -701,28 +784,19 @@ export default function PortfolioWorkspace() {
     }, [overview, recommendedView, syncViewInUrl]);
 
     const filteredExperiences = useMemo(() => {
-        if (!overview) return [];
-
-        const rank: Record<EvidenceFilter, number> = {
-            needs_attention: 0,
-            ready_to_verify: 1,
-            ready_to_export: 2,
-            verified: 3,
-            all: 4,
-        };
-
-        return [...overview.experiences]
-            .filter((experience) => evidenceFilter === 'all' || getExperienceState(experience) === evidenceFilter)
+        return [...experienceMetas]
+            .filter((meta) => evidenceFilter === 'all' || meta.state === evidenceFilter)
             .sort((left, right) => {
-                const stateDiff = rank[getExperienceState(left)] - rank[getExperienceState(right)];
+                const stateDiff = EXPERIENCE_STATE_RANK[left.state] - EXPERIENCE_STATE_RANK[right.state];
                 if (stateDiff !== 0) return stateDiff;
 
-                const scoreDiff = getExperienceCompleteness(left).score - getExperienceCompleteness(right).score;
+                const scoreDiff = left.completeness.score - right.completeness.score;
                 if (scoreDiff !== 0) return scoreDiff;
 
-                return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
-            });
-    }, [evidenceFilter, overview]);
+                return right.createdAtMs - left.createdAtMs;
+            })
+            .map((meta) => meta.experience);
+    }, [evidenceFilter, experienceMetas]);
 
     useEffect(() => {
         if (!overview || overview.interviewStories.length === 0) return;
@@ -773,12 +847,12 @@ export default function PortfolioWorkspace() {
         writePortfolioSession(sessionState);
         writeWorkspaceResume({
             key: 'portfolio',
-            title: 'Portfolio',
+            title: 'Stories',
             summary: buildResumeLabel(sessionState),
             href: currentReturnTo,
             updatedAt: sessionState.updatedAt,
             stage: 'apply',
-            actionLabel: 'Resume workspace',
+            actionLabel: 'Resume stories',
         });
     }, [activeStoryEntryId, activeView, currentReturnTo, evidenceFilter, recentViews, selectedExportType, statementVariant]);
 
@@ -788,15 +862,13 @@ export default function PortfolioWorkspace() {
         return Math.max(...trends.points.map((point) => Math.max(point.entries, point.verified, 1)));
     }, [trends]);
 
-    const experienceByEntryId = useMemo(() => {
-        if (!overview) return new Map<string, Experience>();
-        return new Map(overview.experiences.map((experience) => [experience.entryId, experience]));
-    }, [overview]);
-
     const activeInterviewStory = useMemo(() => {
         if (!overview || overview.interviewStories.length === 0) return null;
-        return overview.interviewStories.find((story) => story.entryId === activeStoryEntryId) || overview.interviewStories[0];
-    }, [activeStoryEntryId, overview]);
+        if (activeStoryEntryId) {
+            return interviewStoryByEntryId.get(activeStoryEntryId) || overview.interviewStories[0];
+        }
+        return overview.interviewStories[0];
+    }, [activeStoryEntryId, interviewStoryByEntryId, overview]);
 
     const activeInterviewExperience = useMemo(() => {
         if (!activeInterviewStory) return null;
@@ -1146,8 +1218,8 @@ export default function PortfolioWorkspace() {
     );
 
     const editingExperience = useMemo(
-        () => overview?.experiences.find((experience) => experience.entryId === editingEntryId) || null,
-        [editingEntryId, overview]
+        () => (editingEntryId ? experienceByEntryId.get(editingEntryId) || null : null),
+        [editingEntryId, experienceByEntryId]
     );
     const editingDraft = editingEntryId ? drafts[editingEntryId] || null : null;
 
@@ -1221,8 +1293,8 @@ export default function PortfolioWorkspace() {
             ) : (
                 <div className="grid gap-3">
                     {filteredExperiences.map((experience) => {
-                        const completeness = getExperienceCompleteness(experience);
-                        const state = getExperienceState(experience);
+                        const meta = experienceMetaByEntryId.get(experience.entryId) || getExperienceMeta(experience);
+                        const { completeness, state } = meta;
                         const sourceHref = appendReturnTo(`/entry/view?id=${experience.entryId}`, currentReturnTo);
                         const primarySnippet = experience.outcome || experience.action || experience.lesson || experience.situation;
                         const stateTone = state === 'verified' ? 'primary' : state === 'needs_attention' ? 'muted' : 'default';
@@ -1350,7 +1422,7 @@ export default function PortfolioWorkspace() {
                                             Story {index + 1}
                                         </p>
                                     </div>
-                                    {experienceByEntryId.get(item.entryId)?.verified && <TagPill tone="primary">Verified</TagPill>}
+                                    {experienceMetaByEntryId.get(item.entryId)?.state === 'verified' && <TagPill tone="primary">Verified</TagPill>}
                                 </div>
                             </button>
                         ))}
@@ -1364,7 +1436,7 @@ export default function PortfolioWorkspace() {
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Focused Story</p>
                                 <h2 className="mt-1 text-2xl font-semibold text-white">{story.title}</h2>
                                 <p className="mt-2 text-sm text-ink-secondary">
-                                    One story on screen, clear STAR structure, and a practice toggle when you want recall first.
+                                    Stay with one story at a time, switch into recall mode, then reveal the scaffold when you want to compare.
                                 </p>
                             </div>
                             <ActionBar className="bg-black/20 border-white/10">
@@ -1376,7 +1448,7 @@ export default function PortfolioWorkspace() {
                                         practiceMode ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-white'
                                     }`}
                                 >
-                                    {practiceMode ? 'Practice On' : 'Practice Off'}
+                                    {practiceMode ? 'Recall First' : 'Guided View'}
                                 </button>
                                 <button
                                     type="button"
@@ -1416,9 +1488,9 @@ export default function PortfolioWorkspace() {
                                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/30 bg-primary/12 text-primary">
                                     <FiMessageSquare size={20} aria-hidden="true" />
                                 </div>
-                                <h3 className="mt-4 text-xl font-semibold text-white">Practice recall first</h3>
+                                <h3 className="mt-4 text-xl font-semibold text-white">Try the story from memory first</h3>
                                 <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                    Try telling the story out loud from memory. Reveal the STAR layout only when you want to compare your answer.
+                                    Say it out loud before reading. Reveal the scaffold only when you want to compare your version with the structured story.
                                 </p>
                                 <button
                                     type="button"
@@ -1426,7 +1498,7 @@ export default function PortfolioWorkspace() {
                                     className="mt-5 inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
                                 >
                                     <FiEye size={14} aria-hidden="true" />
-                                    Reveal STAR Answer
+                                    Reveal story scaffold
                                 </button>
                             </div>
                         ) : (
@@ -1481,9 +1553,9 @@ export default function PortfolioWorkspace() {
                 <AppPanel className="space-y-5">
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                         <SectionHeader
-                            kicker="Growth"
-                            title="Reflection Dashboard"
-                            description="Review progress over time, strongest themes, and the next place to sharpen your portfolio."
+                            kicker="Progress"
+                            title="Read progress, proof, and direction"
+                            description="Review momentum over time, repeated strengths, and the next place to strengthen your outcome story system."
                         />
                         <ActionBar className="bg-black/20 border-white/10">
                             {(['week', 'month'] as const).map((period) => (
@@ -1505,11 +1577,11 @@ export default function PortfolioWorkspace() {
                     </div>
 
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                        <StatTile label="Verified Rate" value={formatRatioPercent(verifiedRate)} hint="Share of experiences verified" tone="primary" />
-                        <StatTile label="Evidence Quality" value={`${evidenceSummary.avgScore}%`} hint="Average completeness across stories" />
+                        <StatTile label="Verified Rate" value={formatRatioPercent(verifiedRate)} hint="Share of stories moved into verified proof" tone="primary" />
+                        <StatTile label="Story Quality" value={`${evidenceSummary.avgScore}%`} hint="Average completeness across story parts" />
                         <StatTile label="Top Skills" value={overview?.topSkills.length || 0} hint="Repeated strengths across stories" />
                         <StatTile
-                            label="Profile Readiness"
+                            label="Lens Readiness"
                             value={`${overview?.profileContext?.completionScore || 0}%`}
                             hint={overview?.profileContext ? `${formatLabel(overview.profileContext.track)} track` : 'Set your direction'}
                         />
@@ -1521,7 +1593,7 @@ export default function PortfolioWorkspace() {
                         <div className="flex items-start justify-between gap-3">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Trendline</p>
-                                <h3 className="mt-1 text-xl font-semibold text-white">Momentum over the last six windows</h3>
+                                <h3 className="mt-1 text-xl font-semibold text-white">Momentum across the last six windows</h3>
                             </div>
                             <TagPill tone="primary">
                                 Updated {trends ? formatRelativeTime(trends.points[trends.points.length - 1]?.periodStart || overview?.generatedAt || new Date().toISOString()) : 'recently'}
@@ -1570,8 +1642,8 @@ export default function PortfolioWorkspace() {
                             </div>
                         ) : (
                             <EmptyState
-                                title="Trend data is still warming up"
-                                description="Keep writing and verifying stories. Growth snapshots become more meaningful once there are a few weeks of activity."
+                                title="Growth data is still warming up"
+                                description="Keep capturing and shaping evidence. The growth map becomes more useful once a few windows of activity accumulate."
                                 actionLabel="Start Quick Capture"
                                 actionHref={captureHref}
                             />
@@ -1582,7 +1654,7 @@ export default function PortfolioWorkspace() {
                         <AppPanel className="space-y-4">
                             <div className="flex items-center gap-2 text-primary">
                                 <FiFlag size={16} aria-hidden="true" />
-                                <p className="text-xs uppercase tracking-[0.12em]">Direction</p>
+                                <p className="text-xs uppercase tracking-[0.12em]">Current lens</p>
                             </div>
                             <div className="space-y-3 text-sm text-ink-secondary">
                                 <p>
@@ -1594,7 +1666,7 @@ export default function PortfolioWorkspace() {
                                     <span className="text-white">{overview?.profileContext?.focusArea || 'Not set yet'}</span>
                                 </p>
                                 <p>
-                                    <span className="text-ink-muted">Writing preference:</span>{' '}
+                                    <span className="text-ink-muted">Capture style:</span>{' '}
                                     <span className="text-white">{formatLabel(overview?.profileContext?.writingPreference)}</span>
                                 </p>
                             </div>
@@ -1606,15 +1678,15 @@ export default function PortfolioWorkspace() {
                                 className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
                             >
                                 <FiTool size={14} aria-hidden="true" />
-                                Tune Profile Context
+                                Tune story lens
                             </Link>
                         </AppPanel>
 
                         <AppPanel className="space-y-4">
-                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Top themes</p>
+                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Repeated material</p>
                             <div className="space-y-3">
                                 <div>
-                                    <p className="text-sm font-semibold text-white">Skills showing up most</p>
+                                    <p className="text-sm font-semibold text-white">Skills surfacing most</p>
                                     <div className="mt-3 flex flex-wrap gap-2">
                                         {(overview?.topSkills || []).slice(0, 8).map((skill) => (
                                             <TagPill key={skill} tone="primary">{skill}</TagPill>
@@ -1622,7 +1694,7 @@ export default function PortfolioWorkspace() {
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-sm font-semibold text-white">Lessons worth reusing</p>
+                                    <p className="text-sm font-semibold text-white">Lessons worth carrying forward</p>
                                     <div className="mt-3 flex flex-wrap gap-2">
                                         {(overview?.topLessons || []).slice(0, 8).map((lesson) => (
                                             <TagPill key={lesson}>{lesson}</TagPill>
@@ -1635,7 +1707,7 @@ export default function PortfolioWorkspace() {
                         <AppPanel className="space-y-4">
                             <div className="flex items-center gap-2 text-primary">
                                 <FiClock size={16} aria-hidden="true" />
-                                <p className="text-xs uppercase tracking-[0.12em]">Saved views</p>
+                                <p className="text-xs uppercase tracking-[0.12em]">Return points</p>
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 {recentViewLinks.length > 0 ? recentViewLinks.map((view) => (
@@ -1648,7 +1720,7 @@ export default function PortfolioWorkspace() {
                                         {portfolioViewLabels[view]}
                                     </button>
                                 )) : (
-                                    <TagPill tone="muted">Your recent views will show here</TagPill>
+                                    <TagPill tone="muted">Your recent studio paths will show here</TagPill>
                                 )}
                             </div>
                             {resumeSession && (
@@ -1705,12 +1777,12 @@ export default function PortfolioWorkspace() {
                     >
                         <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 md:px-6">
                             <div>
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Evidence Editor</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Story Refinery</p>
                                 <h2 id="portfolio-evidence-editor-title" className="mt-1 text-xl font-semibold text-white">
-                                    {editingExperience.title || 'Refine experience'}
+                                    {editingExperience.title || 'Refine story'}
                                 </h2>
                                 <p className="mt-2 text-sm text-ink-secondary">
-                                    Tighten the story here without forcing the main workspace into a long expansion state.
+                                    Sharpen the evidence here without expanding the main workspace into a long editing thread.
                                 </p>
                             </div>
                             <button
@@ -1852,7 +1924,7 @@ export default function PortfolioWorkspace() {
             <div className="flex min-h-[50vh] items-center justify-center px-4 py-10">
                 <div className="flex flex-col items-center gap-3 text-center">
                     <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-primary" />
-                    <p className="text-sm text-ink-secondary">Building your portfolio workspace...</p>
+                    <p className="text-sm text-ink-secondary">Getting your stories ready...</p>
                 </div>
             </div>
         );
@@ -1866,9 +1938,9 @@ export default function PortfolioWorkspace() {
         return (
             <div className="space-y-4 px-1 py-4">
                 <EmptyState
-                    title="Portfolio data is not ready yet"
-                    description={error || 'We could not load your portfolio workspace. Try again once the data source is available.'}
-                    actionLabel="Quick Capture"
+                    title="Stories are not ready yet"
+                    description={error || 'We could not load this page. Try again when your notes are available.'}
+                    actionLabel="Write"
                     actionHref={captureHref}
                 />
                 <div className="flex justify-center">
@@ -1897,10 +1969,10 @@ export default function PortfolioWorkspace() {
                     <div className="space-y-4">
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                             <div>
-                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Portfolio Mission Control</p>
-                                <h1 className="mt-1 text-3xl font-semibold text-white">One workspace, four focused modes</h1>
+                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Stories</p>
+                                <h1 className="mt-1 text-3xl font-semibold text-white">Turn real moments into stories you can use</h1>
                                 <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">
-                                    Switch by intent instead of scrolling through one long report. Export, repair evidence, prep interviews, or review growth without losing your place.
+                                    Fix story details, practice telling them, or turn them into something useful without losing your place.
                                 </p>
                             </div>
                             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-2 text-xs uppercase tracking-[0.12em] text-ink-muted">
@@ -1910,9 +1982,9 @@ export default function PortfolioWorkspace() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                            <StatTile label="Evidence Quality" value={`${evidenceSummary.avgScore}%`} hint="Average completeness" />
+                            <StatTile label="Story Quality" value={`${evidenceSummary.avgScore}%`} hint="Average completeness" />
                             <StatTile label="Verified" value={overview.stats.verifiedCount} hint="Strongest source stories" tone="primary" />
-                            <StatTile label="Interview Stories" value={overview.interviewStories.length} hint="Stories ready to practice" />
+                            <StatTile label="Practice Stories" value={overview.interviewStories.length} hint="Stories ready to practice" />
                             <StatTile
                                 label="Updated"
                                 value={formatShortDate(overview.generatedAt)}
@@ -1929,7 +2001,7 @@ export default function PortfolioWorkspace() {
                                     <FiZap size={18} aria-hidden="true" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Recommended next move</p>
+                                    <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Recommended next step</p>
                                     <h2 className="mt-2 text-lg font-semibold text-white">{nextAction.title}</h2>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">{nextAction.description}</p>
                                 </div>
@@ -1962,17 +2034,17 @@ export default function PortfolioWorkspace() {
                                     <FiClock size={18} aria-hidden="true" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Resume last task</p>
+                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Pick up where you left off</p>
                                     {resumeSession ? (
                                         <>
                                             <h2 className="mt-2 text-lg font-semibold text-white">{buildResumeLabel(resumeSession)}</h2>
                                             <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                                Last active {formatRelativeTime(resumeSession.updatedAt)}. Restore the same mode and working state without rebuilding it manually.
+                                                Last active {formatRelativeTime(resumeSession.updatedAt)}. Go back to the same mode without setting it up again.
                                             </p>
                                         </>
                                     ) : (
                                         <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                            As you move through the workspace, Notive will remember your active mode and bring it back here.
+                                            As you move through stories, Notive will remember your last view and bring it back here.
                                         </p>
                                     )}
                                 </div>
@@ -1983,7 +2055,7 @@ export default function PortfolioWorkspace() {
                                     onClick={resumePreviousSession}
                                     className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
                                 >
-                                    Resume Workspace
+                                    Resume last view
                                     <FiArrowRight size={14} aria-hidden="true" />
                                 </button>
                             )}
@@ -2013,13 +2085,13 @@ export default function PortfolioWorkspace() {
                                         <span className={`rounded-xl border p-2 ${isActive ? 'border-white/20 bg-white/10' : 'border-white/10 bg-white/[0.03]'}`}>
                                             <Icon size={15} aria-hidden="true" />
                                         </span>
-                                        <span>
-                                            <span className="block text-sm font-semibold">{portfolioViewLabels[view]}</span>
-                                            <span className="block text-[11px] uppercase tracking-[0.12em] opacity-80">
-                                                {view === 'export' && 'Preview and download'}
-                                                {view === 'evidence' && 'Fix and verify'}
+                                            <span>
+                                                <span className="block text-sm font-semibold">{portfolioViewLabels[view]}</span>
+                                                <span className="block text-[11px] uppercase tracking-[0.12em] opacity-80">
+                                                {view === 'export' && 'Preview and use'}
+                                                {view === 'evidence' && 'Fix and check'}
                                                 {view === 'interview' && 'Practice one story'}
-                                                {view === 'growth' && 'Review momentum'}
+                                                {view === 'growth' && 'See progress'}
                                             </span>
                                         </span>
                                     </span>

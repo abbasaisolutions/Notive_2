@@ -3,8 +3,8 @@ import { Suspense } from 'react';
 import ProfileClient from '@/components/profile/ProfileClient';
 
 export const metadata: Metadata = {
-    title: 'Your Profile | Notive',
-    description: 'Track your personal growth and stats.',
+    title: 'Me | Notive',
+    description: 'Your profile, goals, settings, and progress.',
 };
 
 export default function ProfilePage() {

@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
                             Notive.
                         </motion.h1>
                     </Link>
-                    <p className="text-ink-secondary mt-2">Recover your account.</p>
+                    <p className="text-ink-secondary mt-2">Reset your password.</p>
                 </div>
 
                 <AppPanel className="p-8 rounded-3xl border-white/10 shadow-xl shadow-black/20">
@@ -89,9 +89,9 @@ export default function ForgotPasswordPage() {
                                 <span className="mb-4 inline-flex rounded-full bg-white/5 p-3 text-ink-secondary">
                                     <FiLock size={24} aria-hidden="true" />
                                 </span>
-                                <h2 className="text-xl font-bold text-white mb-2">Forgot Password?</h2>
+                                <h2 className="text-xl font-bold text-white mb-2">Forgot your password?</h2>
                                 <p className="text-sm text-ink-secondary">
-                                    Enter your email address and we'll send you instructions to reset your password.
+                                    Enter your email and we will send you a link to reset your password.
                                 </p>
                             </div>
 
@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
                             <SlideUp delay={0.1}>
                                 <Input
                                     id="email"
-                                    label="Email Address"
+                                    label="Email"
                                     type="email"
                                     placeholder="you@example.com"
                                     value={email}
@@ -119,7 +119,7 @@ export default function ForgotPasswordPage() {
 
                             <SlideUp delay={0.2}>
                                 <Button type="submit" className="w-full" isLoading={isLoading}>
-                                    Send Reset Instructions
+                                    Email reset link
                                 </Button>
                             </SlideUp>
 
@@ -129,7 +129,7 @@ export default function ForgotPasswordPage() {
                                     className="text-sm text-ink-secondary hover:text-white transition-colors flex items-center justify-center gap-2"
                                 >
                                     <FiArrowLeft size={16} aria-hidden="true" />
-                                    Back to Login
+                                    Back to sign in
                                 </Link>
                             </SlideUp>
                         </form>
@@ -145,12 +145,12 @@ export default function ForgotPasswordPage() {
                             <div>
                                 <h2 className="text-2xl font-bold text-white mb-2">Check your email</h2>
                                 <p className="text-ink-secondary">
-                                    We've sent password reset instructions to <span className="text-white font-medium">{email}</span>
+                                    If this email is in Notive, we sent a reset link to <span className="text-white font-medium">{email}</span>
                                 </p>
                             </div>
 
                             <div className="p-4 bg-white/[0.03] border border-white/10 rounded-xl text-ink-secondary text-xs text-left">
-                                <p><strong>Local environment:</strong> if email delivery is mocked, check backend logs for the reset link.</p>
+                                <p><strong>Local setup:</strong> if email is mocked, check backend logs for the reset link.</p>
                             </div>
 
                             <Button
@@ -158,14 +158,14 @@ export default function ForgotPasswordPage() {
                                 variant="secondary"
                                 className="w-full"
                             >
-                                Try another email
+                                Use another email
                             </Button>
 
                             <Link
                                 href="/login"
                                 className="block text-sm text-primary hover:text-primary/80 transition-colors"
                             >
-                                Return to Login
+                                Return to sign in
                             </Link>
                         </motion.div>
                     )}

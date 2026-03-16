@@ -171,13 +171,17 @@ export const getHealthContext = async (req: Request, res: Response) => {
         }
 
         // For "today", get yesterday's complete data
-        const targetDate = date === 'today'
+        const context = date === 'today'
             ? await healthSyncService.getTodayHealthContext(userId)
             : await healthSyncService.getHealthContextForDate(userId, parsedDate);
+        const signalDate = context?.date ?? parsedDate;
+        const signals = context
+            ? await healthInsightsService.getPromptSignals(userId, context.date)
+            : [];
 
         return res.json({
-            date: parsedDate.toISOString().split('T')[0],
-            context: targetDate,
+            date: signalDate.toISOString().split('T')[0],
+            context: context ? { ...context, signals } : null,
         });
     } catch (error) {
         console.error('Get health context error:', error);

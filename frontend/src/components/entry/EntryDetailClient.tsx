@@ -30,6 +30,20 @@ interface Entry {
     storySignal?: StorySignal;
 }
 
+interface RelatedEntry {
+    id: string;
+    title: string | null;
+    contentPreview: string;
+    mood: string | null;
+    tags: string[];
+    createdAt: string;
+    relevance: number;
+    semanticScore: number;
+    rerankScore: number | null;
+    matchReasons: string[];
+    coverImage?: string | null;
+}
+
 function EntryDetailContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -45,6 +59,8 @@ function EntryDetailContent() {
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [relatedEntries, setRelatedEntries] = useState<RelatedEntry[]>([]);
+    const [isLoadingRelated, setIsLoadingRelated] = useState(false);
     const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
@@ -65,15 +81,34 @@ function EntryDetailContent() {
 
         const fetchEntry = async () => {
             try {
-                const response = await apiFetch(`${API_URL}/entries/${id}`, {
-                    signal: controller.signal,
-                });
+                if (mounted) {
+                    setIsLoadingRelated(true);
+                    setRelatedEntries([]);
+                }
+                const [entryResponse, relatedResponse] = await Promise.all([
+                    apiFetch(`${API_URL}/entries/${id}`, {
+                        signal: controller.signal,
+                    }),
+                    apiFetch(`${API_URL}/entries/${id}/related?limit=4`, {
+                        signal: controller.signal,
+                    }).catch(() => null),
+                ]);
 
-                if (mounted && response.ok) {
-                    const data = await response.json();
+                if (!mounted) return;
+
+                if (entryResponse.ok) {
+                    const data = await entryResponse.json();
                     setEntry(data.entry);
                 } else {
                     router.push(backHref);
+                    return;
+                }
+
+                if (relatedResponse?.ok) {
+                    const relatedData = await relatedResponse.json().catch(() => null);
+                    setRelatedEntries(Array.isArray(relatedData?.relatedEntries) ? relatedData.relatedEntries : []);
+                } else {
+                    setRelatedEntries([]);
                 }
             } catch (error) {
                 if (controller.signal.aborted) return;
@@ -81,6 +116,7 @@ function EntryDetailContent() {
             } finally {
                 if (mounted) {
                     setIsLoading(false);
+                    setIsLoadingRelated(false);
                 }
             }
         };
@@ -179,11 +215,11 @@ function EntryDetailContent() {
         : withCurrentReturnTo('/portfolio?view=evidence');
     const storyPrimaryLabel = storySignal
         ? storySignal.status === 'verified' || storySignal.status === 'ready_to_export'
-            ? 'Open Export Studio'
+            ? 'Open Stories'
             : storySignal.status === 'ready_to_verify'
-                ? 'Review In Evidence Queue'
-                : 'Strengthen This Story'
-        : 'Open Evidence Queue';
+                ? 'Check Story'
+                : 'Fix This Story'
+        : 'Open Story Check';
     const shouldOpenInterviewDeck = Boolean(storySignal && (storySignal.status === 'verified' || storySignal.status === 'ready_to_export'));
     const isImportedEntry = entry.source === 'INSTAGRAM' || entry.source === 'FACEBOOK';
     const storySecondaryHref = shouldOpenInterviewDeck
@@ -192,19 +228,19 @@ function EntryDetailContent() {
             ? withCurrentReturnTo('/import')
             : withCurrentReturnTo('/portfolio?view=evidence&filter=needs_attention');
     const storySecondaryLabel = shouldOpenInterviewDeck
-        ? 'Practice Interview Story'
+        ? 'Practice Story'
         : isImportedEntry
-            ? 'Open Import Inbox'
-            : 'Open Evidence Queue';
+            ? 'Open Bring In'
+            : 'Open Story Check';
     const storyMessage = storySignal
         ? storySignal.status === 'verified'
             ? 'This entry is already verified and can move directly into export or interview prep.'
             : storySignal.status === 'ready_to_export'
                 ? 'This entry has the structure to export cleanly. Use portfolio to tailor it for resumes, statements, or interviews.'
-                : storySignal.status === 'ready_to_verify'
-                    ? 'This entry has the core evidence fields. Verify it once and move it into stronger portfolio outputs.'
-                    : 'This entry needs a little more structure before it becomes reusable evidence.'
-        : 'Open the evidence queue to see how this entry can become a stronger story.';
+            : storySignal.status === 'ready_to_verify'
+                    ? 'This note has the main story parts. Check it once and move it into stronger story use.'
+                    : 'This note needs a little more structure before it becomes a story you can use.'
+        : 'Open Story Check to see how this note can become a stronger story.';
 
     return (
         <div className="min-h-screen p-4 md:p-8">
@@ -224,8 +260,8 @@ function EntryDetailContent() {
                                 <FiArrowLeft size={22} aria-hidden="true" />
                             </button>
                             <div>
-                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Entry View</p>
-                                <p className="text-sm font-semibold text-white">Reading Mode</p>
+                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Note</p>
+                                <p className="text-sm font-semibold text-white">Read Note</p>
                             </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -279,7 +315,7 @@ function EntryDetailContent() {
 
                 {showDeleteConfirm && (
                     <div className="mb-6 rounded-2xl border border-white/15 bg-white/[0.03] p-4">
-                        <p className="mb-3 text-sm text-white">Delete this entry permanently? This action cannot be undone.</p>
+                        <p className="mb-3 text-sm text-white">Delete this note forever? This cannot be undone.</p>
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={handleDelete}
@@ -311,7 +347,7 @@ function EntryDetailContent() {
                         <p className="text-sm font-semibold text-white">{wordCount} words</p>
                     </div>
                     <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Read Time</p>
+                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Time to Read</p>
                         <p className="text-sm font-semibold text-white">{readingTime} min</p>
                     </div>
                     <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
@@ -323,7 +359,7 @@ function EntryDetailContent() {
                 </div>
 
                 <div className="mb-6">
-                    <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{entry.title || 'Untitled Entry'}</h1>
+                    <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{entry.title || 'Untitled Note'}</h1>
                     <p className="text-ink-secondary text-sm">
                         {createdAt.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
@@ -360,8 +396,8 @@ function EntryDetailContent() {
                                     <TagPill>{formatStoryConfidence(storySignal.confidence)} confidence</TagPill>
                                 </div>
                                 <div>
-                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Story Engine</p>
-                                    <h2 className="mt-1 text-xl font-semibold text-white">Turn this entry into reusable evidence</h2>
+                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Story Details</p>
+                                    <h2 className="mt-1 text-xl font-semibold text-white">Turn this note into a story you can use</h2>
                                     <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{storyMessage}</p>
                                 </div>
                             </div>
@@ -390,7 +426,7 @@ function EntryDetailContent() {
 
                         {storySignal.missingFields.length > 0 && (
                             <div>
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Missing fields</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Missing parts</p>
                                 <div className="mt-2 flex flex-wrap gap-2">
                                     {storySignal.missingFields.map((field) => (
                                         <TagPill key={field}>{storyFieldLabel[field]}</TagPill>
@@ -426,6 +462,55 @@ function EntryDetailContent() {
                         <p className="text-ink-secondary whitespace-pre-wrap leading-relaxed">{entry.content}</p>
                     )}
                 </div>
+
+                {(isLoadingRelated || relatedEntries.length > 0) && (
+                    <AppPanel className="mt-8 space-y-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Related Entries</p>
+                                <h2 className="mt-1 text-xl font-semibold text-white">Notes connected to this one</h2>
+                                <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                                    Similar notes come from the new local retrieval layer, with optional reranking when the local service is available.
+                                </p>
+                            </div>
+                            {isLoadingRelated && (
+                                <span className="text-xs uppercase tracking-[0.12em] text-ink-muted">Loading related notes...</span>
+                            )}
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-2">
+                            {relatedEntries.map((relatedEntry) => (
+                                <Link
+                                    key={relatedEntry.id}
+                                    href={withCurrentReturnTo(`/entry/view?id=${relatedEntry.id}`)}
+                                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
+                                                {new Date(relatedEntry.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            </p>
+                                            <h3 className="mt-2 text-base font-semibold text-white">{relatedEntry.title || 'Untitled Note'}</h3>
+                                        </div>
+                                        <FiArrowRight size={16} className="text-ink-muted" aria-hidden="true" />
+                                    </div>
+
+                                    <p className="mt-3 text-sm leading-7 text-ink-secondary">{relatedEntry.contentPreview}</p>
+
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                        {relatedEntry.mood && (
+                                            <TagPill tone="primary">{getMoodEmoji(relatedEntry.mood)} {relatedEntry.mood}</TagPill>
+                                        )}
+                                        <TagPill>{Math.round((relatedEntry.relevance || 0) * 100)}% match</TagPill>
+                                        {relatedEntry.matchReasons.slice(0, 2).map((reason) => (
+                                            <TagPill key={`${relatedEntry.id}-${reason}`}>{reason}</TagPill>
+                                        ))}
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </AppPanel>
+                )}
             </div>
         </div>
     );

@@ -60,7 +60,7 @@ export default function EntryEditorCard({
     minimalEditor = false,
     showImageUpload = true,
 }: EntryEditorCardProps) {
-    const recordingLabel = isRecording ? 'Recording' : 'Voice Ready';
+    const recordingLabel = isRecording ? 'Listening' : 'Voice On';
 
     return (
         <div className="relative mb-6 group">
@@ -69,10 +69,10 @@ export default function EntryEditorCard({
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
                     <div>
                         <p className="text-xs uppercase tracking-[0.15em] text-ink-muted">
-                            {minimalEditor ? 'Quick Capture' : 'Capture Studio'}
+                            {minimalEditor ? 'Quick Note' : 'Write'}
                         </p>
                         <h3 className="text-base font-semibold text-white">
-                            {minimalEditor ? 'One thought, fast save' : 'Voice + Writing'}
+                            {minimalEditor ? 'One thought, quick save' : 'Voice or typing'}
                         </h3>
                     </div>
                     <div className="flex items-center gap-2">
@@ -121,7 +121,7 @@ export default function EntryEditorCard({
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white/60 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-3 w-3 bg-primary/80"></span>
                                 </span>
-                                <span className="text-ink-secondary text-sm font-medium tracking-wide uppercase">Live Capture</span>
+                                <span className="text-ink-secondary text-sm font-medium tracking-wide uppercase">Listening</span>
                             </div>
                         ) : (
                             <span className="text-ink-muted text-sm font-medium">Tap to dictate</span>
@@ -163,7 +163,7 @@ export default function EntryEditorCard({
                     <div className="mb-4 mx-2 p-3 rounded-xl bg-white/5 border border-white/10">
                         {queueCount > 0 && (
                             <p className="text-xs uppercase tracking-[0.1em] text-ink-muted mb-2">
-                                {queueCount} queued for retry
+                                {queueCount} waiting to upload again
                             </p>
                         )}
                         {recentUploads.length > 0 && (
@@ -192,7 +192,7 @@ export default function EntryEditorCard({
 
                 {interimText && (
                     <div className="mb-6 p-3 rounded-xl bg-white/5 border border-white/10 text-center">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-1">Live Transcript</p>
+                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-1">Live Words</p>
                         <p className="text-ink-secondary italic text-base animate-pulse">"{interimText}"</p>
                     </div>
                 )}

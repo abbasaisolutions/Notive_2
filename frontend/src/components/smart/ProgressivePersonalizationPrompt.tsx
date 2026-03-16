@@ -3,7 +3,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
+import { engagementService } from '@/services/engagement.service';
 import useApi from '@/hooks/use-api';
+import useTelemetry from '@/hooks/use-telemetry';
 import {
     PersonalizationQuestion,
     PromptFrequency,
@@ -13,16 +15,29 @@ import {
 const INITIAL_DELAY_MS = 3500;
 const SUCCESS_TOAST_MS = 3000;
 
+const createPromptInstanceId = (): string => {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return globalThis.crypto.randomUUID();
+    }
+
+    return `progressive-prompt-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 export default function ProgressivePersonalizationPrompt() {
     const pathname = usePathname();
     const router = useRouter();
     const { user, refreshUser } = useAuth();
     const { apiFetch } = useApi();
+    const { trackEvent } = useTelemetry();
     const [question, setQuestion] = useState<PersonalizationQuestion | null>(null);
     const [isVisible, setIsVisible] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [promptInstanceId, setPromptInstanceId] = useState<string | null>(null);
+    const promptPresentation = question
+        ? engagementService.getProgressivePromptPresentation(question, user?.id)
+        : null;
 
     const userId = user?.id;
     const normalizedPath = pathname || '/dashboard';
@@ -50,6 +65,8 @@ export default function ProgressivePersonalizationPrompt() {
 
     const maybeShowPrompt = useCallback(() => {
         if (!userId || !canShow) return;
+        if (engagementService.shouldSuppressForPath(normalizedPath)) return;
+        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
 
         const nextQuestion = progressivePersonalizationService.getNextQuestion({
             userId,
@@ -57,16 +74,34 @@ export default function ProgressivePersonalizationPrompt() {
             pathname: normalizedPath,
         });
         if (!nextQuestion) return;
+        if (!engagementService.canShowProgressivePrompt(userId, nextQuestion.id)) return;
+        const nextPromptInstanceId = createPromptInstanceId();
+        const nextPresentation = engagementService.getProgressivePromptPresentation(nextQuestion, userId);
 
         progressivePersonalizationService.markPromptShown({
             userId,
             questionId: nextQuestion.id,
         });
+        engagementService.recordProgressivePromptShown(userId, nextQuestion.id);
+
+        void trackEvent({
+            eventType: 'PROGRESSIVE_PROMPT_SHOWN',
+            field: nextQuestion.field,
+            value: nextQuestion.id,
+            metadata: {
+                questionId: nextQuestion.id,
+                promptInstanceId: nextPromptInstanceId,
+                promptExperimentId: nextPresentation.experimentId,
+                promptFramingVariant: nextPresentation.framingVariant,
+                promptCategory: 'progressive_personalization',
+            },
+        });
 
         setQuestion(nextQuestion);
+        setPromptInstanceId(nextPromptInstanceId);
         setError(null);
         setIsVisible(true);
-    }, [canShow, normalizedPath, user?.profile, userId]);
+    }, [canShow, normalizedPath, trackEvent, user?.profile, userId]);
 
     useEffect(() => {
         if (!userId) {
@@ -106,9 +141,24 @@ export default function ProgressivePersonalizationPrompt() {
                 value,
                 pathname: normalizedPath,
             });
+            engagementService.recordProgressivePromptOutcome(userId, 'accepted');
+            void trackEvent({
+                eventType: 'PROGRESSIVE_PROMPT_ACCEPTED',
+                field: question.field,
+                value: question.id,
+                metadata: {
+                    questionId: question.id,
+                    answerValue: value,
+                    promptInstanceId,
+                    promptExperimentId: promptPresentation?.experimentId || null,
+                    promptFramingVariant: promptPresentation?.framingVariant || null,
+                    promptCategory: 'progressive_personalization',
+                },
+            });
 
             setIsVisible(false);
             setQuestion(null);
+            setPromptInstanceId(null);
 
             const patch = progressivePersonalizationService.buildSyncPayload({
                 profile: user?.profile,
@@ -116,7 +166,7 @@ export default function ProgressivePersonalizationPrompt() {
             });
 
             if (!progressivePersonalizationService.shouldSyncPatch({ patch, state })) {
-                setNotice('Saved. We will use this to personalize your journey.');
+                setNotice('Saved. Notive will use this right away.');
                 clearNoticeLater();
                 return;
             }
@@ -140,11 +190,11 @@ export default function ProgressivePersonalizationPrompt() {
             });
 
             await refreshUser();
-            setNotice('Personalization updated.');
+            setNotice('Updated. Prompts and insights will adjust from here.');
             clearNoticeLater();
         } catch (err: any) {
             setError(err?.message || 'Failed to save this answer right now.');
-            setNotice('Saved locally. We will sync when possible.');
+            setNotice('Saved here for now. Notive will sync it when it can.');
             clearNoticeLater();
         } finally {
             setIsSubmitting(false);
@@ -154,25 +204,60 @@ export default function ProgressivePersonalizationPrompt() {
         clearNoticeLater,
         isSubmitting,
         normalizedPath,
+        promptInstanceId,
+        promptPresentation?.experimentId,
+        promptPresentation?.framingVariant,
         question,
         refreshUser,
+        trackEvent,
         user?.profile,
         userId,
     ]);
 
     const handleLater = useCallback(() => {
-        if (!userId) return;
+        if (!userId || !question) return;
+        engagementService.recordProgressivePromptOutcome(userId, 'dismissed');
+        void trackEvent({
+            eventType: 'PROGRESSIVE_PROMPT_DISMISSED',
+            field: question.field,
+            value: question.id,
+            metadata: {
+                questionId: question.id,
+                promptInstanceId,
+                promptExperimentId: promptPresentation?.experimentId || null,
+                promptFramingVariant: promptPresentation?.framingVariant || null,
+                promptCategory: 'progressive_personalization',
+            },
+        });
         progressivePersonalizationService.snooze({ userId, minutes: 120 });
         setIsVisible(false);
         setQuestion(null);
+        setPromptInstanceId(null);
         setError(null);
-    }, [userId]);
+    }, [promptInstanceId, promptPresentation?.experimentId, promptPresentation?.framingVariant, question, trackEvent, userId]);
 
     const handleOpenSetup = useCallback(() => {
+        if (userId && question) {
+            engagementService.recordProgressivePromptOutcome(userId, 'accepted');
+            void trackEvent({
+                eventType: 'PROGRESSIVE_PROMPT_ACCEPTED',
+                field: question.field,
+                value: question.id,
+                metadata: {
+                    questionId: question.id,
+                    answerValue: '__open_setup__',
+                    promptInstanceId,
+                    promptExperimentId: promptPresentation?.experimentId || null,
+                    promptFramingVariant: promptPresentation?.framingVariant || null,
+                    promptCategory: 'progressive_personalization',
+                },
+            });
+        }
         setIsVisible(false);
         setQuestion(null);
+        setPromptInstanceId(null);
         router.push('/onboarding?source=progressive');
-    }, [router]);
+    }, [promptInstanceId, promptPresentation?.experimentId, promptPresentation?.framingVariant, question, router, trackEvent, userId]);
 
     if (!userId) return null;
 
@@ -191,9 +276,10 @@ export default function ProgressivePersonalizationPrompt() {
                     <div className="glass-card rounded-2xl p-4 border border-white/10 shadow-2xl">
                         <div className="flex items-start justify-between gap-3">
                             <div>
-                                <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Personalize as you go</p>
-                                <h3 className="text-sm font-semibold text-white mt-1">{question.prompt}</h3>
-                                {question.helper && <p className="text-xs text-ink-secondary mt-1">{question.helper}</p>}
+                                <p className="text-xs uppercase tracking-[0.18em] text-primary/80">{promptPresentation?.eyebrow || 'Help Notive know you'}</p>
+                                <h3 className="text-sm font-semibold text-white mt-1">{promptPresentation?.title || question.prompt}</h3>
+                                <p className="text-xs text-ink-secondary mt-1">{promptPresentation?.helper || question.prompt}</p>
+                                <p className="text-[11px] leading-5 text-ink-muted mt-2">{promptPresentation?.benefit || question.helper}</p>
                             </div>
                             <button
                                 type="button"
@@ -231,14 +317,14 @@ export default function ProgressivePersonalizationPrompt() {
                                 onClick={handleLater}
                                 className="text-xs text-ink-secondary hover:text-white transition-colors"
                             >
-                                Ask later
+                                {promptPresentation?.laterLabel || 'Later'}
                             </button>
                             <button
                                 type="button"
                                 onClick={handleOpenSetup}
                                 className="text-xs text-primary hover:text-white transition-colors"
                             >
-                                Open full setup
+                                {promptPresentation?.setupLabel || 'Open all settings'}
                             </button>
                         </div>
                     </div>

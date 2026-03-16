@@ -27,6 +27,9 @@ yarn-debug.log*
 yarn-error.log*
 *.log
 
+# Private local evaluation assets
+similarity-service/eval/private/
+
 # Local env files
 .env*.local
 .env

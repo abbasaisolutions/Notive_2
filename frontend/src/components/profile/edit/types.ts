@@ -7,16 +7,16 @@ import { FiBox, FiShield, FiTarget, FiUser } from 'react-icons/fi';
 export type { PromptFrequency, StoredAnswer } from '@/services/progressive-personalization.service';
 
 export const PRIMARY_GOAL_OPTIONS = [
-    { value: 'clarity', label: 'Mental Clarity' },
-    { value: 'memory', label: 'Memory Keeping' },
-    { value: 'growth', label: 'Personal Growth' },
-    { value: 'productivity', label: 'Execution' },
+    { value: 'clarity', label: 'Clear mind' },
+    { value: 'memory', label: 'Remember life' },
+    { value: 'growth', label: 'Grow' },
+    { value: 'productivity', label: 'Get things done' },
 ];
 
 export const FOCUS_AREA_OPTIONS = [
-    { value: 'life', label: 'Personal Life' },
-    { value: 'career', label: 'Career & School' },
-    { value: 'both', label: 'Life + Career' },
+    { value: 'life', label: 'Life' },
+    { value: 'career', label: 'School / Work' },
+    { value: 'both', label: 'Both' },
 ];
 
 export const EXPERIENCE_LEVEL_OPTIONS = [
@@ -27,21 +27,21 @@ export const EXPERIENCE_LEVEL_OPTIONS = [
 ];
 
 export const WRITING_PREFERENCE_OPTIONS = [
-    { value: 'guided', label: 'Guided Prompts' },
-    { value: 'structured', label: 'Structured Reflection' },
-    { value: 'freeform', label: 'Freeform Writing' },
+    { value: 'guided', label: 'With questions' },
+    { value: 'structured', label: 'Step by step' },
+    { value: 'freeform', label: 'Free writing' },
 ];
 
 export const IMPORT_PREFERENCE_OPTIONS = [
-    { value: 'connect-now', label: 'Connect Social Now' },
-    { value: 'archive-upload', label: 'Upload Archive' },
-    { value: 'later', label: 'Do It Later' },
+    { value: 'connect-now', label: 'Connect now' },
+    { value: 'archive-upload', label: 'Upload files' },
+    { value: 'later', label: 'Later' },
 ];
 
 export const PROMPT_FREQUENCY_OPTIONS: Array<{ value: PromptFrequency; label: string }> = [
-    { value: 'high', label: 'High' },
+    { value: 'high', label: 'More' },
     { value: 'normal', label: 'Normal' },
-    { value: 'low', label: 'Low' },
+    { value: 'low', label: 'Less' },
     { value: 'off', label: 'Off' },
 ];
 
@@ -49,10 +49,10 @@ export type EditTab = 'profile' | 'preferences' | 'security' | 'privacy';
 export type EditableTab = Exclude<EditTab, 'security'>;
 
 export const TAB_ITEMS: Array<{ id: EditTab; label: string; Icon: IconType }> = [
-    { id: 'profile', label: 'Profile', Icon: FiUser },
-    { id: 'preferences', label: 'Preferences', Icon: FiTarget },
+    { id: 'profile', label: 'About', Icon: FiUser },
+    { id: 'preferences', label: 'Goals', Icon: FiTarget },
     { id: 'security', label: 'Security', Icon: FiShield },
-    { id: 'privacy', label: 'Privacy & Data', Icon: FiBox },
+    { id: 'privacy', label: 'Data', Icon: FiBox },
 ];
 
 export const EDITABLE_TABS: EditableTab[] = ['profile', 'preferences', 'privacy'];

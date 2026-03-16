@@ -32,6 +32,18 @@ type EntryInsightsPanelProps = {
     displayTags: string[];
     removeTag: (tag: string) => void;
     addTag: (tag: string) => void;
+    duplicateCandidates: Array<{
+        id: string;
+        title: string | null;
+        contentPreview: string;
+        mood: string | null;
+        createdAt: string;
+        relevance: number;
+        duplicateKind: 'near_duplicate' | 'written_before';
+        matchReasons: string[];
+    }>;
+    isCheckingDuplicates: boolean;
+    duplicateError: string;
 };
 
 export default function EntryInsightsPanel({
@@ -55,6 +67,9 @@ export default function EntryInsightsPanel({
     displayTags,
     removeTag,
     addTag,
+    duplicateCandidates,
+    isCheckingDuplicates,
+    duplicateError,
 }: EntryInsightsPanelProps) {
     if (!(showDetails || extractedData || isAnalyzing || aiInsights || isAiLoading || content.trim())) {
         return null;
@@ -85,7 +100,7 @@ export default function EntryInsightsPanel({
         { label: 'Situation', value: readEvidenceText(aiEvidence?.situation) },
         { label: 'Action', value: readEvidenceText(aiEvidence?.action) },
         { label: 'Lesson', value: readEvidenceText(aiEvidence?.lesson) },
-        { label: 'Outcome', value: readEvidenceText(aiEvidence?.outcome) },
+        { label: 'Result', value: readEvidenceText(aiEvidence?.outcome) },
     ].filter((row) => !!row.value);
     const selectedMoodOption = displayMood ? moods.find((m) => m.value === displayMood) : null;
     const SelectedMoodIcon = selectedMoodOption?.icon;
@@ -104,10 +119,10 @@ export default function EntryInsightsPanel({
                         </div>
                         <div>
                             <div className="text-white font-semibold flex items-center gap-2">
-                                Insight Signals
+                                Quick Read
                                 {isAnalyzing && (
                                     <span className="text-xs font-normal text-ink-secondary animate-pulse bg-white/[0.03] px-2 py-0.5 rounded-full border border-white/15">
-                                        Analyzing...
+                                        Reading...
                                     </span>
                                 )}
                             </div>
@@ -127,7 +142,7 @@ export default function EntryInsightsPanel({
                             )}
                             {!extractedData && content.trim() && (
                                 <div className="text-ink-secondary text-xs mt-1">
-                                    Add a title, mood, and tags. Run AI only when you want a deeper pass.
+                                    Add a title, feeling, and tags. Use AI only if you want more help.
                                 </div>
                             )}
                         </div>
@@ -141,7 +156,7 @@ export default function EntryInsightsPanel({
                     <div className="p-5 space-y-5 border-t border-white/5 bg-black/20">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
                             <div>
-                                <div className="text-sm font-semibold text-white">Deep Insight</div>
+                                <div className="text-sm font-semibold text-white">More AI Help</div>
                                 <p className="text-xs uppercase tracking-[0.1em] text-ink-muted">On demand only</p>
                             </div>
                             <button
@@ -149,7 +164,7 @@ export default function EntryInsightsPanel({
                                 disabled={isAiLoading || !content.trim()}
                                 className="px-4 py-2 rounded-xl bg-white/[0.07] text-white border border-white/15 hover:bg-white/[0.1] transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {isAiLoading ? 'Analyzing…' : 'Run AI'}
+                                {isAiLoading ? 'Reading…' : 'Use AI'}
                             </button>
                         </div>
 
@@ -157,6 +172,67 @@ export default function EntryInsightsPanel({
                             <p className="rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-xs text-white">
                                 {aiError}
                             </p>
+                        )}
+
+                        {(isCheckingDuplicates || duplicateCandidates.length > 0 || duplicateError) && (
+                            <div className="grid gap-3 rounded-xl border border-white/15 bg-white/[0.03] p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <label className="text-xs font-semibold text-ink-secondary uppercase tracking-[0.12em]">Written Before</label>
+                                        <p className="mt-1 text-sm text-white">
+                                            Local retrieval checks whether this draft is close to an older note.
+                                        </p>
+                                    </div>
+                                    {isCheckingDuplicates && (
+                                        <span className="rounded-full border border-white/15 bg-white/[0.04] px-2 py-1 text-[11px] uppercase tracking-[0.08em] text-ink-secondary">
+                                            Checking...
+                                        </span>
+                                    )}
+                                </div>
+
+                                {duplicateError && (
+                                    <p className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white">
+                                        {duplicateError}
+                                    </p>
+                                )}
+
+                                {duplicateCandidates.length > 0 ? (
+                                    <div className="grid gap-2">
+                                        {duplicateCandidates.map((candidate) => (
+                                            <div key={candidate.id} className="rounded-lg border border-white/10 bg-black/25 px-3 py-3">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                                                        candidate.duplicateKind === 'near_duplicate'
+                                                            ? 'border-primary/35 bg-primary/12 text-primary'
+                                                            : 'border-white/15 bg-white/[0.04] text-white'
+                                                    }`}>
+                                                        {candidate.duplicateKind === 'near_duplicate' ? 'Near duplicate' : 'Written before'}
+                                                    </span>
+                                                    <span className="rounded-full border border-white/15 bg-white/[0.04] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-ink-secondary">
+                                                        {Math.round(candidate.relevance * 100)}% match
+                                                    </span>
+                                                    <span className="text-[11px] uppercase tracking-[0.12em] text-ink-muted">
+                                                        {new Date(candidate.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                    </span>
+                                                </div>
+                                                <p className="mt-2 text-sm font-semibold text-white">{candidate.title || 'Untitled note'}</p>
+                                                <p className="mt-1 text-xs leading-6 text-ink-secondary">{candidate.contentPreview}</p>
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {candidate.matchReasons.slice(0, 2).map((reason) => (
+                                                        <span key={`${candidate.id}-${reason}`} className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] uppercase tracking-[0.08em] text-ink-secondary">
+                                                            {reason}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : !isCheckingDuplicates && !duplicateError ? (
+                                    <p className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-ink-secondary">
+                                        No strong duplicate signal yet. Keep writing if this note is still taking shape.
+                                    </p>
+                                ) : null}
+                            </div>
                         )}
 
                         {aiInsights && (
@@ -178,7 +254,7 @@ export default function EntryInsightsPanel({
 
                                 {aiEmotionEntries.length > 0 && (
                                     <div className="mt-1 grid gap-2">
-                                        <label className="text-xs font-semibold text-ink-secondary uppercase tracking-[0.12em]">Emotional Profile</label>
+                                        <label className="text-xs font-semibold text-ink-secondary uppercase tracking-[0.12em]">Feelings Mix</label>
                                         {aiEmotionEntries.map(([emotion, score]) => (
                                             <div key={emotion} className="grid grid-cols-[1fr_auto] gap-2 items-center">
                                                 <div className="min-w-0">
@@ -200,7 +276,7 @@ export default function EntryInsightsPanel({
 
                                 {evidenceRows.length > 0 && (
                                     <div className="mt-1 grid gap-2">
-                                        <label className="text-xs font-semibold text-ink-secondary uppercase tracking-[0.12em]">Evidence Signals</label>
+                                        <label className="text-xs font-semibold text-ink-secondary uppercase tracking-[0.12em]">Story Check</label>
                                         <div className="grid gap-2">
                                             {evidenceRows.map((row) => (
                                                 <div key={row.label} className="rounded-lg border border-white/10 bg-black/25 px-3 py-2">

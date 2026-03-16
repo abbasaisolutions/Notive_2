@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/context/theme-context";
 import AppChrome from "@/components/layout/AppChrome";
 import RouteHeader from "@/components/layout/RouteHeader";
 import OnboardingGuard from "@/components/onboarding/OnboardingGuard";
+import { NOTIVE_VOICE } from "@/content/notive-voice";
 import { getCredentialSsoClientId } from "@/utils/sso";
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
@@ -16,9 +17,9 @@ const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: '--font-sans' 
 const fraunces = Fraunces({ subsets: ["latin"], variable: '--font-serif' });
 
 export const metadata: Metadata = {
-    title: "Notive | Your AI-Powered Journaling Companion",
-    description: "Capture your thoughts, track your mood, and discover insights about yourself with a beautiful, secure, and intelligent journaling experience.",
-    keywords: ["journaling", "AI", "mood tracking", "self-improvement", "privacy", "notes"],
+    title: `${NOTIVE_VOICE.appName} | ${NOTIVE_VOICE.signature}`,
+    description: NOTIVE_VOICE.longSummary,
+    keywords: ["reflective writing", "memory tracking", "personal analytics", "story building", "privacy", "self understanding"],
     authors: [{ name: "Notive Team" }],
     manifest: '/manifest.json',
     metadataBase: new URL('https://notive.app'),
@@ -38,8 +39,8 @@ export const metadata: Metadata = {
         'mobile-web-app-capable': 'yes',
     },
     openGraph: {
-        title: "Notive | Your AI-Powered Journaling Companion",
-        description: "Capture your thoughts, track your mood, and discover insights about yourself.",
+        title: `${NOTIVE_VOICE.appName} | ${NOTIVE_VOICE.signature}`,
+        description: NOTIVE_VOICE.shortSummary,
         url: "https://notive.app",
         siteName: "Notive",
         images: [
@@ -54,8 +55,8 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "Notive | Your AI-Powered Journaling Companion",
-        description: "Capture your thoughts, track your mood, and discover insights about yourself.",
+        title: `${NOTIVE_VOICE.appName} | ${NOTIVE_VOICE.signature}`,
+        description: NOTIVE_VOICE.shortSummary,
         images: ["https://notive.app/og-image.png"],
     },
 };
@@ -68,7 +69,7 @@ export const viewport: Viewport = {
 const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "Notive",
+    "name": NOTIVE_VOICE.appName,
     "operatingSystem": "Web",
     "applicationCategory": "LifestyleApplication",
     "offers": {
@@ -76,7 +77,7 @@ const jsonLd = {
         "price": "0",
         "priceCurrency": "USD"
     },
-    "description": "A stunning, modern note-taking experience with AI insights and mood tracking."
+    "description": NOTIVE_VOICE.longSummary
 };
 function GoogleProviderWrapper({ children }: { children: React.ReactNode }) {
     const googleClientId = getCredentialSsoClientId('google');

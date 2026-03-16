@@ -9,7 +9,7 @@ export default function TermsPage() {
 
                 <div className="space-y-5 text-sm text-ink-secondary">
                     <p>By using Notive, you agree to use the service lawfully and keep your account credentials secure.</p>
-                    <p>You own your content. You grant Notive permission to process it to provide journaling, insights, and export features.</p>
+                    <p>You own your content. You grant Notive permission to process it to provide capture, signal reading, synchronization, and output features.</p>
                     <p>Do not upload illegal content, infringing material, or content intended to harm the service or other users.</p>
                     <p>Notive may suspend accounts for abuse, policy violations, or security risk.</p>
                     <p>These terms may be updated. Continued use of Notive after updates means you accept the revised terms.</p>

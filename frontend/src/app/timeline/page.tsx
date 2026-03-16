@@ -6,13 +6,14 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import ConstellationView from '@/components/timeline/ConstellationView';
 import TimelineView from '@/components/timeline/TimelineView';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { ActionBar, TagPill } from '@/components/ui/surface';
 import useApi from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useTelemetry from '@/hooks/use-telemetry';
 import { getMoodEmoji } from '@/constants/moods';
-import { FiArchive, FiCalendar, FiClock, FiDownload, FiSearch } from 'react-icons/fi';
+import { FiArchive, FiCalendar, FiChevronDown, FiClock, FiDownload, FiSearch, FiSliders } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo, buildSearchString } from '@/utils/navigation';
 import {
     buildSeasonAnchorMap,
@@ -20,6 +21,7 @@ import {
     getSeasonAnchorMonthKey,
     type TimelineLifeSeason,
     type TimelineSignatureSummary,
+    type TimelineStoryArcMoment,
 } from '@/utils/timeline-signature';
 import {
     consumePendingTimelineContext,
@@ -44,14 +46,39 @@ interface Entry {
     lessons?: string[];
 }
 
+const formatTimelineDate = (value: string) => new Date(value).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+});
+
 type SourceFilter = 'all' | 'notive' | 'instagram' | 'facebook';
 type TimelineSurface = 'timeline' | 'constellation';
+type TimelineFilterState = {
+    query: string;
+    sourceFilter: SourceFilter;
+    lifeAreaFilter: string;
+    themeFilter: string;
+    moodFilter: string;
+    dateFilter: string;
+    startDateFilter: string;
+    endDateFilter: string;
+    weekdayFilter: string;
+    dayPartFilter: string;
+};
 type TimelineFilterPreset = {
     id: string;
     label: string;
     query: string;
     sourceFilter: SourceFilter;
     lifeAreaFilter: string;
+    themeFilter: string;
+    moodFilter: string;
+    dateFilter: string;
+    startDateFilter: string;
+    endDateFilter: string;
+    weekdayFilter: string;
+    dayPartFilter: string;
     savedAt: number;
 };
 
@@ -64,6 +91,16 @@ const SOURCE_FILTER_OPTIONS: Array<{ key: SourceFilter; label: string }> = [
     { key: 'instagram', label: 'Instagram' },
     { key: 'facebook', label: 'Facebook' },
 ];
+const WEEKDAY_FILTER_OPTIONS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
+const DAY_PART_FILTER_OPTIONS = ['Morning', 'Afternoon', 'Evening', 'Late night'] as const;
+const DAY_PART_FILTER_ALIASES: Record<string, string> = {
+    morning: 'Morning',
+    afternoon: 'Afternoon',
+    evening: 'Evening',
+    night: 'Late night',
+    'late night': 'Late night',
+    'late-night': 'Late night',
+};
 const getSourceFilterTabId = (filter: SourceFilter): string => `timeline-source-filter-${filter}`;
 
 const normalizeSourceFilter = (value: string | null): SourceFilter => {
@@ -75,6 +112,46 @@ const normalizeLifeAreaFilter = (value: string | null): string => {
     const normalized = (value || '').trim();
     return normalized ? normalized : 'all';
 };
+const normalizeThemeFilter = (value: string | null): string => {
+    const normalized = (value || '').replace(/^#+/, '').trim();
+    return normalized;
+};
+const normalizeMoodFilter = (value: string | null): string => {
+    const normalized = (value || '').trim().toLowerCase();
+    return normalized;
+};
+const normalizeDateFilter = (value: string | null): string => {
+    const normalized = (value || '').trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : '';
+};
+const normalizeDateRangeFilter = (input: {
+    startDate: string | null;
+    endDate: string | null;
+}) => {
+    const normalizedStart = normalizeDateFilter(input.startDate);
+    const normalizedEnd = normalizeDateFilter(input.endDate);
+
+    if (!normalizedStart || !normalizedEnd) {
+        return {
+            startDate: normalizedStart,
+            endDate: normalizedEnd,
+        };
+    }
+
+    return normalizedStart <= normalizedEnd
+        ? { startDate: normalizedStart, endDate: normalizedEnd }
+        : { startDate: normalizedEnd, endDate: normalizedStart };
+};
+const normalizeWeekdayFilter = (value: string | null): string => {
+    const normalized = (value || '').trim().toLowerCase();
+    if (!normalized) return '';
+    return WEEKDAY_FILTER_OPTIONS.find((day) => day.toLowerCase() === normalized) || '';
+};
+const normalizeDayPartFilter = (value: string | null): string => {
+    const normalized = (value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!normalized) return '';
+    return DAY_PART_FILTER_ALIASES[normalized] || '';
+};
 
 const normalizeTimelineSurface = (value: string | null): TimelineSurface =>
     value === 'constellation' ? 'constellation' : 'timeline';
@@ -82,29 +159,62 @@ const normalizeTimelineSurface = (value: string | null): TimelineSurface =>
 const canUseLocalStorage = () => typeof window !== 'undefined' && !!window.localStorage;
 
 const buildTimelinePresetId = (
-    query: string,
-    sourceFilter: SourceFilter,
-    lifeAreaFilter: string
-) => `${query.trim().toLowerCase()}|${sourceFilter}|${lifeAreaFilter}`;
+    filters: TimelineFilterState
+) => [
+    filters.query.trim().toLowerCase(),
+    filters.sourceFilter,
+    filters.lifeAreaFilter,
+    filters.themeFilter.trim().toLowerCase(),
+    filters.moodFilter.trim().toLowerCase(),
+    filters.dateFilter,
+    filters.startDateFilter,
+    filters.endDateFilter,
+    filters.weekdayFilter.trim().toLowerCase(),
+    filters.dayPartFilter.trim().toLowerCase(),
+].join('|');
 
 const buildTimelinePresetLabel = (
-    query: string,
-    sourceFilter: SourceFilter,
-    lifeAreaFilter: string
+    filters: TimelineFilterState
 ) => {
     const parts: string[] = [];
-    const sourceLabel = SOURCE_FILTER_OPTIONS.find((item) => item.key === sourceFilter)?.label;
+    const sourceLabel = SOURCE_FILTER_OPTIONS.find((item) => item.key === filters.sourceFilter)?.label;
 
-    if (sourceFilter !== 'all' && sourceLabel) {
+    if (filters.sourceFilter !== 'all' && sourceLabel) {
         parts.push(sourceLabel);
     }
 
-    if (lifeAreaFilter !== 'all') {
-        parts.push(lifeAreaFilter);
+    if (filters.lifeAreaFilter !== 'all') {
+        parts.push(filters.lifeAreaFilter);
     }
 
-    if (query.trim()) {
-        parts.push(`"${query.trim()}"`);
+    if (filters.themeFilter.trim()) {
+        parts.push(`Topic: ${filters.themeFilter.trim()}`);
+    }
+
+    if (filters.moodFilter.trim()) {
+        parts.push(`Feeling: ${filters.moodFilter.trim()}`);
+    }
+
+    if (filters.dateFilter) {
+        parts.push(`Date: ${filters.dateFilter}`);
+    }
+
+    if (filters.startDateFilter || filters.endDateFilter) {
+        const left = filters.startDateFilter || '...';
+        const right = filters.endDateFilter || '...';
+        parts.push(`Range: ${left} to ${right}`);
+    }
+
+    if (filters.weekdayFilter.trim()) {
+        parts.push(`Weekday: ${filters.weekdayFilter.trim()}`);
+    }
+
+    if (filters.dayPartFilter.trim()) {
+        parts.push(`Time: ${filters.dayPartFilter.trim()}`);
+    }
+
+    if (filters.query.trim()) {
+        parts.push(`"${filters.query.trim()}"`);
     }
 
     return parts.join(' • ');
@@ -118,7 +228,28 @@ const loadRecentTimelinePresets = (): TimelineFilterPreset[] => {
 
     try {
         const parsed = JSON.parse(raw) as TimelineFilterPreset[];
-        return Array.isArray(parsed) ? parsed : [];
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map((preset) => {
+            const normalizedRange = normalizeDateRangeFilter({
+                startDate: typeof preset?.startDateFilter === 'string' ? preset.startDateFilter : null,
+                endDate: typeof preset?.endDateFilter === 'string' ? preset.endDateFilter : null,
+            });
+
+            return {
+                ...preset,
+                query: typeof preset?.query === 'string' ? preset.query : '',
+                sourceFilter: normalizeSourceFilter(typeof preset?.sourceFilter === 'string' ? preset.sourceFilter : null),
+                lifeAreaFilter: normalizeLifeAreaFilter(typeof preset?.lifeAreaFilter === 'string' ? preset.lifeAreaFilter : null),
+                themeFilter: normalizeThemeFilter(typeof preset?.themeFilter === 'string' ? preset.themeFilter : null),
+                moodFilter: normalizeMoodFilter(typeof preset?.moodFilter === 'string' ? preset.moodFilter : null),
+                dateFilter: normalizeDateFilter(typeof preset?.dateFilter === 'string' ? preset.dateFilter : null),
+                startDateFilter: normalizedRange.startDate,
+                endDateFilter: normalizedRange.endDate,
+                weekdayFilter: normalizeWeekdayFilter(typeof preset?.weekdayFilter === 'string' ? preset.weekdayFilter : null),
+                dayPartFilter: normalizeDayPartFilter(typeof preset?.dayPartFilter === 'string' ? preset.dayPartFilter : null),
+                savedAt: Number.isFinite(Number(preset?.savedAt)) ? Number(preset.savedAt) : Date.now(),
+            };
+        });
     } catch (error) {
         console.error('Failed to parse recent timeline presets', error);
         return [];
@@ -148,6 +279,42 @@ type TimelineSeasonCard = TimelineLifeSeason & {
     isLoaded: boolean;
 };
 
+function StoryArcMomentCard({
+    label,
+    moment,
+    currentReturnTo,
+}: {
+    label: string;
+    moment: TimelineStoryArcMoment;
+    currentReturnTo: string;
+}) {
+    return (
+        <Link
+            href={appendReturnTo(`/entry/view?id=${moment.id}`, currentReturnTo)}
+            className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
+        >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">{label}</p>
+            <div className="mt-2 flex items-center gap-2 text-xs text-ink-secondary">
+                <span>{formatTimelineDate(moment.createdAt)}</span>
+                {moment.mood && (
+                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-white">
+                        {getMoodEmoji(moment.mood)} {moment.mood}
+                    </span>
+                )}
+            </div>
+            <h3 className="mt-3 text-base font-semibold text-white">{moment.title || 'Untitled note'}</h3>
+            <p className="mt-2 line-clamp-4 text-sm leading-7 text-ink-secondary">{moment.contentSnippet}</p>
+            {moment.themes.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                    {moment.themes.map((theme) => (
+                        <TagPill key={`${moment.id}-${theme}`}>{theme}</TagPill>
+                    ))}
+                </div>
+            )}
+        </Link>
+    );
+}
+
 function TimelinePageContent() {
     const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { apiFetch } = useApi();
@@ -170,6 +337,33 @@ function TimelinePageContent() {
     const [lifeAreaFilter, setLifeAreaFilter] = useState<string>(
         normalizeLifeAreaFilter(searchParams.get('lifeArea'))
     );
+    const [themeFilter, setThemeFilter] = useState<string>(
+        normalizeThemeFilter(searchParams.get('theme'))
+    );
+    const [moodFilter, setMoodFilter] = useState<string>(
+        normalizeMoodFilter(searchParams.get('mood'))
+    );
+    const [dateFilter, setDateFilter] = useState<string>(
+        normalizeDateFilter(searchParams.get('date'))
+    );
+    const [startDateFilter, setStartDateFilter] = useState<string>(
+        normalizeDateRangeFilter({
+            startDate: searchParams.get('startDate'),
+            endDate: searchParams.get('endDate'),
+        }).startDate
+    );
+    const [endDateFilter, setEndDateFilter] = useState<string>(
+        normalizeDateRangeFilter({
+            startDate: searchParams.get('startDate'),
+            endDate: searchParams.get('endDate'),
+        }).endDate
+    );
+    const [weekdayFilter, setWeekdayFilter] = useState<string>(
+        normalizeWeekdayFilter(searchParams.get('weekday'))
+    );
+    const [dayPartFilter, setDayPartFilter] = useState<string>(
+        normalizeDayPartFilter(searchParams.get('dayPart'))
+    );
     const [surface, setSurface] = useState<TimelineSurface>(
         normalizeTimelineSurface(searchParams.get('view'))
     );
@@ -180,6 +374,7 @@ function TimelinePageContent() {
     const [activeMonthLabel, setActiveMonthLabel] = useState<string | null>(null);
     const [pendingRestore, setPendingRestore] = useState<TimelineContextSnapshot | null>(null);
     const [recentFilterPresets, setRecentFilterPresets] = useState<TimelineFilterPreset[]>([]);
+    const [isFilterStudioOpen, setIsFilterStudioOpen] = useState(false);
     const restoreInitRef = useRef(false);
     const entriesRef = useRef<Entry[]>([]);
     const hasMoreRef = useRef(false);
@@ -188,6 +383,18 @@ function TimelinePageContent() {
         () => buildCurrentReturnTo(pathname, buildSearchString(searchParams)),
         [pathname, searchParams]
     );
+    const currentFilters = useMemo<TimelineFilterState>(() => ({
+        query,
+        sourceFilter,
+        lifeAreaFilter,
+        themeFilter,
+        moodFilter,
+        dateFilter,
+        startDateFilter,
+        endDateFilter,
+        weekdayFilter,
+        dayPartFilter,
+    }), [dateFilter, dayPartFilter, endDateFilter, lifeAreaFilter, moodFilter, query, sourceFilter, startDateFilter, themeFilter, weekdayFilter]);
     const visibleEntries = entries;
     const timelineMonthGroups = useMemo(() => buildTimelineMonthGroups(visibleEntries), [visibleEntries]);
     const activeMonth = useMemo(
@@ -235,8 +442,36 @@ function TimelinePageContent() {
             params.set('lifeArea', lifeAreaFilter);
         }
 
+        if (themeFilter.trim()) {
+            params.set('theme', themeFilter.trim());
+        }
+
+        if (moodFilter.trim()) {
+            params.set('mood', moodFilter.trim());
+        }
+
+        if (dateFilter) {
+            params.set('date', dateFilter);
+        }
+
+        if (startDateFilter) {
+            params.set('startDate', startDateFilter);
+        }
+
+        if (endDateFilter) {
+            params.set('endDate', endDateFilter);
+        }
+
+        if (weekdayFilter.trim()) {
+            params.set('weekday', weekdayFilter.trim());
+        }
+
+        if (dayPartFilter.trim()) {
+            params.set('dayPart', dayPartFilter.trim());
+        }
+
         return params;
-    }, [debouncedQuery, lifeAreaFilter, sourceFilter]);
+    }, [dateFilter, dayPartFilter, debouncedQuery, endDateFilter, lifeAreaFilter, moodFilter, sourceFilter, startDateFilter, themeFilter, weekdayFilter]);
 
     const fetchTimelineSummary = useCallback(async (signal?: AbortSignal) => {
         const params = buildTimelineFilterParams();
@@ -369,6 +604,17 @@ function TimelinePageContent() {
         setSourceFilter(normalizeSourceFilter(searchParams.get('source')));
         setQuery(searchParams.get('q') || '');
         setLifeAreaFilter(normalizeLifeAreaFilter(searchParams.get('lifeArea')));
+        setThemeFilter(normalizeThemeFilter(searchParams.get('theme')));
+        setMoodFilter(normalizeMoodFilter(searchParams.get('mood')));
+        setDateFilter(normalizeDateFilter(searchParams.get('date')));
+        const normalizedRange = normalizeDateRangeFilter({
+            startDate: searchParams.get('startDate'),
+            endDate: searchParams.get('endDate'),
+        });
+        setStartDateFilter(normalizedRange.startDate);
+        setEndDateFilter(normalizedRange.endDate);
+        setWeekdayFilter(normalizeWeekdayFilter(searchParams.get('weekday')));
+        setDayPartFilter(normalizeDayPartFilter(searchParams.get('dayPart')));
         setSurface(normalizeTimelineSurface(searchParams.get('view')));
     }, [searchParams]);
 
@@ -394,26 +640,64 @@ function TimelinePageContent() {
 
         writeWorkspaceResume({
             key: 'timeline',
-            title: 'Timeline',
+            title: NOTIVE_VOICE.surfaces.memoryAtlas,
             summary: surface === 'constellation' ? `Constellation view · ${summary}` : summary,
             href: currentReturnTo,
             updatedAt: new Date().toISOString(),
             stage: 'capture',
-            actionLabel: 'Resume timeline',
+            actionLabel: `Resume ${NOTIVE_VOICE.surfaces.memoryAtlas.toLowerCase()}`,
         });
     }, [activeMonthLabel, authLoading, currentReturnTo, isAuthenticated, surface, timelineSummary.totalEntries, totalEntries]);
 
     useEffect(() => {
         const normalizedQuery = debouncedQuery.trim();
-        const hasActiveFilters = normalizedQuery.length > 0 || sourceFilter !== 'all' || lifeAreaFilter !== 'all';
+        const hasActiveFilters = normalizedQuery.length > 0
+            || sourceFilter !== 'all'
+            || lifeAreaFilter !== 'all'
+            || themeFilter.trim().length > 0
+            || moodFilter.trim().length > 0
+            || Boolean(dateFilter)
+            || Boolean(startDateFilter)
+            || Boolean(endDateFilter)
+            || weekdayFilter.trim().length > 0
+            || dayPartFilter.trim().length > 0;
         if (!hasActiveFilters) return;
 
         const nextPreset: TimelineFilterPreset = {
-            id: buildTimelinePresetId(normalizedQuery, sourceFilter, lifeAreaFilter),
-            label: buildTimelinePresetLabel(normalizedQuery, sourceFilter, lifeAreaFilter),
+            id: buildTimelinePresetId({
+                query: normalizedQuery,
+                sourceFilter,
+                lifeAreaFilter,
+                themeFilter,
+                moodFilter,
+                dateFilter,
+                startDateFilter,
+                endDateFilter,
+                weekdayFilter,
+                dayPartFilter,
+            }),
+            label: buildTimelinePresetLabel({
+                query: normalizedQuery,
+                sourceFilter,
+                lifeAreaFilter,
+                themeFilter,
+                moodFilter,
+                dateFilter,
+                startDateFilter,
+                endDateFilter,
+                weekdayFilter,
+                dayPartFilter,
+            }),
             query: normalizedQuery,
             sourceFilter,
             lifeAreaFilter,
+            themeFilter,
+            moodFilter,
+            dateFilter,
+            startDateFilter,
+            endDateFilter,
+            weekdayFilter,
+            dayPartFilter,
             savedAt: Date.now(),
         };
 
@@ -422,7 +706,7 @@ function TimelinePageContent() {
             saveRecentTimelinePresets(next);
             return next;
         });
-    }, [debouncedQuery, lifeAreaFilter, sourceFilter]);
+    }, [dateFilter, dayPartFilter, debouncedQuery, endDateFilter, lifeAreaFilter, moodFilter, sourceFilter, startDateFilter, themeFilter, weekdayFilter]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -549,18 +833,32 @@ function TimelinePageContent() {
     }, [activeMonthLabel, currentReturnTo, visibleEntries.length]);
 
     const applyTimelineFilters = useCallback((
-        nextQuery: string,
-        nextSourceFilter: SourceFilter,
-        nextLifeAreaFilter: string,
+        nextFilters: TimelineFilterState,
         options?: { instantSearch?: boolean }
     ) => {
-        const normalizedQuery = nextQuery.trim();
-        setQuery(nextQuery);
+        const normalizedQuery = nextFilters.query.trim();
+        const normalizedTheme = normalizeThemeFilter(nextFilters.themeFilter);
+        const normalizedMood = normalizeMoodFilter(nextFilters.moodFilter);
+        const normalizedDate = normalizeDateFilter(nextFilters.dateFilter);
+        const normalizedDateRange = normalizeDateRangeFilter({
+            startDate: nextFilters.startDateFilter,
+            endDate: nextFilters.endDateFilter,
+        });
+        const normalizedWeekday = normalizeWeekdayFilter(nextFilters.weekdayFilter);
+        const normalizedDayPart = normalizeDayPartFilter(nextFilters.dayPartFilter);
+        setQuery(nextFilters.query);
         if (options?.instantSearch) {
             setDebouncedQuery(normalizedQuery);
         }
-        setSourceFilter(nextSourceFilter);
-        setLifeAreaFilter(nextLifeAreaFilter);
+        setSourceFilter(nextFilters.sourceFilter);
+        setLifeAreaFilter(nextFilters.lifeAreaFilter);
+        setThemeFilter(normalizedTheme);
+        setMoodFilter(normalizedMood);
+        setDateFilter(normalizedDate);
+        setStartDateFilter(normalizedDateRange.startDate);
+        setEndDateFilter(normalizedDateRange.endDate);
+        setWeekdayFilter(normalizedWeekday);
+        setDayPartFilter(normalizedDayPart);
 
         const params = new URLSearchParams(searchParams.toString());
         if (!normalizedQuery) {
@@ -569,16 +867,58 @@ function TimelinePageContent() {
             params.set('q', normalizedQuery);
         }
 
-        if (nextSourceFilter === 'all') {
+        if (nextFilters.sourceFilter === 'all') {
             params.delete('source');
         } else {
-            params.set('source', nextSourceFilter);
+            params.set('source', nextFilters.sourceFilter);
         }
 
-        if (nextLifeAreaFilter === 'all') {
+        if (nextFilters.lifeAreaFilter === 'all') {
             params.delete('lifeArea');
         } else {
-            params.set('lifeArea', nextLifeAreaFilter);
+            params.set('lifeArea', nextFilters.lifeAreaFilter);
+        }
+
+        if (!normalizedTheme) {
+            params.delete('theme');
+        } else {
+            params.set('theme', normalizedTheme);
+        }
+
+        if (!normalizedMood) {
+            params.delete('mood');
+        } else {
+            params.set('mood', normalizedMood);
+        }
+
+        if (!normalizedDate) {
+            params.delete('date');
+        } else {
+            params.set('date', normalizedDate);
+        }
+
+        if (!normalizedDateRange.startDate) {
+            params.delete('startDate');
+        } else {
+            params.set('startDate', normalizedDateRange.startDate);
+        }
+
+        if (!normalizedDateRange.endDate) {
+            params.delete('endDate');
+        } else {
+            params.set('endDate', normalizedDateRange.endDate);
+        }
+
+        if (!normalizedWeekday) {
+            params.delete('weekday');
+        } else {
+            params.set('weekday', normalizedWeekday);
+        }
+
+        if (!normalizedDayPart) {
+            params.delete('dayPart');
+        } else {
+            params.set('dayPart', normalizedDayPart);
         }
 
         const next = params.toString();
@@ -586,23 +926,162 @@ function TimelinePageContent() {
     }, [pathname, router, searchParams]);
 
     const updateQuery = (nextQuery: string) => {
-        applyTimelineFilters(nextQuery, sourceFilter, lifeAreaFilter);
+        applyTimelineFilters({ ...currentFilters, query: nextQuery });
     };
 
     const updateSourceFilter = (nextFilter: SourceFilter) => {
-        applyTimelineFilters(query, nextFilter, lifeAreaFilter, { instantSearch: true });
+        applyTimelineFilters({ ...currentFilters, sourceFilter: nextFilter }, { instantSearch: true });
     };
 
     const updateLifeAreaFilter = (nextFilter: string) => {
-        applyTimelineFilters(query, sourceFilter, nextFilter, { instantSearch: true });
+        applyTimelineFilters({ ...currentFilters, lifeAreaFilter: nextFilter }, { instantSearch: true });
+    };
+
+    const updateWeekdayFilter = (nextFilter: string) => {
+        applyTimelineFilters({ ...currentFilters, weekdayFilter: nextFilter }, { instantSearch: true });
+    };
+
+    const updateDayPartFilter = (nextFilter: string) => {
+        applyTimelineFilters({ ...currentFilters, dayPartFilter: nextFilter }, { instantSearch: true });
+    };
+
+    const updateStartDateFilter = (nextFilter: string) => {
+        applyTimelineFilters({ ...currentFilters, startDateFilter: nextFilter }, { instantSearch: true });
+    };
+
+    const updateEndDateFilter = (nextFilter: string) => {
+        applyTimelineFilters({ ...currentFilters, endDateFilter: nextFilter }, { instantSearch: true });
     };
 
     const clearAllFilters = () => {
-        applyTimelineFilters('', 'all', 'all', { instantSearch: true });
+        applyTimelineFilters({
+            query: '',
+            sourceFilter: 'all',
+            lifeAreaFilter: 'all',
+            themeFilter: '',
+            moodFilter: '',
+            dateFilter: '',
+            startDateFilter: '',
+            endDateFilter: '',
+            weekdayFilter: '',
+            dayPartFilter: '',
+        }, { instantSearch: true });
     };
 
+    const activeFilterChips = useMemo(() => {
+        const chips: Array<{ key: string; label: string; onClear: () => void }> = [];
+
+        if (query.trim()) {
+            chips.push({
+                key: 'query',
+                label: `Search: ${query.trim()}`,
+                onClear: () => updateQuery(''),
+            });
+        }
+
+        if (sourceFilter !== 'all') {
+            chips.push({
+                key: 'source',
+                label: SOURCE_FILTER_OPTIONS.find((item) => item.key === sourceFilter)?.label || sourceFilter,
+                onClear: () => updateSourceFilter('all'),
+            });
+        }
+
+        if (lifeAreaFilter !== 'all') {
+            chips.push({
+                key: 'life-area',
+                label: lifeAreaFilter,
+                onClear: () => updateLifeAreaFilter('all'),
+            });
+        }
+
+        if (themeFilter.trim()) {
+            chips.push({
+                key: 'theme',
+                label: `Topic: ${themeFilter.trim()}`,
+                onClear: () => applyTimelineFilters({ ...currentFilters, themeFilter: '' }, { instantSearch: true }),
+            });
+        }
+
+        if (moodFilter.trim()) {
+            chips.push({
+                key: 'mood',
+                label: `Feeling: ${moodFilter.trim()}`,
+                onClear: () => applyTimelineFilters({ ...currentFilters, moodFilter: '' }, { instantSearch: true }),
+            });
+        }
+
+        if (dateFilter) {
+            chips.push({
+                key: 'date',
+                label: `Date: ${dateFilter}`,
+                onClear: () => applyTimelineFilters({ ...currentFilters, dateFilter: '' }, { instantSearch: true }),
+            });
+        }
+
+        if (startDateFilter || endDateFilter) {
+            chips.push({
+                key: 'range',
+                label: `Range: ${startDateFilter || '...'} to ${endDateFilter || '...'}`,
+                onClear: () => applyTimelineFilters({
+                    ...currentFilters,
+                    startDateFilter: '',
+                    endDateFilter: '',
+                }, { instantSearch: true }),
+            });
+        }
+
+        if (weekdayFilter.trim()) {
+            chips.push({
+                key: 'weekday',
+                label: `Weekday: ${weekdayFilter.trim()}`,
+                onClear: () => applyTimelineFilters({ ...currentFilters, weekdayFilter: '' }, { instantSearch: true }),
+            });
+        }
+
+        if (dayPartFilter.trim()) {
+            chips.push({
+                key: 'day-part',
+                label: `Time: ${dayPartFilter.trim()}`,
+                onClear: () => applyTimelineFilters({ ...currentFilters, dayPartFilter: '' }, { instantSearch: true }),
+            });
+        }
+
+        return chips;
+    }, [
+        applyTimelineFilters,
+        currentFilters,
+        dateFilter,
+        dayPartFilter,
+        endDateFilter,
+        lifeAreaFilter,
+        moodFilter,
+        query,
+        sourceFilter,
+        startDateFilter,
+        themeFilter,
+        updateLifeAreaFilter,
+        updateQuery,
+        updateSourceFilter,
+        weekdayFilter,
+    ]);
+
+    const collapsedFilterChips = isFilterStudioOpen ? activeFilterChips : activeFilterChips.slice(0, 4);
+    const hiddenFilterChipCount = Math.max(0, activeFilterChips.length - collapsedFilterChips.length);
+
     const applyRecentPreset = (preset: TimelineFilterPreset) => {
-        applyTimelineFilters(preset.query, preset.sourceFilter, preset.lifeAreaFilter, { instantSearch: true });
+        applyTimelineFilters({
+            query: preset.query,
+            sourceFilter: preset.sourceFilter,
+            lifeAreaFilter: preset.lifeAreaFilter,
+            themeFilter: preset.themeFilter,
+            moodFilter: preset.moodFilter,
+            dateFilter: preset.dateFilter,
+            startDateFilter: preset.startDateFilter,
+            endDateFilter: preset.endDateFilter,
+            weekdayFilter: preset.weekdayFilter,
+            dayPartFilter: preset.dayPartFilter,
+        }, { instantSearch: true });
     };
 
     const switchSurface = (nextSurface: TimelineSurface) => {
@@ -722,7 +1201,16 @@ function TimelinePageContent() {
     }, [fetchEntriesPage, hasMore, isLoading, isLoadingMore, nextPage, pendingRestore, visibleEntries.length]);
 
     const timelineStats = useMemo(() => {
-        const hasActiveFilters = query.trim().length > 0 || sourceFilter !== 'all' || lifeAreaFilter !== 'all';
+        const hasActiveFilters = query.trim().length > 0
+            || sourceFilter !== 'all'
+            || lifeAreaFilter !== 'all'
+            || themeFilter.trim().length > 0
+            || moodFilter.trim().length > 0
+            || Boolean(dateFilter)
+            || Boolean(startDateFilter)
+            || Boolean(endDateFilter)
+            || weekdayFilter.trim().length > 0
+            || dayPartFilter.trim().length > 0;
         const visibleCount = visibleEntries.length;
         const total = timelineSummary.totalEntries || totalEntries || visibleCount;
         const first = timelineSummary.startDate ? new Date(timelineSummary.startDate) : (visibleCount > 0 ? new Date(visibleEntries[visibleCount - 1].createdAt) : null);
@@ -743,7 +1231,7 @@ function TimelinePageContent() {
                     ? `${first.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })} - ${latest.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`
                     : 'No entries yet',
         };
-    }, [lifeAreaFilter, query, sourceFilter, timelineSummary.activeDays, timelineSummary.endDate, timelineSummary.importedCount, timelineSummary.startDate, timelineSummary.totalEntries, totalEntries, visibleEntries]);
+    }, [dateFilter, dayPartFilter, endDateFilter, lifeAreaFilter, moodFilter, query, sourceFilter, startDateFilter, themeFilter, timelineSummary.activeDays, timelineSummary.endDate, timelineSummary.importedCount, timelineSummary.startDate, timelineSummary.totalEntries, totalEntries, visibleEntries, weekdayFilter]);
     const activeFilterSummary = useMemo(() => {
         const summary: string[] = [];
         const normalizedQuery = query.trim();
@@ -757,6 +1245,30 @@ function TimelinePageContent() {
             summary.push(lifeAreaFilter);
         }
 
+        if (themeFilter.trim()) {
+            summary.push(`Topic: ${themeFilter.trim()}`);
+        }
+
+        if (moodFilter.trim()) {
+            summary.push(`Feeling: ${moodFilter.trim()}`);
+        }
+
+        if (dateFilter) {
+            summary.push(`Date: ${dateFilter}`);
+        }
+
+        if (startDateFilter || endDateFilter) {
+            summary.push(`Range: ${startDateFilter || '...'} to ${endDateFilter || '...'}`);
+        }
+
+        if (weekdayFilter.trim()) {
+            summary.push(`Weekday: ${weekdayFilter.trim()}`);
+        }
+
+        if (dayPartFilter.trim()) {
+            summary.push(`Time: ${dayPartFilter.trim()}`);
+        }
+
         if (normalizedQuery) {
             summary.push(`Search: "${normalizedQuery}"`);
         }
@@ -766,15 +1278,35 @@ function TimelinePageContent() {
         }
 
         return summary.join(' • ');
-    }, [lifeAreaFilter, query, sourceFilter]);
+    }, [dateFilter, dayPartFilter, endDateFilter, lifeAreaFilter, moodFilter, query, sourceFilter, startDateFilter, themeFilter, weekdayFilter]);
     const featuredSeason = useMemo(() => {
         if (lifeSeasonCards.length === 0) return null;
         return lifeSeasonCards.find((season) => season.anchorMonthKey === activeMonth?.key) || lifeSeasonCards[0];
     }, [activeMonth?.key, lifeSeasonCards]);
     const currentPresetId = useMemo(
-        () => buildTimelinePresetId(debouncedQuery.trim(), sourceFilter, lifeAreaFilter),
-        [debouncedQuery, lifeAreaFilter, sourceFilter]
+        () => buildTimelinePresetId({
+            query: debouncedQuery.trim(),
+            sourceFilter,
+            lifeAreaFilter,
+            themeFilter,
+            moodFilter,
+            dateFilter,
+            startDateFilter,
+            endDateFilter,
+            weekdayFilter,
+            dayPartFilter,
+        }),
+        [dateFilter, dayPartFilter, debouncedQuery, endDateFilter, lifeAreaFilter, moodFilter, sourceFilter, startDateFilter, themeFilter, weekdayFilter]
     );
+    const activeStoryArc = useMemo(
+        () => ((startDateFilter || endDateFilter) ? timelineSummary.storyArc : null),
+        [endDateFilter, startDateFilter, timelineSummary.storyArc]
+    );
+    const storyArcWriteHref = useMemo(() => (
+        activeStoryArc
+            ? appendReturnTo(`/entry/new?mode=quick&prompt=${encodeURIComponent(activeStoryArc.prompt)}`, currentReturnTo)
+            : null
+    ), [activeStoryArc, currentReturnTo]);
 
     const scrollToTop = () => {
         if (typeof window === 'undefined') return;
@@ -849,26 +1381,26 @@ function TimelinePageContent() {
                 <header className="bento-box p-6 md:p-8">
                     <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
                         <div>
-                            <span className="section-kicker mb-3">Memory Atlas</span>
-                            <h1 className="text-3xl md:text-4xl font-serif text-white">Your Journey Timeline</h1>
-                            <p className="text-ink-secondary mt-2">Scan your growth story by time, tags, and patterns.</p>
+                            <span className="section-kicker mb-3">{NOTIVE_VOICE.surfaces.memoryAtlas}</span>
+                            <h1 className="text-3xl md:text-4xl font-serif text-white">Look back at your notes by time and topic</h1>
+                            <p className="text-ink-secondary mt-2">Read moments in order or switch views when you want to see the bigger picture.</p>
                         </div>
                         <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(145px,1fr))] gap-3">
                             <div className="glass-card px-4 py-3 rounded-xl">
                                 <p className="text-xs uppercase tracking-widest text-ink-muted mb-1 flex items-center gap-1">
-                                    <FiArchive size={12} aria-hidden="true" /> Memories
+                                    <FiArchive size={12} aria-hidden="true" /> Notes
                                 </p>
                                 <p className="text-xl font-semibold text-white">{timelineStats.total}</p>
                             </div>
                             <div className="glass-card px-4 py-3 rounded-xl">
                                 <p className="text-xs uppercase tracking-widest text-ink-muted mb-1 flex items-center gap-1">
-                                    <FiCalendar size={12} aria-hidden="true" /> Active Days
+                                    <FiCalendar size={12} aria-hidden="true" /> Days
                                 </p>
                                 <p className="text-xl font-semibold text-white">{timelineStats.activeDays}</p>
                             </div>
                             <div className="glass-card px-4 py-3 rounded-xl">
                                 <p className="text-xs uppercase tracking-widest text-ink-muted mb-1 flex items-center gap-1">
-                                    <FiClock size={12} aria-hidden="true" /> Range
+                                    <FiClock size={12} aria-hidden="true" /> Time
                                 </p>
                                 <p className="text-sm font-semibold text-white">{timelineStats.dateRange}</p>
                             </div>
@@ -893,7 +1425,7 @@ function TimelinePageContent() {
                                         : 'text-ink-secondary hover:text-white'
                                 }`}
                             >
-                                Timeline
+                                List
                             </button>
                             <button
                                 type="button"
@@ -905,18 +1437,18 @@ function TimelinePageContent() {
                                         : 'text-ink-secondary hover:text-white'
                                 }`}
                             >
-                                Constellation
+                                Map
                             </button>
                             <span className="text-xs text-ink-secondary">
                                 {surface === 'timeline'
-                                    ? 'Chronology first, meaning second.'
-                                    : 'Meaning first, chronology still one tap away.'}
+                                    ? 'Read your notes in time order.'
+                                    : 'See related notes grouped together.'}
                             </span>
                         </ActionBar>
 
                         {featuredSeason && (
                             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Active season</p>
+                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Current chapter</p>
                                 <div className="mt-1 flex flex-wrap items-center gap-2">
                                     <span className="text-sm font-semibold text-white">{featuredSeason.title}</span>
                                     {featuredSeason.dominantMood && (
@@ -934,29 +1466,20 @@ function TimelinePageContent() {
                                 type="text"
                                 value={query}
                                 onChange={(e) => updateQuery(e.target.value)}
-                                placeholder="Search title, text, or tags"
+                                placeholder="Search notes, topics, or tags"
                                 className="w-full rounded-xl bg-surface-1/60 border border-white/15 px-4 py-3 text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/45"
                             />
                         </label>
                         <Link href={appendReturnTo('/entry/new?mode=quick', currentReturnTo)} className="primary-cta rounded-xl px-5 py-3 font-semibold text-center">
-                            Quick Capture
+                            Write
                         </Link>
                     </div>
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-secondary">
                         <span>
                             {timelineStats.hasActiveFilters
-                                ? `Showing ${entries.length.toLocaleString()} of ${timelineStats.total.toLocaleString()} matching memories`
-                                : `Showing ${entries.length.toLocaleString()} of ${timelineStats.total.toLocaleString()} memories`}
+                                ? `Showing ${entries.length.toLocaleString()} of ${timelineStats.total.toLocaleString()} matching notes`
+                                : `Showing ${entries.length.toLocaleString()} of ${timelineStats.total.toLocaleString()} notes`}
                         </span>
-                        {timelineStats.hasActiveFilters && (
-                            <button
-                                type="button"
-                                onClick={clearAllFilters}
-                                className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-ink-secondary hover:text-white"
-                            >
-                                Clear Filters
-                            </button>
-                        )}
                     </div>
                     <div
                         className="mt-4 -mx-1 overflow-x-auto px-1 [scrollbar-width:none]"
@@ -992,65 +1515,225 @@ function TimelinePageContent() {
                             })}
                         </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <label className="text-xs uppercase tracking-[0.1em] text-ink-muted">Life Area</label>
-                        <select
-                            value={lifeAreaFilter}
-                            onChange={(event) => updateLifeAreaFilter(event.target.value)}
-                            className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
-                        >
-                            <option value="all" className="bg-surface-1">All Areas</option>
-                            {lifeAreaOptions.map((area) => (
-                                <option key={area} value={area} className="bg-surface-1">
-                                    {area}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {timelineStats.hasActiveFilters && (
-                        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div>
-                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Active Filters</p>
-                                    <p className="mt-1 text-sm text-ink-secondary">{activeFilterSummary}</p>
+                    <div className="mt-4 rounded-[1.6rem] border border-white/10 bg-black/20 p-4">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-row lg:items-center">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsFilterStudioOpen((prev) => !prev)}
+                                    aria-expanded={isFilterStudioOpen}
+                                    aria-controls="timeline-filter-studio"
+                                    className="inline-flex items-center gap-2 self-start rounded-full border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-white/[0.08]"
+                                >
+                                    <FiSliders size={14} aria-hidden="true" />
+                                    Filter Studio
+                                    <span className={`rounded-full px-2 py-0.5 text-[10px] ${activeFilterChips.length > 0 ? 'bg-primary/15 text-primary' : 'bg-white/[0.06] text-ink-secondary'}`}>
+                                        {activeFilterChips.length > 0 ? `${activeFilterChips.length} active` : 'quiet'}
+                                    </span>
+                                    <FiChevronDown
+                                        size={14}
+                                        aria-hidden="true"
+                                        className={`transition-transform ${isFilterStudioOpen ? 'rotate-180' : ''}`}
+                                    />
+                                </button>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-muted">
+                                        {timelineStats.hasActiveFilters ? 'Current Slice' : 'Space Saver'}
+                                    </p>
+                                    <p className={`mt-1 text-sm text-ink-secondary ${isFilterStudioOpen ? '' : 'line-clamp-1'}`}>
+                                        {timelineStats.hasActiveFilters
+                                            ? activeFilterSummary
+                                            : 'Keep memories open by default, then unfold this studio only when you want to narrow by life area, date window, weekday, or time of day.'}
+                                    </p>
                                 </div>
+                            </div>
+                            {timelineStats.hasActiveFilters && (
                                 <button
                                     type="button"
                                     onClick={clearAllFilters}
                                     className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-ink-secondary hover:text-white"
                                 >
-                                    Clear All
+                                    Reset All
                                 </button>
-                            </div>
+                            )}
+                        </div>
+
+                        {activeFilterChips.length > 0 && (
                             <div className="mt-3 flex flex-wrap gap-2">
-                                {query.trim() && (
+                                {collapsedFilterChips.map((chip) => (
                                     <button
+                                        key={chip.key}
                                         type="button"
-                                        onClick={() => updateQuery('')}
+                                        onClick={chip.onClear}
                                         className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-white hover:bg-white/[0.08]"
                                     >
-                                        Search: {query.trim()} ×
+                                        {chip.label} ×
                                     </button>
-                                )}
-                                {sourceFilter !== 'all' && (
+                                ))}
+                                {!isFilterStudioOpen && hiddenFilterChipCount > 0 && (
                                     <button
                                         type="button"
-                                        onClick={() => updateSourceFilter('all')}
-                                        className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-white hover:bg-white/[0.08]"
+                                        onClick={() => setIsFilterStudioOpen(true)}
+                                        className="rounded-full border border-dashed border-white/15 bg-transparent px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-ink-secondary hover:text-white"
                                     >
-                                        {SOURCE_FILTER_OPTIONS.find((item) => item.key === sourceFilter)?.label} ×
+                                        +{hiddenFilterChipCount} more
                                     </button>
                                 )}
-                                {lifeAreaFilter !== 'all' && (
-                                    <button
-                                        type="button"
-                                        onClick={() => updateLifeAreaFilter('all')}
-                                        className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-white hover:bg-white/[0.08]"
+                            </div>
+                        )}
+
+                        <AnimatePresence initial={false}>
+                            {isFilterStudioOpen && (
+                                <motion.div
+                                    id="timeline-filter-studio"
+                                    initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                    animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+                                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                                        <label className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                                            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">Life Area</span>
+                                            <select
+                                                value={lifeAreaFilter}
+                                                onChange={(event) => updateLifeAreaFilter(event.target.value)}
+                                                className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                            >
+                                                <option value="all" className="bg-surface-1">All Areas</option>
+                                                {lifeAreaOptions.map((area) => (
+                                                    <option key={area} value={area} className="bg-surface-1">
+                                                        {area}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
+
+                                        <label className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                                            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">From</span>
+                                            <input
+                                                type="date"
+                                                value={startDateFilter}
+                                                onChange={(event) => updateStartDateFilter(event.target.value)}
+                                                className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                            />
+                                        </label>
+
+                                        <label className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                                            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">To</span>
+                                            <input
+                                                type="date"
+                                                value={endDateFilter}
+                                                onChange={(event) => updateEndDateFilter(event.target.value)}
+                                                className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                            />
+                                        </label>
+
+                                        <label className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                                            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">Weekday</span>
+                                            <select
+                                                value={weekdayFilter}
+                                                onChange={(event) => updateWeekdayFilter(event.target.value)}
+                                                className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                            >
+                                                <option value="" className="bg-surface-1">Any Day</option>
+                                                {WEEKDAY_FILTER_OPTIONS.map((day) => (
+                                                    <option key={day} value={day} className="bg-surface-1">
+                                                        {day}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
+
+                                        <label className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                                            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">Time of Day</span>
+                                            <select
+                                                value={dayPartFilter}
+                                                onChange={(event) => updateDayPartFilter(event.target.value)}
+                                                className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                            >
+                                                <option value="" className="bg-surface-1">Any Time</option>
+                                                {DAY_PART_FILTER_OPTIONS.map((part) => (
+                                                    <option key={part} value={part} className="bg-surface-1">
+                                                        {part}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    {activeStoryArc && (
+                        <div className="mt-4 rounded-[1.8rem] border border-primary/20 bg-primary/[0.08] p-5 md:p-6">
+                            <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                                <div className="max-w-3xl">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Story Arc</p>
+                                    <h2 className="mt-2 text-2xl font-semibold text-white">{activeStoryArc.title}</h2>
+                                    <p className="mt-3 text-sm leading-7 text-ink-secondary">{activeStoryArc.summary}</p>
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                        <TagPill tone="primary">{activeStoryArc.entryCount} notes</TagPill>
+                                        <TagPill>{activeStoryArc.spanDays} days</TagPill>
+                                        <TagPill>{activeStoryArc.moodShift.label}</TagPill>
+                                    </div>
+                                </div>
+                                {storyArcWriteHref && (
+                                    <Link
+                                        href={storyArcWriteHref}
+                                        className="inline-flex items-center justify-center rounded-xl border border-primary/30 bg-primary px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
                                     >
-                                        {lifeAreaFilter} ×
-                                    </button>
+                                        Write this stretch
+                                    </Link>
                                 )}
+                            </div>
+
+                            <div className={`mt-5 grid gap-3 ${activeStoryArc.turningPoint ? 'xl:grid-cols-3' : 'md:grid-cols-2'}`}>
+                                <StoryArcMomentCard
+                                    label="Start"
+                                    moment={activeStoryArc.opening}
+                                    currentReturnTo={currentReturnTo}
+                                />
+                                {activeStoryArc.turningPoint && (
+                                    <StoryArcMomentCard
+                                        label="Turn"
+                                        moment={activeStoryArc.turningPoint}
+                                        currentReturnTo={currentReturnTo}
+                                    />
+                                )}
+                                <StoryArcMomentCard
+                                    label="Now"
+                                    moment={activeStoryArc.current}
+                                    currentReturnTo={currentReturnTo}
+                                />
+                            </div>
+
+                            <div className="mt-5 grid gap-4 md:grid-cols-2">
+                                <div className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">What stayed with you</p>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {activeStoryArc.carriedThemes.length > 0 ? (
+                                            activeStoryArc.carriedThemes.map((theme) => (
+                                                <TagPill key={`carried-${theme}`}>{theme}</TagPill>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm leading-7 text-ink-secondary">No single topic stayed constant from start to now, which can also mean this was a real transition period.</p>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">What changed</p>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {activeStoryArc.emergingThemes.length > 0 ? (
+                                            activeStoryArc.emergingThemes.map((theme) => (
+                                                <TagPill key={`emerging-${theme}`} tone="primary">{theme}</TagPill>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm leading-7 text-ink-secondary">The strongest change in this stretch is more about tone and timing than a brand new topic.</p>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1058,8 +1741,8 @@ function TimelinePageContent() {
                     {recentFilterPresets.length > 0 && (
                         <div className="mt-4">
                             <div className="mb-2 flex items-center justify-between gap-2">
-                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Recent Views</p>
-                                <span className="text-xs text-ink-secondary">One tap to restore a recent search slice.</span>
+                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Recent searches</p>
+                                <span className="text-xs text-ink-secondary">Tap once to bring back a recent search.</span>
                             </div>
                             <div className=" -mx-1 overflow-x-auto px-1 [scrollbar-width:none]" style={{ msOverflowStyle: 'none' }}>
                                 <div className="flex min-w-max gap-2 pb-1 pr-3">
@@ -1088,8 +1771,8 @@ function TimelinePageContent() {
                     {lifeSeasonCards.length > 0 && (
                         <div className="mt-4">
                             <div className="mb-2 flex items-center justify-between gap-2">
-                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Life Seasons</p>
-                                <span className="text-xs text-ink-secondary">Clusters of related entries shaped by timing, mood, and recurring signals.</span>
+                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Life chapters</p>
+                                <span className="text-xs text-ink-secondary">Groups of related notes shaped by time, mood, and repeated topics.</span>
                             </div>
                             <div className="-mx-1 overflow-x-auto px-1 [scrollbar-width:none]" style={{ msOverflowStyle: 'none' }}>
                                 <div className="flex min-w-max gap-3 pb-1 pr-3">
@@ -1155,9 +1838,9 @@ function TimelinePageContent() {
                         <div className="mt-4 rounded-2xl border border-white/10 bg-surface-2/35 p-4">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                                 <div>
-                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Jump Through Time</p>
+                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Jump to a date</p>
                                     <p className="mt-1 text-sm text-ink-secondary">
-                                        Jump to any loaded year or month without losing your current filters.
+                                        Jump to any loaded year or month without losing your search.
                                     </p>
                                 </div>
                                 <label className="flex items-center gap-2 text-xs uppercase tracking-[0.1em] text-ink-muted">
@@ -1236,8 +1919,8 @@ function TimelinePageContent() {
                             <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/[0.03]">
                                 <FiSearch size={24} className="text-ink-secondary" aria-hidden="true" />
                             </div>
-                            <h2 className="text-xl text-white font-semibold mb-2">No matching memories</h2>
-                            <p className="text-sm text-ink-secondary mb-4">Try a shorter keyword or remove source and life-area filters.</p>
+                            <h2 className="text-xl text-white font-semibold mb-2">No notes found</h2>
+                            <p className="text-sm text-ink-secondary mb-4">Try a broader keyword or use fewer filters.</p>
                             <button
                                 type="button"
                                 onClick={clearAllFilters}
@@ -1270,7 +1953,7 @@ function TimelinePageContent() {
                     {hasMore && (
                         <div className="bento-box p-5 text-center">
                             <p className="text-xs uppercase tracking-[0.1em] text-ink-muted mb-3">
-                                Loaded {entries.length.toLocaleString()} of {Math.max(totalEntries, entries.length).toLocaleString()} memories
+                                Loaded {entries.length.toLocaleString()} of {Math.max(totalEntries, entries.length).toLocaleString()} notes
                             </p>
                             <button
                                 type="button"
@@ -1278,7 +1961,7 @@ function TimelinePageContent() {
                                 disabled={isLoadingMore}
                                 className="px-4 py-2 rounded-xl border border-primary/35 bg-primary/15 text-primary text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
                             >
-                                {isLoadingMore ? 'Loading more...' : 'Load More Memories'}
+                                {isLoadingMore ? 'Loading more...' : 'Load older notes'}
                             </button>
                         </div>
                     )}

@@ -27,27 +27,27 @@ export function ProfileSection({
             <section className="grid gap-6 lg:grid-cols-[1.6fr,1fr]">
                 <div className="bento-box p-8 space-y-6">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Profile</p>
-                        <h2 className="mt-2 text-2xl font-serif text-white">Basic identity and account details</h2>
+                        <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">About</p>
+                        <h2 className="mt-2 text-2xl font-serif text-white">Basic details</h2>
                         <p className="mt-2 text-sm text-ink-secondary">
-                            Keep the public-facing identity details together. Sign-in email and destructive account controls now live in Security.
+                            Keep your name and public details here. Sign-in email and account delete tools are in Security.
                         </p>
                     </div>
 
                     <div className="grid gap-6 md:grid-cols-2">
                         <TextField
-                            label="Display Name"
+                            label="Name"
                             value={draft.name}
                             onChange={(value) => onChange((current) => ({ ...current, name: value }))}
                             placeholder="How your name should appear"
                         />
                         <TextField
-                            label="Avatar URL"
+                            label="Image link"
                             type="url"
                             value={draft.avatarUrl}
                             onChange={(value) => onChange((current) => ({ ...current, avatarUrl: value }))}
                             placeholder="https://..."
-                            helper="Optional. Used for your account avatar."
+                            helper="Optional. Used for your account image."
                         />
                         <TextField
                             label="Website"
@@ -63,7 +63,7 @@ export function ProfileSection({
                             placeholder="City, State"
                         />
                         <TextField
-                            label="Occupation"
+                            label="School or work"
                             value={draft.occupation}
                             onChange={(value) => onChange((current) => ({ ...current, occupation: value }))}
                             placeholder="Student, designer, engineer..."
@@ -73,18 +73,18 @@ export function ProfileSection({
                                 label="Bio"
                                 value={draft.bio}
                                 onChange={(value) => onChange((current) => ({ ...current, bio: value }))}
-                                placeholder="Describe what matters most about your work, goals, or story."
-                                helper="Use this for human-readable context, not system settings."
+                                placeholder="Write a short note about you, your goals, or your story."
+                                helper="Use this to help people understand you."
                                 minHeight={140}
                             />
                         </div>
                         <div className="md:col-span-2">
                             <TagInput
-                                label="Life Goals"
+                                label="Long-term goals"
                                 values={draft.lifeGoals}
                                 draft={lifeGoalsDraft}
                                 placeholder="Add a long-term goal and press Enter"
-                                helper="These goals shape reflection and growth context."
+                                helper="These goals help Notive understand what matters to you."
                                 onDraftChange={onLifeGoalsDraftChange}
                                 onAdd={onAddLifeGoal}
                                 onRemove={onRemoveLifeGoal}
@@ -96,8 +96,8 @@ export function ProfileSection({
                 <div className="space-y-6">
                     <section className="bento-box p-6 space-y-4">
                         <div>
-                            <p className="text-xs uppercase tracking-[0.18em] text-ink-muted font-bold">Account Snapshot</p>
-                            <h3 className="mt-2 text-xl font-serif text-white">What other screens depend on</h3>
+                            <p className="text-xs uppercase tracking-[0.18em] text-ink-muted font-bold">Quick View</p>
+                            <h3 className="mt-2 text-xl font-serif text-white">What the app uses</h3>
                         </div>
                         <div className="space-y-3 text-sm text-ink-secondary">
                             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
@@ -108,13 +108,13 @@ export function ProfileSection({
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Email</p>
                                 <p className="mt-1 text-white break-all">{draft.email || 'Not set'}</p>
                                 <p className="mt-2 text-xs text-ink-secondary">
-                                    Sign-in email changes now live in the Security tab.
+                                    Change sign-in email in Security.
                                 </p>
                             </div>
                             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Profile Summary</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">About you</p>
                                 <p className="mt-1 text-white">
-                                    {draft.bio.trim() || 'No profile summary added yet.'}
+                                    {draft.bio.trim() || 'No short bio yet.'}
                                 </p>
                             </div>
                         </div>
@@ -126,9 +126,9 @@ export function ProfileSection({
                                 <FiInfo size={16} aria-hidden="true" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-serif text-white">Why this section is separate</h3>
+                                <h3 className="text-lg font-serif text-white">Why this is separate</h3>
                                 <p className="mt-2 text-sm text-ink-secondary">
-                                    Identity details change less often than writing behavior or privacy choices. Separating them makes save intent clear and reduces accidental overwrites.
+                                    Your basic details change less often than your goals or data choices. Keeping them separate makes saving clearer.
                                 </p>
                             </div>
                         </div>

@@ -389,19 +389,21 @@ const getOpportunityMeta = (analysis: unknown): OpportunityMeta => {
     };
 };
 
-const getTopValues = (values: string[], limit: number): string[] => {
-    const countMap = new Map<string, number>();
-    values.forEach((raw) => {
-        const normalized = normalizeSkill(raw);
-        if (!normalized) return;
-        countMap.set(normalized, (countMap.get(normalized) || 0) + 1);
-    });
+const incrementCount = (countMap: Map<string, number>, key: string) => {
+    countMap.set(key, (countMap.get(key) || 0) + 1);
+};
 
-    return [...countMap.entries()]
+const addNormalizedCount = (countMap: Map<string, number>, raw: string) => {
+    const normalized = normalizeSkill(raw);
+    if (!normalized) return;
+    incrementCount(countMap, normalized);
+};
+
+const getTopCountValues = (countMap: Map<string, number>, limit: number): string[] =>
+    [...countMap.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, limit)
         .map(([value]) => value);
-};
 
 const deriveSkills = (entry: OpportunityEntry, opportunityMeta?: OpportunityMeta): string[] => {
     if (opportunityMeta?.skills && opportunityMeta.skills.length > 0) {
@@ -605,35 +607,51 @@ const buildPersonalStatementVariant = (
     ].filter(Boolean).join(' ');
 };
 
+const sortExperiencesByPriority = (experiences: ExperienceEvidence[]): ExperienceEvidence[] =>
+    experiences.sort((a, b) => {
+        if (a.verified !== b.verified) return a.verified ? -1 : 1;
+        return b.createdAt.localeCompare(a.createdAt);
+    });
+
 export const buildOpportunityOverview = (
     entries: OpportunityEntry[],
     profileContext: ProfileContextSummary | null = null,
     profileIdentity: OpportunityProfileIdentity | null = null
 ): OpportunityOverview => {
-    const experiences = entries
-        .map(deriveExperienceEvidence)
-        .sort((a, b) => {
-            if (a.verified !== b.verified) return a.verified ? -1 : 1;
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        });
+    const experiences = sortExperiencesByPriority(entries.map(deriveExperienceEvidence));
+    const skillCounts = new Map<string, number>();
+    const lessonCounts = new Map<string, number>();
+    const resumeBullets: ResumeBullet[] = [];
+    const interviewStories: InterviewStory[] = [];
+    let verifiedCount = 0;
 
-    const topSkills = getTopValues(experiences.flatMap(e => e.skills), 8);
-    const topLessons = getTopValues(experiences.map((e) => e.lesson).filter(Boolean), 6);
+    experiences.forEach((experience) => {
+        if (experience.verified) {
+            verifiedCount += 1;
+        }
 
-    const prioritized = [
-        ...experiences.filter(e => e.verified),
-        ...experiences.filter(e => !e.verified),
-    ];
+        experience.skills.forEach((skill) => addNormalizedCount(skillCounts, skill));
+        if (hasText(experience.lesson)) {
+            addNormalizedCount(lessonCounts, experience.lesson);
+        }
 
-    const resumeBullets = prioritized
-        .filter((experience) => hasText(experience.action) && hasText(experience.outcome))
-        .slice(0, 12)
-        .map(buildResumeBullet);
-    const interviewStories = prioritized
-        .filter((experience) => hasText(experience.situation) && hasText(experience.action) && hasText(experience.outcome))
-        .slice(0, 6)
-        .map(buildInterviewStory);
-    const personalStatement = buildPersonalStatement(prioritized, topSkills, topLessons);
+        if (resumeBullets.length < 12 && hasText(experience.action) && hasText(experience.outcome)) {
+            resumeBullets.push(buildResumeBullet(experience));
+        }
+
+        if (
+            interviewStories.length < 6 &&
+            hasText(experience.situation) &&
+            hasText(experience.action) &&
+            hasText(experience.outcome)
+        ) {
+            interviewStories.push(buildInterviewStory(experience));
+        }
+    });
+
+    const topSkills = getTopCountValues(skillCounts, 8);
+    const topLessons = getTopCountValues(lessonCounts, 6);
+    const personalStatement = buildPersonalStatement(experiences, topSkills, topLessons);
     const statementVariants: Record<OpportunityTemplateVariant, string> = {
         standard: personalStatement,
         college: '',
@@ -647,7 +665,7 @@ export const buildOpportunityOverview = (
         stats: {
             entryCount: entries.length,
             experienceCount: experiences.length,
-            verifiedCount: experiences.filter(e => e.verified).length,
+            verifiedCount,
         },
         topSkills,
         topLessons,
@@ -666,6 +684,21 @@ export const buildOpportunityOverview = (
 type ExportType = 'resume' | 'statement' | 'interview' | 'growth';
 type ExportFormat = 'markdown' | 'json' | 'html';
 type TrendPeriod = 'week' | 'month';
+type TrendBucketAccumulator = {
+    entries: number;
+    verified: number;
+    confidenceTotal: number;
+    moodCounts: Map<string, number>;
+    skillCounts: Map<string, number>;
+};
+
+const createTrendBucketAccumulator = (): TrendBucketAccumulator => ({
+    entries: 0,
+    verified: 0,
+    confidenceTotal: 0,
+    moodCounts: new Map<string, number>(),
+    skillCounts: new Map<string, number>(),
+});
 
 const formatExportTimestamp = (value: string): string => {
     const parsed = new Date(value);
@@ -1166,6 +1199,9 @@ const addPeriods = (date: Date, period: TrendPeriod, step: number): Date => {
     return d;
 };
 
+const getPeriodStart = (date: Date, period: TrendPeriod): Date =>
+    period === 'week' ? getWeekStart(date) : getMonthStart(date);
+
 const formatPeriodLabel = (start: Date, period: TrendPeriod): string => {
     if (period === 'week') {
         const end = new Date(start);
@@ -1184,47 +1220,48 @@ export const buildOpportunityTrends = (
     const experiences = entries.map(deriveExperienceEvidence);
 
     const now = new Date();
-    const currentStart = period === 'week' ? getWeekStart(now) : getMonthStart(now);
+    const currentStart = getPeriodStart(now, period);
     const starts: Date[] = [];
     for (let i = safeWindow - 1; i >= 0; i--) {
         starts.push(addPeriods(currentStart, period, -i));
     }
 
+    const bucketMap = new Map<string, TrendBucketAccumulator>();
+    experiences.forEach((experience) => {
+        const createdAt = new Date(experience.createdAt);
+        if (Number.isNaN(createdAt.getTime())) return;
+
+        const periodStart = getPeriodStart(createdAt, period).toISOString();
+        const bucket = bucketMap.get(periodStart) || createTrendBucketAccumulator();
+        bucket.entries += 1;
+        bucket.verified += experience.verified ? 1 : 0;
+        bucket.confidenceTotal += experience.confidence;
+
+        if (experience.mood) {
+            incrementCount(bucket.moodCounts, experience.mood);
+        }
+        experience.skills.forEach((skill) => incrementCount(bucket.skillCounts, skill));
+
+        if (!bucketMap.has(periodStart)) {
+            bucketMap.set(periodStart, bucket);
+        }
+    });
+
     const points: GrowthTrendPoint[] = starts.map((start) => {
-        const nextStart = addPeriods(start, period, 1);
-        const bucket = experiences.filter((experience) => {
-            const created = new Date(experience.createdAt);
-            return created >= start && created < nextStart;
-        });
+        const bucket = bucketMap.get(start.toISOString()) || createTrendBucketAccumulator();
+        const dominantMood = getTopCountValues(bucket.moodCounts, 1)[0] || null;
+        const topSkills = getTopCountValues(bucket.skillCounts, 3);
 
-        const moodCounts = new Map<string, number>();
-        const skillCounts = new Map<string, number>();
-
-        bucket.forEach((experience) => {
-            if (experience.mood) {
-                moodCounts.set(experience.mood, (moodCounts.get(experience.mood) || 0) + 1);
-            }
-            experience.skills.forEach((skill) => {
-                skillCounts.set(skill, (skillCounts.get(skill) || 0) + 1);
-            });
-        });
-
-        const dominantMood = [...moodCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-        const topSkills = [...skillCounts.entries()]
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([skill]) => skill);
-
-        const averageConfidence = bucket.length === 0
+        const averageConfidence = bucket.entries === 0
             ? 0
-            : Number((bucket.reduce((sum, item) => sum + item.confidence, 0) / bucket.length).toFixed(3));
+            : Number((bucket.confidenceTotal / bucket.entries).toFixed(3));
 
         return {
             periodStart: start.toISOString(),
             periodLabel: formatPeriodLabel(start, period),
-            entries: bucket.length,
-            experiences: bucket.length,
-            verified: bucket.filter((item) => item.verified).length,
+            entries: bucket.entries,
+            experiences: bucket.entries,
+            verified: bucket.verified,
             averageConfidence,
             topSkills,
             dominantMood,

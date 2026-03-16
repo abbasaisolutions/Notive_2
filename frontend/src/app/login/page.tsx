@@ -18,15 +18,15 @@ type LoginFieldErrors = {
 };
 
 const TRUST_POINTS = [
-    'Secure session management with rotating, hashed refresh tokens',
-    'Unified profile context across journaling, insights, and portfolio',
-    'Personal and professional growth tracking in one place',
+    'Safe sign-in and secure sessions',
+    'Your notes, patterns, and stories stay together',
+    'One place for life, school, and work stories',
 ];
 
 const FLOW_STEPS = [
-    { title: 'Capture', description: 'Write moments that matter.' },
-    { title: 'Understand', description: 'See trends in your growth data.' },
-    { title: 'Apply', description: 'Turn reflection into opportunities.' },
+    { title: 'Write', description: 'Save the moment while it is fresh.' },
+    { title: 'See', description: 'Notice feelings, habits, and topics.' },
+    { title: 'Use', description: 'Turn notes into stories you can use.' },
 ];
 
 export default function LoginPage() {
@@ -97,7 +97,7 @@ export default function LoginPage() {
             const authenticatedUser = await login(trimmedEmail, password);
             router.replace(resolvePostAuthRoute(authenticatedUser));
         } catch (err: any) {
-            setError(err.message || 'Failed to login');
+            setError(err.message || 'Could not sign in.');
         } finally {
             setIsLoading(false);
         }
@@ -111,14 +111,14 @@ export default function LoginPage() {
                 router.replace(resolvePostAuthRoute(authenticatedUser));
             }
         } catch (err: any) {
-            setError(err.message || 'Google login failed');
+            setError(err.message || 'Google sign-in failed.');
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleGoogleError = () => {
-        setError('Google login failed. Please check your client ID configuration.');
+        setError('Google sign-in failed. Please try again.');
     };
 
     return (
@@ -157,9 +157,9 @@ export default function LoginPage() {
                         <div className="absolute bottom-[-8rem] left-[-4rem] w-72 h-72 bg-secondary/20 rounded-full blur-[90px] pointer-events-none" />
                         <div className="relative z-10 space-y-6">
                             <span className="section-kicker">Welcome Back</span>
-                            <h1 className="text-4xl xl:text-5xl text-white leading-tight">Sign in and continue building your growth portfolio.</h1>
+                            <h1 className="text-4xl xl:text-5xl text-white leading-tight">Sign in and come back to your notes, patterns, and stories.</h1>
                             <p className="text-base text-ink-secondary max-w-lg">
-                                Notive keeps your personal reflection and professional proof points in one continuous system.
+                                Notive keeps your notes, patterns, and story building in one place.
                             </p>
                         </div>
 
@@ -200,12 +200,12 @@ export default function LoginPage() {
                                     Notive.
                                 </motion.h1>
                             </Link>
-                            <p className="text-ink-secondary mt-2">Sign in to continue your personal and professional story.</p>
+                            <p className="text-ink-secondary mt-2">Sign in to keep writing, seeing patterns, and using your stories.</p>
                         </div>
 
                         <div className="lg:hidden mb-6 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                            <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Journey Flow</p>
-                            <p className="text-sm text-white mt-2">Capture experiences, measure growth, and translate it into outcomes.</p>
+                            <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">How Notive Works</p>
+                            <p className="text-sm text-white mt-2">Write moments. See patterns. Use your stories.</p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-5">

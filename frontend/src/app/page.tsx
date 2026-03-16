@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { FiBarChart2, FiCpu, FiLock, FiSmartphone } from 'react-icons/fi';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 
 export default function Home() {
     const features = [
-        { label: 'AI Insights', Icon: FiCpu },
-        { label: 'End-to-End Encrypted', Icon: FiLock },
-        { label: 'Offline First', Icon: FiSmartphone },
-        { label: 'Mood Tracking', Icon: FiBarChart2 },
+        { label: 'Patterns', Icon: FiCpu },
+        { label: 'Private', Icon: FiLock },
+        { label: 'Write Anywhere', Icon: FiSmartphone },
+        { label: 'Memories and Feelings', Icon: FiBarChart2 },
     ];
 
     return (
@@ -22,29 +23,28 @@ export default function Home() {
                 </h1>
 
                 <p className="text-xl md:text-2xl text-ink-secondary mb-4">
-                    Your AI-Powered Journaling Companion
+                    {NOTIVE_VOICE.signature}
                 </p>
 
                 <p className="text-ink-muted mb-10 max-w-xl mx-auto">
-                    Capture your thoughts, track your mood, and discover insights about yourself
-                    with a beautiful, secure, and intelligent journaling experience.
+                    Notive helps you save real moments, understand patterns, and build your story for life, school, and work.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-10 text-left">
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                         <div className="text-xs uppercase tracking-[0.16em] text-ink-muted mb-1">Step 1</div>
-                        <div className="text-white font-semibold">Capture</div>
-                        <p className="text-xs text-ink-muted mt-1">Write or speak naturally in minutes.</p>
+                        <div className="text-white font-semibold">Write</div>
+                        <p className="text-xs text-ink-muted mt-1">Save a real moment while it is still fresh.</p>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                         <div className="text-xs uppercase tracking-[0.16em] text-ink-muted mb-1">Step 2</div>
-                        <div className="text-white font-semibold">Understand</div>
-                        <p className="text-xs text-ink-muted mt-1">AI extracts lessons, skills, and patterns.</p>
+                        <div className="text-white font-semibold">Notice</div>
+                        <p className="text-xs text-ink-muted mt-1">See feelings, patterns, and what keeps showing up.</p>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                         <div className="text-xs uppercase tracking-[0.16em] text-ink-muted mb-1">Step 3</div>
-                        <div className="text-white font-semibold">Apply</div>
-                        <p className="text-xs text-ink-muted mt-1">Turn growth into portfolio-ready stories.</p>
+                        <div className="text-white font-semibold">Use</div>
+                        <p className="text-xs text-ink-muted mt-1">Turn strong moments into stories you can use later.</p>
                     </div>
                 </div>
 
@@ -53,7 +53,7 @@ export default function Home() {
                         href="/register"
                         className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-xl font-medium transition-all shadow-lg shadow-primary/30 hover:shadow-primary/50 text-lg"
                     >
-                        Get Started — It's Free
+                        Get Started
                     </Link>
                     <Link
                         href="/login"

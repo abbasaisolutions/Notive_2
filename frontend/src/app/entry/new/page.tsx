@@ -61,6 +61,21 @@ type CollectionOption = {
     name: string;
 };
 
+type DuplicateCandidate = {
+    id: string;
+    title: string | null;
+    contentPreview: string;
+    mood: string | null;
+    tags: string[];
+    createdAt: string;
+    semanticScore: number;
+    rerankScore: number | null;
+    relevance: number;
+    lexicalOverlap: number;
+    duplicateKind: 'near_duplicate' | 'written_before';
+    matchReasons: string[];
+};
+
 function NewEntryPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -86,6 +101,9 @@ function NewEntryPageContent() {
     const [collectionId, setCollectionId] = useState<string | null>(null);
     const [collections, setCollections] = useState<CollectionOption[]>([]);
     const [voiceError, setVoiceError] = useState<string | null>(null);
+    const [duplicateCandidates, setDuplicateCandidates] = useState<DuplicateCandidate[]>([]);
+    const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
+    const [duplicateError, setDuplicateError] = useState('');
 
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -132,6 +150,7 @@ function NewEntryPageContent() {
         chapterId: collectionId,
         pendingSync,
     });
+    const duplicateCheckTitle = titleOverride || extractedData?.title || '';
 
     useEffect(() => {
         contentRef.current = content;
@@ -207,6 +226,64 @@ function NewEntryPageContent() {
             controller.abort();
         };
     }, [user, apiFetch]);
+
+    useEffect(() => {
+        if (!user || isQuickMode) {
+            setDuplicateCandidates([]);
+            setDuplicateError('');
+            setIsCheckingDuplicates(false);
+            return;
+        }
+
+        const normalizedContent = content.trim();
+        const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+        if (offline || normalizedContent.length < 60) {
+            setDuplicateCandidates([]);
+            setDuplicateError('');
+            setIsCheckingDuplicates(false);
+            return;
+        }
+
+        const controller = new AbortController();
+        const timeout = setTimeout(async () => {
+            setIsCheckingDuplicates(true);
+            setDuplicateError('');
+
+            try {
+                const response = await apiFetch(`${API_URL}/entries/duplicate-check`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        content: normalizedContent,
+                        title: duplicateCheckTitle || null,
+                        entryId,
+                    }),
+                    signal: controller.signal,
+                });
+
+                const data = await response.json().catch(() => null);
+                if (!response.ok) {
+                    throw new Error(data?.message || 'Failed to check similar notes');
+                }
+
+                setDuplicateCandidates(Array.isArray(data?.duplicates) ? data.duplicates : []);
+            } catch (error: any) {
+                if (controller.signal.aborted) return;
+                console.error('Duplicate detection failed:', error);
+                setDuplicateCandidates([]);
+                setDuplicateError(error?.message || 'Failed to check similar notes');
+            } finally {
+                if (!controller.signal.aborted) {
+                    setIsCheckingDuplicates(false);
+                }
+            }
+        }, 1100);
+
+        return () => {
+            controller.abort();
+            clearTimeout(timeout);
+        };
+    }, [apiFetch, content, duplicateCheckTitle, entryId, isQuickMode, user]);
 
     useEffect(() => {
         return () => {
@@ -874,6 +951,9 @@ function NewEntryPageContent() {
                                 displayTags={displayTags}
                                 removeTag={removeTag}
                                 addTag={addTag}
+                                duplicateCandidates={duplicateCandidates}
+                                isCheckingDuplicates={isCheckingDuplicates}
+                                duplicateError={duplicateError}
                             />
                         </div>
                     </div>

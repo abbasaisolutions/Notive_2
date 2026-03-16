@@ -61,30 +61,30 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
             {
                 id: 'sentiment',
                 icon: <FiZap size={12} aria-hidden="true" />,
-                label: 'Sentiment',
+                label: 'Tone',
                 value: sentimentLabels[data.overallSentiment],
                 className: sentimentStyles[data.overallSentiment],
             },
             {
                 id: 'mood',
                 icon: <FiActivity size={12} aria-hidden="true" />,
-                label: 'Primary Mood',
+                label: 'Main feeling',
                 value: normalizedPrimaryMood
                     ? `${formatMoodLabel(normalizedPrimaryMood)} ${data.primaryEmotion.intensity}/10`
-                    : 'Unknown',
+                    : 'Not set',
                 className: 'border-primary/30 bg-primary/12 text-primary',
             },
             {
                 id: 'signals',
                 icon: <FiCpu size={12} aria-hidden="true" />,
-                label: 'Signals',
-                value: `${signalCount} entities`,
+                label: 'Found',
+                value: `${signalCount} items`,
                 className: 'border-white/15 bg-white/[0.04] text-white',
             },
             {
                 id: 'volume',
                 icon: <FiTrendingUp size={12} aria-hidden="true" />,
-                label: 'Volume',
+                label: 'Size',
                 value: `${data.wordCount} words · ${data.readingTime}m`,
                 className: 'border-white/15 bg-white/[0.03] text-ink-secondary',
             },
@@ -126,8 +126,8 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                 <div className="flex items-center gap-2.5">
                     <FiCpu size={20} aria-hidden="true" />
                     <div className="text-left">
-                        <p className="font-semibold text-white">Analysis Signals</p>
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Visual summary</p>
+                        <p className="font-semibold text-white">Quick Read</p>
+                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">What Notive found</p>
                     </div>
                     {isLoading && (
                         <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -136,7 +136,7 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                 <div className="flex items-center gap-2">
                     <span className={`hidden sm:inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.1em] ${isLoading ? 'border-primary/35 bg-primary/15 text-primary' : 'border-white/15 bg-white/[0.03] text-white'
                         }`}>
-                        {isLoading ? 'Analyzing' : 'Updated'}
+                        {isLoading ? 'Reading' : 'Ready'}
                     </span>
                     <FiChevronDown size={20} className={`text-ink-secondary transition-transform ${isExpanded ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </div>
@@ -162,9 +162,9 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
 
             {isExpanded && data && (
                 <div className="border-t border-white/10 px-4 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5 space-y-4">
-                    {data.title !== 'Untitled Entry' && (
+                    {data.title !== 'Untitled Entry' && data.title !== 'Untitled Note' && (
                         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-1">Suggested Title</p>
+                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-1">Title idea</p>
                             <p className="text-white font-semibold line-clamp-2">{data.title}</p>
                         </div>
                     )}
@@ -264,7 +264,7 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
 
                     {data.insights.length > 0 && (
                         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-2 inline-flex items-center gap-1.5"><FiTrendingUp size={12} aria-hidden="true" />Key Insights</p>
+                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-2 inline-flex items-center gap-1.5"><FiTrendingUp size={12} aria-hidden="true" />Main ideas</p>
                             <div className="grid gap-2 md:grid-cols-2">
                                 {data.insights.slice(0, 6).map((insight, i) => (
                                     <div

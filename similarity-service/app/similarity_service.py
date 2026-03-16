@@ -1,6 +1,7 @@
+import os
 from typing import List, Tuple, Optional
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, CrossEncoder
 
 from .text_processor import TextProcessor
 
@@ -25,9 +26,15 @@ class SimilarityService:
     TOP_K = 5
     
     # Model to use for embeddings
-    # 'all-MiniLM-L6-v2' is fast and good quality (384 dimensions)
-    # 'all-mpnet-base-v2' is higher quality but slower (768 dimensions)
-    MODEL_NAME = 'all-MiniLM-L6-v2'
+    # Defaulting to BGE gives stronger retrieval quality than the MiniLM baseline.
+    MODEL_NAME = os.getenv('MODEL_NAME', 'BAAI/bge-small-en-v1.5')
+    RERANKER_MODEL_NAME = os.getenv('RERANKER_MODEL_NAME', 'cross-encoder/ms-marco-MiniLM-L6-v2')
+    RERANK_TOP_K = int(os.getenv('RERANK_TOP_K', '10'))
+    PAD_TO_DIMS = int(os.getenv('PAD_TO_DIMS', '1536'))
+    BGE_QUERY_PREFIX = os.getenv(
+        'BGE_QUERY_PREFIX',
+        'Represent this sentence for searching relevant passages: '
+    )
 
     def __init__(self, model_name: str = None):
         """
@@ -40,6 +47,7 @@ class SimilarityService:
         self.text_processor = TextProcessor()
         self.model_name = model_name or self.MODEL_NAME
         self._model: Optional[SentenceTransformer] = None
+        self._reranker: Optional[CrossEncoder] = None
     
     @property
     def model(self) -> SentenceTransformer:
@@ -49,6 +57,52 @@ class SimilarityService:
             self._model = SentenceTransformer(self.model_name)
             print("Model loaded successfully!")
         return self._model
+
+    @property
+    def reranker(self) -> CrossEncoder:
+        """Lazy load the reranker so search still starts fast."""
+        if self._reranker is None:
+            print(f"Loading local reranker model: {self.RERANKER_MODEL_NAME}")
+            self._reranker = CrossEncoder(self.RERANKER_MODEL_NAME)
+            print("Reranker loaded successfully!")
+        return self._reranker
+
+    def native_embedding_dimensions(self) -> int:
+        """Return the model's native embedding dimensionality."""
+        return int(self.model.get_sentence_embedding_dimension())
+
+    def cached_native_embedding_dimensions(self) -> Optional[int]:
+        """Return dimensions only if the encoder is already loaded."""
+        if self._model is None:
+            return None
+        return int(self._model.get_sentence_embedding_dimension())
+
+    def _prepare_texts(self, texts: List[str], mode: str) -> List[str]:
+        cleaned_texts = [self.text_processor.clean_for_embedding(text) for text in texts]
+        if mode == 'query' and self.model_name.lower().startswith('baai/bge'):
+            return [
+                f"{self.BGE_QUERY_PREFIX}{text}" if text else text
+                for text in cleaned_texts
+            ]
+        return cleaned_texts
+
+    def _pad_embeddings(self, embeddings: np.ndarray, pad_to_dims: Optional[int]) -> np.ndarray:
+        if not pad_to_dims:
+            return embeddings
+
+        if embeddings.ndim != 2:
+            return embeddings
+
+        current_dims = embeddings.shape[1]
+        if current_dims == pad_to_dims:
+            return embeddings
+        if current_dims > pad_to_dims:
+            raise ValueError(
+                f"Requested pad_to={pad_to_dims}, but model returned {current_dims} dimensions."
+            )
+
+        pad_width = pad_to_dims - current_dims
+        return np.pad(embeddings, ((0, 0), (0, pad_width)), mode='constant')
 
     def compute_cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float:
         """
@@ -75,7 +129,13 @@ class SimilarityService:
         # Cosine similarity = dot product / (norm1 * norm2)
         return float(np.dot(vec1, vec2) / (norm1 * norm2))
 
-    def get_embeddings(self, texts: List[str]) -> np.ndarray:
+    def get_embeddings(
+        self,
+        texts: List[str],
+        mode: str = 'document',
+        normalize: bool = True,
+        pad_to_dims: Optional[int] = None
+    ) -> np.ndarray:
         """
         Get semantic embeddings for a list of texts.
         
@@ -87,19 +147,32 @@ class SimilarityService:
         """
         if not texts:
             return np.array([])
-        
-        # The model handles preprocessing internally, but we do light cleaning
-        cleaned_texts = [self.text_processor.clean_for_embedding(text) for text in texts]
-        
-        # Encode all texts at once (batch processing is faster)
-        embeddings = self.model.encode(
-            cleaned_texts,
-            convert_to_numpy=True,
-            normalize_embeddings=True,  # Pre-normalize for faster cosine computation
-            show_progress_bar=False
-        )
-        
-        return embeddings
+
+        prepared_texts = self._prepare_texts(texts, mode)
+
+        if mode == 'query' and hasattr(self.model, 'encode_query'):
+            embeddings = self.model.encode_query(
+                prepared_texts,
+                convert_to_numpy=True,
+                normalize_embeddings=normalize,
+                show_progress_bar=False
+            )
+        elif mode == 'document' and hasattr(self.model, 'encode_document'):
+            embeddings = self.model.encode_document(
+                prepared_texts,
+                convert_to_numpy=True,
+                normalize_embeddings=normalize,
+                show_progress_bar=False
+            )
+        else:
+            embeddings = self.model.encode(
+                prepared_texts,
+                convert_to_numpy=True,
+                normalize_embeddings=normalize,
+                show_progress_bar=False
+            )
+
+        return self._pad_embeddings(embeddings, pad_to_dims)
 
     def find_similar_entries(
         self,
@@ -143,8 +216,8 @@ class SimilarityService:
         
         # Get embeddings for query and all entries
         # We embed the query separately to keep the code clear
-        query_embedding = self.get_embeddings([query])[0]
-        entry_embeddings = self.get_embeddings(valid_entries)
+        query_embedding = self.get_embeddings([query], mode='query')[0]
+        entry_embeddings = self.get_embeddings(valid_entries, mode='document')
 
         # Compute similarities using matrix operations (faster than loop)
         # Since embeddings are normalized, cosine similarity = dot product
@@ -195,8 +268,8 @@ class SimilarityService:
         valid_entries = [entry for _, entry in valid_data]
         
         # Get embeddings
-        query_embedding = self.get_embeddings([query])[0]
-        entry_embeddings = self.get_embeddings(valid_entries)
+        query_embedding = self.get_embeddings([query], mode='query')[0]
+        entry_embeddings = self.get_embeddings(valid_entries, mode='document')
 
         # Compute all similarities
         similarities = np.dot(entry_embeddings, query_embedding)
@@ -250,8 +323,8 @@ class SimilarityService:
         valid_entries = [entry for _, entry in valid_data]
         
         # Get all embeddings at once
-        query_embeddings = self.get_embeddings(queries)
-        entry_embeddings = self.get_embeddings(valid_entries)
+        query_embeddings = self.get_embeddings(queries, mode='query')
+        entry_embeddings = self.get_embeddings(valid_entries, mode='document')
 
         # Compute similarity matrix: (num_queries, num_entries)
         similarity_matrix = np.dot(query_embeddings, entry_embeddings.T)
@@ -277,3 +350,48 @@ class SimilarityService:
             results.append(query_results)
 
         return results
+
+    def rerank_candidates(
+        self,
+        query: str,
+        candidates: List[dict],
+        top_k: int = None
+    ) -> List[Tuple[str, float]]:
+        """
+        Rerank a small candidate set with a cross-encoder.
+
+        This is slower but higher quality than dense retrieval alone, so it should
+        only be used on a short candidate list returned by a first-stage retriever.
+        """
+        if not query or not query.strip() or not candidates:
+            return []
+
+        top_k = top_k or self.RERANK_TOP_K
+        prepared: List[Tuple[str, str]] = []
+        ids: List[str] = []
+
+        for candidate in candidates:
+            candidate_id = str(candidate.get('id') or '').strip()
+            if not candidate_id:
+                continue
+
+            title = str(candidate.get('title') or '').strip()
+            content = str(candidate.get('content') or '').strip()
+            if not content:
+                continue
+
+            document = f"{title}\n\n{content}" if title else content
+            prepared.append((query.strip(), self.text_processor.clean_for_embedding(document[:3200])))
+            ids.append(candidate_id)
+
+        if not prepared:
+            return []
+
+        scores = self.reranker.predict(prepared)
+        ranked = [
+            (ids[index], float(scores[index]))
+            for index in range(len(ids))
+        ]
+        ranked.sort(key=lambda item: item[1], reverse=True)
+
+        return ranked[:top_k]

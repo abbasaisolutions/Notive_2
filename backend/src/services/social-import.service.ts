@@ -1325,8 +1325,11 @@ export class SocialImportService {
 
     private extractFacebookAttachmentImage(attachments: unknown): string | null {
         const queue: unknown[] = [attachments];
-        while (queue.length > 0) {
-            const item = queue.shift();
+        let index = 0;
+
+        while (index < queue.length) {
+            const item = queue[index];
+            index += 1;
             if (!item) continue;
 
             if (Array.isArray(item)) {

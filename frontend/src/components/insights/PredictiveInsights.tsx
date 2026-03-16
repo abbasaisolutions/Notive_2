@@ -58,6 +58,50 @@ const INSIGHT_ICONS = {
     signal: FiZap,
 } satisfies Record<string, IconType>;
 
+const DISMISSED_STORAGE_KEY = 'notive_predictive_insights_dismissed_v1';
+const DISMISS_TTL_MS = 12 * 60 * 60 * 1000;
+
+const INSIGHT_TYPE_LABELS: Record<Insight['type'], string> = {
+    achievement: 'Milestone',
+    wellness: 'Health',
+    motivation: 'Momentum',
+    pattern: 'Pattern',
+    suggestion: 'Tip',
+};
+
+const readDismissedInsights = (): Record<string, string> => {
+    if (typeof window === 'undefined') {
+        return {};
+    }
+
+    try {
+        const raw = window.localStorage.getItem(DISMISSED_STORAGE_KEY);
+        if (!raw) {
+            return {};
+        }
+
+        const parsed = JSON.parse(raw) as Record<string, string>;
+        const now = Date.now();
+        return Object.entries(parsed).reduce<Record<string, string>>((acc, [key, value]) => {
+            const timestamp = Date.parse(value);
+            if (Number.isFinite(timestamp) && now - timestamp < DISMISS_TTL_MS) {
+                acc[key] = value;
+            }
+            return acc;
+        }, {});
+    } catch {
+        return {};
+    }
+};
+
+const writeDismissedInsights = (value: Record<string, string>) => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    window.localStorage.setItem(DISMISSED_STORAGE_KEY, JSON.stringify(value));
+};
+
 export function PredictiveInsights({
     analytics,
     currentReturnTo,
@@ -67,6 +111,10 @@ export function PredictiveInsights({
 }) {
     const [insights, setInsights] = useState<Insight[]>([]);
     const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        setDismissed(new Set(Object.keys(readDismissedInsights())));
+    }, []);
 
     useEffect(() => {
         const generated = generateInsights(analytics);
@@ -84,8 +132,8 @@ export function PredictiveInsights({
                 id: 'streak-week',
                 type: 'achievement',
                 iconKey: 'award',
-                title: 'Weekly streak unlocked',
-                message: 'Consistency is compounding.',
+                title: '7 days in a row',
+                message: 'A full week of notes is enough to start showing real patterns.',
                 priority: 'high',
                 signals: [{ label: 'Streak', value: `${data.currentStreak}d` }],
             });
@@ -94,25 +142,25 @@ export function PredictiveInsights({
                 id: 'streak-progress',
                 type: 'motivation',
                 iconKey: 'streak',
-                title: `${7 - data.currentStreak} days to weekly goal`,
-                message: 'Keep your rhythm today.',
+                title: `${7 - data.currentStreak} more days for 7 in a row`,
+                message: 'One honest note today keeps the habit going.',
                 priority: 'medium',
                 signals: [
                     { label: 'Streak', value: `${data.currentStreak}d` },
                     { label: 'Goal', value: '7d' },
                 ],
-                action: { label: 'Write now', href: '/entry/new' },
+                action: { label: 'Write today', href: '/entry/new' },
             });
         } else if (data.currentStreak === 0) {
             insights.push({
                 id: 'streak-restart',
                 type: 'motivation',
                 iconKey: 'restart',
-                title: 'Reset and restart',
-                message: 'One entry brings momentum back.',
+                title: 'Start again with one note',
+                message: 'One clear note is enough to get going again.',
                 priority: 'high',
                 signals: [{ label: 'Streak', value: '0d' }],
-                action: { label: 'Begin', href: '/entry/new' },
+                action: { label: 'Write note', href: '/entry/new' },
             });
         }
 
@@ -127,21 +175,21 @@ export function PredictiveInsights({
                     id: 'mood-check',
                     type: 'wellness',
                     iconKey: 'wellness',
-                    title: 'Low mood cluster detected',
-                    message: 'Open a quick check-in to process it.',
+                    title: 'Hard feelings may be building',
+                    message: 'A short note could help you name what keeps coming back.',
                     priority: 'high',
-                    signals: [{ label: 'Last 7 low', value: String(negativeCount) }],
-                    action: { label: 'Talk to Chat', href: '/chat' },
+                    signals: [{ label: 'Low days', value: String(negativeCount) }],
+                    action: { label: 'Open Guide', href: '/chat' },
                 });
             } else if (positiveCount >= 5) {
                 insights.push({
                     id: 'mood-positive',
                     type: 'pattern',
                     iconKey: 'positive',
-                    title: 'Positive run detected',
-                    message: 'Recent entries trend resilient.',
+                    title: 'You seem steadier lately',
+                    message: 'Recent notes suggest your mood has been steadier than usual.',
                     priority: 'low',
-                    signals: [{ label: 'Last 7 positive', value: String(positiveCount) }],
+                    signals: [{ label: 'Good days', value: String(positiveCount) }],
                 });
             }
         }
@@ -152,22 +200,22 @@ export function PredictiveInsights({
                 id: 'morning-reflection',
                 type: 'suggestion',
                 iconKey: 'sunrise',
-                title: 'Morning reflection',
-                message: 'Capture one intention before the day starts.',
+                title: 'Start the day with one note',
+                message: 'Name one plan or worry before the day gets busy.',
                 priority: 'medium',
-                signals: [{ label: 'Window', value: 'Morning' }],
-                action: { label: 'Reflect', href: '/entry/new' },
+                signals: [{ label: 'Time', value: 'Morning' }],
+                action: { label: 'Write morning note', href: '/entry/new' },
             });
         } else if (hour >= 21 || hour < 2) {
             insights.push({
                 id: 'evening-review',
                 type: 'suggestion',
                 iconKey: 'moon',
-                title: 'Evening wind-down',
-                message: 'Close the day with a short review.',
+                title: 'Wrap up today',
+                message: 'A short recap can help tomorrow feel easier.',
                 priority: 'medium',
-                signals: [{ label: 'Window', value: 'Evening' }],
-                action: { label: 'Review day', href: '/entry/new' },
+                signals: [{ label: 'Time', value: 'Evening' }],
+                action: { label: 'Write recap', href: '/entry/new' },
             });
         }
 
@@ -179,11 +227,11 @@ export function PredictiveInsights({
                     id: 'theme-focus',
                     type: 'pattern',
                     iconKey: 'target',
-                    title: `Theme focus: ${topTheme.theme}`,
-                    message: 'A recurring theme is shaping your narrative.',
+                    title: `Topic showing up: ${topTheme.theme}`,
+                    message: 'This topic is coming up often in your notes.',
                     priority: 'low',
-                    signals: [{ label: 'Mentions', value: String(topTheme.count) }],
-                    action: { label: 'Explore', href: `/timeline?q=${encodeURIComponent(topTheme.theme)}` },
+                    signals: [{ label: 'Times seen', value: String(topTheme.count) }],
+                    action: { label: 'See topic', href: `/timeline?q=${encodeURIComponent(topTheme.theme)}` },
                 });
             }
         }
@@ -194,30 +242,30 @@ export function PredictiveInsights({
                 id: 'milestone-10',
                 type: 'achievement',
                 iconKey: 'milestone',
-                title: 'Double digits!',
-                message: 'Your first pattern set is now visible.',
+                title: '10 notes: patterns are starting to show',
+                message: 'You now have enough notes for Notive to start showing repeats.',
                 priority: 'high',
-                signals: [{ label: 'Entries', value: '10' }],
+                signals: [{ label: 'Notes', value: '10' }],
             });
         } else if (data.totalEntries === 50) {
             insights.push({
                 id: 'milestone-50',
                 type: 'achievement',
                 iconKey: 'milestone',
-                title: '50 entries milestone!',
-                message: 'Your journal now has depth for trend analysis.',
+                title: '50 notes: your patterns are getting clearer',
+                message: 'You now have enough history for stronger comparisons and clearer themes.',
                 priority: 'high',
-                signals: [{ label: 'Entries', value: '50' }],
+                signals: [{ label: 'Notes', value: '50' }],
             });
         } else if (data.totalEntries === 100) {
             insights.push({
                 id: 'milestone-100',
                 type: 'achievement',
                 iconKey: 'century',
-                title: 'Century mark!',
-                message: 'You have a rich memory corpus to mine.',
+                title: '100 notes: your memory base is strong',
+                message: 'You now have a deep note history for stronger patterns and stories.',
                 priority: 'high',
-                signals: [{ label: 'Entries', value: '100' }],
+                signals: [{ label: 'Notes', value: '100' }],
             });
         }
 
@@ -232,6 +280,9 @@ export function PredictiveInsights({
         setDismissed(prev => {
             const next = new Set(prev);
             next.add(id);
+            const stored = readDismissedInsights();
+            stored[id] = new Date().toISOString();
+            writeDismissedInsights(stored);
             return next;
         });
     };
@@ -261,9 +312,9 @@ export function PredictiveInsights({
             <div className="flex items-center justify-between px-2">
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                     <FiZap size={20} aria-hidden="true" />
-                    Insight Signals
+                    Quick Ideas
                 </h3>
-                <span className="text-xs text-ink-muted">Live</span>
+                <span className="text-xs text-ink-muted">Personalized</span>
             </div>
 
             <div className="grid gap-4">
@@ -292,7 +343,7 @@ export function PredictiveInsights({
                                 <div className="mb-1.5 flex flex-wrap items-center gap-2">
                                     <h4 className="font-bold text-white">{insight.title}</h4>
                                     <span className={`rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-[0.14em] ${typeStyles[insight.type]}`}>
-                                        {insight.type}
+                                        {INSIGHT_TYPE_LABELS[insight.type]}
                                     </span>
                                     <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-xs uppercase tracking-[0.14em] text-ink-muted">
                                         {insight.priority}

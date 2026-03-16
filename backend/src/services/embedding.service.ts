@@ -27,8 +27,14 @@ const EMBEDDING_DIMS = configuredDims === SCHEMA_EMBEDDING_DIMS ? configuredDims
 const embeddingProvider = aiRuntime.embeddingVendor;
 
 const OPENAI_EMBEDDING_MODEL = aiRuntime.embeddingModel;
+const LOCAL_SERVICE_EMBEDDING_MODEL = aiRuntime.embeddingModel;
 const LOCAL_EMBEDDING_MODEL = 'local-hash-v1';
-const ACTIVE_EMBEDDING_MODEL = embeddingProvider === 'openai' ? OPENAI_EMBEDDING_MODEL : LOCAL_EMBEDDING_MODEL;
+const ACTIVE_EMBEDDING_MODEL =
+    embeddingProvider === 'openai'
+        ? OPENAI_EMBEDDING_MODEL
+        : embeddingProvider === 'local_service'
+            ? LOCAL_SERVICE_EMBEDDING_MODEL
+            : LOCAL_EMBEDDING_MODEL;
 
 const USE_EMBEDDINGS = process.env.USE_EMBEDDINGS === 'true';
 
@@ -86,11 +92,22 @@ const localHashEmbedding = (text: string, dimensions: number) => {
 export class EmbeddingService {
     isEnabled() {
         if (!USE_EMBEDDINGS) return false;
-        if (embeddingProvider === 'openai') return hasEmbeddingProvider();
-        return true;
+        if (embeddingProvider === 'local_hash') return true;
+        return hasEmbeddingProvider();
     }
 
-    private async generateEmbedding(embeddingText: string): Promise<number[] | null> {
+    getActiveConfig() {
+        return {
+            provider: embeddingProvider,
+            model: ACTIVE_EMBEDDING_MODEL,
+            dimensions: EMBEDDING_DIMS,
+        };
+    }
+
+    private async generateEmbedding(
+        embeddingText: string,
+        purpose: 'query' | 'document' = 'document'
+    ): Promise<number[] | null> {
         if (embeddingProvider === 'openai') {
             const response = await createEmbedding({
                 model: OPENAI_EMBEDDING_MODEL,
@@ -105,7 +122,55 @@ export class EmbeddingService {
             return normalizeVector(rawEmbedding.map((value) => Number(value)));
         }
 
+        if (embeddingProvider === 'local_service') {
+            if (!aiRuntime.embeddingServiceUrl) return null;
+
+            const response = await fetch(`${aiRuntime.embeddingServiceUrl}/embed`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    texts: [embeddingText],
+                    mode: purpose,
+                    normalize: true,
+                    pad_to: EMBEDDING_DIMS,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text().catch(() => '');
+                throw new Error(`Local embedding service error: ${response.status} ${errorBody}`);
+            }
+
+            const data = await response.json().catch(() => null);
+            const rawEmbedding = data?.embeddings?.[0];
+            if (!Array.isArray(rawEmbedding) || rawEmbedding.length !== EMBEDDING_DIMS) {
+                return null;
+            }
+
+            return normalizeVector(rawEmbedding.map((value: unknown) => Number(value)));
+        }
+
         return localHashEmbedding(embeddingText, EMBEDDING_DIMS);
+    }
+
+    async embedText(input: {
+        content: string;
+        title?: string | null;
+        purpose?: 'query' | 'document';
+    }): Promise<number[] | null> {
+        if (!this.isEnabled()) return null;
+
+        const purpose = input.purpose || 'document';
+        const embeddingText = purpose === 'query'
+            ? String(input.content || '').trim()
+            : buildEmbeddingText(input.content, input.title);
+        if (embeddingText.length < 5) {
+            return null;
+        }
+
+        return this.generateEmbedding(embeddingText, purpose);
     }
 
     async upsertEntryEmbedding(input: UpsertEntryEmbeddingInput): Promise<UpsertEntryEmbeddingResult> {
@@ -134,7 +199,7 @@ export class EmbeddingService {
                 return { status: 'skipped', reason: 'Embedding already up to date for current content hash.' };
             }
 
-            const normalized = await this.generateEmbedding(embeddingText);
+            const normalized = await this.generateEmbedding(embeddingText, 'document');
             if (!normalized || normalized.length === 0) {
                 return { status: 'failed', reason: 'Embedding API returned an empty vector.' };
             }

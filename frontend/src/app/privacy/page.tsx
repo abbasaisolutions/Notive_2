@@ -8,8 +8,8 @@ export default function PrivacyPage() {
                 <h1 className="mb-6 text-3xl font-serif text-white md:text-4xl">Privacy Policy</h1>
 
                 <div className="space-y-5 text-sm text-ink-secondary">
-                    <p>Notive collects account details and journal content you provide to operate core features.</p>
-                    <p>We use your data to deliver journaling, insights, synchronization, and optional social import functionality.</p>
+                    <p>Notive collects account details and the entries or memories you provide to operate core features.</p>
+                    <p>We use your data to deliver capture, signal reading, synchronization, optional social import, and output generation functionality.</p>
                     <p>You can export your data and request deletion from your profile settings.</p>
                     <p>We apply security controls to protect account and content data, but no system is perfectly risk-free.</p>
                     <p>By using Notive, you consent to this policy and any future updates posted on this page.</p>

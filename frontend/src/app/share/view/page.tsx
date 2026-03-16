@@ -105,7 +105,7 @@ function SharedPageContent() {
                     </div>
 
                     <Link href="/register" className="text-sm font-medium text-white hover:text-primary transition-colors">
-                        Create your own journal →
+                        Build your own story system →
                     </Link>
                 </div>
             </div>
@@ -162,7 +162,7 @@ function SharedPageContent() {
                 </AppPanel>
 
                 <div className="mt-12 text-center text-ink-muted text-sm">
-                    Powered by <span className="text-primary font-semibold">Notive</span> - The Intelligent Journal for Personal Growth
+                    Powered by <span className="text-primary font-semibold">Notive</span> - Memory, signal, and story for personal growth
                 </div>
             </main>
         </div>

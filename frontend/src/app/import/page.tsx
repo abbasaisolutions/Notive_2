@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import SocialImportPanel from '@/components/import/SocialImportPanel';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { ActionBar, AppPanel, SectionHeader, StatTile, TagPill } from '@/components/ui/surface';
 import { API_URL } from '@/constants/config';
 import useApi from '@/hooks/use-api';
@@ -185,12 +186,12 @@ export default function ImportPage() {
 
         writeWorkspaceResume({
             key: 'import',
-            title: 'Import Inbox',
+            title: NOTIVE_VOICE.surfaces.memoryInbox,
             summary: `${connectedCount}/2 connected · ${queueCounts.ready_to_verify} ready to verify`,
             href: currentReturnTo,
             updatedAt: new Date().toISOString(),
             stage: 'organize',
-            actionLabel: 'Resume imports',
+            actionLabel: `Resume ${NOTIVE_VOICE.surfaces.memoryInbox.toLowerCase()}`,
         });
     }, [authLoading, connectedCount, currentReturnTo, isAuthenticated, queueCounts.ready_to_verify]);
 
@@ -212,28 +213,28 @@ export default function ImportPage() {
                 <AppPanel className="space-y-5">
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                         <SectionHeader
-                            kicker="Import Inbox"
-                            title="Bring outside memories into the Story Engine"
-                            description="Connect sources, review imported context, and move the strongest moments into verified evidence."
+                            kicker={NOTIVE_VOICE.surfaces.memoryInbox}
+                            title="Bring old notes and posts into Notive"
+                            description="Connect apps, review old memories, and move the strongest ones into useful stories."
                         />
 
                         <div className="flex flex-wrap gap-2">
                             <TagPill tone="primary">{connectedCount}/2 connected</TagPill>
                             <TagPill>{(status?.instagram || 0) + (status?.facebook || 0)} imported entries</TagPill>
-                            <TagPill>{overview?.stats?.experienceCount || 0} stories mapped</TagPill>
+                            <TagPill>{overview?.stats?.experienceCount || 0} stories found</TagPill>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                         <StatTile label="Connected" value={connectedCount} hint="Active import providers" tone="primary" />
-                        <StatTile label="Imported Entries" value={(status?.instagram || 0) + (status?.facebook || 0)} hint="Instagram + Facebook entries in timeline" />
-                        <StatTile label="Needs Attention" value={queueCounts.needs_attention} hint="Stories that still need structure" />
-                        <StatTile label="Ready To Verify" value={queueCounts.ready_to_verify} hint="Imported stories close to portfolio-ready" />
+                        <StatTile label="Imported Notes" value={(status?.instagram || 0) + (status?.facebook || 0)} hint={`Instagram and Facebook notes in ${NOTIVE_VOICE.surfaces.memoryAtlas.toLowerCase()}`} />
+                        <StatTile label="Needs More Detail" value={queueCounts.needs_attention} hint="Stories that still need structure" />
+                        <StatTile label="Ready To Check" value={queueCounts.ready_to_verify} hint="Imported stories close to ready" />
                     </div>
 
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
                         <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Recommended next action</p>
+                            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Recommended next step</p>
                             <h2 className="mt-2 text-xl font-semibold text-white">{nextAction.label}</h2>
                             <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{nextAction.description}</p>
                             <Link
@@ -257,7 +258,7 @@ export default function ImportPage() {
                                 </div>
                             </div>
                             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Top signals</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Top topics</p>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {overview?.topSkills?.slice(0, 4).map((skill) => (
                                         <TagPill key={skill}>{skill}</TagPill>
@@ -283,8 +284,8 @@ export default function ImportPage() {
                 <AppPanel className="space-y-4">
                     <SectionHeader
                         kicker="Pathways"
-                        title="Move imports into the right next workflow"
-                        description="Jump directly into the lane that matches the quality of your imported evidence."
+                        title="Move imports to the right next place"
+                        description="Jump straight into the next view that matches how ready your imported stories are."
                     />
                     <div className="grid gap-3 lg:grid-cols-3">
                         <Link
@@ -292,8 +293,8 @@ export default function ImportPage() {
                             className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
                         >
                             <FiLayers size={18} className="text-primary" aria-hidden="true" />
-                            <h3 className="mt-3 text-lg font-semibold text-white">Review imported timeline</h3>
-                            <p className="mt-2 text-sm leading-7 text-ink-secondary">Open imported memories in timeline form and read them in context before editing.</p>
+                            <h3 className="mt-3 text-lg font-semibold text-white">Review imported notes</h3>
+                            <p className="mt-2 text-sm leading-7 text-ink-secondary">Open imported memories in time order and read them before editing.</p>
                         </Link>
                         <Link
                             href={appendReturnTo('/portfolio?view=evidence&filter=needs_attention', currentReturnTo)}
@@ -309,8 +310,8 @@ export default function ImportPage() {
                             className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
                         >
                             <FiGrid size={18} className="text-primary" aria-hidden="true" />
-                            <h3 className="mt-3 text-lg font-semibold text-white">Fix weak evidence</h3>
-                            <p className="mt-2 text-sm leading-7 text-ink-secondary">Send low-structure entries into the evidence queue and fill in the missing story fields.</p>
+                            <h3 className="mt-3 text-lg font-semibold text-white">Fix weak stories</h3>
+                            <p className="mt-2 text-sm leading-7 text-ink-secondary">Send low-detail notes into the story queue and fill in the missing parts.</p>
                         </Link>
                         <Link
                             href={appendReturnTo('/portfolio?view=export&pack=resume', currentReturnTo)}
@@ -326,17 +327,17 @@ export default function ImportPage() {
                             className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
                         >
                             <FiCheckCircle size={18} className="text-primary" aria-hidden="true" />
-                            <h3 className="mt-3 text-lg font-semibold text-white">Open export studio</h3>
-                            <p className="mt-2 text-sm leading-7 text-ink-secondary">Once the stronger stories are verified, move straight into resume, statement, or interview packs.</p>
+                            <h3 className="mt-3 text-lg font-semibold text-white">Open stories</h3>
+                            <p className="mt-2 text-sm leading-7 text-ink-secondary">Once strong stories are checked, move straight into resume, statement, or interview packs.</p>
                         </Link>
                     </div>
                 </AppPanel>
 
                 <AppPanel className="space-y-4">
                     <SectionHeader
-                        kicker="Evidence Signals"
-                        title="Queue health"
-                        description="Use story status to decide whether imports need detail, verification, or direct export work."
+                        kicker="Story Status"
+                        title="What each import needs next"
+                        description="Use story status to decide whether imports need more detail, checking, or are ready to use."
                     />
                     <ActionBar className="gap-2 overflow-x-auto bg-black/20 border-white/10">
                         {(['needs_attention', 'ready_to_verify', 'ready_to_export', 'verified'] as StoryEngineStatus[]).map((statusKey) => (

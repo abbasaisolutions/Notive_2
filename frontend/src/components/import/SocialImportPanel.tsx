@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import useApi from '@/hooks/use-api';
 import SocialSelectionModal from './SocialSelectionModal';
 
@@ -534,13 +535,13 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-2">Step 3: Verify in Timeline</p>
+                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-2">Step 3: Verify in {NOTIVE_VOICE.surfaces.memoryAtlas}</p>
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="text-xs text-ink-secondary">
-                                After import, open timeline and filter/search imported memories.
+                                After import, open {NOTIVE_VOICE.surfaces.memoryAtlas.toLowerCase()} and filter or search imported memories.
                             </span>
                             <Link href={timelineHref} className="rounded-lg border border-primary/30 bg-primary/15 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-primary">
-                                Open Timeline
+                                Open {NOTIVE_VOICE.surfaces.memoryAtlas}
                             </Link>
                         </div>
                     </div>

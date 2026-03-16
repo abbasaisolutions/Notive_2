@@ -38,8 +38,14 @@ services:
     build:
       context: ./similarity-service
       dockerfile: Dockerfile
+    environment:
+      MODEL_NAME: BAAI/bge-small-en-v1.5
+      PAD_TO_DIMS: 1536
+      RERANKER_MODEL_NAME: cross-encoder/ms-marco-MiniLM-L6-v2
+    volumes:
+      - similarity_cache:/app/.cache
     ports:
-      - "8001:8001"
+      - "8002:8001"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
@@ -51,3 +57,4 @@ volumes:
   postgres_data:
   mongo_data:
   redis_data:
+  similarity_cache:

@@ -4,6 +4,7 @@ import { requireAdmin, requireSuperAdmin } from '../middleware/admin.middleware'
 import {
     getAllUsers,
     getPlatformStats,
+    getRetrievalDebug,
     getUserDetails,
     updateUserRole,
     toggleUserBan,
@@ -20,6 +21,7 @@ router.use(requireAdmin);
 // Admin routes
 router.get('/users', getAllUsers);
 router.get('/stats', getPlatformStats);
+router.get('/retrieval-debug', getRetrievalDebug);
 router.get('/users/:userId', getUserDetails);
 router.put('/users/:userId/role', updateUserRole);
 router.put('/users/:userId/ban', toggleUserBan);

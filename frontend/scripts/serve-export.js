@@ -44,7 +44,7 @@ const sanitizePathname = (pathname) => {
 
 const resolveFilePath = (requestPath) => {
     const safePath = sanitizePathname(requestPath);
-    const relativePath = safePath === '/' ? '/index.html' : safePath;
+    const relativePath = safePath === '/' ? 'index.html' : safePath.replace(/^\/+/, '');
     const candidates = [
         path.join(rootDir, relativePath),
         path.join(rootDir, `${relativePath.replace(/\/$/, '')}.html`),

@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import { createHash } from 'crypto';
 import prisma from '../config/prisma';
 import { buildProfileContextSummary, type ProfileContextSummary } from '../services/profile-context.service';
-import { buildOpportunityOverview, OpportunityEntry } from '../services/opportunity.service';
+import { deriveExperienceEvidence } from '../services/opportunity.service';
+import { executeHybridSearch } from '../services/hybrid-search.service';
 
 const TRACK_FILTERS = new Set(['all', 'personal', 'professional', 'blended', 'unknown']);
 const STAGE_FILTERS = new Set(['all', 'not_started', 'in_progress', 'completed']);
@@ -244,32 +245,43 @@ const buildEvidenceSummary = (rollups: EvidenceRollup[]): EvidenceSummary => {
         };
     }
 
-    const usersWithEntries = rollups.filter((rollup) => rollup.totalExperiences > 0).length;
-    const usersReadyForVerification = rollups.filter((rollup) =>
-        rollup.totalExperiences > 0 && rollup.readyForVerificationCount === rollup.totalExperiences
-    ).length;
-    const usersReadyForExport = rollups.filter((rollup) =>
-        rollup.totalExperiences > 0 && rollup.readyForExportCount === rollup.totalExperiences
-    ).length;
-    const averageCompletenessScore = Math.round(
-        rollups.reduce((sum, rollup) => sum + rollup.averageCompletenessScore, 0) / rollups.length
-    );
+    let usersWithEntries = 0;
+    let usersReadyForVerification = 0;
+    let usersReadyForExport = 0;
+    let completenessTotal = 0;
+
+    rollups.forEach((rollup) => {
+        completenessTotal += rollup.averageCompletenessScore;
+        if (rollup.totalExperiences === 0) {
+            return;
+        }
+
+        usersWithEntries += 1;
+        if (rollup.readyForVerificationCount === rollup.totalExperiences) {
+            usersReadyForVerification += 1;
+        }
+        if (rollup.readyForExportCount === rollup.totalExperiences) {
+            usersReadyForExport += 1;
+        }
+    });
 
     return {
         userCount: rollups.length,
         usersWithEntries,
         usersReadyForVerification,
         usersReadyForExport,
-        averageCompletenessScore,
+        averageCompletenessScore: Math.round(completenessTotal / rollups.length),
     };
 };
 
 const buildUserEvidenceRollups = async (userIds: string[]): Promise<Map<string, EvidenceRollup>> => {
     const rollups = new Map<string, EvidenceRollup>();
     if (userIds.length === 0) return rollups;
+    const completenessTotals = new Map<string, number>();
 
     userIds.forEach((userId) => {
         rollups.set(userId, { ...EMPTY_EVIDENCE_ROLLUP });
+        completenessTotals.set(userId, 0);
     });
 
     const entries = await prisma.entry.findMany({
@@ -301,13 +313,11 @@ const buildUserEvidenceRollups = async (userIds: string[]): Promise<Map<string, 
         },
     });
 
-    const entriesByUser = new Map<string, OpportunityEntry[]>();
-    userIds.forEach((userId) => entriesByUser.set(userId, []));
-
     entries.forEach((entry) => {
-        const bucket = entriesByUser.get(entry.userId);
-        if (!bucket) return;
-        bucket.push({
+        const rollup = rollups.get(entry.userId);
+        if (!rollup) return;
+
+        const experience = deriveExperienceEvidence({
             id: entry.id,
             title: entry.title,
             content: entry.content,
@@ -320,38 +330,26 @@ const buildUserEvidenceRollups = async (userIds: string[]): Promise<Map<string, 
             analysis: entry.analysis,
             analysisRecord: entry.analysisRecord || null,
         });
+
+        rollup.totalExperiences += 1;
+        rollup.readyForVerificationCount += experience.completeness.readyForVerification ? 1 : 0;
+        rollup.readyForExportCount += experience.completeness.readyForExport ? 1 : 0;
+        rollup.verifiedCount += experience.verified ? 1 : 0;
+        rollup.incompleteCount += experience.completeness.readyForVerification ? 0 : 1;
+        completenessTotals.set(
+            entry.userId,
+            (completenessTotals.get(entry.userId) || 0) + experience.completeness.score
+        );
     });
 
-    entriesByUser.forEach((userEntries, userId) => {
-        if (userEntries.length === 0) {
-            rollups.set(userId, { ...EMPTY_EVIDENCE_ROLLUP });
+    rollups.forEach((rollup, userId) => {
+        if (rollup.totalExperiences === 0) {
             return;
         }
 
-        const overview = buildOpportunityOverview(userEntries);
-        const experiences = overview.experiences;
-        if (experiences.length === 0) {
-            rollups.set(userId, { ...EMPTY_EVIDENCE_ROLLUP });
-            return;
-        }
-
-        const totalExperiences = experiences.length;
-        const readyForVerificationCount = experiences.filter((experience) => experience.completeness.readyForVerification).length;
-        const readyForExportCount = experiences.filter((experience) => experience.completeness.readyForExport).length;
-        const verifiedCount = experiences.filter((experience) => experience.verified).length;
-        const incompleteCount = experiences.filter((experience) => !experience.completeness.readyForVerification).length;
-        const averageCompletenessScore = Math.round(
-            experiences.reduce((sum, experience) => sum + experience.completeness.score, 0) / totalExperiences
+        rollup.averageCompletenessScore = Math.round(
+            (completenessTotals.get(userId) || 0) / rollup.totalExperiences
         );
-
-        rollups.set(userId, {
-            totalExperiences,
-            averageCompletenessScore,
-            readyForVerificationCount,
-            readyForExportCount,
-            verifiedCount,
-            incompleteCount,
-        });
     });
 
     return rollups;
@@ -563,6 +561,60 @@ export const getPlatformStats = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Get platform stats error:', error);
         return res.status(500).json({ message: 'Failed to fetch stats' });
+    }
+};
+
+export const getRetrievalDebug = async (req: Request, res: Response) => {
+    try {
+        const requesterId = req.userId;
+        const requestedUserId = typeof req.query.userId === 'string' ? req.query.userId.trim() : '';
+        const query = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+        const limitRaw = parseInt(req.query.limit as string, 10) || 8;
+        const limit = Math.min(Math.max(limitRaw, 1), 20);
+        const targetUserId = requestedUserId || requesterId;
+
+        if (!query || query.length < 2) {
+            return res.status(400).json({ message: 'Query must be at least 2 characters' });
+        }
+
+        const targetUser = await prisma.user.findUnique({
+            where: { id: targetUserId },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+                _count: {
+                    select: {
+                        entries: true,
+                    },
+                },
+            },
+        });
+
+        if (!targetUser) {
+            return res.status(404).json({ message: 'Target user not found' });
+        }
+
+        const searchResult = await executeHybridSearch({
+            userId: targetUser.id,
+            query,
+            limit,
+        });
+
+        return res.json({
+            targetUser: {
+                id: targetUser.id,
+                email: targetUser.email,
+                name: targetUser.name,
+                role: targetUser.role,
+                entryCount: targetUser._count.entries,
+            },
+            ...searchResult,
+        });
+    } catch (error) {
+        console.error('Retrieval debug error:', error);
+        return res.status(500).json({ message: 'Failed to run retrieval debug' });
     }
 };
 

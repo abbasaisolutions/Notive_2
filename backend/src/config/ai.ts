@@ -3,7 +3,7 @@ import type { ChatCompletion, ChatCompletionCreateParamsNonStreaming } from 'ope
 import type { CreateEmbeddingResponse, EmbeddingCreateParams } from 'openai/resources/embeddings';
 
 export type ActiveLlmVendor = 'openai' | 'disabled';
-export type EmbeddingVendor = 'local_hash' | 'openai';
+export type EmbeddingVendor = 'local_hash' | 'local_service' | 'openai';
 export type AnalysisProvider = 'python' | 'deterministic' | 'llm';
 
 const rawLlmProvider = (process.env.LLM_PROVIDER || '').trim().toLowerCase();
@@ -32,6 +32,22 @@ const llmVendor: ActiveLlmVendor =
 
 const defaultChatModel = process.env.LLM_MODEL || 'gpt-3.5-turbo';
 const defaultFastModel = process.env.LLM_FAST_MODEL || defaultChatModel;
+const embeddingServiceUrl = (process.env.EMBEDDING_SERVICE_URL || process.env.SIMILARITY_SERVICE_URL || '').trim().replace(/\/$/, '');
+const rawEmbeddingProvider = (process.env.EMBEDDING_PROVIDER || '').trim().toLowerCase();
+const embeddingVendor: EmbeddingVendor =
+    rawEmbeddingProvider === 'openai'
+        ? 'openai'
+        : rawEmbeddingProvider === 'local_hash'
+            ? 'local_hash'
+            : rawEmbeddingProvider === 'local_service'
+                ? 'local_service'
+                : embeddingServiceUrl
+                    ? 'local_service'
+                    : 'local_hash';
+const defaultEmbeddingModel =
+    embeddingVendor === 'local_service'
+        ? 'BAAI/bge-small-en-v1.5'
+        : 'text-embedding-3-small';
 
 export const aiRuntime = Object.freeze({
     llmVendor,
@@ -42,14 +58,16 @@ export const aiRuntime = Object.freeze({
     analysisModel: process.env.LLM_ANALYSIS_MODEL || defaultFastModel,
     healthModel: process.env.LLM_HEALTH_MODEL || defaultFastModel,
     evidenceModel: process.env.LLM_EVIDENCE_MODEL || process.env.OPPORTUNITY_EVIDENCE_MODEL || 'gpt-4o-mini',
-    embeddingVendor: process.env.EMBEDDING_PROVIDER === 'openai' ? 'openai' as EmbeddingVendor : 'local_hash' as EmbeddingVendor,
-    embeddingModel: process.env.EMBEDDING_MODEL || 'text-embedding-3-small',
+    embeddingVendor,
+    embeddingModel: process.env.EMBEDDING_MODEL || defaultEmbeddingModel,
+    embeddingServiceUrl,
 });
 
 export const hasLlmProvider = (): boolean => aiRuntime.llmVendor !== 'disabled' && !!openAiClient;
 
 export const hasEmbeddingProvider = (): boolean => {
     if (aiRuntime.embeddingVendor === 'local_hash') return true;
+    if (aiRuntime.embeddingVendor === 'local_service') return aiRuntime.embeddingServiceUrl.length > 0;
     return !!openAiClient;
 };
 

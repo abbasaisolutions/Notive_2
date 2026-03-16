@@ -54,6 +54,34 @@ export type ConstellationModel = {
     links: ConstellationLink[];
 };
 
+export type TimelineStoryArcMoment = {
+    id: string;
+    title: string | null;
+    contentSnippet: string;
+    createdAt: string;
+    mood: string | null;
+    themes: string[];
+};
+
+export type TimelineStoryArc = {
+    title: string;
+    summary: string;
+    spanDays: number;
+    entryCount: number;
+    opening: TimelineStoryArcMoment;
+    turningPoint: TimelineStoryArcMoment | null;
+    current: TimelineStoryArcMoment;
+    carriedThemes: string[];
+    emergingThemes: string[];
+    moodShift: {
+        from: string | null;
+        to: string | null;
+        direction: 'up' | 'down' | 'steady';
+        label: string;
+    };
+    prompt: string;
+};
+
 export type TimelineSignatureSummary = {
     totalEntries: number;
     activeDays: number;
@@ -61,6 +89,7 @@ export type TimelineSignatureSummary = {
     startDate: string | null;
     endDate: string | null;
     seasons: TimelineLifeSeason[];
+    storyArc: TimelineStoryArc | null;
     constellation: ConstellationModel;
 };
 
@@ -77,6 +106,19 @@ const SEASON_GAP_DAYS = 18;
 const SEASON_SPAN_DAYS = 65;
 const ENTRY_PREVIEW_COUNT = 5;
 const ENTRY_PREVIEW_LENGTH = 240;
+const STORY_ARC_THEME_LIMIT = 3;
+const MOOD_DIRECTION_SCORES: Record<string, number> = {
+    happy: 3,
+    grateful: 3,
+    motivated: 2,
+    calm: 1,
+    thoughtful: 0.5,
+    neutral: 0,
+    tired: -1,
+    anxious: -2,
+    frustrated: -2,
+    sad: -3,
+};
 
 const THEME_STOPWORDS = new Set([
     'and',
@@ -218,6 +260,117 @@ const buildEntryPreview = (entry: TimelineSignatureEntry): ConstellationEntryPre
     createdAt: entry.createdAt.toISOString(),
     mood: normalizeMood(entry.mood),
 });
+
+const buildStoryArcMoment = (entry: TimelineSignatureEntry): TimelineStoryArcMoment => ({
+    ...buildEntryPreview(entry),
+    themes: getEntryThemes(entry).slice(0, STORY_ARC_THEME_LIMIT).map(getReadableTheme),
+});
+
+const getMoodDirection = (from: string | null, to: string | null): 'up' | 'down' | 'steady' => {
+    const fromScore = from ? (MOOD_DIRECTION_SCORES[from] || 0) : 0;
+    const toScore = to ? (MOOD_DIRECTION_SCORES[to] || 0) : 0;
+    if (toScore > fromScore) return 'up';
+    if (toScore < fromScore) return 'down';
+    return 'steady';
+};
+
+const buildTimelineStoryArc = (entries: TimelineSignatureEntry[]): TimelineStoryArc | null => {
+    if (entries.length < 2) return null;
+
+    const sorted = [...entries].sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
+    const opening = sorted[0];
+    const current = sorted[sorted.length - 1];
+    const spanDays = Math.max(1, dayDiff(opening.createdAt, current.createdAt));
+    const openingMood = normalizeMood(opening.mood);
+    const currentMood = normalizeMood(current.mood);
+    const moodDirection = getMoodDirection(openingMood, currentMood);
+    const openingThemeSet = new Set(getEntryThemes(opening));
+    const currentThemes = getEntryThemes(current);
+    const currentThemeSet = new Set(currentThemes);
+    const overallTopThemes = getTopThemes(sorted, 6);
+    const carriedThemes = overallTopThemes
+        .filter((theme) => openingThemeSet.has(theme) && currentThemeSet.has(theme))
+        .slice(0, STORY_ARC_THEME_LIMIT)
+        .map(getReadableTheme);
+    const emergingThemes = currentThemes
+        .filter((theme) => !openingThemeSet.has(theme))
+        .slice(0, STORY_ARC_THEME_LIMIT)
+        .map(getReadableTheme);
+    const turningCandidates = sorted.slice(1, -1);
+    const halfSpanMs = Math.max((current.createdAt.getTime() - opening.createdAt.getTime()) / 2, 1);
+    const midpoint = opening.createdAt.getTime() + halfSpanMs;
+    const overallTopThemeSet = new Set(overallTopThemes);
+    let turningPoint = turningCandidates[Math.floor(turningCandidates.length / 2)] || null;
+    let turningScore = Number.NEGATIVE_INFINITY;
+
+    turningCandidates.forEach((entry) => {
+        const entryThemes = getEntryThemes(entry);
+        const bridgingThemes = entryThemes.filter((theme) => currentThemeSet.has(theme) && !openingThemeSet.has(theme)).length;
+        const novelThemes = entryThemes.filter((theme) => !openingThemeSet.has(theme)).length;
+        const recurringThemes = entryThemes.filter((theme) => overallTopThemeSet.has(theme)).length;
+        const moodShift = normalizeMood(entry.mood) !== openingMood ? 1 : 0;
+        const midpointScore = Math.max(0, 1 - (Math.abs(entry.createdAt.getTime() - midpoint) / halfSpanMs));
+        const score = (bridgingThemes * 2.2) + (novelThemes * 1.15) + (recurringThemes * 0.45) + (moodShift * 0.75) + midpointScore;
+
+        if (score > turningScore) {
+            turningPoint = entry;
+            turningScore = score;
+        }
+    });
+
+    const moodLabel = openingMood && currentMood && openingMood !== currentMood
+        ? `From ${titleCase(openingMood)} to ${titleCase(currentMood)}`
+        : currentMood
+            ? `Mostly ${titleCase(currentMood)}`
+            : 'Mood still forming';
+    const title = carriedThemes[0] && emergingThemes[0]
+        ? `${carriedThemes[0]} stayed while ${emergingThemes[0]} grew`
+        : emergingThemes[0]
+            ? `${emergingThemes[0]} started shaping this stretch`
+            : carriedThemes[0]
+                ? `${carriedThemes[0]} carried this stretch`
+                : openingMood && currentMood && openingMood !== currentMood
+                    ? `This stretch moved from ${titleCase(openingMood)} to ${titleCase(currentMood)}`
+                    : 'This stretch tells a clear story';
+    const summaryParts = [
+        `Across ${spanDays} days and ${sorted.length} notes, this range shows how your story moved.`,
+    ];
+
+    if (carriedThemes[0]) {
+        summaryParts.push(`${carriedThemes[0]} stayed in the background from start to now.`);
+    }
+
+    if (emergingThemes[0]) {
+        summaryParts.push(`${emergingThemes[0]} became more visible as the stretch went on.`);
+    } else if (openingMood && currentMood && openingMood !== currentMood) {
+        summaryParts.push(`The tone shifted from ${titleCase(openingMood).toLowerCase()} to ${titleCase(currentMood).toLowerCase()}.`);
+    }
+
+    const prompt = carriedThemes[0] && emergingThemes[0]
+        ? `${carriedThemes[0]} stayed with you while ${emergingThemes[0]} started to grow. What changed across this stretch?`
+        : openingMood && currentMood && openingMood !== currentMood
+            ? `What changed between feeling ${openingMood} and ${currentMood} across this stretch?`
+            : `Looking across these ${sorted.length} notes, what changed most for you during this stretch?`;
+
+    return {
+        title,
+        summary: summaryParts.join(' '),
+        spanDays,
+        entryCount: sorted.length,
+        opening: buildStoryArcMoment(opening),
+        turningPoint: turningPoint ? buildStoryArcMoment(turningPoint) : null,
+        current: buildStoryArcMoment(current),
+        carriedThemes,
+        emergingThemes,
+        moodShift: {
+            from: openingMood,
+            to: currentMood,
+            direction: moodDirection,
+            label: moodLabel,
+        },
+        prompt,
+    };
+};
 
 const buildConstellationModel = (entries: TimelineSignatureEntry[]): ConstellationModel => {
     if (entries.length === 0) {
@@ -400,6 +553,7 @@ export const buildTimelineSignatureSummary = (entries: TimelineSignatureEntry[])
             startDate: null,
             endDate: null,
             seasons: [],
+            storyArc: null,
             constellation: buildConstellationModel([]),
         };
     }
@@ -414,6 +568,7 @@ export const buildTimelineSignatureSummary = (entries: TimelineSignatureEntry[])
         startDate: sorted[sorted.length - 1]?.createdAt.toISOString() || null,
         endDate: sorted[0]?.createdAt.toISOString() || null,
         seasons: deriveLifeSeasons(sorted),
+        storyArc: buildTimelineStoryArc(sorted),
         constellation: buildConstellationModel(sorted),
     };
 };

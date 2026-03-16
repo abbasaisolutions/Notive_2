@@ -14,6 +14,24 @@ import {
     OpportunityTemplateVariant,
 } from '../services/opportunity.service';
 import { buildProfileContextSummary } from '../services/profile-context.service';
+import guidedReflectionService, { type GuidedReflectionLens } from '../services/guided-reflection.service';
+
+const LIVE_COACH_SUGGESTIONS = [
+    'When was I last happy?',
+    'What stressed me out recently?',
+    'Summarize my week',
+    'What are my recurring themes?',
+];
+
+const LOCAL_GUIDE_SUGGESTIONS = [
+    'What feels like the biggest pattern in my notes lately?',
+    'What should I write about tonight?',
+    'Which past entry feels closest to how I am doing now?',
+    'Summarize the last week of notes.',
+];
+
+const isGuidedReflectionLens = (value: unknown): value is GuidedReflectionLens =>
+    value === 'clarity' || value === 'memory' || value === 'growth' || value === 'patterns';
 
 const mapAnalysisRecordToInsights = (record: any) => {
     if (!record) return null;
@@ -120,9 +138,29 @@ const fetchOpportunityProfileBundle = async (userId: string) => {
     };
 };
 
-export const getAiCoachStatus = async (_req: Request, res: Response) => {
-    const status = nlpService.getChatAvailability();
-    return res.status(status.available ? 200 : 503).json(status);
+export const getAiCoachStatus = async (req: Request, res: Response) => {
+    try {
+        const status = nlpService.getChatAvailability();
+        if (status.available) {
+            return res.status(200).json({
+                ...status,
+                suggestions: LIVE_COACH_SUGGESTIONS,
+            });
+        }
+
+        const guidedStatus = await guidedReflectionService.getStatus(req.userId);
+        return res.status(200).json(guidedStatus);
+    } catch (error) {
+        console.error('AI Coach status error:', error);
+        return res.status(200).json({
+            available: true,
+            provider: 'guided_reflection',
+            vendor: 'local',
+            model: 'guided-reflection-v1',
+            message: 'Guide is running in local reflection mode while status checks recover.',
+            suggestions: LOCAL_GUIDE_SUGGESTIONS,
+        });
+    }
 };
 
 /**
@@ -131,15 +169,17 @@ export const getAiCoachStatus = async (_req: Request, res: Response) => {
 export const chatWithJournal = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
-        const { query } = req.body;
+        const { query, lens } = req.body;
         const availability = nlpService.getChatAvailability();
 
         if (!query) return res.status(400).json({ message: 'Query is required' });
         if (!availability.available) {
-            return res.status(503).json({
-                ...availability,
-                response: availability.message || 'AI Coach is not enabled yet for this environment.',
+            const guidedResponse = await guidedReflectionService.respond({
+                userId,
+                query,
+                lens: isGuidedReflectionLens(lens) ? lens : null,
             });
+            return res.json(guidedResponse);
         }
 
         // Fetch recent 10 entries for context (simple RAG)
@@ -160,6 +200,7 @@ export const chatWithJournal = async (req: Request, res: Response) => {
             provider: availability.provider,
             vendor: availability.vendor,
             model: availability.model,
+            mode: availability.provider === 'llm' ? 'llm' : 'hosted_fallback',
         });
     } catch (error) {
         console.error('Chat error:', error);

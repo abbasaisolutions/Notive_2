@@ -102,15 +102,15 @@ export default function ProfileClient() {
             href: '/profile/edit?tab=profile',
             icon: FiEdit3,
             label: 'Identity & Bio',
-            description: 'Update your name, bio, location, and public-facing profile details.',
+            description: 'Update your name, bio, location, and profile details.',
             accent: 'bg-primary/10 text-primary',
         },
         {
             href: hasCompletedSetup ? '/profile/edit?tab=preferences' : '/onboarding?returnTo=%2Fprofile',
             icon: FiBell,
-            label: hasCompletedSetup ? 'Guidance Preferences' : 'Finish Setup',
+            label: hasCompletedSetup ? 'Prompt Preferences' : 'Finish Setup',
             description: hasCompletedSetup
-                ? 'Adjust goals, focus, prompt style, and product guidance in one place.'
+                ? 'Adjust goals, focus, prompt style, and help settings in one place.'
                 : 'Complete the required setup fields that shape the rest of the app.',
             accent: 'bg-secondary/10 text-secondary',
         },
@@ -139,14 +139,14 @@ export default function ProfileClient() {
                     <div className="space-y-4">
                         <SlideUp delay={0.1} className="flex items-center gap-3 mb-2">
                             <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs uppercase tracking-[0.2em] font-bold border border-primary/20">
-                                Profile & Settings
+                                Me & Settings
                             </span>
                         </SlideUp>
                         <SlideUp delay={0.2}>
-                            <h1 className="text-4xl md:text-5xl font-serif text-white tracking-tight">Your Account Home.</h1>
+                            <h1 className="text-4xl md:text-5xl font-serif text-white tracking-tight">Your profile in one place.</h1>
                         </SlideUp>
                         <SlideUp delay={0.3}>
-                            <p className="zen-text text-lg max-w-lg">Use one clear hub for profile context, connected sources, and the settings studio that controls privacy, security, and personalization.</p>
+                            <p className="zen-text text-lg max-w-lg">Use one simple place for your profile, connected apps, goals, privacy, and settings.</p>
                         </SlideUp>
                         <SlideUp delay={0.35}>
                             <div className="flex flex-wrap gap-2">
@@ -173,7 +173,7 @@ export default function ProfileClient() {
                             className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-[1.5rem] font-semibold transition-all shadow-xl shadow-primary/20 inline-flex items-center gap-3"
                         >
                             <FiEdit3 size={20} aria-hidden="true" />
-                            Open Settings Studio
+                            Open Settings
                         </Link>
                         <Link
                             href={hasCompletedSetup ? '/profile/edit?tab=privacy' : '/onboarding?returnTo=%2Fprofile'}
@@ -405,10 +405,10 @@ export default function ProfileClient() {
                                 className="bento-box p-8 space-y-6 transition-all duration-300"
                             >
                                 <div className="px-2">
-                                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-ink-muted">Settings Studio</p>
-                                    <h3 className="mt-2 text-xl font-serif text-white">One canonical place for account changes</h3>
+                                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-ink-muted">Settings</p>
+                                    <h3 className="mt-2 text-xl font-serif text-white">One place for account changes</h3>
                                     <p className="mt-2 text-sm text-ink-secondary">
-                                        Use the settings studio for profile updates, onboarding preferences, privacy exports, and security-sensitive account actions.
+                                        Use settings for profile updates, setup choices, privacy exports, and account security.
                                     </p>
                                 </div>
 

@@ -7,8 +7,20 @@ import { upsertEntryAnalysisFromNlp, upsertEntryAnalysisFromPayload } from '../s
 import nlpService, { AnalysisResult } from '../services/nlp.service';
 import embeddingService from '../services/embedding.service';
 import { sanitizeHtml } from '../utils/html';
-import { buildEntryStorySignal, buildOpportunityOverview, OpportunityEntry } from '../services/opportunity.service';
-import { buildEntryListWhere, normalizeEntrySearch, normalizeEntrySource, normalizeLifeArea } from '../utils/entry-filters';
+import { buildEntryStorySignal, deriveExperienceEvidence, OpportunityEntry } from '../services/opportunity.service';
+import {
+    buildEntryListWhere,
+    filterEntriesByTemporalContext,
+    normalizeEntryDayPart,
+    normalizeEntryDateKey,
+    normalizeEntryDateRange,
+    normalizeEntryMood,
+    normalizeEntrySearch,
+    normalizeEntrySource,
+    normalizeEntryTheme,
+    normalizeEntryWeekday,
+    normalizeLifeArea,
+} from '../utils/entry-filters';
 
 const normalizeToken = (value: string): string =>
     value
@@ -80,9 +92,7 @@ const attachEntryStorySignal = <T extends {
     createdAt: Date;
     analysis: unknown;
 }>(entry: T) => {
-    const responseEntry = Object.fromEntries(
-        Object.entries(entry).filter(([key]) => key !== 'analysis' && key !== 'reflection')
-    ) as Omit<T, 'analysis' | 'reflection'>;
+    const { analysis, reflection, ...responseEntry } = entry;
 
     return {
         ...responseEntry,
@@ -177,8 +187,7 @@ const upsertAutoOpportunityEvidence = async (entry: {
         analysisRecord: null,
     };
 
-    const experience = buildOpportunityOverview([sourceEntry]).experiences[0];
-    if (!experience) return;
+    const experience = deriveExperienceEvidence(sourceEntry);
 
     const baseAnalysis: Prisma.JsonObject = isJsonObject(entry.analysis) ? entry.analysis : {};
     const existingOpportunity: Prisma.JsonObject = isJsonObject(baseAnalysis.opportunity) ? baseAnalysis.opportunity : {};
@@ -409,6 +418,7 @@ export const createEntry = async (req: Request, res: Response) => {
         ]);
 
         const finalTags = tagMeta.map(t => t.name);
+        const providedTagKeys = new Set(providedTags.map((tag: string) => String(tag).toLowerCase()));
 
         const safeContentHtml = sanitizeHtml(contentHtml);
         const payloadAnalysis = isJsonObject(analysis) ? analysis : null;
@@ -494,7 +504,7 @@ export const createEntry = async (req: Request, res: Response) => {
             entry: attachEntryStorySignal(entry),
             suggestedTags: autoTagMeta
                 .map(t => t.name)
-                .filter(tag => !providedTags.map((t: string) => t.toLowerCase()).includes(tag.toLowerCase())),
+                .filter(tag => !providedTagKeys.has(tag.toLowerCase())),
         });
     } catch (error) {
         console.error('Create entry error:', error);
@@ -513,46 +523,76 @@ export const getEntries = async (req: Request, res: Response) => {
         const search = normalizeEntrySearch(req.query.search);
         const source = normalizeEntrySource(req.query.source);
         const lifeArea = normalizeLifeArea(req.query.lifeArea);
+        const theme = normalizeEntryTheme(req.query.theme);
+        const mood = normalizeEntryMood(req.query.mood);
+        const date = normalizeEntryDateKey(req.query.date);
+        const { startDate, endDate } = normalizeEntryDateRange({
+            startDate: req.query.startDate,
+            endDate: req.query.endDate,
+        });
+        const weekday = normalizeEntryWeekday(req.query.weekday);
+        const dayPart = normalizeEntryDayPart(req.query.dayPart);
         const skip = (page - 1) * limit;
         const where = buildEntryListWhere({
             userId,
             search,
             source,
             lifeArea,
+            theme,
+            mood,
+            date,
+            startDate,
+            endDate,
         });
         const facetWhere = buildEntryListWhere({
             userId,
+            search,
             source,
+            theme,
+            mood,
+            date,
+            startDate,
+            endDate,
         });
+        const hasTemporalFilters = Boolean(weekday || dayPart);
+        const entrySelect = {
+            id: true,
+            title: true,
+            content: true,
+            mood: true,
+            source: true,
+            category: true,
+            lifeArea: true,
+            chapterId: true,
+            tags: true,
+            skills: true,
+            lessons: true,
+            reflection: true,
+            analysis: true,
+            coverImage: true,
+            audioUrl: true,
+            createdAt: true,
+            updatedAt: true,
+        } as const;
 
-        const [entries, total, lifeAreaRows] = await Promise.all([
-            prisma.entry.findMany({
+        const entriesPromise = hasTemporalFilters
+            ? prisma.entry.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                select: entrySelect,
+            })
+            : prisma.entry.findMany({
                 where,
                 orderBy: { createdAt: 'desc' },
                 skip,
                 take: limit,
-                select: {
-                    id: true,
-                    title: true,
-                    content: true,
-                    mood: true,
-                    source: true,
-                    category: true,
-                    lifeArea: true,
-                    chapterId: true,
-                    tags: true,
-                    skills: true,
-                    lessons: true,
-                    reflection: true,
-                    analysis: true,
-                    coverImage: true,
-                    audioUrl: true,
-                    createdAt: true,
-                    updatedAt: true,
-                },
-            }),
-            prisma.entry.count({ where }),
-            prisma.entry.findMany({
+                select: entrySelect,
+            });
+        const totalPromise = hasTemporalFilters
+            ? Promise.resolve<number | null>(null)
+            : prisma.entry.count({ where });
+        const lifeAreaRowsPromise = hasTemporalFilters
+            ? prisma.entry.findMany({
                 where: {
                     ...facetWhere,
                     lifeArea: {
@@ -561,15 +601,47 @@ export const getEntries = async (req: Request, res: Response) => {
                 },
                 select: {
                     lifeArea: true,
+                    createdAt: true,
+                },
+            })
+            : prisma.entry.findMany({
+                where: {
+                    ...facetWhere,
+                    lifeArea: {
+                        not: null,
+                    },
+                },
+                select: {
+                    lifeArea: true,
+                    createdAt: true,
                 },
                 distinct: ['lifeArea'],
-            }),
-        ]);
+            });
 
-        const lifeAreas = lifeAreaRows
-            .map((entry) => entry.lifeArea)
-            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-            .sort((a, b) => a.localeCompare(b));
+        const [rawEntries, rawTotal, rawLifeAreaRows] = await Promise.all([
+            entriesPromise,
+            totalPromise,
+            lifeAreaRowsPromise,
+        ]);
+        const temporalContext = { weekday, dayPart };
+        const filteredEntries = hasTemporalFilters
+            ? filterEntriesByTemporalContext(rawEntries, temporalContext)
+            : rawEntries;
+        const entries = hasTemporalFilters
+            ? filteredEntries.slice(skip, skip + limit)
+            : filteredEntries;
+        const total = hasTemporalFilters ? filteredEntries.length : (rawTotal || 0);
+        const lifeAreas = hasTemporalFilters
+            ? [...new Set(
+                filterEntriesByTemporalContext(rawLifeAreaRows, temporalContext)
+                    .map((entry) => entry.lifeArea)
+                    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+            )].sort((a, b) => a.localeCompare(b))
+            : [...new Set(
+                rawLifeAreaRows
+                    .map((entry) => entry.lifeArea)
+                    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+            )].sort((a, b) => a.localeCompare(b));
 
         return res.status(200).json({
             entries: entries.map((entry) => attachEntryStorySignal(entry)),
@@ -581,6 +653,18 @@ export const getEntries = async (req: Request, res: Response) => {
             },
             facets: {
                 lifeAreas,
+            },
+            filters: {
+                search,
+                source,
+                lifeArea,
+                theme,
+                mood,
+                date,
+                startDate,
+                endDate,
+                weekday,
+                dayPart,
             },
         });
     } catch (error) {

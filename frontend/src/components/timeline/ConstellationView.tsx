@@ -189,7 +189,7 @@ export default function ConstellationView({ model, totalEntries, currentReturnTo
                     </div>
                     <ul className="mt-3 space-y-2 text-sm leading-6 text-ink-secondary">
                         <li>Large nodes appear more often in the current filtered slice.</li>
-                        <li>The center is your current journal state.</li>
+                        <li>The center reflects your current story state.</li>
                         <li>Use timeline when you want order, constellation when you want meaning.</li>
                     </ul>
                 </div>

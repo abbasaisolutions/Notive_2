@@ -18,6 +18,11 @@ interface SearchResult {
     mood: string | null;
     createdAt: string;
     relevance: number;
+    strategy?: 'lexical' | 'semantic' | 'hybrid' | 'fallback';
+    lexicalScore?: number;
+    semanticScore?: number;
+    rerankScore?: number;
+    matchReasons?: string[];
 }
 
 export function SmartSearch() {
@@ -108,7 +113,7 @@ export function SmartSearch() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => query && setShowResults(true)}
-                    placeholder="Search your journal... (e.g., 'happy memories', 'work stress')"
+                    placeholder="Search your memory base semantically... (e.g., 'new city', 'team conflict')"
                     className="w-full px-5 py-4 pl-14 pr-14 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                 />
 
@@ -198,6 +203,30 @@ export function SmartSearch() {
                                                 </>
                                             )}
                                         </div>
+
+                                        {((result.matchReasons && result.matchReasons.length > 0) || result.strategy) && (
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                {result.strategy && (
+                                                    <span className="rounded-full border border-white/12 bg-white/[0.04] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-ink-muted">
+                                                        {result.strategy === 'hybrid'
+                                                            ? 'Hybrid'
+                                                            : result.strategy === 'semantic'
+                                                                ? 'Semantic'
+                                                                : result.strategy === 'fallback'
+                                                                    ? 'Fallback'
+                                                                    : 'Keyword'}
+                                                    </span>
+                                                )}
+                                                {(result.matchReasons || []).slice(0, 2).map((reason) => (
+                                                    <span
+                                                        key={`${result.id}-${reason}`}
+                                                        className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-primary"
+                                                    >
+                                                        {reason}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </Link>
@@ -225,9 +254,9 @@ export function SmartSearch() {
                     <div className="mb-3 inline-flex items-center justify-center rounded-full bg-white/5 p-3 text-ink-secondary">
                         <FiSearch size={24} aria-hidden="true" />
                     </div>
-                    <h4 className="text-white font-bold mb-2">No entries found</h4>
+                    <h4 className="text-white font-bold mb-2">No matching moments yet</h4>
                     <p className="text-ink-secondary text-sm">
-                        Try different keywords or check your spelling
+                        Try different keywords, people, themes, or a broader phrase
                     </p>
                 </div>
             )}

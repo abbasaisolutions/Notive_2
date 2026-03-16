@@ -6,6 +6,7 @@ import useApi from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useContextNavigation from '@/hooks/use-context-navigation';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { ActionBar, AppPanel, SectionHeader, StatTile, TagPill } from '@/components/ui/surface';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import { writeWorkspaceResume } from '@/utils/workspace-resume';
@@ -124,14 +125,14 @@ export default function ChaptersPage() {
 
         writeWorkspaceResume({
             key: 'chapters',
-            title: 'Collections',
+            title: NOTIVE_VOICE.surfaces.storyCollections,
             summary: chapters.length > 0
-                ? `${chapters.length} collections · ${totalEntries} entries`
-                : 'Organize your entries into collections',
+                ? `${chapters.length} groups · ${totalEntries} notes`
+                : 'Group your notes in simple collections',
             href: currentReturnTo,
             updatedAt: new Date().toISOString(),
             stage: 'organize',
-            actionLabel: 'Resume collections',
+            actionLabel: `Resume ${NOTIVE_VOICE.surfaces.storyCollections.toLowerCase()}`,
         });
     }, [authLoading, chapters.length, currentReturnTo, isAuthenticated, totalEntries]);
 
@@ -163,9 +164,9 @@ export default function ChaptersPage() {
                                 <FiArrowLeft size={20} aria-hidden="true" />
                             </button>
                             <SectionHeader
-                                kicker="Collections"
-                                title="Collections Studio"
-                                description="Group related entries by project, season, or life context without breaking the main journal flow."
+                                kicker={NOTIVE_VOICE.surfaces.storyCollections}
+                                title="Group related notes"
+                                description="Put notes together by project, season, or part of life so they are easier to find and use later."
                             />
                         </div>
 
@@ -182,15 +183,15 @@ export default function ChaptersPage() {
                                 className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/20"
                             >
                                 <FiPlus size={16} aria-hidden="true" />
-                                New Collection
+                                New Group
                             </button>
                         </ActionBar>
                     </div>
 
                     <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
-                        <StatTile label="Collections" value={chapters.length} hint="Organizing surfaces you have created" />
-                        <StatTile label="Entries Assigned" value={totalEntries} hint="Entries routed into collections" tone="primary" />
-                        <StatTile label="Empty Collections" value={emptyCollections} hint="Collections ready for new entries" />
+                        <StatTile label="Groups" value={chapters.length} hint="Groups you have created" />
+                        <StatTile label="Notes Inside" value={totalEntries} hint="Notes placed into groups" tone="primary" />
+                        <StatTile label="Empty Groups" value={emptyCollections} hint="Groups ready for new notes" />
                     </div>
                 </AppPanel>
 
@@ -204,9 +205,9 @@ export default function ChaptersPage() {
                             <FiBook size={30} aria-hidden="true" />
                         </div>
                         <SectionHeader
-                            kicker="Collections"
-                            title="No collections yet"
-                            description="Create collections to organize related entries, projects, or recurring life themes."
+                            kicker={NOTIVE_VOICE.surfaces.storyCollections}
+                            title="No groups yet"
+                            description="Create groups to keep related notes, projects, or recurring life themes together."
                             className="justify-center text-center"
                         />
                         <div className="flex flex-wrap justify-center gap-3">
@@ -215,7 +216,7 @@ export default function ChaptersPage() {
                                 onClick={openCreateModal}
                                 className="rounded-xl border border-primary/30 bg-primary px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
                             >
-                                Create Your First Collection
+                                Create Your First Group
                             </button>
                             <Link
                                 href={captureHref}
@@ -251,7 +252,7 @@ export default function ChaptersPage() {
                                         <div>
                                             <h3 className="text-xl font-semibold text-white">{chapter.name}</h3>
                                             <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                                {chapter.description || 'A focused collection for related entries and moments.'}
+                                                {chapter.description || 'A simple group for related notes, scenes, and turning points.'}
                                             </p>
                                         </div>
                                         <div className="flex flex-col gap-2 sm:flex-row">
@@ -267,7 +268,7 @@ export default function ChaptersPage() {
                                                 href={openHref}
                                                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/20"
                                             >
-                                                Open Collection
+                                                Open Group
                                                 <FiArrowRight size={15} aria-hidden="true" />
                                             </Link>
                                         </div>
@@ -283,9 +284,9 @@ export default function ChaptersPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
                     <AppPanel className="w-full max-w-xl space-y-5">
                         <SectionHeader
-                            kicker="Collections"
-                            title={editingChapter ? 'Edit collection' : 'New collection'}
-                            description="Name the collection, give it a short description, then choose the icon and color that make it easy to recognize."
+                            kicker={NOTIVE_VOICE.surfaces.storyCollections}
+                            title={editingChapter ? 'Edit group' : 'New group'}
+                            description="Name the group, add a short note, then choose the icon and color that make it easy to spot."
                         />
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
@@ -294,7 +295,7 @@ export default function ChaptersPage() {
                                     type="text"
                                     value={formData.name}
                                     onChange={(event) => setFormData({ ...formData, name: event.target.value })}
-                                    placeholder="My collection"
+                                    placeholder="My group"
                                     className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 />
                             </div>
@@ -303,7 +304,7 @@ export default function ChaptersPage() {
                                 <textarea
                                     value={formData.description}
                                     onChange={(event) => setFormData({ ...formData, description: event.target.value })}
-                                    placeholder="What belongs in this collection?"
+                                    placeholder="What belongs in this group?"
                                     rows={3}
                                     className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 />
@@ -360,7 +361,7 @@ export default function ChaptersPage() {
                                     type="submit"
                                     className="flex-1 rounded-xl border border-primary/30 bg-primary px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
                                 >
-                                    {editingChapter ? 'Save Changes' : 'Create Collection'}
+                                    {editingChapter ? 'Save Changes' : 'Create Group'}
                                 </button>
                             </div>
                         </form>

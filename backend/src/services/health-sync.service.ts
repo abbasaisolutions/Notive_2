@@ -1,18 +1,11 @@
 // Health Sync Service - Daily sync and health data management
 // File: backend/src/services/health-sync.service.ts
 
+import type { HealthContext } from '@prisma/client';
 import prisma from '../config/prisma';
 import { googleFitOAuthService } from './googlefit-oauth.service';
 import { googleFitApiService, DailyHealthData } from './googlefit-api.service';
-
-export interface HealthContextSummary {
-    date: Date;
-    sleepHours: number | null;
-    sleepQuality: string | null;
-    steps: number | null;
-    activityLevel: 'low' | 'moderate' | 'high' | null;
-    avgHeartRate: number | null;
-}
+import type { HealthActivityLevel, HealthContextSummary } from '../types/health-context';
 
 export class HealthSyncService {
     /**
@@ -163,14 +156,7 @@ export class HealthSyncService {
             return null;
         }
 
-        return {
-            date: context.date,
-            sleepHours: context.sleepMinutes ? Math.round(context.sleepMinutes / 60 * 10) / 10 : null,
-            sleepQuality: context.sleepQuality,
-            steps: context.steps,
-            activityLevel: this.categorizeActivityLevel(context.steps, context.activeMinutes),
-            avgHeartRate: context.avgHeartRate,
-        };
+        return this.toHealthContextSummary(context);
     }
 
     /**
@@ -192,14 +178,7 @@ export class HealthSyncService {
             orderBy: { date: 'asc' },
         });
 
-        return contexts.map(context => ({
-            date: context.date,
-            sleepHours: context.sleepMinutes ? Math.round(context.sleepMinutes / 60 * 10) / 10 : null,
-            sleepQuality: context.sleepQuality,
-            steps: context.steps,
-            activityLevel: this.categorizeActivityLevel(context.steps, context.activeMinutes),
-            avgHeartRate: context.avgHeartRate,
-        }));
+        return contexts.map((context) => this.toHealthContextSummary(context));
     }
 
     /**
@@ -218,7 +197,7 @@ export class HealthSyncService {
     private categorizeActivityLevel(
         steps: number | null,
         activeMinutes: number | null
-    ): 'low' | 'moderate' | 'high' | null {
+    ): HealthActivityLevel | null {
         if (steps === null && activeMinutes === null) {
             return null;
         }
@@ -243,6 +222,20 @@ export class HealthSyncService {
         if (score >= 3) return 'high';
         if (score >= 1) return 'moderate';
         return 'low';
+    }
+
+    private toHealthContextSummary(context: HealthContext): HealthContextSummary {
+        return {
+            date: context.date,
+            sleepHours: context.sleepMinutes ? Math.round((context.sleepMinutes / 60) * 10) / 10 : null,
+            sleepQuality: context.sleepQuality,
+            steps: context.steps,
+            activeMinutes: context.activeMinutes,
+            caloriesBurned: context.caloriesBurned,
+            activityLevel: this.categorizeActivityLevel(context.steps, context.activeMinutes),
+            avgHeartRate: context.avgHeartRate,
+            restingHeartRate: context.restingHeartRate,
+        };
     }
 
     /**

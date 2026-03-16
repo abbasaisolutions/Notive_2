@@ -136,8 +136,13 @@ const TRACK_VALUES: OnboardingTrack[] = ['life', 'career', 'both'];
 const WRITING_VALUES: OnboardingWritingPreference[] = ['guided', 'structured', 'freeform'];
 const EXPERIENCE_VALUES: OnboardingExperienceLevel[] = ['student', 'early-career', 'professional', 'lifelong-learner'];
 const OUTPUT_VALUES: OnboardingOutputGoal[] = ['self-growth', 'college-statement', 'resume-stories', 'interview-examples', 'portfolio'];
+const GOAL_VALUE_SET = new Set<OnboardingGoal>(GOAL_VALUES);
+const TRACK_VALUE_SET = new Set<OnboardingTrack>(TRACK_VALUES);
+const WRITING_VALUE_SET = new Set<OnboardingWritingPreference>(WRITING_VALUES);
+const EXPERIENCE_VALUE_SET = new Set<OnboardingExperienceLevel>(EXPERIENCE_VALUES);
+const OUTPUT_VALUE_SET = new Set<OnboardingOutputGoal>(OUTPUT_VALUES);
 
-const CORE_FIELDS: Array<PersonalizationField> = ['primaryGoal', 'focusArea', 'starterPrompt'];
+const CORE_FIELD_SET = new Set<PersonalizationField>(['primaryGoal', 'focusArea', 'starterPrompt']);
 
 const HIDDEN_PATH_PREFIXES = [
     '/login',
@@ -156,41 +161,45 @@ const QUESTION_BANK: PersonalizationQuestion[] = [
     {
         id: 'goal_priority',
         field: 'primaryGoal',
-        prompt: 'What should Notive optimize for you first?',
+        prompt: 'What do you want Notive to help with most?',
+        helper: 'This helps Notive ask better questions and show better help.',
         options: [
-            { value: 'clarity', label: 'Mental clarity' },
-            { value: 'memory', label: 'Memory keeping' },
-            { value: 'growth', label: 'Personal growth' },
-            { value: 'productivity', label: 'Execution and focus' },
+            { value: 'clarity', label: 'Clear mind' },
+            { value: 'memory', label: 'Remember life' },
+            { value: 'growth', label: 'Grow' },
+            { value: 'productivity', label: 'Get things done' },
         ],
         routeHints: ['/dashboard', '/insights'],
     },
     {
         id: 'focus_area',
         field: 'focusArea',
-        prompt: 'Which area should your journal prioritize?',
+        prompt: 'What part of life should Notive focus on first?',
+        helper: 'This helps Notive focus on life, school, work, or both.',
         options: [
-            { value: 'life', label: 'Personal life' },
-            { value: 'career', label: 'Career and school' },
-            { value: 'both', label: 'Life and career' },
+            { value: 'life', label: 'Life' },
+            { value: 'career', label: 'School and work' },
+            { value: 'both', label: 'Both' },
         ],
         routeHints: ['/dashboard', '/timeline'],
     },
     {
         id: 'writing_preference',
         field: 'writingPreference',
-        prompt: 'How should writing sessions feel?',
+        prompt: 'How do you want writing to feel?',
+        helper: 'This helps Notive use a writing style that feels easier for you.',
         options: [
-            { value: 'guided', label: 'Guided prompts' },
-            { value: 'structured', label: 'Structured reflection' },
-            { value: 'freeform', label: 'Freeform writing' },
+            { value: 'guided', label: 'With questions' },
+            { value: 'structured', label: 'Step by step' },
+            { value: 'freeform', label: 'Free writing' },
         ],
         routeHints: ['/entry/view', '/timeline'],
     },
     {
         id: 'experience_level',
         field: 'experienceLevel',
-        prompt: 'Where are you in your journey right now?',
+        prompt: 'Where are you right now?',
+        helper: 'A little context helps Notive give better help.',
         options: [
             { value: 'student', label: 'Student' },
             { value: 'early-career', label: 'Early career' },
@@ -202,24 +211,26 @@ const QUESTION_BANK: PersonalizationQuestion[] = [
     {
         id: 'output_goal',
         field: 'outputGoals',
-        prompt: 'What outcome do you want your journal to unlock first?',
+        prompt: 'What do you want to use your notes for later?',
+        helper: 'This helps Notive turn notes into stories you can use.',
         options: [
-            { value: 'self-growth', label: 'Personal growth' },
-            { value: 'college-statement', label: 'College statement ideas' },
-            { value: 'resume-stories', label: 'Resume story bank' },
-            { value: 'interview-examples', label: 'Interview examples' },
-            { value: 'portfolio', label: 'Portfolio highlights' },
+            { value: 'self-growth', label: 'Know myself better' },
+            { value: 'college-statement', label: 'School statement' },
+            { value: 'resume-stories', label: 'Resume stories' },
+            { value: 'interview-examples', label: 'Interview stories' },
+            { value: 'portfolio', label: 'Stories for school or work' },
         ],
         routeHints: ['/portfolio', '/chapters', '/insights'],
     },
     {
         id: 'starter_prompt',
         field: 'starterPrompt',
-        prompt: 'Choose a starter prompt style for your next entry.',
+        prompt: 'Pick an easy first question.',
+        helper: 'You can change this anytime if your writing style changes.',
         options: [
-            { value: 'What happened today that I want to remember and learn from?', label: 'Remember and learn' },
-            { value: 'What challenge did I face today, and how did I respond?', label: 'Challenge and response' },
-            { value: 'What is one clear next step I should take tomorrow?', label: 'Next step clarity' },
+            { value: 'What happened today that I want to remember?', label: 'What happened today?' },
+            { value: 'What felt hard today, and how did I respond?', label: 'What felt hard?' },
+            { value: 'What helped today move forward?', label: 'What helped today?' },
         ],
         routeHints: ['/dashboard', '/timeline'],
     },
@@ -236,6 +247,9 @@ const dedupeStrings = (items: string[]): string[] => {
         .filter(Boolean);
     return Array.from(new Set(normalized));
 };
+
+const appendUniqueString = (items: string[], value: string): string[] =>
+    items.includes(value) ? items : [...items, value];
 
 const asPromptFrequency = (value: unknown): PromptFrequency =>
     value === 'off' || value === 'low' || value === 'normal' || value === 'high'
@@ -315,7 +329,7 @@ const parseState = (raw: string | null): ProgressivePersonalizationState => {
 
         const historySource = Array.isArray(parsed.history) ? parsed.history : [];
         const seenQuestionIds = Array.isArray(parsed.seenQuestionIds)
-            ? parsed.seenQuestionIds.filter((item): item is string => typeof item === 'string')
+            ? dedupeStrings(parsed.seenQuestionIds.filter((item): item is string => typeof item === 'string'))
             : [];
 
         const history = historySource.filter((item): item is StoredAnswer =>
@@ -349,15 +363,15 @@ const sanitizeOptionValue = (field: PersonalizationField, value: string): string
 
     switch (field) {
         case 'primaryGoal':
-            return GOAL_VALUES.includes(trimmed as OnboardingGoal) ? trimmed : null;
+            return GOAL_VALUE_SET.has(trimmed as OnboardingGoal) ? trimmed : null;
         case 'focusArea':
-            return TRACK_VALUES.includes(trimmed as OnboardingTrack) ? trimmed : null;
+            return TRACK_VALUE_SET.has(trimmed as OnboardingTrack) ? trimmed : null;
         case 'writingPreference':
-            return WRITING_VALUES.includes(trimmed as OnboardingWritingPreference) ? trimmed : null;
+            return WRITING_VALUE_SET.has(trimmed as OnboardingWritingPreference) ? trimmed : null;
         case 'experienceLevel':
-            return EXPERIENCE_VALUES.includes(trimmed as OnboardingExperienceLevel) ? trimmed : null;
+            return EXPERIENCE_VALUE_SET.has(trimmed as OnboardingExperienceLevel) ? trimmed : null;
         case 'outputGoals':
-            return OUTPUT_VALUES.includes(trimmed as OnboardingOutputGoal) ? trimmed : null;
+            return OUTPUT_VALUE_SET.has(trimmed as OnboardingOutputGoal) ? trimmed : null;
         case 'starterPrompt':
             return trimmed.slice(0, 5000);
         default:
@@ -384,10 +398,9 @@ const getSignalsObject = (profile: PersonalizationProfileSnapshot | null | undef
     return signals;
 };
 
-const getProfileSignalAnswerValue = (
-    profile: PersonalizationProfileSnapshot | null | undefined,
-    field: PersonalizationField
-): string | null => {
+const getSignalAnswersObject = (
+    profile: PersonalizationProfileSnapshot | null | undefined
+): Record<string, unknown> | null => {
     const signals = getSignalsObject(profile);
     if (!signals) return null;
 
@@ -396,13 +409,31 @@ const getProfileSignalAnswerValue = (
         return null;
     }
 
-    const answer = (answers as Record<string, unknown>)[field];
-    if (!answer || typeof answer !== 'object' || Array.isArray(answer)) {
-        return null;
+    return answers as Record<string, unknown>;
+};
+
+const getProfileSignalAnswers = (
+    profile: PersonalizationProfileSnapshot | null | undefined
+): Partial<Record<PersonalizationField, string>> => {
+    const signalAnswers: Partial<Record<PersonalizationField, string>> = {};
+    const answers = getSignalAnswersObject(profile);
+    if (!answers) {
+        return signalAnswers;
     }
 
-    const value = (answer as Record<string, unknown>).value;
-    return hasText(value) ? value.trim() : null;
+    QUESTION_BANK.forEach((question) => {
+        const value = answers[question.field];
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            return;
+        }
+
+        const answerValue = (value as Record<string, unknown>).value;
+        if (hasText(answerValue)) {
+            signalAnswers[question.field] = answerValue.trim();
+        }
+    });
+
+    return signalAnswers;
 };
 
 const getPromptFrequencyFromProfile = (
@@ -437,6 +468,17 @@ const getSuggestedStarterPrompt = (
     };
 
     return `${goalMap[goal]} ${focusMap[focusArea]}`;
+};
+
+const getQuestionPriority = (question: PersonalizationQuestion, pathname: string): number => {
+    let score = 0;
+    if (question.routeHints?.some((prefix) => pathname.startsWith(prefix))) {
+        score += 2;
+    }
+    if (CORE_FIELD_SET.has(question.field)) {
+        score += 1;
+    }
+    return score;
 };
 
 class ProgressivePersonalizationService {
@@ -485,14 +527,15 @@ class ProgressivePersonalizationService {
 
     private getMissingFields(
         profile: PersonalizationProfileSnapshot | null | undefined,
-        state: ProgressivePersonalizationState
+        state: ProgressivePersonalizationState,
+        signalAnswers: Partial<Record<PersonalizationField, string>>
     ): Set<PersonalizationField> {
         const missing = new Set<PersonalizationField>();
 
         for (const question of QUESTION_BANK) {
             const hasProfile = hasFieldValue(profile, question.field);
             const hasLocal = hasText(state.answers[question.field]?.value);
-            const hasRemoteSignal = hasText(getProfileSignalAnswerValue(profile, question.field));
+            const hasRemoteSignal = hasText(signalAnswers[question.field]);
             if (!hasProfile && !hasLocal && !hasRemoteSignal) {
                 missing.add(question.field);
             }
@@ -513,30 +556,37 @@ class ProgressivePersonalizationService {
         if (this.isSnoozed(state)) return null;
         if (this.isInCooldown(state, frequency)) return null;
 
-        const missingFields = this.getMissingFields(profile, state);
+        const signalAnswers = getProfileSignalAnswers(profile);
+        const missingFields = this.getMissingFields(profile, state, signalAnswers);
         if (missingFields.size === 0) return null;
 
-        const candidates = QUESTION_BANK.filter((question) => missingFields.has(question.field));
-        if (candidates.length === 0) return null;
+        const seenQuestionIds = new Set(state.seenQuestionIds);
+        let bestUnseen: PersonalizationQuestion | null = null;
+        let bestUnseenScore = Number.NEGATIVE_INFINITY;
+        let bestSeen: PersonalizationQuestion | null = null;
+        let bestSeenScore = Number.NEGATIVE_INFINITY;
 
-        const unseen = candidates.filter((question) => !state.seenQuestionIds.includes(question.id));
-        const pool = unseen.length > 0 ? unseen : candidates;
+        QUESTION_BANK.forEach((question) => {
+            if (!missingFields.has(question.field)) {
+                return;
+            }
 
-        const ranked = pool
-            .map((question) => {
-                const routeBoost = question.routeHints?.some((prefix) => pathname.startsWith(prefix)) ? 1.5 : 0;
-                const coreBoost = CORE_FIELDS.includes(question.field) ? 0.3 : 0;
-                return {
-                    question,
-                    score: routeBoost + coreBoost + Math.random(),
-                };
-            })
-            .sort((a, b) => b.score - a.score);
+            const score = getQuestionPriority(question, pathname);
+            if (seenQuestionIds.has(question.id)) {
+                if (score > bestSeenScore) {
+                    bestSeen = question;
+                    bestSeenScore = score;
+                }
+                return;
+            }
 
-        const shortlist = ranked.slice(0, Math.min(3, ranked.length));
-        if (shortlist.length === 0) return null;
-        const selected = shortlist[Math.floor(Math.random() * shortlist.length)];
-        return selected.question;
+            if (score > bestUnseenScore) {
+                bestUnseen = question;
+                bestUnseenScore = score;
+            }
+        });
+
+        return bestUnseen || bestSeen;
     }
 
     markPromptShown(input: MarkPromptShownInput): ProgressivePersonalizationState {
@@ -546,9 +596,7 @@ class ProgressivePersonalizationService {
 
         const nextState: ProgressivePersonalizationState = {
             ...state,
-            seenQuestionIds: state.seenQuestionIds.includes(questionId)
-                ? state.seenQuestionIds
-                : [...state.seenQuestionIds, questionId],
+            seenQuestionIds: appendUniqueString(state.seenQuestionIds, questionId),
             metrics: {
                 ...state.metrics,
                 promptedCount: state.metrics.promptedCount + 1,
@@ -586,9 +634,7 @@ class ProgressivePersonalizationService {
                 [question.field]: answer,
             },
             history: [...state.history, answer],
-            seenQuestionIds: state.seenQuestionIds.includes(question.id)
-                ? state.seenQuestionIds
-                : [...state.seenQuestionIds, question.id],
+            seenQuestionIds: appendUniqueString(state.seenQuestionIds, question.id),
             metrics: {
                 ...state.metrics,
                 answeredCount: state.metrics.answeredCount + 1,
@@ -676,7 +722,7 @@ class ProgressivePersonalizationService {
         const focusArea = (patch.focusArea as string | undefined) || (hasText(currentProfile?.focusArea) ? currentProfile?.focusArea : undefined);
 
         if (!hasText(currentProfile?.starterPrompt) && !hasText(patch.starterPrompt) && goal && focusArea) {
-            if (GOAL_VALUES.includes(goal as OnboardingGoal) && TRACK_VALUES.includes(focusArea as OnboardingTrack)) {
+            if (GOAL_VALUE_SET.has(goal as OnboardingGoal) && TRACK_VALUE_SET.has(focusArea as OnboardingTrack)) {
                 patch.starterPrompt = getSuggestedStarterPrompt(goal as OnboardingGoal, focusArea as OnboardingTrack);
             }
         }
@@ -734,18 +780,19 @@ class ProgressivePersonalizationService {
             return profile.starterPrompt.trim();
         }
 
+        const signalAnswers = getProfileSignalAnswers(profile);
         const goal = hasText(profile?.primaryGoal)
             ? profile.primaryGoal.trim()
-            : getProfileSignalAnswerValue(profile, 'primaryGoal');
+            : signalAnswers.primaryGoal || null;
         const focusArea = hasText(profile?.focusArea)
             ? profile.focusArea.trim()
-            : getProfileSignalAnswerValue(profile, 'focusArea');
+            : signalAnswers.focusArea || null;
 
-        if (goal && focusArea && GOAL_VALUES.includes(goal as OnboardingGoal) && TRACK_VALUES.includes(focusArea as OnboardingTrack)) {
+        if (goal && focusArea && GOAL_VALUE_SET.has(goal as OnboardingGoal) && TRACK_VALUE_SET.has(focusArea as OnboardingTrack)) {
             return getSuggestedStarterPrompt(goal as OnboardingGoal, focusArea as OnboardingTrack);
         }
 
-        if (goal && GOAL_VALUES.includes(goal as OnboardingGoal)) {
+        if (goal && GOAL_VALUE_SET.has(goal as OnboardingGoal)) {
             const fallbackGoalPrompts: Record<OnboardingGoal, string> = {
                 clarity: 'What is creating mental noise for me today, and what can I simplify first?',
                 memory: 'What moment from today is worth preserving with detail?',

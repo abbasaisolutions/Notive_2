@@ -25,7 +25,7 @@ function ResetPasswordPageContent() {
 
     useEffect(() => {
         if (!token) {
-            setError('Invalid or missing reset token.');
+            setError('This reset link is missing or invalid.');
         }
     }, [token]);
 
@@ -42,12 +42,12 @@ function ResetPasswordPageContent() {
         setError('');
 
         if (password !== confirmPassword) {
-            setError('Passwords do not match');
+            setError('Passwords do not match.');
             return;
         }
 
         if (password.length < 8) {
-            setError('Password must be at least 8 characters');
+            setError('Password must be at least 8 characters.');
             return;
         }
 
@@ -69,7 +69,7 @@ function ResetPasswordPageContent() {
                 router.push('/login');
             }, 3000);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to reset password. Link may be expired.');
+            setError(err instanceof Error ? err.message : 'Could not reset password. This link may have expired.');
         } finally {
             setIsLoading(false);
         }
@@ -124,9 +124,9 @@ function ResetPasswordPageContent() {
                                 <span className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/[0.03]">
                                     <FiKey size={24} className="text-ink-secondary" aria-hidden="true" />
                                 </span>
-                                <h2 className="text-xl font-bold text-white mb-2">New Password</h2>
+                                <h2 className="text-xl font-bold text-white mb-2">Choose a new password</h2>
                                 <p className="text-sm text-ink-secondary">
-                                    Create a new strong password for your account.
+                                    Make a new password for your account.
                                 </p>
                             </div>
 
@@ -166,7 +166,7 @@ function ResetPasswordPageContent() {
 
                             <SlideUp delay={0.3}>
                                 <Button type="submit" className="w-full" isLoading={isLoading} disabled={!token}>
-                                    Reset Password
+                                    Save new password
                                 </Button>
                             </SlideUp>
                         </form>
@@ -180,9 +180,9 @@ function ResetPasswordPageContent() {
                                 <FiCheckCircle size={34} className="text-foreground" aria-hidden="true" />
                             </div>
                             <div>
-                                <h2 className="text-2xl font-bold text-white mb-2">Password Reset!</h2>
+                                <h2 className="text-2xl font-bold text-white mb-2">Password changed</h2>
                                 <p className="text-ink-secondary">
-                                    Your password has been successfully updated. Redirecting you to login...
+                                    Your password was updated. Sending you to sign in...
                                 </p>
                             </div>
                         </motion.div>

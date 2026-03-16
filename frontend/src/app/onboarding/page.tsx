@@ -22,16 +22,16 @@ import {
 import { sanitizeReturnTo } from '@/utils/redirect';
 
 const GOALS: Array<{ id: OnboardingGoal; icon: IconType; label: string; desc: string }> = [
-    { id: 'clarity', icon: FiCpu, label: 'Mental Clarity', desc: 'Clear my thoughts and decide what matters next.' },
-    { id: 'memory', icon: FiCamera, label: 'Memory Keeping', desc: 'Capture moments worth remembering in detail.' },
-    { id: 'growth', icon: FiTrendingUp, label: 'Personal Growth', desc: 'Track lessons, habits, and progress over time.' },
-    { id: 'productivity', icon: FiZap, label: 'Execution', desc: 'Document wins, blockers, and next actions.' },
+    { id: 'clarity', icon: FiCpu, label: 'Clear mind', desc: 'Notice what matters and pick the next step.' },
+    { id: 'memory', icon: FiCamera, label: 'Remember life', desc: 'Save moments, feelings, and details worth keeping.' },
+    { id: 'growth', icon: FiTrendingUp, label: 'Grow', desc: 'Notice lessons, habits, and change over time.' },
+    { id: 'productivity', icon: FiZap, label: 'Get things done', desc: 'Save wins, blockers, and stories you can use later.' },
 ];
 
 const TRACKS: Array<{ id: OnboardingTrack; label: string; desc: string }> = [
-    { id: 'life', label: 'Personal Life', desc: 'Relationships, wellbeing, and daily moments.' },
-    { id: 'career', label: 'Career & School', desc: 'Projects, learning, and future opportunities.' },
-    { id: 'both', label: 'Life + Career', desc: 'A blended journal across both areas.' },
+    { id: 'life', label: 'Life', desc: 'Relationships, health, home, and everyday moments.' },
+    { id: 'career', label: 'School and work', desc: 'Projects, learning, tasks, and future opportunities.' },
+    { id: 'both', label: 'Both', desc: 'A mix of life, school, and work.' },
 ];
 
 const EXPERIENCE_LEVELS: Array<{ id: OnboardingExperienceLevel; label: string }> = [
@@ -42,73 +42,73 @@ const EXPERIENCE_LEVELS: Array<{ id: OnboardingExperienceLevel; label: string }>
 ];
 
 const WRITING_PREFERENCES: Array<{ id: OnboardingWritingPreference; label: string; desc: string }> = [
-    { id: 'guided', label: 'Guided Prompts', desc: 'Short prompts and coaching suggestions.' },
-    { id: 'structured', label: 'Structured Reflection', desc: 'Clear sections for action and insight.' },
-    { id: 'freeform', label: 'Freeform Writing', desc: 'Open writing with minimal interruption.' },
+    { id: 'guided', label: 'With questions', desc: 'Short questions to help you start.' },
+    { id: 'structured', label: 'Step by step', desc: 'Clear sections to help you stay organized.' },
+    { id: 'freeform', label: 'Free writing', desc: 'Open writing with fewer interruptions.' },
 ];
 
 const OUTPUT_GOALS: Array<{ id: OnboardingOutputGoal; label: string }> = [
-    { id: 'self-growth', label: 'Personal Growth' },
-    { id: 'college-statement', label: 'College Statement Ideas' },
-    { id: 'resume-stories', label: 'Resume Story Bank' },
-    { id: 'interview-examples', label: 'Interview Examples' },
-    { id: 'portfolio', label: 'Portfolio Highlights' },
+    { id: 'self-growth', label: 'Know myself better' },
+    { id: 'college-statement', label: 'School statement' },
+    { id: 'resume-stories', label: 'Resume stories' },
+    { id: 'interview-examples', label: 'Interview stories' },
+    { id: 'portfolio', label: 'Stories for school or work' },
 ];
 
 const STARTER_PROMPTS: Record<OnboardingGoal, Record<OnboardingTrack, string[]>> = {
     clarity: {
         life: [
-            'What is weighing on my mind today, and what can I release?',
-            'Which moment today felt most important, and why?',
+            'What is on my mind today?',
+            'What moment today felt most important?',
         ],
         career: [
-            'What is my most important next step for school or work right now?',
-            'What challenge am I avoiding, and how will I start?',
+            'What is my most important next step for school or work?',
+            'What task am I avoiding, and how will I start?',
         ],
         both: [
-            'What one decision today can improve both my life and career path?',
-            'Where am I overthinking, and what simple action can I take?',
+            'What one choice today could help both life and work?',
+            'Where am I overthinking, and what small step can I take?',
         ],
     },
     memory: {
         life: [
-            'What moment from today do I want to remember in five years?',
-            'Who influenced my day, and what did I learn from that interaction?',
+            'What moment from today do I want to remember?',
+            'Who shaped my day, and what did I learn?',
         ],
         career: [
-            'What project or task today is worth documenting for future applications?',
-            'What did I create or improve today that I can reference later?',
+            'What project or task today is worth saving for later?',
+            'What did I make or improve today?',
         ],
         both: [
-            'What event today shaped both my personal mindset and future goals?',
-            'What conversation or experience today deserves to be preserved?',
+            'What happened today that shaped both my life and future?',
+            'What talk or experience today do I want to keep?',
         ],
     },
     growth: {
         life: [
             'What did I learn about myself today?',
-            'Where did I respond better than the old version of me?',
+            'Where did I handle something better today?',
         ],
         career: [
             'What skill did I practice today, and what improved?',
-            'What obstacle did I overcome today that shows growth?',
+            'What hard thing did I get through today?',
         ],
         both: [
-            'What lesson today can help me grow personally and professionally?',
+            'What lesson today can help me grow in life and work?',
             'How did I show resilience today in real action?',
         ],
     },
     productivity: {
         life: [
-            'What did I complete today, and what created friction?',
+            'What did I finish today, and what got in the way?',
             'What is one small routine that would improve tomorrow?',
         ],
         career: [
-            'What outcome did I deliver today, and what is next?',
+            'What did I get done today, and what is next?',
             'What priority got done today, and what blocked progress?',
         ],
         both: [
-            'What did I execute well today, and what can I optimize tomorrow?',
+            'What went well today, and what can I do better tomorrow?',
             'Which action today had the highest impact across life and career?',
         ],
     },
@@ -385,7 +385,7 @@ function OnboardingPageContent() {
 
         const saved = await saveStepProgress(Math.min(step, 3));
         if (!saved) return;
-        setSavedNotice('Progress saved. You can return anytime to finish setup.');
+        setSavedNotice('Progress saved. You can come back later.');
     };
 
     const handleSignOut = async () => {
@@ -431,9 +431,9 @@ function OnboardingPageContent() {
 
                 <div className="mb-4 text-center">
                     <div className="text-xs uppercase tracking-[0.2em] text-ink-muted">Setup {step}/3</div>
-                    <h1 className="text-3xl md:text-4xl font-serif text-white mt-2">Set up your journal in a minute.</h1>
+                    <h1 className="text-3xl md:text-4xl font-serif text-white mt-2">Set up Notive in about a minute.</h1>
                     <p className="mt-3 text-sm text-ink-secondary max-w-2xl mx-auto">
-                        Start with your goal, the area you want to focus on, and the kind of first entry you want to write.
+                        Pick what you want help with, where Notive should focus, and an easy first question for your first note.
                     </p>
                     <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                         {ONBOARDING_STEPS.map((item) => {
@@ -481,7 +481,7 @@ function OnboardingPageContent() {
                             exit={{ opacity: 0, y: -12 }}
                             className="glass-card p-6 md:p-8 rounded-3xl border border-white/10"
                         >
-                            <p className="text-ink-secondary mb-6">What should Notive help you do first?</p>
+                            <p className="text-ink-secondary mb-6">What do you want Notive to help with first?</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {GOALS.map((item) => (
                                     <button
@@ -517,7 +517,7 @@ function OnboardingPageContent() {
                             className="glass-card p-6 md:p-8 rounded-3xl border border-white/10 space-y-6"
                         >
                             <div>
-                                <p className="text-ink-secondary mb-3">Which area should your entries focus on first?</p>
+                                <p className="text-ink-secondary mb-3">What part of life should Notive focus on first?</p>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                     {TRACKS.map((item) => (
                                         <button
@@ -544,9 +544,9 @@ function OnboardingPageContent() {
                             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
-                                        <div className="text-sm font-semibold text-white">Optional preferences</div>
+                                        <div className="text-sm font-semibold text-white">More details</div>
                                         <p className="text-xs text-ink-secondary mt-1">
-                                            Add more context now, or skip and refine it later in Profile.
+                                            Add more now, or let Notive learn as you go and change it later in Me.
                                         </p>
                                     </div>
                                     <button
@@ -554,14 +554,14 @@ function OnboardingPageContent() {
                                         onClick={() => setShowOptionalProfile((current) => !current)}
                                         className="rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-xs uppercase tracking-[0.1em] text-ink-secondary hover:text-white"
                                     >
-                                        {showOptionalProfile ? 'Hide Options' : 'Add Preferences'}
+                                        {showOptionalProfile ? 'Hide' : 'Add More'}
                                     </button>
                                 </div>
 
                                 {showOptionalProfile && (
                                     <div className="mt-5 space-y-5">
                                         <div>
-                                            <p className="text-ink-secondary mb-3">Where are you in your journey?</p>
+                                            <p className="text-ink-secondary mb-3">Where are you right now?</p>
                                             <div className="flex flex-wrap gap-2">
                                                 {EXPERIENCE_LEVELS.map((item) => (
                                                     <button
@@ -581,7 +581,7 @@ function OnboardingPageContent() {
                                         </div>
 
                                         <div>
-                                            <p className="text-ink-secondary mb-3">How should writing feel?</p>
+                                            <p className="text-ink-secondary mb-3">How do you want writing to feel?</p>
                                             <div className="space-y-2">
                                                 {WRITING_PREFERENCES.map((item) => (
                                                     <button
@@ -602,7 +602,7 @@ function OnboardingPageContent() {
                                         </div>
 
                                         <div>
-                                            <p className="text-ink-secondary mb-3">What outcomes do you want to build over time?</p>
+                                            <p className="text-ink-secondary mb-3">What do you want to use these notes for later?</p>
                                             <div className="flex flex-wrap gap-2">
                                                 {OUTPUT_GOALS.map((item) => (
                                                     <button
@@ -634,7 +634,7 @@ function OnboardingPageContent() {
                             exit={{ opacity: 0, y: -12 }}
                             className="glass-card p-6 md:p-8 rounded-3xl border border-white/10"
                         >
-                            <p className="text-ink-secondary mb-6">Choose how you want to start your first entry.</p>
+                            <p className="text-ink-secondary mb-6">Choose an easy first question for your first note.</p>
                             <div className="space-y-3 mb-4">
                                 {promptOptions.map((prompt) => (
                                     <button
@@ -661,11 +661,11 @@ function OnboardingPageContent() {
                                         : 'border-white/15 text-ink-muted hover:text-white'
                                 }`}
                             >
-                                Start with a blank entry
+                                Start with a blank note
                             </button>
 
                             <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-ink-secondary">
-                                Social import is available later in Profile after you save your first entry.
+                                You can bring in old memories later in Me after your first note is saved.
                             </div>
                         </motion.div>
                     )}

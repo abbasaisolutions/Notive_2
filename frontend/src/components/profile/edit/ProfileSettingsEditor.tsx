@@ -186,43 +186,43 @@ export function ProfileSettingsEditor() {
                 id: 'goal',
                 label: 'Set a primary goal',
                 done: Boolean(preferencesDraft.primaryGoal),
-                hint: 'This guides coaching, insights, and portfolio emphasis.',
+                hint: 'This helps Notive focus on the kind of help you want most.',
             },
             {
                 id: 'focus',
                 label: 'Choose a focus area',
                 done: Boolean(preferencesDraft.focusArea),
-                hint: 'This decides whether the product prioritizes life, career, or both.',
+                hint: 'This tells Notive to focus on life, school, work, or both.',
             },
             {
                 id: 'experience',
                 label: 'Select an experience level',
                 done: Boolean(preferencesDraft.experienceLevel),
-                hint: 'This tunes recommendation tone and framing.',
+                hint: 'This helps Notive meet you where you are.',
             },
             {
                 id: 'writing',
                 label: 'Pick a writing style',
                 done: Boolean(preferencesDraft.writingPreference),
-                hint: 'This influences capture and reflection prompts.',
+                hint: 'This helps Notive use a writing style that feels easier.',
             },
             {
                 id: 'life-goals',
                 label: 'Add at least one life goal',
                 done: profileDraft.lifeGoals.length > 0,
-                hint: 'This gives the app context for long-term reflection.',
+                hint: 'This helps Notive understand what matters to you over time.',
             },
             {
                 id: 'output-goals',
                 label: 'Add at least one output goal',
                 done: preferencesDraft.outputGoals.length > 0,
-                hint: 'This improves portfolio and application output quality.',
+                hint: 'This helps turn notes into stories you can use later.',
             },
             {
                 id: 'starter',
                 label: 'Set a starter prompt preference',
                 done: Boolean(preferencesDraft.starterPrompt.trim()),
-                hint: 'This reduces friction when starting new entries.',
+                hint: 'This gives you an easier first question when you start writing.',
             },
         ],
         [preferencesDraft, profileDraft.lifeGoals]
@@ -401,7 +401,7 @@ export function ProfileSettingsEditor() {
 
             let path = '/user/profile/basic';
             let payload: Record<string, unknown> = {};
-            let successMessage = 'Profile details updated.';
+            let successMessage = 'About info updated.';
 
             if (tab === 'profile') {
                 payload = {
@@ -433,7 +433,7 @@ export function ProfileSettingsEditor() {
                     importPreference: preferencesDraft.importPreference || null,
                     onboardingCompletedAt: completedAt,
                 };
-                successMessage = 'Preferences updated.';
+                successMessage = 'Goals updated.';
             } else {
                 path = '/user/profile/privacy';
                 payload = {
@@ -447,7 +447,7 @@ export function ProfileSettingsEditor() {
                             : null
                     ),
                 };
-                successMessage = 'Privacy and personalization settings updated.';
+                successMessage = 'Data settings updated.';
             }
 
             const response = await apiFetch(path, {
@@ -473,7 +473,7 @@ export function ProfileSettingsEditor() {
                 });
                 setNotice({
                     type: 'error',
-                    text: data?.message || 'This section changed elsewhere. Reload the latest version or explicitly overwrite it.',
+                    text: data?.message || 'This section changed somewhere else. Load the newest version or replace it with yours.',
                 });
                 return;
             }
@@ -813,10 +813,10 @@ export function ProfileSettingsEditor() {
                             <FiArrowLeft size={18} aria-hidden="true" />
                         </Link>
                         <div className="space-y-2">
-                            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Profile Management</p>
-                            <h1 className="text-4xl font-serif text-white tracking-tight">Account settings that match how people actually edit</h1>
+                            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Settings</p>
+                            <h1 className="text-4xl font-serif text-white tracking-tight">Change your details, goals, sign-in, and data</h1>
                             <p className="max-w-3xl text-sm md:text-base text-ink-secondary">
-                                Update basic identity details, product preferences, account security, and adaptive data separately so each change is easier to review and safer to save.
+                                Keep each kind of change in its own place so saving feels simpler and safer.
                             </p>
                         </div>
                     </div>
@@ -825,14 +825,14 @@ export function ProfileSettingsEditor() {
                             <FiClock size={16} aria-hidden="true" />
                             Last synced
                         </div>
-                        <p className="mt-1">{toDateLabel(lastSavedAt, 'Waiting for first profile sync')}</p>
+                        <p className="mt-1">{toDateLabel(lastSavedAt, 'Not saved yet')}</p>
                     </div>
                 </header>
 
                 {notice && <NoticeBanner notice={notice} />}
 
                 <SlideUp className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-2">
-                    <div className="flex flex-wrap gap-2" role="tablist" aria-label="Profile settings sections">
+                    <div className="flex flex-wrap gap-2" role="tablist" aria-label="Settings sections">
                         {TAB_ITEMS.map((tab) => {
                             const isActive = activeTab === tab.id;
                             return (
@@ -950,13 +950,13 @@ export function ProfileSettingsEditor() {
                             <div className="space-y-1">
                                 <p className="text-sm font-semibold text-white">
                                     {activeConflict
-                                        ? 'This section changed in another session.'
+                                        ? 'This section changed somewhere else.'
                                         : `Unsaved changes in ${TAB_ITEMS.find((tab) => tab.id === activeEditableTab)?.label}.`}
                                 </p>
                                 <p className="text-sm text-ink-secondary">
                                     {activeConflict
-                                        ? 'Reload the latest data or explicitly overwrite the current server version for this section.'
-                                        : `Last synced ${toDateLabel(lastSavedAt, 'never')}. Save or discard before leaving this page.`}
+                                        ? 'Load the newest version or replace it with your version.'
+                                        : `Last saved ${toDateLabel(lastSavedAt, 'never')}. Save or undo before leaving this page.`}
                                 </p>
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
@@ -967,7 +967,7 @@ export function ProfileSettingsEditor() {
                                             onClick={handleReloadLatest}
                                             className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-ink-secondary hover:text-white hover:border-white/30 transition-colors"
                                         >
-                                            Reload Latest
+                                            Load Newest
                                         </button>
                                         <button
                                             type="button"
@@ -978,7 +978,7 @@ export function ProfileSettingsEditor() {
                                             {isSavingTab === activeEditableTab && (
                                                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                                             )}
-                                            <span>Overwrite Section</span>
+                                            <span>Replace With Mine</span>
                                         </button>
                                     </>
                                 ) : (
@@ -988,7 +988,7 @@ export function ProfileSettingsEditor() {
                                             onClick={handleDiscardActiveChanges}
                                             className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-ink-secondary hover:text-white hover:border-white/30 transition-colors"
                                         >
-                                            Discard
+                                            Undo
                                         </button>
                                         <button
                                             type="button"
@@ -999,7 +999,7 @@ export function ProfileSettingsEditor() {
                                             {isSavingTab === activeEditableTab && (
                                                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                                             )}
-                                            <span>Save Section</span>
+                                            <span>Save</span>
                                         </button>
                                     </>
                                 )}

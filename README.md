@@ -1,6 +1,6 @@
 # Notive
 
-A modern, AI-powered journaling application with voice input, mood tracking, and intelligent insights.
+A modern, local-first journaling application with voice input, mood tracking, retrieval-powered memory search, and optional AI guidance.
 
 ## Features
 
@@ -25,7 +25,8 @@ To run this project, you need to install the following tools on your machine:
 
 - `frontend/`: Next.js 14 application (React, Tailwind CSS, TypeScript)
 - `backend/`: Node.js Express application (TypeScript, Prisma)
-- `docker-compose.yml`: Database configuration (PostgreSQL)
+- `similarity-service/`: Local retrieval and reranking microservice
+- `docker-compose.yml`: Local infrastructure and ML services
 
 ## Quick Start
 
@@ -80,6 +81,7 @@ docker-compose up -d
 ```
 
 This starts a PostgreSQL database on port 5432.
+This also starts MongoDB, Redis, the deterministic NLP service, and the local similarity service.
 
 ### 5. Run Database Migrations
 
@@ -112,6 +114,37 @@ npm run dev
 cd frontend
 npm run dev
 # Runs on http://localhost:3000
+```
+
+### Local Retrieval Rollout
+
+The recommended local-first setup is already reflected in [backend/.env.example](./backend/.env.example):
+
+- `USE_EMBEDDINGS="true"`
+- `EMBEDDING_PROVIDER="local_service"`
+- `EMBEDDING_SERVICE_URL="http://localhost:8002"`
+- `SIMILARITY_SERVICE_URL="http://localhost:8002"`
+- `LLM_PROVIDER="disabled"`
+
+After the services are running, backfill the stored entry embeddings:
+
+```bash
+cd backend
+npm run retrieval:doctor
+npm run backfill:embeddings
+```
+
+If you switch embedding models later, run:
+
+```bash
+npm run backfill:embeddings:force
+```
+
+To compare retrieval models locally:
+
+```powershell
+cd ..\similarity-service
+.\run-retrieval-eval.ps1
 ```
 
 ### 7. Access the Application
@@ -214,7 +247,8 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions for va
 - **Database**: PostgreSQL with Prisma ORM
 - **Authentication**: JWT with refresh tokens
 - **File Upload**: Multer
-- **AI Integration**: OpenAI API
+- **Local Retrieval**: Sentence Transformers + pgvector
+- **Optional Generation**: OpenAI-compatible chat provider
 
 ## Contributing
 

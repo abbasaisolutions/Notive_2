@@ -10,7 +10,9 @@ import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { getOnboardingState, getOnboardingStateFromProfile, getRecommendedPrompt, OnboardingState } from '@/utils/onboarding';
 import { progressivePersonalizationService } from '@/services/progressive-personalization.service';
-import { FiCompass, FiCpu, FiEdit3, FiPlus, FiSearch, FiTrendingUp } from 'react-icons/fi';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
+import { SmartSearch } from '@/components/search/SmartSearch';
+import { FiCompass, FiCpu, FiEdit3, FiLayers, FiPlus, FiRepeat, FiTrendingUp } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 
 
@@ -25,23 +27,49 @@ interface Entry {
     createdAt: string;
 }
 
+interface ResurfacedMoment {
+    sourceEntry: {
+        id: string;
+        title: string | null;
+        createdAt: string;
+    };
+    matchedEntry: {
+        id: string;
+        title: string | null;
+        contentPreview: string;
+        mood: string | null;
+        createdAt: string;
+    };
+    relevance: number;
+    matchReasons: string[];
+}
+
+interface ThemeCluster {
+    id: string;
+    label: string;
+    summary: string;
+    entryCount: number;
+    dominantMood: string | null;
+    topThemes: string[];
+    averageSimilarity: number;
+    representativeEntries: Array<{
+        id: string;
+        title: string | null;
+        contentPreview: string;
+        createdAt: string;
+        mood: string | null;
+    }>;
+}
+
 export default function DashboardPage() {
     const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { simulateEvent } = useSmartContext();
     const { apiFetch } = useApi();
     const [entries, setEntries] = useState<Entry[]>([]);
+    const [resurfacedMoments, setResurfacedMoments] = useState<ResurfacedMoment[]>([]);
+    const [themeClusters, setThemeClusters] = useState<ThemeCluster[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
-
-    // Debounce search query
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(searchQuery);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
 
     useEffect(() => {
         const fromProfile = getOnboardingStateFromProfile(user?.profile);
@@ -60,16 +88,35 @@ export default function DashboardPage() {
         const fetchEntries = async () => {
             setIsLoading(true);
             try {
-                const queryParams = new URLSearchParams();
-                if (debouncedSearch) queryParams.append('search', debouncedSearch);
+                const [entriesResponse, resurfacedResponse, clustersResponse] = await Promise.all([
+                    apiFetch(`${API_URL}/entries`, {
+                        signal: controller.signal,
+                    }),
+                    apiFetch(`${API_URL}/entries/resurfaced?limit=3`, {
+                        signal: controller.signal,
+                    }).catch(() => null),
+                    apiFetch(`${API_URL}/entries/theme-clusters?limit=4`, {
+                        signal: controller.signal,
+                    }).catch(() => null),
+                ]);
 
-                const response = await apiFetch(`${API_URL}/entries?${queryParams.toString()}`, {
-                    signal: controller.signal,
-                });
-
-                if (mounted && response.ok) {
-                    const data = await response.json();
+                if (mounted && entriesResponse.ok) {
+                    const data = await entriesResponse.json();
                     setEntries(data.entries);
+                }
+
+                if (mounted && resurfacedResponse?.ok) {
+                    const data = await resurfacedResponse.json().catch(() => null);
+                    setResurfacedMoments(Array.isArray(data?.resurfaced) ? data.resurfaced : []);
+                } else if (mounted) {
+                    setResurfacedMoments([]);
+                }
+
+                if (mounted && clustersResponse?.ok) {
+                    const data = await clustersResponse.json().catch(() => null);
+                    setThemeClusters(Array.isArray(data?.clusters) ? data.clusters : []);
+                } else if (mounted) {
+                    setThemeClusters([]);
                 }
             } catch (error) {
                 if (controller.signal.aborted) return;
@@ -89,7 +136,7 @@ export default function DashboardPage() {
             mounted = false;
             controller.abort();
         };
-    }, [user, debouncedSearch, apiFetch]);
+    }, [user, apiFetch]);
 
     const profileRecommendedPrompt = progressivePersonalizationService.getPromptSuggestionForProfile(user?.profile);
     const recommendedPrompt = onboarding?.starterPrompt?.trim() || profileRecommendedPrompt || getRecommendedPrompt(onboarding);
@@ -104,14 +151,9 @@ export default function DashboardPage() {
             ? 'Personal Growth'
             : onboarding?.track === 'both'
                 ? 'Life + Career Growth'
-                : 'Personal Journal';
-    const isSearching = debouncedSearch.trim().length > 0;
-    const statusValue = isSearching
-        ? `${entries.length}`
-        : onboarding?.completed
-            ? 'Ready'
-            : 'Setup';
-    const statusLabel = isSearching ? 'Matches' : 'Status';
+                : 'Personal Reflection';
+    const statusValue = onboarding?.completed ? 'Ready' : 'Setup';
+    const statusLabel = 'Status';
 
 
     if (authLoading) {
@@ -127,7 +169,7 @@ export default function DashboardPage() {
     }
     const safeUser = user!;
     const firstName = safeUser.name ? safeUser.name.split(' ')[0] : 'there';
-    const isEmptyDashboard = !isLoading && !isSearching && entries.length === 0;
+    const isEmptyDashboard = !isLoading && entries.length === 0;
 
     if (isEmptyDashboard) {
         return (
@@ -138,15 +180,15 @@ export default function DashboardPage() {
                             <section className="bento-box p-10 md:p-12 flex flex-col justify-between gap-8">
                                 <div>
                                     <div className="flex items-center gap-4 mb-4">
-                                        <span className="section-kicker">First Entry</span>
+                                        <span className="section-kicker">First Signal</span>
                                         <StreakCounter />
                                     </div>
                                     <h1 className="text-4xl md:text-5xl font-serif mb-4 leading-tight">
-                                        Write your first entry, <br />
+                                        Start with one note, <br />
                                         {firstName}.
                                     </h1>
                                     <p className="zen-text text-lg max-w-xl">
-                                        Start with one reflection. You can organize it, tag it, and explore insights after the entry is saved.
+                                        One honest note is enough. Notive can help you find patterns and build your story after you save it.
                                     </p>
                                 </div>
 
@@ -156,14 +198,14 @@ export default function DashboardPage() {
                                         className="primary-cta px-8 py-4 rounded-[1.5rem] font-semibold transition-all hover:scale-105 active:scale-95 flex items-center gap-3"
                                     >
                                         <FiPlus size={22} aria-hidden="true" />
-                                        Write Your First Entry
+                                        Write Your First Note
                                     </Link>
                                 </div>
                             </section>
 
                             <section className="space-y-4">
                                 <div className="bento-box p-8">
-                                    <p className="text-xs uppercase tracking-[0.18em] text-ink-muted mb-3">Recommended Start</p>
+                                    <p className="text-xs uppercase tracking-[0.18em] text-ink-muted mb-3">Starter Spark</p>
                                     <p className="text-lg text-white font-serif leading-relaxed">{recommendedPrompt}</p>
                                 </div>
 
@@ -175,11 +217,11 @@ export default function DashboardPage() {
                                         </div>
                                         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                                             <p className="text-xs uppercase tracking-[0.14em] text-ink-muted mb-1">Time</p>
-                                            <p className="text-sm text-white">2 to 5 minutes is enough.</p>
+                                            <p className="text-sm text-white">Two to five minutes is enough to save something useful.</p>
                                         </div>
                                         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                                             <p className="text-xs uppercase tracking-[0.14em] text-ink-muted mb-1">After Save</p>
-                                            <p className="text-sm text-white">Add details, create collections, and review insights later.</p>
+                                            <p className="text-sm text-white">You can fix details later while Notive starts finding patterns in the note.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -207,15 +249,15 @@ export default function DashboardPage() {
 
                             <div className="relative z-10">
                                 <div className="flex items-center gap-4 mb-4">
-                                    <span className="section-kicker">Dashboard</span>
+                                    <span className="section-kicker">{NOTIVE_VOICE.surfaces.homeBase}</span>
                                     <StreakCounter />
                                 </div>
                                 <h1 className="text-4xl md:text-5xl font-serif mb-4 leading-tight">
-                                    Keep your entries moving, <br />
+                                    Save today so you can use it later, <br />
                                     {firstName}.
                                 </h1>
                                 <p className="zen-text text-lg max-w-lg">
-                                    Capture new experiences, review recent entries, and turn them into usable insight.
+                                    Write what happened, come back to what matters, and turn strong moments into useful stories.
                                 </p>
                             </div>
 
@@ -225,14 +267,14 @@ export default function DashboardPage() {
                                     className="primary-cta px-8 py-4 rounded-[1.5rem] font-semibold transition-all hover:scale-105 active:scale-95 flex items-center gap-3"
                                 >
                                     <FiPlus size={22} aria-hidden="true" />
-                                    Write Entry
+                                    Write
                                 </Link>
                                 <Link
                                     href={portfolioHref}
                                     className="ghost-cta px-6 py-4 rounded-[1.5rem] transition-all inline-flex items-center gap-3 text-sm font-semibold"
                                 >
                                     <FiEdit3 size={22} aria-hidden="true" />
-                                    <span>Open Portfolio</span>
+                                    <span>Open {NOTIVE_VOICE.surfaces.outcomeStudio}</span>
                                 </Link>
                             </div>
                         </div>
@@ -241,29 +283,15 @@ export default function DashboardPage() {
                         <div className="space-y-8">
                             {/* Search Box */}
                             <div className="bento-box p-8 group">
-                                <h3 className="text-xl mb-4 font-serif">Search Entries</h3>
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        placeholder="Find an entry..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-12 pr-4 py-4 rounded-2xl bg-surface-1/50 border border-white/15 text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-serif"
-                                    />
-                                    <FiSearch size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-ink-muted group-focus-within:text-primary transition-colors" aria-hidden="true" />
-                                    {searchQuery !== debouncedSearch && (
-                                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                                            <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
-                                        </div>
-                                    )}
-                                </div>
+                                <h3 className="text-xl mb-4 font-serif">Search your notes</h3>
+                                <SmartSearch />
                             </div>
 
                             {/* Stats Bento */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="bento-box p-6 text-center">
                                     <div className="text-3xl font-bold text-white mb-2">{entries.length}</div>
-                                    <div className="text-xs text-ink-muted uppercase tracking-widest font-bold">Entries</div>
+                                    <div className="text-xs text-ink-muted uppercase tracking-widest font-bold">Notes</div>
                                 </div>
                                 <div className="bento-box p-6 text-center">
                                     <div className="text-3xl font-bold text-secondary mb-2">{statusValue}</div>
@@ -273,13 +301,111 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
+                    {(resurfacedMoments.length > 0 || themeClusters.length > 0) && (
+                        <div className="grid grid-cols-1 xl:grid-cols-[1.05fr_0.95fr] gap-8">
+                            {resurfacedMoments.length > 0 && (
+                                <section className="bento-box p-8 space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/30 bg-primary/12 text-primary">
+                                            <FiRepeat size={18} aria-hidden="true" />
+                                        </span>
+                                        <div>
+                                            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Written Before</p>
+                                            <h3 className="text-xl font-serif text-white">Past notes echoing back</h3>
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-3">
+                                        {resurfacedMoments.map((moment) => (
+                                            <div key={`${moment.sourceEntry.id}-${moment.matchedEntry.id}`} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-ink-muted">
+                                                    <span>{new Date(moment.sourceEntry.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                    <span className="h-1 w-1 rounded-full bg-white/25" />
+                                                    <span>{Math.round(moment.relevance * 100)}% match</span>
+                                                </div>
+                                                <p className="mt-2 text-sm text-white">
+                                                    <span className="font-semibold">{moment.sourceEntry.title || 'Recent note'}</span>
+                                                    {' '}connects back to{' '}
+                                                    <Link href={appendReturnTo(`/entry/view?id=${moment.matchedEntry.id}`, dashboardReturnTo)} className="text-primary hover:text-white transition-colors">
+                                                        {moment.matchedEntry.title || 'an older note'}
+                                                    </Link>
+                                                </p>
+                                                <p className="mt-2 text-sm leading-6 text-ink-secondary">{moment.matchedEntry.contentPreview}</p>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {moment.matchReasons.slice(0, 2).map((reason) => (
+                                                        <span key={`${moment.sourceEntry.id}-${reason}`} className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] uppercase tracking-[0.08em] text-ink-secondary">
+                                                            {reason}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {themeClusters.length > 0 && (
+                                <section className="bento-box p-8 space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-secondary/30 bg-secondary/12 text-secondary">
+                                            <FiLayers size={18} aria-hidden="true" />
+                                        </span>
+                                        <div>
+                                            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Theme Clusters</p>
+                                            <h3 className="text-xl font-serif text-white">Your archive is forming themes</h3>
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-3">
+                                        {themeClusters.map((cluster) => (
+                                            <div key={cluster.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="rounded-full border border-secondary/30 bg-secondary/10 px-2 py-1 text-[10px] uppercase tracking-[0.08em] text-secondary">
+                                                        {cluster.label}
+                                                    </span>
+                                                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] uppercase tracking-[0.08em] text-ink-secondary">
+                                                        {cluster.entryCount} notes
+                                                    </span>
+                                                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] uppercase tracking-[0.08em] text-ink-secondary">
+                                                        {Math.round(cluster.averageSimilarity * 100)}% cohesion
+                                                    </span>
+                                                </div>
+                                                <p className="mt-2 text-sm leading-6 text-ink-secondary">{cluster.summary}</p>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {cluster.topThemes.slice(0, 3).map((theme) => (
+                                                        <span key={`${cluster.id}-${theme}`} className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] uppercase tracking-[0.08em] text-ink-secondary">
+                                                            #{theme}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <div className="mt-3 space-y-2">
+                                                    {cluster.representativeEntries.slice(0, 2).map((entry) => (
+                                                        <Link
+                                                            key={entry.id}
+                                                            href={appendReturnTo(`/entry/view?id=${entry.id}`, dashboardReturnTo)}
+                                                            className="block rounded-xl border border-white/8 bg-black/20 px-3 py-2 transition-colors hover:border-white/15 hover:bg-black/30"
+                                                        >
+                                                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
+                                                                {new Date(entry.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                            </p>
+                                                            <p className="mt-1 text-sm font-semibold text-white">{entry.title || 'Untitled note'}</p>
+                                                            <p className="mt-1 text-xs leading-6 text-ink-secondary">{entry.contentPreview}</p>
+                                                        </Link>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+                        </div>
+                    )}
+
                     {/* Simulation & Experience Section */}
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                         {/* Simulation Bento */}
                         <div className="bento-box p-8 lg:col-span-1">
                                 <h3 className="text-lg mb-4 font-serif flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                                    Prompt Ideas
+                                    Signal sparks
                                 </h3>
                                 <div className="space-y-3">
                                     <button
@@ -288,7 +414,7 @@ export default function DashboardPage() {
                                     >
                                         <span className="flex items-center gap-2">
                                             <FiTrendingUp size={16} aria-hidden="true" />
-                                            <span>Energy Check</span>
+                                            <span>Energy signal</span>
                                         </span>
                                     </button>
                                     <button
@@ -297,7 +423,7 @@ export default function DashboardPage() {
                                     >
                                         <span className="flex items-center gap-2">
                                             <FiCompass size={16} aria-hidden="true" />
-                                            <span>Travel Lens</span>
+                                            <span>Fresh place</span>
                                         </span>
                                     </button>
                                     <button
@@ -306,7 +432,7 @@ export default function DashboardPage() {
                                     >
                                         <span className="flex items-center gap-2">
                                             <FiCpu size={16} aria-hidden="true" />
-                                            <span>Focus Sync</span>
+                                            <span>Focus checkpoint</span>
                                         </span>
                                     </button>
                                 </div>
@@ -315,8 +441,8 @@ export default function DashboardPage() {
                         {/* Recent Chronicles List Bento */}
                         <div className="lg:col-span-3 space-y-6">
                             <div className="flex items-center justify-between px-2">
-                                <h3 className="text-2xl font-serif">Recent Entries</h3>
-                                <Link href={timelineHref} className="text-xs text-primary hover:text-white transition-colors tracking-widest font-bold uppercase">View Timeline</Link>
+                                <h3 className="text-2xl font-serif">Recent notes</h3>
+                                <Link href={timelineHref} className="text-xs text-primary hover:text-white transition-colors tracking-widest font-bold uppercase">Open {NOTIVE_VOICE.surfaces.memoryAtlas}</Link>
                             </div>
 
                             {isLoading ? (

@@ -16,6 +16,7 @@ export interface AnalyticsData {
     entriesThisWeek: number;
     gratitudeItems: string[];
     activityHeatmap: Record<string, number>;
+    activeDays: number;
     profileContext: {
         completionScore: number;
         stage: 'not_started' | 'in_progress' | 'completed';
@@ -23,6 +24,48 @@ export interface AnalyticsData {
         personalGrowthScore: number;
         professionalReadinessScore: number;
     } | null;
+}
+
+export interface PatternSignal {
+    id: string;
+    label: string;
+    title: string;
+    summary: string;
+    value: string;
+    hint: string;
+    tone: 'good' | 'care' | 'steady';
+    prompt: string;
+}
+
+export interface PatternDrilldownEntry {
+    id: string;
+    title: string | null;
+    content: string;
+    mood: string | null;
+    themes: string[];
+    createdAt: string;
+    matchReason: string;
+}
+
+export interface PatternTimelineFilter {
+    search?: string;
+    theme?: string;
+    mood?: string;
+    date?: string;
+    startDate?: string;
+    endDate?: string;
+    weekday?: string;
+    dayPart?: string;
+}
+
+export interface PatternDrilldown {
+    id: string;
+    label: string;
+    title: string;
+    description: string;
+    emptyMessage: string;
+    entries: PatternDrilldownEntry[];
+    timelineFilter?: PatternTimelineFilter;
 }
 
 export interface AnalyticsSignature {
@@ -50,6 +93,36 @@ export interface AnalyticsSignature {
         daysBetween: number;
         prompt: string;
     } | null;
+    patternDigest: {
+        primary: PatternSignal;
+        supporting: PatternSignal[];
+        rhythm: {
+            activeDays: number;
+            coveragePercent: number;
+            bestDay: string | null;
+            bestTime: string | null;
+            bestDayCount: number;
+        };
+        focus: {
+            theme: string | null;
+            supportingTheme: string | null;
+            noteCount: number;
+            share: number;
+        };
+        emotion: {
+            direction: 'up' | 'down' | 'steady';
+            delta: number;
+            averageScore: number | null;
+            recentAverage: number | null;
+        };
+    };
+    patternDrilldowns: {
+        defaultId: string | null;
+        items: PatternDrilldown[];
+    };
+    chartDrilldowns: {
+        items: PatternDrilldown[];
+    };
 }
 
 const EMPTY_ANALYTICS: AnalyticsData = {
@@ -65,6 +138,7 @@ const EMPTY_ANALYTICS: AnalyticsData = {
     entriesThisWeek: 0,
     gratitudeItems: [],
     activityHeatmap: {},
+    activeDays: 0,
     profileContext: null,
 };
 
@@ -76,6 +150,45 @@ const EMPTY_SIGNATURE: AnalyticsSignature = {
         nextPrompt: 'What happened recently that is worth capturing before it fades?',
     },
     thenNow: null,
+    patternDigest: {
+        primary: {
+            id: 'capture-more',
+            label: 'Next step',
+            title: 'Your next few notes will make the pattern clearer',
+            summary: 'Keep saving short, honest notes and Notive will start showing stronger repeated topics and feelings.',
+            value: '0 notes',
+            hint: 'Notes in this view',
+            tone: 'steady',
+            prompt: 'What happened recently that you want to remember before it fades?',
+        },
+        supporting: [],
+        rhythm: {
+            activeDays: 0,
+            coveragePercent: 0,
+            bestDay: null,
+            bestTime: null,
+            bestDayCount: 0,
+        },
+        focus: {
+            theme: null,
+            supportingTheme: null,
+            noteCount: 0,
+            share: 0,
+        },
+        emotion: {
+            direction: 'steady',
+            delta: 0,
+            averageScore: null,
+            recentAverage: null,
+        },
+    },
+    patternDrilldowns: {
+        defaultId: null,
+        items: [],
+    },
+    chartDrilldowns: {
+        items: [],
+    },
 };
 
 export function useAnalytics(period: 'week' | 'month' | 'year' = 'week') {

@@ -6,6 +6,8 @@ import { FiTrendingUp } from 'react-icons/fi';
 
 interface MoodRiverProps {
     data: { date: string; mood: string; score: number }[];
+    selectedDate?: string | null;
+    onPointSelect?: (point: { date: string; mood: string; score: number }) => void;
 }
 
 const formatShortDate = (value: string) => {
@@ -19,7 +21,7 @@ const formatShortDate = (value: string) => {
 
 const formatMoodLabel = (mood: string) => mood.charAt(0).toUpperCase() + mood.slice(1);
 
-export default function MoodRiver({ data }: MoodRiverProps) {
+export default function MoodRiver({ data, selectedDate = null, onPointSelect }: MoodRiverProps) {
     const chartId = useId().replace(/:/g, '');
     const normalizedData = useMemo(
         () =>
@@ -36,8 +38,8 @@ export default function MoodRiver({ data }: MoodRiverProps) {
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/[0.03]">
                     <FiTrendingUp size={24} className="text-ink-secondary" aria-hidden="true" />
                 </div>
-                <h3 className="text-lg font-bold text-white">Mood River</h3>
-                <p className="mt-1 text-sm text-ink-secondary">Add entries to reveal your emotional trajectory.</p>
+                <h3 className="text-lg font-bold text-white">Mood Flow</h3>
+                <p className="mt-1 text-sm text-ink-secondary">Add notes to see how feelings change over time.</p>
             </div>
         );
     }
@@ -113,8 +115,10 @@ export default function MoodRiver({ data }: MoodRiverProps) {
         <div className="glass-card p-6 rounded-2xl">
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h3 className="text-lg font-bold text-white">Mood River</h3>
-                    <p className="text-xs text-ink-muted">Emotional flow across recent entries</p>
+                    <h3 className="text-lg font-bold text-white">Mood Flow</h3>
+                    <p className="text-xs text-ink-muted">
+                        How feelings changed in recent notes{onPointSelect ? ' - tap a point to open that day' : ''}
+                    </p>
                 </div>
                 <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${trendClass}`}>
                     {trendLabel}
@@ -123,7 +127,7 @@ export default function MoodRiver({ data }: MoodRiverProps) {
 
             <div className="mb-4 grid grid-cols-3 gap-2">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Avg Score</p>
+                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Average</p>
                     <p className="text-lg font-semibold text-white">{averageScore}/10</p>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
@@ -133,7 +137,7 @@ export default function MoodRiver({ data }: MoodRiverProps) {
                     </p>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Dominant</p>
+                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Main feeling</p>
                     <p className="text-lg font-semibold text-white">
                         {getMoodEmoji(dominantMood)} {formatMoodLabel(dominantMood)}
                     </p>
@@ -194,9 +198,29 @@ export default function MoodRiver({ data }: MoodRiverProps) {
                             key={i}
                             cx={p.x}
                             cy={p.y}
-                            r="3"
+                            r={selectedDate === p.date ? '4.5' : '3'}
                             fill={p.color}
-                            className="transition-all hover:r-5"
+                            stroke={selectedDate === p.date ? 'rgba(255,255,255,0.9)' : 'transparent'}
+                            strokeWidth={selectedDate === p.date ? '1.5' : '0'}
+                            className={onPointSelect ? 'cursor-pointer transition-all hover:r-5' : 'transition-all hover:r-5'}
+                            onClick={() => onPointSelect?.({
+                                date: p.date,
+                                mood: p.mood,
+                                score: normalizedData[i].score,
+                            })}
+                            onKeyDown={(event) => {
+                                if (!onPointSelect) return;
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    onPointSelect({
+                                        date: p.date,
+                                        mood: p.mood,
+                                        score: normalizedData[i].score,
+                                    });
+                                }
+                            }}
+                            role={onPointSelect ? 'button' : undefined}
+                            tabIndex={onPointSelect ? 0 : undefined}
                         >
                             <title>{`${formatShortDate(p.date)}: ${formatMoodLabel(p.mood)} (${normalizedData[i].score}/10)`}</title>
                         </circle>

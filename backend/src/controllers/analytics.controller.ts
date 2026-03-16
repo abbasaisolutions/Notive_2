@@ -3,8 +3,28 @@ import { createHash } from 'crypto';
 import prisma from '../config/prisma';
 import { buildProfileContextSummary } from '../services/profile-context.service';
 import { buildAnalyticsSummary, type AnalyticsPeriod } from '../services/analytics-summary.service';
+import { evaluatePromptLearningModels } from '../services/prompt-learning-evaluation.service';
+import { buildPromptExperimentReport } from '../services/prompt-experiment-report.service';
+import { applyPromptPolicyPerformanceFeedback } from '../services/prompt-learning-policy-feedback.service';
+import { buildPromptBehaviorProfileWithPolicy } from '../services/prompt-learning-policy.service';
+import {
+    buildPromptLearningPolicyPerformanceReport,
+    persistPromptLearningPolicySnapshot,
+} from '../services/prompt-learning-policy-snapshot.service';
 import { buildTimelineSignatureSummary } from '../services/timeline-signature.service';
-import { buildEntryListWhere, normalizeEntrySearch, normalizeEntrySource, normalizeLifeArea } from '../utils/entry-filters';
+import {
+    buildEntryListWhere,
+    filterEntriesByTemporalContext,
+    normalizeEntryDayPart,
+    normalizeEntryDateKey,
+    normalizeEntryDateRange,
+    normalizeEntryMood,
+    normalizeEntrySearch,
+    normalizeEntrySource,
+    normalizeEntryTheme,
+    normalizeEntryWeekday,
+    normalizeLifeArea,
+} from '../utils/entry-filters';
 
 const clampDays = (value: number): number => {
     if (!Number.isFinite(value)) return 30;
@@ -84,11 +104,25 @@ export const getTimelineSummary = async (req: Request, res: Response) => {
         const source = normalizeEntrySource(req.query.source);
         const lifeArea = normalizeLifeArea(req.query.lifeArea);
         const search = normalizeEntrySearch(req.query.search);
+        const theme = normalizeEntryTheme(req.query.theme);
+        const mood = normalizeEntryMood(req.query.mood);
+        const date = normalizeEntryDateKey(req.query.date);
+        const { startDate, endDate } = normalizeEntryDateRange({
+            startDate: req.query.startDate,
+            endDate: req.query.endDate,
+        });
+        const weekday = normalizeEntryWeekday(req.query.weekday);
+        const dayPart = normalizeEntryDayPart(req.query.dayPart);
         const where = buildEntryListWhere({
             userId,
             search,
             source,
             lifeArea,
+            theme,
+            mood,
+            date,
+            startDate,
+            endDate,
         });
 
         const entries = await prisma.entry.findMany({
@@ -107,9 +141,10 @@ export const getTimelineSummary = async (req: Request, res: Response) => {
                 createdAt: true,
             },
         });
+        const filteredEntries = filterEntriesByTemporalContext(entries, { weekday, dayPart });
 
         return res.json({
-            summary: buildTimelineSignatureSummary(entries),
+            summary: buildTimelineSignatureSummary(filteredEntries),
         });
     } catch (error) {
         console.error('Get timeline summary error:', error);
@@ -427,6 +462,69 @@ export const getPersonalizationTelemetry = async (req: Request, res: Response) =
     } catch (error) {
         console.error('Get personalization telemetry error:', error);
         return res.status(500).json({ message: 'Failed to fetch personalization telemetry' });
+    }
+};
+
+export const getPromptLearningProfile = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const daysParam = typeof req.query.days === 'string' ? Number(req.query.days) : NaN;
+        const performanceDays = Number.isFinite(daysParam)
+            ? Math.min(90, Math.max(30, Math.floor(daysParam)))
+            : 60;
+        const [profile, performance] = await Promise.all([
+            buildPromptBehaviorProfileWithPolicy(userId, daysParam),
+            buildPromptLearningPolicyPerformanceReport(userId, performanceDays),
+        ]);
+        const adaptedProfile = {
+            ...profile,
+            policy: applyPromptPolicyPerformanceFeedback(profile.policy, performance),
+        };
+        await persistPromptLearningPolicySnapshot(userId, adaptedProfile);
+
+        return res.json(adaptedProfile);
+    } catch (error) {
+        console.error('Get prompt learning profile error:', error);
+        return res.status(500).json({ message: 'Failed to fetch prompt learning profile' });
+    }
+};
+
+export const getPromptLearningEvaluation = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const daysParam = typeof req.query.days === 'string' ? Number(req.query.days) : NaN;
+        const report = await evaluatePromptLearningModels(userId, daysParam);
+
+        return res.json(report);
+    } catch (error) {
+        console.error('Get prompt learning evaluation error:', error);
+        return res.status(500).json({ message: 'Failed to fetch prompt learning evaluation' });
+    }
+};
+
+export const getPromptLearningPolicyPerformance = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const daysParam = typeof req.query.days === 'string' ? Number(req.query.days) : NaN;
+        const report = await buildPromptLearningPolicyPerformanceReport(userId, daysParam);
+
+        return res.json(report);
+    } catch (error) {
+        console.error('Get prompt learning policy performance error:', error);
+        return res.status(500).json({ message: 'Failed to fetch prompt learning policy performance' });
+    }
+};
+
+export const getPromptExperimentReport = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const daysParam = typeof req.query.days === 'string' ? Number(req.query.days) : NaN;
+        const report = await buildPromptExperimentReport(userId, daysParam);
+
+        return res.json(report);
+    } catch (error) {
+        console.error('Get prompt experiment report error:', error);
+        return res.status(500).json({ message: 'Failed to fetch prompt experiment report' });
     }
 };
 

@@ -17,6 +17,10 @@ router.use(authMiddleware);
 // Search routes (must be before /:id to avoid conflicts)
 router.get('/search', searchController.searchEntries);
 router.get('/search/suggestions', searchController.getSearchSuggestions);
+router.post('/duplicate-check', searchController.checkDuplicateCandidates);
+router.get('/resurfaced', searchController.getResurfacedEntries);
+router.get('/theme-clusters', searchController.getThemeClusters);
+router.get('/:id/related', searchController.getRelatedEntries);
 
 router.post('/', createEntry);
 router.get('/', getEntries);

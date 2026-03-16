@@ -29,7 +29,7 @@ export const storyFieldLabel: Record<StoryEngineField, string> = {
     situation: 'Situation',
     action: 'Action',
     lesson: 'Lesson',
-    outcome: 'Outcome',
+    outcome: 'Result',
     skills: 'Skills',
 };
 

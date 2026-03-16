@@ -40,14 +40,14 @@ export function PreferencesSection({
                 <div className="bento-box p-8 space-y-6">
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                         <div>
-                            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Preferences</p>
-                            <h2 className="mt-2 text-2xl font-serif text-white">Setup checklist and product behavior</h2>
+                            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Goals & Style</p>
+                            <h2 className="mt-2 text-2xl font-serif text-white">Tell Notive how to help you</h2>
                             <p className="mt-2 text-sm text-ink-secondary">
-                                These settings shape capture prompts, insights, portfolio framing, and how the product interprets your entries over time.
+                                These settings help Notive ask better questions, show better patterns, and build stories you can use.
                             </p>
                         </div>
                         <div className="rounded-[1.4rem] border border-primary/20 bg-primary/10 px-4 py-3 min-w-[180px]">
-                            <p className="text-xs uppercase tracking-[0.14em] text-primary font-bold">Completion</p>
+                            <p className="text-xs uppercase tracking-[0.14em] text-primary font-bold">Setup</p>
                             <p className="mt-2 text-3xl font-serif text-white">{profileContext.completionScore}%</p>
                             <p className="mt-1 text-xs text-ink-secondary">
                                 {profileContext.completedFields} of {profileContext.totalFields} setup items complete
@@ -57,43 +57,47 @@ export function PreferencesSection({
 
                     <div className="grid gap-6 md:grid-cols-2">
                         <SelectField
-                            label="Primary Goal"
+                            label="Main goal"
                             value={draft.primaryGoal}
                             onChange={(value) => onChange((current) => ({ ...current, primaryGoal: value }))}
                             options={PRIMARY_GOAL_OPTIONS}
+                            helper="This tells Notive what kind of help to focus on first."
                         />
                         <SelectField
-                            label="Focus Area"
+                            label="Main focus"
                             value={draft.focusArea}
                             onChange={(value) => onChange((current) => ({ ...current, focusArea: value }))}
                             options={FOCUS_AREA_OPTIONS}
+                            helper="Choose whether Notive should focus on life, school, work, or both."
                         />
                         <SelectField
-                            label="Experience Level"
+                            label="Where you are now"
                             value={draft.experienceLevel}
                             onChange={(value) => onChange((current) => ({ ...current, experienceLevel: value }))}
                             options={EXPERIENCE_LEVEL_OPTIONS}
+                            helper="This gives Notive the right amount of context."
                         />
                         <SelectField
-                            label="Writing Style"
+                            label="Writing style"
                             value={draft.writingPreference}
                             onChange={(value) => onChange((current) => ({ ...current, writingPreference: value }))}
                             options={WRITING_PREFERENCE_OPTIONS}
+                            helper="Choose the writing style that feels easiest for you."
                         />
                         <SelectField
-                            label="Import Preference"
+                            label="Bring In help"
                             value={draft.importPreference}
                             onChange={(value) => onChange((current) => ({ ...current, importPreference: value }))}
                             options={IMPORT_PREFERENCE_OPTIONS}
-                            helper="Use this to tell the app how aggressively to guide social imports."
+                            helper="Choose how much help you want when bringing in old posts or files."
                         />
                         <div className="md:col-span-2">
                             <TagInput
-                                label="Output Goals"
+                                label="What you want to use notes for"
                                 values={draft.outputGoals}
                                 draft={outputGoalsDraft}
-                                placeholder="Add an outcome and press Enter"
-                                helper="These goals influence portfolio and application-ready outputs."
+                                placeholder="Add a goal and press Enter"
+                                helper="These goals help Notive turn notes into stories you can use later."
                                 onDraftChange={onOutputGoalsDraftChange}
                                 onAdd={onAddOutputGoal}
                                 onRemove={onRemoveOutputGoal}
@@ -101,11 +105,11 @@ export function PreferencesSection({
                         </div>
                         <div className="md:col-span-2">
                             <TextAreaField
-                                label="Starter Prompt Preference"
+                                label="First question"
                                 value={draft.starterPrompt}
                                 onChange={(value) => onChange((current) => ({ ...current, starterPrompt: value }))}
-                                placeholder="Example: What happened today that I want to remember and learn from?"
-                                helper="Shown when you want a faster on-ramp into writing."
+                                placeholder="Example: What happened today that I want to remember?"
+                                helper="This is the easy first question Notive can show when you start writing."
                             />
                         </div>
                     </div>
@@ -115,7 +119,7 @@ export function PreferencesSection({
                     <section className="bento-box p-6 space-y-4">
                         <div>
                             <p className="text-xs uppercase tracking-[0.16em] text-ink-muted font-bold">Setup Checklist</p>
-                            <h3 className="mt-2 text-xl font-serif text-white">Persistent setup, not a one-time flow</h3>
+                            <h3 className="mt-2 text-xl font-serif text-white">You can change this anytime</h3>
                         </div>
                         <div className="space-y-3">
                             {checklistItems.map((item) => (
@@ -136,24 +140,24 @@ export function PreferencesSection({
 
                     <section className="bento-box p-6 space-y-4">
                         <div>
-                            <p className="text-xs uppercase tracking-[0.16em] text-ink-muted font-bold">Live Impact</p>
-                            <h3 className="mt-2 text-xl font-serif text-white">How the current setup reads</h3>
+                            <p className="text-xs uppercase tracking-[0.16em] text-ink-muted font-bold">What Notive Will Focus On</p>
+                            <h3 className="mt-2 text-xl font-serif text-white">How Notive is set right now</h3>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Stage</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Setup</p>
                                 <p className="mt-1 text-white capitalize">{profileContext.stage.replace('_', ' ')}</p>
                             </div>
                             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Track</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Focus</p>
                                 <p className="mt-1 text-white capitalize">{profileContext.track}</p>
                             </div>
                             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Personal Growth</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Self Growth</p>
                                 <p className="mt-1 text-white">{profileContext.personalGrowthScore}%</p>
                             </div>
                             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Professional Readiness</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">School / Work Ready</p>
                                 <p className="mt-1 text-white">{profileContext.professionalReadinessScore}%</p>
                             </div>
                         </div>

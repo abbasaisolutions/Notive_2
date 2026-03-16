@@ -136,13 +136,13 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                         <FiActivity className="w-5 h-5 text-slate-400" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-white">Health & Mood Insights</h3>
-                        <p className="text-xs text-slate-500">Unlock health-mood correlations</p>
+                        <h3 className="text-lg font-semibold text-white">Body & Mood</h3>
+                        <p className="text-xs text-slate-500">See body and mood together</p>
                     </div>
                 </div>
 
                 <p className="text-sm text-slate-400 mb-4">
-                    {healthData.message || 'Connect Google Fit to discover how your sleep and activity patterns relate to your mood.'}
+                    {healthData.message || 'Connect Google Fit to see how sleep, movement, and recovery connect with mood.'}
                 </p>
 
                 <div className="flex items-center gap-2 text-[10px] text-slate-500 mb-4">
@@ -162,7 +162,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                             className="w-full py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-all flex items-center justify-center gap-2"
                         >
                             <FiLink className="w-4 h-4" />
-                            Connect in Settings
+                            Connect in Me
                         </motion.button>
                     </Link>
                 )}
@@ -190,9 +190,9 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                         <FiCpu className="w-5 h-5 text-slate-400" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-white">Health & Mood</h3>
+                        <h3 className="text-lg font-semibold text-white">Body & Mood</h3>
                         <p className="text-xs text-slate-500">
-                            {stats?.daysWithData || 0} days of data
+                            {stats?.daysWithData || 0} days synced
                         </p>
                     </div>
                 </div>
@@ -211,7 +211,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                             {stats.avgSleepHours?.toFixed(1) || '—'}
                         </p>
                         <p className="text-[10px] text-slate-500 uppercase tracking-wider">
-                            Avg Sleep
+                            Avg sleep
                         </p>
                         <TrendIndicator trend={stats.sleepTrend} />
                     </div>
@@ -222,7 +222,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                             {stats.avgSteps ? (stats.avgSteps / 1000).toFixed(1) + 'k' : '—'}
                         </p>
                         <p className="text-[10px] text-slate-500 uppercase tracking-wider">
-                            Avg Steps
+                            Avg steps
                         </p>
                         <TrendIndicator trend={stats.activityTrend} />
                     </div>
@@ -233,7 +233,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                             {stats.avgHeartRate || '—'}
                         </p>
                         <p className="text-[10px] text-slate-500 uppercase tracking-wider">
-                            Avg HR
+                            Avg heart
                         </p>
                     </div>
                 </div>
@@ -245,7 +245,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                     <div className="flex items-center gap-2 mb-2">
                         <FiStar className="w-4 h-4 text-slate-400" />
                         <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">
-                            Discovered Patterns
+                            What Notive noticed
                         </span>
                     </div>
 
@@ -294,7 +294,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                     <div className="flex items-center gap-2 mb-3">
                         <FiSun className="w-4 h-4 text-amber-400/70" />
                         <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">
-                            Suggestions
+                            Try this
                         </span>
                     </div>
                     <ul className="space-y-2">
@@ -312,10 +312,10 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
             {stats && stats.daysWithData < 5 && (
                 <div className="p-4 rounded-xl bg-slate-800/30 border border-slate-700/30 text-center">
                     <p className="text-sm text-slate-400">
-                        Keep syncing health data to unlock more insights!
+                        Keep syncing to see more.
                     </p>
                     <p className="text-xs text-slate-500 mt-1">
-                        {5 - stats.daysWithData} more days needed for correlations
+                        {5 - stats.daysWithData} more days needed to compare body and mood
                     </p>
                 </div>
             )}

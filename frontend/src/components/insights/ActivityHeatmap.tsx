@@ -5,6 +5,8 @@ import React, { useMemo, useState } from 'react';
 interface ActivityHeatmapProps {
     data: { date: string; count: number }[];
     weeks?: number;
+    selectedDate?: string | null;
+    onDaySelect?: (day: { date: string; count: number }) => void;
 }
 
 interface DayCell {
@@ -30,7 +32,12 @@ const formatShortDate = (dateKey: string): string => {
     });
 };
 
-export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapProps) {
+export default function ActivityHeatmap({
+    data,
+    weeks = 12,
+    selectedDate = null,
+    onDaySelect,
+}: ActivityHeatmapProps) {
     const [hoveredDay, setHoveredDay] = useState<DayCell | null>(null);
 
     const { grid, flatGrid } = useMemo(() => {
@@ -87,8 +94,10 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
         <div className="glass-card p-6 rounded-2xl">
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h3 className="text-lg font-bold text-white">Journal Activity</h3>
-                    <p className="text-xs text-ink-muted">Consistency map for the last {weeks} weeks</p>
+                    <h3 className="text-lg font-bold text-white">Capture Activity</h3>
+                    <p className="text-xs text-ink-muted">
+                        Consistency map for the last {weeks} weeks{onDaySelect ? ' - tap a day to open the notes' : ''}
+                    </p>
                 </div>
                 {selectedDay && (
                     <div className="rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-right">
@@ -145,7 +154,13 @@ export default function ActivityHeatmap({ data, weeks = 12 }: ActivityHeatmapPro
                                         onMouseLeave={() => setHoveredDay(null)}
                                         onFocus={() => setHoveredDay(day)}
                                         onBlur={() => setHoveredDay(null)}
-                                        className={`h-3.5 w-3.5 rounded-[3px] transition-transform hover:scale-125 focus-visible:scale-125 ${getCellClass(day.count)}`}
+                                        onClick={() => {
+                                            if (day.count <= 0) return;
+                                            onDaySelect?.(day);
+                                        }}
+                                        className={`h-3.5 w-3.5 rounded-[3px] transition-transform hover:scale-125 focus-visible:scale-125 ${
+                                            selectedDate === day.date ? 'ring-2 ring-white/80 ring-offset-1 ring-offset-black/80' : ''
+                                        } ${getCellClass(day.count)} ${day.count > 0 && onDaySelect ? 'cursor-pointer' : ''}`}
                                         title={`${formatShortDate(day.date)}: ${day.count} entries`}
                                         aria-label={`${formatShortDate(day.date)} ${day.count} entries`}
                                     />

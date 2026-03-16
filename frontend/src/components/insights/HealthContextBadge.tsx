@@ -3,15 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FiActivity, FiMinus, FiMoon, FiTrendingDown, FiTrendingUp } from 'react-icons/fi';
-
-interface HealthContextSummary {
-    date: string;
-    sleepHours: number | null;
-    sleepQuality: string | null;
-    steps: number | null;
-    activityLevel: 'low' | 'moderate' | 'high' | null;
-    avgHeartRate: number | null;
-}
+import type { HealthContextSummary } from '@/types/health';
 
 interface Props {
     context: HealthContextSummary | null;

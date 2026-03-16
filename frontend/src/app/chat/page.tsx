@@ -1,24 +1,52 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import useApi from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import useContextNavigation from '@/hooks/use-context-navigation';
 import { ActionBar, AppPanel, EmptyState, SectionHeader, TagPill } from '@/components/ui/surface';
-import { FiArrowLeft, FiCpu, FiSend } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiCpu, FiSend } from 'react-icons/fi';
+
+type GuidedLens = 'clarity' | 'memory' | 'growth' | 'patterns';
+
+interface MessageMeta {
+    mode?: 'guided_reflection' | 'llm' | 'hosted_fallback';
+    model?: string;
+    strategy?: 'hybrid' | 'recent' | 'starter';
+    lens?: GuidedLens;
+    prompts?: string[];
+    highlights?: Array<{
+        id: string;
+        title: string | null;
+        createdAt: string;
+        mood: string | null;
+        reason: string;
+        excerpt: string;
+    }>;
+}
 
 interface Message {
     role: 'user' | 'assistant';
     content: string;
+    meta?: MessageMeta;
 }
 
 interface CoachStatus {
     available: boolean;
-    provider: 'llm' | 'huggingface' | 'disabled';
+    provider: 'llm' | 'huggingface' | 'guided_reflection' | 'disabled';
     vendor: string;
     model?: string;
     message?: string;
+    suggestions?: string[];
+    lenses?: Array<{
+        id: GuidedLens;
+        label: string;
+        description: string;
+    }>;
+    defaultLens?: GuidedLens;
 }
 
 export default function ChatPage() {
@@ -29,6 +57,7 @@ export default function ChatPage() {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [coachStatus, setCoachStatus] = useState<CoachStatus | null>(null);
+    const [selectedLens, setSelectedLens] = useState<GuidedLens>('clarity');
     const [isStatusLoading, setIsStatusLoading] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -45,6 +74,9 @@ export default function ChatPage() {
                 const data = await response.json().catch(() => null);
                 if (!mounted || !data) return;
                 setCoachStatus(data);
+                if (data.provider === 'guided_reflection' && typeof data.defaultLens === 'string') {
+                    setSelectedLens(data.defaultLens);
+                }
             } catch (error) {
                 console.error('Failed to fetch AI Coach status:', error);
                 if (mounted) {
@@ -73,6 +105,7 @@ export default function ChatPage() {
         if (!input.trim() || isLoading || coachStatus?.available === false) return;
 
         const userMessage = input.trim();
+        const isGuidedMode = coachStatus?.provider === 'guided_reflection';
         setInput('');
         setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
         setIsLoading(true);
@@ -83,14 +116,28 @@ export default function ChatPage() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ query: userMessage }),
+                body: JSON.stringify({
+                    query: userMessage,
+                    lens: isGuidedMode ? selectedLens : undefined,
+                }),
             });
 
             const data = await response.json().catch(() => null);
             if (!response.ok) {
                 throw new Error(data?.message || data?.response || 'Failed to get response');
             }
-            setMessages((prev) => [...prev, { role: 'assistant', content: data.response }]);
+            setMessages((prev) => [...prev, {
+                role: 'assistant',
+                content: data.response,
+                meta: {
+                    mode: data.mode,
+                    model: data.model,
+                    strategy: data.strategy,
+                    lens: data.lens,
+                    prompts: Array.isArray(data.prompts) ? data.prompts : [],
+                    highlights: Array.isArray(data.highlights) ? data.highlights : [],
+                },
+            }]);
         } catch (error) {
             console.error('Chat error:', error);
             setMessages((prev) => [
@@ -124,14 +171,25 @@ export default function ChatPage() {
         return null;
     }
 
-    const suggestions = [
+    const coachAvailable = coachStatus?.available !== false;
+    const coachMessage = coachStatus?.message || 'AI Coach is not enabled yet for this environment.';
+    const coachMode = coachStatus?.provider === 'guided_reflection'
+        ? 'guided'
+        : coachAvailable
+            ? 'live'
+            : 'disabled';
+    const suggestions = coachStatus?.suggestions || [
         'When was I last happy?',
         'What stressed me out recently?',
         'Summarize my week',
         'What are my recurring themes?',
     ];
-    const coachAvailable = coachStatus?.available !== false;
-    const coachMessage = coachStatus?.message || 'AI Coach is not enabled yet for this environment.';
+    const guidedLenses = coachStatus?.lenses || [];
+    const headerDescription = coachMode === 'guided'
+        ? 'Use local reflection mode to surface relevant notes, patterns, and your next writing question.'
+        : coachAvailable
+            ? 'Ask Notive about your notes, your patterns, or what to write next.'
+            : 'This environment is running without a live guide right now.';
 
     return (
         <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
@@ -148,32 +206,62 @@ export default function ChatPage() {
                             <FiArrowLeft size={20} aria-hidden="true" />
                         </button>
                         <SectionHeader
-                            title="AI Coach"
-                            description={coachAvailable ? 'Ask questions about your journal history.' : 'This environment is running without a live AI coach provider.'}
+                            title={NOTIVE_VOICE.surfaces.reflectionCoach}
+                            description={headerDescription}
                             kicker="Reflect"
                             className="items-center"
                         />
                     </div>
                     <TagPill tone={coachAvailable ? 'primary' : 'muted'} className="gap-1">
                         <FiCpu size={12} aria-hidden="true" />
-                        {coachAvailable ? 'Context Aware' : 'Unavailable'}
+                        {coachMode === 'guided' ? 'Local Guide' : coachAvailable ? 'Context Aware' : 'Unavailable'}
                     </TagPill>
                 </AppPanel>
 
                 <AppPanel className="min-h-[60vh]">
                     <div className="space-y-4">
+                        {coachMode === 'guided' && (
+                            <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-4 text-sm text-white/85">
+                                <p className="font-medium text-white">Guide is in local reflection mode.</p>
+                                <p>{coachMessage}</p>
+                                <p>It will stay grounded in your own notes, related entries, and fixed reflection prompts instead of freeform generation.</p>
+                                {guidedLenses.length > 0 && (
+                                    <div className="grid gap-2 md:grid-cols-4">
+                                        {guidedLenses.map((lens) => {
+                                            const active = selectedLens === lens.id;
+                                            return (
+                                                <button
+                                                    key={lens.id}
+                                                    type="button"
+                                                    onClick={() => setSelectedLens(lens.id)}
+                                                    className={`rounded-2xl border px-3 py-3 text-left transition-colors ${
+                                                        active
+                                                            ? 'border-primary/35 bg-primary/15 text-white'
+                                                            : 'border-white/12 bg-white/[0.03] text-white/80 hover:bg-white/[0.06]'
+                                                    }`}
+                                                >
+                                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">{lens.label}</p>
+                                                    <p className="mt-1 text-xs leading-5">{lens.description}</p>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {!coachAvailable && (
                             <div className="rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-4 text-sm text-ink-secondary">
-                                <p className="font-medium text-white">AI Coach is paused here.</p>
+                                <p className="font-medium text-white">Guide is paused here.</p>
                                 <p className="mt-2">{coachMessage}</p>
-                                <p className="mt-2">You can still use Timeline, Insights, and Portfolio while we finish the provider setup.</p>
+                                <p className="mt-2">You can still use {NOTIVE_VOICE.surfaces.memoryAtlas}, {NOTIVE_VOICE.surfaces.signalStudio}, and {NOTIVE_VOICE.surfaces.outcomeStudio} while we finish the provider setup.</p>
                             </div>
                         )}
 
                         {messages.length === 0 ? (
                             <EmptyState
-                                title="Ask Your Journal Anything"
-                                description={coachAvailable ? 'Use the suggestions below or type your own reflection question.' : 'Return once an AI provider is enabled to use chat.'}
+                                title={coachMode === 'guided' ? 'Start with your own notes' : 'Ask Notive anything'}
+                                description={coachAvailable ? 'Use the ideas below or type your own question.' : 'Come back when a guide provider is enabled to use chat.'}
                                 className="py-12"
                             />
                         ) : (
@@ -190,6 +278,55 @@ export default function ChatPage() {
                                         }`}
                                     >
                                         <p className="whitespace-pre-wrap">{message.content}</p>
+
+                                        {message.role === 'assistant' && message.meta?.mode === 'guided_reflection' && (
+                                            <div className="mt-3 space-y-3">
+                                                <div className="flex flex-wrap gap-2">
+                                                    {message.meta.lens && <TagPill tone="primary">{message.meta.lens}</TagPill>}
+                                                    {message.meta.strategy && <TagPill>{message.meta.strategy}</TagPill>}
+                                                </div>
+
+                                                {message.meta.highlights && message.meta.highlights.length > 0 && (
+                                                    <div className="grid gap-2 md:grid-cols-2">
+                                                        {message.meta.highlights.map((highlight) => (
+                                                            <Link
+                                                                key={`${index}-${highlight.id}`}
+                                                                href={`/entry/view?id=${highlight.id}`}
+                                                                className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 transition-colors hover:border-white/15 hover:bg-black/30"
+                                                            >
+                                                                <div className="flex items-start justify-between gap-2">
+                                                                    <div>
+                                                                        <p className="text-[11px] uppercase tracking-[0.12em] text-ink-muted">{highlight.createdAt}</p>
+                                                                        <p className="mt-1 text-sm font-semibold text-white">{highlight.title || 'Untitled note'}</p>
+                                                                    </div>
+                                                                    <FiArrowRight size={14} className="text-ink-muted" aria-hidden="true" />
+                                                                </div>
+                                                                <p className="mt-2 text-xs leading-6 text-ink-secondary">{highlight.excerpt}</p>
+                                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                                    {highlight.mood && <TagPill tone="primary">{highlight.mood}</TagPill>}
+                                                                    <TagPill>{highlight.reason}</TagPill>
+                                                                </div>
+                                                            </Link>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {message.meta.prompts && message.meta.prompts.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {message.meta.prompts.map((prompt) => (
+                                                            <button
+                                                                key={`${index}-${prompt}`}
+                                                                type="button"
+                                                                onClick={() => setInput(prompt)}
+                                                                className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs text-ink-secondary hover:text-white hover:bg-white/10 transition-colors"
+                                                            >
+                                                                {prompt}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))
@@ -232,7 +369,13 @@ export default function ChatPage() {
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder={coachAvailable ? 'Ask me anything about your journal...' : 'AI Coach is unavailable in this environment.'}
+                            placeholder={
+                                coachMode === 'guided'
+                                    ? 'Ask about a note, a feeling, a recurring pattern, or what to write next...'
+                                    : coachAvailable
+                                        ? 'Ask about a note, a feeling, a topic, or what to write next...'
+                                        : 'Guide is unavailable in this environment.'
+                            }
                             rows={1}
                             disabled={!coachAvailable}
                             className="flex-1 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
@@ -243,7 +386,7 @@ export default function ChatPage() {
                             className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/15 px-5 py-3 text-sm font-semibold text-white hover:bg-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             <FiSend size={16} aria-hidden="true" />
-                            {coachAvailable ? 'Send' : 'Unavailable'}
+                            {coachMode === 'guided' ? 'Reflect' : coachAvailable ? 'Send' : 'Unavailable'}
                         </button>
                     </div>
                 </AppPanel>
@@ -251,4 +394,3 @@ export default function ChatPage() {
         </div>
     );
 }
-

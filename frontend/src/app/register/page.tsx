@@ -22,9 +22,9 @@ type RegisterFieldErrors = {
 };
 
 const SIGNUP_VALUE_POINTS = [
-    'Get a personalized setup for personal and professional growth',
-    'Track progress and export portfolio-ready evidence',
-    'Keep one profile context across analytics, AI coach, and outcomes',
+    'Pick what you want Notive to help with',
+    'Turn raw notes into patterns and stories',
+    'Keep life, school, and work notes in one place',
 ];
 
 const PASSWORD_GUIDANCE = [
@@ -126,7 +126,7 @@ export default function RegisterPage() {
             clearOnboardingState(registeredUser.id);
             router.replace(resolvePostAuthRoute(registeredUser));
         } catch (err: any) {
-            setError(err.message || 'Failed to register');
+            setError(err.message || 'Could not create your account.');
         } finally {
             setIsLoading(false);
         }
@@ -149,7 +149,7 @@ export default function RegisterPage() {
             clearOnboardingState(registeredUser.id);
             router.replace(resolvePostAuthRoute(registeredUser));
         } catch (err: any) {
-            setError(err.message || 'Google sign-up failed');
+            setError(err.message || 'Google sign-up failed.');
         } finally {
             setIsLoading(false);
         }
@@ -197,9 +197,9 @@ export default function RegisterPage() {
 
                         <div className="relative z-10 space-y-5">
                             <span className="section-kicker">New Account</span>
-                            <h1 className="text-4xl xl:text-5xl text-white leading-tight">Set up once, then grow with every entry.</h1>
+                            <h1 className="text-4xl xl:text-5xl text-white leading-tight">Start saving moments and building your story.</h1>
                             <p className="text-base text-ink-secondary">
-                                Your profile powers prompt quality, analytics relevance, and professional portfolio output.
+                                Your setup helps Notive ask better questions, show better patterns, and build useful stories.
                             </p>
                         </div>
 
@@ -215,7 +215,7 @@ export default function RegisterPage() {
                         <div className="relative z-10 mt-auto rounded-2xl border border-primary/20 bg-primary/10 px-4 py-4">
                             <p className="text-xs uppercase tracking-[0.16em] text-primary font-semibold">What Happens Next</p>
                             <p className="text-sm text-ink-secondary mt-2">
-                                After sign-up, you will complete a short onboarding flow so personal and professional recommendations stay aligned.
+                                After sign-up, you will tell Notive what you want help with and pick an easy way to start writing.
                             </p>
                         </div>
                     </section>
@@ -230,7 +230,7 @@ export default function RegisterPage() {
                                     Notive.
                                 </motion.h1>
                             </Link>
-                            <p className="text-ink-muted mt-2">Create your account and start your guided growth system.</p>
+                            <p className="text-ink-muted mt-2">Create your account and start writing notes, seeing patterns, and building stories.</p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-5">
@@ -249,7 +249,7 @@ export default function RegisterPage() {
                             <SlideUp delay={0.1}>
                                 <Input
                                     id="name"
-                                    label="Full Name"
+                                    label="Name"
                                     type="text"
                                     autoComplete="name"
                                     placeholder="John Doe"

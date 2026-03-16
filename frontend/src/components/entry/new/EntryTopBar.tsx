@@ -135,7 +135,7 @@ export default function EntryTopBar({
                         ) : (
                             <>
                                 <FiSave size={20} aria-hidden="true" />
-                                {isQuickMode ? 'Save Quick Entry' : 'Save Entry'}
+                                {isQuickMode ? 'Save Quick Note' : 'Save Note'}
                             </>
                         )}
                     </button>
@@ -160,7 +160,7 @@ export default function EntryTopBar({
                 <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                            <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Quick Capture</p>
+                            <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Quick Note</p>
                             <p className="mt-1 text-sm text-white">Save the thought now. You can organize and polish it later.</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -170,7 +170,7 @@ export default function EntryTopBar({
                                     onClick={onOpenFullStudio}
                                     className="rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/[0.08] transition-colors"
                                 >
-                                    Full Studio
+                                    Full Editor
                                 </button>
                             )}
                             {onFinishLater && (
@@ -199,7 +199,7 @@ export default function EntryTopBar({
                         onClick={onToggleAdvancedTools}
                         className="px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-xs text-primary uppercase tracking-[0.08em] hover:bg-primary/25 transition-colors"
                     >
-                        {showAdvancedTools ? 'Hide Details' : 'Add Details'}
+                        {showAdvancedTools ? 'Hide Options' : 'More Options'}
                     </button>
                 )}
             </div>
