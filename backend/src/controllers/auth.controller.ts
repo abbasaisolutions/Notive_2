@@ -9,6 +9,7 @@ import {
 import crypto from 'crypto';
 import { emailService } from '../services/email.service';
 import { hashToken } from '../utils/token-security';
+import { clearRefreshTokenCookie, setRefreshTokenCookie } from '../utils/refresh-token-cookie';
 
 // Calculate expiry date for refresh token (7 days)
 const getRefreshTokenExpiry = (): Date => {
@@ -73,12 +74,7 @@ export const register = async (req: Request, res: Response) => {
         });
 
         // Set refresh token as HttpOnly cookie
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
+        setRefreshTokenCookie(res, refreshToken);
 
         return res.status(201).json({
             message: 'User registered successfully',
@@ -148,12 +144,7 @@ export const login = async (req: Request, res: Response) => {
         });
 
         // Set refresh token as HttpOnly cookie
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
+        setRefreshTokenCookie(res, refreshToken);
 
         return res.status(200).json({
             message: 'Login successful',
@@ -221,7 +212,7 @@ export const refresh = async (req: Request, res: Response) => {
             await prisma.refreshToken.deleteMany({
                 where: { userId: storedToken.user.id },
             });
-            res.clearCookie('refreshToken');
+            clearRefreshTokenCookie(res);
             return res.status(403).json({ message: 'Your account has been suspended' });
         }
 
@@ -254,12 +245,7 @@ export const refresh = async (req: Request, res: Response) => {
         });
 
         // Update cookie for web clients
-        res.cookie('refreshToken', newRefreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
+        setRefreshTokenCookie(res, newRefreshToken);
 
         return res.status(200).json({
             accessToken,
@@ -297,7 +283,7 @@ export const logout = async (req: Request, res: Response) => {
         }
 
         // Clear the cookie
-        res.clearCookie('refreshToken');
+        clearRefreshTokenCookie(res);
 
         return res.status(200).json({ message: 'Logged out successfully' });
     } catch (error) {

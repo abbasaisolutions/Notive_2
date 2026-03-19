@@ -8,6 +8,7 @@ import { emailService } from '../services/email.service';
 import { verifyGoogleCredential } from '../utils/google-auth';
 import { generateSensitiveActionToken, verifySensitiveActionToken } from '../utils/jwt';
 import { hashToken } from '../utils/token-security';
+import { clearRefreshTokenCookie } from '../utils/refresh-token-cookie';
 
 const sanitizeOptionalString = (value: unknown, maxLength = 240): string | null | undefined => {
     if (value === undefined) return undefined;
@@ -1239,7 +1240,7 @@ export const deleteAccount = async (req: Request, res: Response) => {
             where: { id: userId },
         });
 
-        res.clearCookie('refreshToken');
+        clearRefreshTokenCookie(res);
 
         return res.json({ message: 'Account permanently deleted' });
     } catch (error) {

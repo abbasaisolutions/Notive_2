@@ -3,6 +3,7 @@ import prisma from '../config/prisma';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
 import { hashToken } from '../utils/token-security';
 import { verifyGoogleCredential } from '../utils/google-auth';
+import { setRefreshTokenCookie } from '../utils/refresh-token-cookie';
 
 const getRefreshTokenExpiry = (): Date => {
     const expiry = new Date();
@@ -81,12 +82,7 @@ export const googleSignIn = async (req: Request, res: Response) => {
         });
 
         // Set refresh token in cookie
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+        setRefreshTokenCookie(res, refreshToken);
 
         const userWithProfile = await prisma.user.findUnique({
             where: { id: user.id },

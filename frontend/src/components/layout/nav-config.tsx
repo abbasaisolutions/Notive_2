@@ -6,14 +6,12 @@ import {
     FiBriefcase,
     FiClock,
     FiHome,
-    FiMessageSquare,
     FiPlus,
     FiShield,
     FiTrendingUp,
     FiUploadCloud,
     FiUser,
 } from 'react-icons/fi';
-import { NOTIVE_VOICE } from '@/content/notive-voice';
 
 export type NavItem = {
     href: string;
@@ -53,6 +51,8 @@ export type RouteMeta = {
     secondaryAction?: RouteAction;
     visibleInfo: string[];
     journeyStage: JourneyStageId;
+    headerMode?: 'standard' | 'none';
+    showResumeCard?: boolean;
 };
 
 export type JourneyStage = {
@@ -65,32 +65,28 @@ export type JourneyStage = {
 const icons = {
     home: <FiHome aria-hidden="true" />,
     write: <FiPlus aria-hidden="true" />,
-    journey: <FiClock aria-hidden="true" />,
+    memories: <FiClock aria-hidden="true" />,
     insights: <FiTrendingUp aria-hidden="true" />,
     profile: <FiUser aria-hidden="true" />,
     chapters: <FiBookOpen aria-hidden="true" />,
-    chat: <FiMessageSquare aria-hidden="true" />,
-    legacy: <FiBriefcase aria-hidden="true" />,
+    stories: <FiBriefcase aria-hidden="true" />,
     imports: <FiUploadCloud aria-hidden="true" />,
     admin: <FiShield aria-hidden="true" />,
 };
 
-const surfaces = NOTIVE_VOICE.surfaces;
-
 export const primaryNavItems: NavItem[] = [
-    { href: '/dashboard', label: surfaces.homeBase, shortLabel: 'Home', icon: icons.home, matchPrefixes: ['/dashboard'] },
+    { href: '/dashboard', label: 'Home', shortLabel: 'Home', icon: icons.home, matchPrefixes: ['/dashboard'] },
     { href: '/entry/new', label: 'Write', shortLabel: 'Write', icon: icons.write, isMain: true, matchPrefixes: ['/entry/new', '/entry/edit'] },
-    { href: '/timeline', label: surfaces.memoryAtlas, shortLabel: 'Memories', icon: icons.journey, matchPrefixes: ['/timeline'] },
-    { href: '/insights', label: surfaces.signalStudio, shortLabel: 'Patterns', icon: icons.insights, matchPrefixes: ['/insights'] },
+    { href: '/timeline', label: 'Memories', shortLabel: 'Memories', icon: icons.memories, matchPrefixes: ['/timeline'] },
+    { href: '/insights', label: 'Patterns', shortLabel: 'Patterns', icon: icons.insights, matchPrefixes: ['/insights'] },
 ];
 
 export const secondaryNavItems: NavItem[] = [
-    { href: '/chapters', label: surfaces.storyCollections, shortLabel: 'Groups', icon: icons.chapters, matchPrefixes: ['/chapters'] },
-    { href: '/import', label: surfaces.memoryInbox, shortLabel: 'Bring In', icon: icons.imports, matchPrefixes: ['/import'] },
-    { href: '/chat', label: surfaces.reflectionCoach, shortLabel: 'Guide', icon: icons.chat, matchPrefixes: ['/chat'] },
-    { href: '/portfolio', label: surfaces.outcomeStudio, shortLabel: 'Stories', icon: icons.legacy, matchPrefixes: ['/portfolio', '/legacy'] },
-    { href: '/profile', label: surfaces.profileStudio, shortLabel: 'Me', icon: icons.profile, matchPrefixes: ['/profile'] },
-    { href: '/admin', label: surfaces.admin, shortLabel: 'Manage', icon: icons.admin, matchPrefixes: ['/admin'], allowedRoles: ['ADMIN', 'SUPERADMIN'] },
+    { href: '/chapters', label: 'Groups', shortLabel: 'Groups', icon: icons.chapters, matchPrefixes: ['/chapters'] },
+    { href: '/import', label: 'Imports', shortLabel: 'Imports', icon: icons.imports, matchPrefixes: ['/import'] },
+    { href: '/portfolio', label: 'Stories', shortLabel: 'Stories', icon: icons.stories, matchPrefixes: ['/portfolio', '/legacy'] },
+    { href: '/profile', label: 'Me', shortLabel: 'Me', icon: icons.profile, matchPrefixes: ['/profile'] },
+    { href: '/admin', label: 'Admin', shortLabel: 'Admin', icon: icons.admin, matchPrefixes: ['/admin'], allowedRoles: ['ADMIN', 'SUPERADMIN'] },
 ];
 
 export const desktopNavSections: NavSection[] = [
@@ -112,21 +108,10 @@ export const mobileMoreNavSections: NavSection[] = [
         items: secondaryNavItems.filter((item) => item.href === '/chapters' || item.href === '/import' || item.href === '/portfolio'),
     },
     {
-        id: 'tools',
-        label: 'Help',
-        items: secondaryNavItems.filter((item) => item.href === '/chat'),
-    },
-    {
         id: 'account',
         label: 'Account',
         items: secondaryNavItems.filter((item) => item.href === '/profile' || item.href === '/admin'),
     },
-];
-
-export const utilityActions: RouteAction[] = [
-    { label: 'Write', shortLabel: 'Write', href: '/entry/new?mode=quick' },
-    { label: surfaces.reflectionCoach, shortLabel: 'Guide', href: '/chat' },
-    { label: 'Open Me', shortLabel: 'Me', href: '/profile/edit' },
 ];
 
 export const getProfileReadinessAction = (completionScore: number): RouteAction => {
@@ -157,27 +142,29 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
     {
         prefix: '/dashboard',
         meta: {
-            title: surfaces.homeBase,
-            description: 'Your main place to write, return to old notes, and pick your next step.',
+            title: 'Home',
+            description: 'Pick up where you left off, write something new, or reopen a useful thread from your notes.',
             section: 'Main',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: surfaces.homeBase }],
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Home' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
-            secondaryAction: { label: `Open ${surfaces.memoryAtlas}`, shortLabel: 'Memories', href: '/timeline' },
+            secondaryAction: { label: 'Open Memories', shortLabel: 'Memories', href: '/timeline' },
             visibleInfo: ['Recent notes', 'Days in a row', 'Next step'],
             journeyStage: 'capture',
+            headerMode: 'none',
         },
     },
     {
         prefix: '/timeline',
         meta: {
-            title: surfaces.memoryAtlas,
-            description: 'Look back at your notes in order and find old moments again.',
+            title: 'Memories',
+            description: 'Look back at your notes in order and reopen old moments quickly.',
             section: 'Main',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: surfaces.memoryAtlas }],
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Memories' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new?mode=quick' },
-            secondaryAction: { label: `Open ${surfaces.storyCollections}`, shortLabel: 'Groups', href: '/chapters' },
+            secondaryAction: { label: 'Open Groups', shortLabel: 'Groups', href: '/chapters' },
             visibleInfo: ['Dates', 'Search', 'Topics'],
             journeyStage: 'capture',
+            headerMode: 'none',
         },
     },
     {
@@ -186,9 +173,9 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
             title: 'Note',
             description: 'Read one note with its feeling, tags, and details.',
             section: 'Main',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: surfaces.memoryAtlas, href: '/timeline' }, { label: 'Note' }],
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Memories', href: '/timeline' }, { label: 'Note' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
-            secondaryAction: { label: `Open ${surfaces.memoryAtlas}`, shortLabel: 'Memories', href: '/timeline' },
+            secondaryAction: { label: 'Open Memories', shortLabel: 'Memories', href: '/timeline' },
             visibleInfo: ['Note text', 'Feeling', 'Related notes'],
             journeyStage: 'capture',
         },
@@ -196,105 +183,113 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
     {
         prefix: '/insights',
         meta: {
-            title: surfaces.signalStudio,
+            title: 'Patterns',
             description: 'See feelings, habits, and repeated topics across your notes.',
             section: 'Reflect',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: surfaces.signalStudio }],
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Patterns' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
-            secondaryAction: { label: `Open ${surfaces.outcomeStudio}`, shortLabel: 'Stories', href: '/portfolio' },
+            secondaryAction: { label: 'Open Stories', shortLabel: 'Stories', href: '/portfolio' },
             visibleInfo: ['Feelings', 'Main topics', 'Next ideas'],
             journeyStage: 'reflect',
+            headerMode: 'none',
         },
     },
     {
         prefix: '/chapters',
         meta: {
-            title: surfaces.storyCollections,
+            title: 'Groups',
             description: 'Put related notes into simple groups by project, season, or part of life.',
             section: 'Organize',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: surfaces.storyCollections }],
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Groups' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
-            secondaryAction: { label: `Open ${surfaces.memoryAtlas}`, shortLabel: 'Memories', href: '/timeline' },
+            secondaryAction: { label: 'Open Memories', shortLabel: 'Memories', href: '/timeline' },
             visibleInfo: ['Groups', 'Note counts', 'Topics'],
             journeyStage: 'organize',
+            headerMode: 'none',
         },
     },
     {
         prefix: '/import',
         meta: {
-            title: surfaces.memoryInbox,
-            description: 'Add old posts, notes, and files so they can become useful stories.',
+            title: 'Imports',
+            description: 'Bring old posts, notes, and files into Notive so they can become useful stories.',
             section: 'Organize',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: surfaces.memoryInbox }],
-            primaryAction: { label: `Open ${surfaces.memoryAtlas}`, shortLabel: 'Memories', href: '/timeline' },
-            secondaryAction: { label: `Open ${surfaces.outcomeStudio}`, shortLabel: 'Stories', href: '/portfolio?view=evidence' },
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Imports' }],
+            primaryAction: { label: 'Open Memories', shortLabel: 'Memories', href: '/timeline' },
+            secondaryAction: { label: 'Open Stories', shortLabel: 'Stories', href: '/portfolio?view=evidence' },
             visibleInfo: ['Connected apps', 'Import queue', 'Ready items'],
             journeyStage: 'organize',
+            headerMode: 'none',
         },
     },
     {
         prefix: '/chat',
         meta: {
-            title: surfaces.reflectionCoach,
-            description: 'Ask Notive for help thinking, remembering, or writing your next note.',
+            title: 'Guided Reflection',
+            description: 'Use a quieter reflection tool to surface notes, patterns, and your next question.',
             section: 'Reflect',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: surfaces.reflectionCoach }],
-            primaryAction: { label: `Open ${surfaces.memoryAtlas}`, shortLabel: 'Memories', href: '/timeline' },
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Guided Reflection' }],
+            primaryAction: { label: 'Open Memories', shortLabel: 'Memories', href: '/timeline' },
             secondaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
-            visibleInfo: ['Chat', 'Ideas', 'Next step'],
+            visibleInfo: ['Reflection', 'Ideas', 'Next step'],
             journeyStage: 'reflect',
+            headerMode: 'none',
         },
     },
     {
         prefix: '/portfolio',
         meta: {
-            title: surfaces.outcomeStudio,
-            description: 'Turn lived moments into clear stories for school, work, and growth.',
+            title: 'Stories',
+            description: 'Open resume, statement, interview, and growth tools built from your notes.',
             section: 'Apply',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: surfaces.outcomeStudio }],
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Stories' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
-            secondaryAction: { label: `Open ${surfaces.profileStudio}`, shortLabel: 'Me', href: '/profile/edit' },
+            secondaryAction: { label: 'Open Me', shortLabel: 'Me', href: '/profile/edit' },
             visibleInfo: ['Story quality', 'Practice', 'Exports'],
             journeyStage: 'apply',
+            headerMode: 'none',
         },
     },
     {
         prefix: '/legacy',
         meta: {
-            title: surfaces.outcomeStudio,
-            description: 'Turn lived moments into clear stories you can use later.',
+            title: 'Stories',
+            description: 'Open resume, statement, interview, and growth tools built from your notes.',
             section: 'Apply',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: surfaces.outcomeStudio }],
-            primaryAction: { label: `Open ${surfaces.outcomeStudio}`, shortLabel: 'Stories', href: '/portfolio' },
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Stories' }],
+            primaryAction: { label: 'Open Stories', shortLabel: 'Stories', href: '/portfolio' },
             secondaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
             visibleInfo: ['Old view', 'Story details', 'Highlights'],
             journeyStage: 'apply',
+            headerMode: 'none',
         },
     },
     {
         prefix: '/profile',
         meta: {
-            title: surfaces.profileStudio,
+            title: 'Me',
             description: 'Your profile, goals, settings, and privacy.',
             section: 'Account',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: surfaces.profileStudio }],
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Me' }],
             primaryAction: { label: 'Edit Me', shortLabel: 'Edit', href: '/profile/edit' },
             secondaryAction: { label: 'Privacy & Data', shortLabel: 'Privacy', href: '/profile/edit?tab=privacy' },
             visibleInfo: ['Goals', 'Settings', 'Privacy'],
             journeyStage: 'account',
+            headerMode: 'none',
         },
     },
     {
         prefix: '/admin',
         meta: {
-            title: surfaces.admin,
+            title: 'Admin',
             description: 'Support users and manage accounts.',
             section: 'Account',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: surfaces.admin }],
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Admin' }],
             primaryAction: { label: 'Review Users', shortLabel: 'Review', href: '/admin' },
-            secondaryAction: { label: `Open ${surfaces.profileStudio}`, shortLabel: 'Me', href: '/profile' },
+            secondaryAction: { label: 'Open Me', shortLabel: 'Me', href: '/profile' },
             visibleInfo: ['Users', 'Support', 'Safety'],
             journeyStage: 'account',
+            headerMode: 'none',
         },
     },
 ];

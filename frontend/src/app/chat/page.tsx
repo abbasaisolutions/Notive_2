@@ -206,15 +206,15 @@ export default function ChatPage() {
                             <FiArrowLeft size={20} aria-hidden="true" />
                         </button>
                         <SectionHeader
-                            title={NOTIVE_VOICE.surfaces.reflectionCoach}
+                            title={coachMode === 'guided' ? 'Guided Reflection' : NOTIVE_VOICE.surfaces.reflectionCoach}
                             description={headerDescription}
-                            kicker="Reflect"
+                            kicker={coachMode === 'guided' ? 'Reflect' : 'Guide'}
                             className="items-center"
                         />
                     </div>
                     <TagPill tone={coachAvailable ? 'primary' : 'muted'} className="gap-1">
                         <FiCpu size={12} aria-hidden="true" />
-                        {coachMode === 'guided' ? 'Local Guide' : coachAvailable ? 'Context Aware' : 'Unavailable'}
+                        {coachMode === 'guided' ? 'Guided Reflection' : coachAvailable ? 'Context Aware' : 'Unavailable'}
                     </TagPill>
                 </AppPanel>
 
@@ -222,9 +222,9 @@ export default function ChatPage() {
                     <div className="space-y-4">
                         {coachMode === 'guided' && (
                             <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-4 text-sm text-white/85">
-                                <p className="font-medium text-white">Guide is in local reflection mode.</p>
+                                <p className="font-medium text-white">This space is running in guided reflection mode.</p>
                                 <p>{coachMessage}</p>
-                                <p>It will stay grounded in your own notes, related entries, and fixed reflection prompts instead of freeform generation.</p>
+                                <p>It stays grounded in your own notes, related entries, and fixed reflection prompts instead of open-ended generation.</p>
                                 {guidedLenses.length > 0 && (
                                     <div className="grid gap-2 md:grid-cols-4">
                                         {guidedLenses.map((lens) => {
@@ -260,8 +260,8 @@ export default function ChatPage() {
 
                         {messages.length === 0 ? (
                             <EmptyState
-                                title={coachMode === 'guided' ? 'Start with your own notes' : 'Ask Notive anything'}
-                                description={coachAvailable ? 'Use the ideas below or type your own question.' : 'Come back when a guide provider is enabled to use chat.'}
+                                title={coachMode === 'guided' ? 'Pick a lens and begin' : 'Ask Notive anything'}
+                                description={coachAvailable ? 'Use one of the reflection starters below or type your own question.' : 'Come back when a guide provider is enabled to use chat.'}
                                 className="py-12"
                             />
                         ) : (
@@ -349,17 +349,26 @@ export default function ChatPage() {
                 </AppPanel>
 
                 <ActionBar className="justify-between">
-                    <div className="flex flex-wrap gap-2">
+                    <div className="space-y-2">
+                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
+                            {coachMode === 'guided' ? 'Reflection starters' : 'Suggestions'}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
                         {coachAvailable && suggestions.map((suggestion) => (
                             <button
                                 key={suggestion}
                                 type="button"
                                 onClick={() => setInput(suggestion)}
-                                className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs text-ink-secondary hover:text-white hover:bg-white/10 transition-colors"
+                                className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                                    coachMode === 'guided'
+                                        ? 'border-primary/20 bg-primary/10 text-white hover:bg-primary/16'
+                                        : 'border-white/15 bg-white/[0.03] text-ink-secondary hover:text-white hover:bg-white/10'
+                                }`}
                             >
                                 {suggestion}
                             </button>
                         ))}
+                        </div>
                     </div>
                 </ActionBar>
 
@@ -371,7 +380,7 @@ export default function ChatPage() {
                             onKeyDown={handleKeyDown}
                             placeholder={
                                 coachMode === 'guided'
-                                    ? 'Ask about a note, a feeling, a recurring pattern, or what to write next...'
+                                    ? 'Describe what you want to reflect on, or choose a starter above...'
                                     : coachAvailable
                                         ? 'Ask about a note, a feeling, a topic, or what to write next...'
                                         : 'Guide is unavailable in this environment.'
@@ -386,7 +395,7 @@ export default function ChatPage() {
                             className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/15 px-5 py-3 text-sm font-semibold text-white hover:bg-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             <FiSend size={16} aria-hidden="true" />
-                            {coachMode === 'guided' ? 'Reflect' : coachAvailable ? 'Send' : 'Unavailable'}
+                            {coachMode === 'guided' ? 'Continue' : coachAvailable ? 'Send' : 'Unavailable'}
                         </button>
                     </div>
                 </AppPanel>

@@ -431,9 +431,9 @@ function OnboardingPageContent() {
 
                 <div className="mb-4 text-center">
                     <div className="text-xs uppercase tracking-[0.2em] text-ink-muted">Setup {step}/3</div>
-                    <h1 className="text-3xl md:text-4xl font-serif text-white mt-2">Set up Notive in about a minute.</h1>
+                    <h1 className="text-3xl md:text-4xl font-serif text-white mt-2">Choose how Notive should help you first.</h1>
                     <p className="mt-3 text-sm text-ink-secondary max-w-2xl mx-auto">
-                        Pick what you want help with, where Notive should focus, and an easy first question for your first note.
+                        Pick your goal, choose the part of life to focus on, and start with one easy first question for your first note.
                     </p>
                     <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                         {ONBOARDING_STEPS.map((item) => {

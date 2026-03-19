@@ -16,10 +16,17 @@ import importRoutes from './routes/import.routes';
 import fileRoutes from './routes/file.routes';
 import healthRoutes from './routes/health.routes';
 import { healthCronService } from './services/health-cron.service';
+import { securityConfig } from './config/security';
+import { securityHeadersMiddleware } from './middleware/security.middleware';
+import { requestLoggingMiddleware } from './middleware/request-logging.middleware';
+import { serverLogger } from './utils/server-logger';
 
 const app: Express = express();
 const port = process.env.PORT || 8000;
 const isProd = process.env.NODE_ENV === 'production';
+
+app.disable('x-powered-by');
+app.set('trust proxy', securityConfig.trustProxy);
 
 if (isProd && (!process.env.JWT_ACCESS_SECRET || !process.env.JWT_REFRESH_SECRET)) {
     throw new Error('JWT secrets are required in production');
@@ -31,6 +38,8 @@ const allowedOrigins = (process.env.CORS_ORIGINS || '')
     .filter(Boolean);
 
 // Middleware
+app.use(securityHeadersMiddleware);
+app.use(requestLoggingMiddleware);
 app.use(cors({
     origin: (origin, callback) => {
         if (!origin) {
@@ -55,6 +64,7 @@ app.use(cors({
     credentials: true,
 }));
 app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 app.use(cookieParser());
 
 // Serve uploaded files
@@ -81,7 +91,15 @@ app.use('/api/v1/health', healthRoutes);
 
 // Global error handler
 app.use((err: any, req: Request, res: Response, next: any) => {
-    console.error('Global error:', err);
+    serverLogger.error('http.request.failed', {
+        requestId: res.locals.requestId,
+        method: req.method,
+        path: req.originalUrl || req.url,
+        statusCode: Number.isInteger(err?.status) ? err.status : 500,
+        message: err?.message || 'Internal server error',
+        stack: err?.stack,
+        userId: req.userId || undefined,
+    });
     const status = Number.isInteger(err?.status) ? err.status : 500;
     const message = status >= 500 && isProd
         ? 'Internal server error'
@@ -92,16 +110,25 @@ app.use((err: any, req: Request, res: Response, next: any) => {
 
 // Catch unhandled errors
 process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
+    serverLogger.error('process.uncaught_exception', {
+        message: err.message,
+        stack: err.stack,
+    });
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    serverLogger.error('process.unhandled_rejection', {
+        reason: reason instanceof Error ? reason.message : reason,
+        stack: reason instanceof Error ? reason.stack : undefined,
+    });
 });
 
 // Start server
 app.listen(port, () => {
-    console.log(`[server]: Server is running at http://localhost:${port}`);
+    serverLogger.info('server.started', {
+        port,
+        nodeEnv: process.env.NODE_ENV || 'development',
+    });
     
     // Start health sync cron jobs
     if (process.env.ENABLE_HEALTH_CRON !== 'false') {

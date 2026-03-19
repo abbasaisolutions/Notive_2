@@ -6,15 +6,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { useGamification } from '@/context/gamification-context';
 import { buildProfileContextSummary } from '@/services/profile-context.service';
-import { FiExternalLink, FiLogOut } from 'react-icons/fi';
-import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
+import { FiLogOut } from 'react-icons/fi';
 import {
     desktopNavSections,
     filterNavSectionsByRole,
     getProfileReadinessAction,
     isNavItemActive,
     shouldHideGlobalNav,
-    utilityActions,
 } from './nav-config';
 
 export default function Sidebar() {
@@ -33,7 +31,6 @@ export default function Sidebar() {
     const navSections = filterNavSectionsByRole(desktopNavSections, user?.role ?? null);
     const profileSummary = buildProfileContextSummary(user?.profile ?? null);
     const readinessAction = getProfileReadinessAction(profileSummary.completionScore);
-    const currentReturnTo = buildCurrentReturnTo(pathname, typeof window !== 'undefined' ? window.location.search : '');
 
     if (shouldHideGlobalNav(pathname)) {
         return null;
@@ -98,24 +95,6 @@ export default function Sidebar() {
                         </div>
                     </section>
                 ))}
-
-                <section>
-                    <h2 className="pb-2 px-3 text-xs uppercase tracking-[0.18em] text-ink-muted">
-                        Quick Actions
-                    </h2>
-                    <div className="space-y-1">
-                        {utilityActions.map((action) => (
-                            <Link
-                                key={action.href}
-                                href={appendReturnTo(action.href, currentReturnTo)}
-                                className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs uppercase tracking-[0.12em] text-ink-secondary hover:text-white hover:bg-white/10 transition-colors"
-                            >
-                                <span>{action.shortLabel || action.label}</span>
-                                <FiExternalLink aria-hidden="true" />
-                            </Link>
-                        ))}
-                    </div>
-                </section>
             </nav>
 
             <div className="px-5 pb-4">

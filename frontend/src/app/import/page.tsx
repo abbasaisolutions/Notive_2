@@ -213,15 +213,15 @@ export default function ImportPage() {
                 <AppPanel className="space-y-5">
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                         <SectionHeader
-                            kicker={NOTIVE_VOICE.surfaces.memoryInbox}
-                            title="Bring old notes and posts into Notive"
-                            description="Connect apps, review old memories, and move the strongest ones into useful stories."
+                            kicker="Imports"
+                            title="Move outside memories into your story pipeline"
+                            description="Connect apps, review imported notes, verify the strongest stories, and move them into packs you can use."
                         />
 
                         <div className="flex flex-wrap gap-2">
                             <TagPill tone="primary">{connectedCount}/2 connected</TagPill>
                             <TagPill>{(status?.instagram || 0) + (status?.facebook || 0)} imported entries</TagPill>
-                            <TagPill>{overview?.stats?.experienceCount || 0} stories found</TagPill>
+                            <TagPill>{queueCounts.ready_to_export} ready to use</TagPill>
                         </div>
                     </div>
 
@@ -251,10 +251,9 @@ export default function ImportPage() {
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Pipeline</p>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     <TagPill>Connect</TagPill>
-                                    <TagPill>Select</TagPill>
                                     <TagPill>Review</TagPill>
                                     <TagPill>Verify</TagPill>
-                                    <TagPill tone="primary">Export</TagPill>
+                                    <TagPill tone="primary">Use</TagPill>
                                 </div>
                             </div>
                             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -283,9 +282,9 @@ export default function ImportPage() {
 
                 <AppPanel className="space-y-4">
                     <SectionHeader
-                        kicker="Pathways"
-                        title="Move imports to the right next place"
-                        description="Jump straight into the next view that matches how ready your imported stories are."
+                        kicker="Next Step"
+                        title="Choose the next pipeline move"
+                        description="Jump straight into the view that matches how ready each imported memory is."
                     />
                     <div className="grid gap-3 lg:grid-cols-3">
                         <Link
@@ -313,31 +312,66 @@ export default function ImportPage() {
                             <h3 className="mt-3 text-lg font-semibold text-white">Fix weak stories</h3>
                             <p className="mt-2 text-sm leading-7 text-ink-secondary">Send low-detail notes into the story queue and fill in the missing parts.</p>
                         </Link>
-                        <Link
-                            href={appendReturnTo('/portfolio?view=export&pack=resume', currentReturnTo)}
-                            onClick={() => {
-                                void trackEvent({
-                                    eventType: 'import_to_evidence',
-                                    value: 'export',
-                                    metadata: {
-                                        source: 'import_inbox',
-                                    },
-                                });
-                            }}
-                            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
-                        >
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                             <FiCheckCircle size={18} className="text-primary" aria-hidden="true" />
-                            <h3 className="mt-3 text-lg font-semibold text-white">Open stories</h3>
-                            <p className="mt-2 text-sm leading-7 text-ink-secondary">Once strong stories are checked, move straight into resume, statement, or interview packs.</p>
-                        </Link>
+                            <h3 className="mt-3 text-lg font-semibold text-white">Open an output directly</h3>
+                            <p className="mt-2 text-sm leading-7 text-ink-secondary">Once strong stories are checked, jump straight into the output you need.</p>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                <Link
+                                    href={appendReturnTo('/portfolio?view=export&pack=resume', currentReturnTo)}
+                                    onClick={() => {
+                                        void trackEvent({
+                                            eventType: 'import_to_evidence',
+                                            value: 'resume',
+                                            metadata: {
+                                                source: 'import_inbox',
+                                            },
+                                        });
+                                    }}
+                                    className="rounded-full border border-primary/25 bg-primary/12 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
+                                >
+                                    Resume
+                                </Link>
+                                <Link
+                                    href={appendReturnTo('/portfolio?view=export&pack=statement', currentReturnTo)}
+                                    onClick={() => {
+                                        void trackEvent({
+                                            eventType: 'import_to_evidence',
+                                            value: 'statement',
+                                            metadata: {
+                                                source: 'import_inbox',
+                                            },
+                                        });
+                                    }}
+                                    className="rounded-full border border-white/12 bg-black/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-black/30 hover:text-white"
+                                >
+                                    Statement
+                                </Link>
+                                <Link
+                                    href={appendReturnTo('/portfolio?view=interview', currentReturnTo)}
+                                    onClick={() => {
+                                        void trackEvent({
+                                            eventType: 'import_to_evidence',
+                                            value: 'interview',
+                                            metadata: {
+                                                source: 'import_inbox',
+                                            },
+                                        });
+                                    }}
+                                    className="rounded-full border border-white/12 bg-black/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-black/30 hover:text-white"
+                                >
+                                    Interview
+                                </Link>
+                            </div>
+                        </div>
                     </div>
                 </AppPanel>
 
                 <AppPanel className="space-y-4">
                     <SectionHeader
-                        kicker="Story Status"
-                        title="What each import needs next"
-                        description="Use story status to decide whether imports need more detail, checking, or are ready to use."
+                        kicker="Queue Status"
+                        title="See what each imported story needs next"
+                        description="Use status to decide whether imports need more detail, checking, or are ready to use."
                     />
                     <ActionBar className="gap-2 overflow-x-auto bg-black/20 border-white/10">
                         {(['needs_attention', 'ready_to_verify', 'ready_to_export', 'verified'] as StoryEngineStatus[]).map((statusKey) => (

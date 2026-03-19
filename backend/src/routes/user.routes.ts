@@ -13,11 +13,19 @@ import {
     deleteAccount,
 } from '../controllers/user.controller';
 import { googleSignIn } from '../controllers/google.controller';
+import { securityConfig } from '../config/security';
+import { createRateLimiter } from '../middleware/rate-limit.middleware';
 
 const router = Router();
+const authAttemptLimiter = createRateLimiter({
+    keyPrefix: 'legacy-user-google',
+    windowMs: securityConfig.rateLimits.auth.windowMs,
+    max: securityConfig.rateLimits.auth.max,
+    message: 'Too many authentication attempts. Please wait a few minutes and try again.',
+});
 
 // Legacy Google SSO alias. New clients should prefer /api/v1/auth/sso/google/credential.
-router.post('/google', googleSignIn);
+router.post('/google', authAttemptLimiter, googleSignIn);
 
 // Protected routes
 router.use(authMiddleware);

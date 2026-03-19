@@ -8,8 +8,9 @@
     "start": "node scripts/serve-export.js",
     "android:prepare": "npm run build && npx cap sync android",
     "android:open": "npx cap open android",
-    "lint": "tsc --noEmit -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "tsc --noEmit -p tsconfig.typecheck.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "smoke:test": "node scripts/production-smoke.mjs",
     "ui:audit": "node scripts/ui-audit.js",
     "ui:audit:strict": "set CI_UI_STRICT=1&& node scripts/ui-audit.js",
     "link:audit": "node scripts/link-audit.js"

@@ -28,9 +28,11 @@ const formatRelativeTime = (value: string) => {
 export default function WorkspaceResumeCard({
     currentReturnTo,
     pathname,
+    className,
 }: {
     currentReturnTo: string;
     pathname: string | null | undefined;
+    className?: string;
 }) {
     const [session, setSession] = useState<WorkspaceResumeState | null>(null);
     const { trackEvent } = useTelemetry();
@@ -45,7 +47,7 @@ export default function WorkspaceResumeCard({
     const stage = journeyStages.find((item) => item.id === session.stage);
 
     return (
-        <section className="rounded-2xl border border-white/10 bg-surface-2/30 p-3" aria-label="Resume last workspace">
+        <section className={`rounded-2xl border border-white/10 bg-surface-2/30 p-3 ${className || ''}`} aria-label="Resume last workspace">
             <div className="mb-2 flex items-center justify-between gap-2">
                 <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-ink-muted">
                     <FiClock size={12} aria-hidden="true" />

@@ -16,7 +16,6 @@ import {
     mobileMainNavItems,
     mobileMoreNavSections,
     shouldHideGlobalNav,
-    utilityActions,
 } from './nav-config';
 
 export default function MobileNav() {
@@ -176,25 +175,6 @@ export default function MobileNav() {
                                 </Link>
                             </div>
                         )}
-
-                        <div className="mb-2">
-                            <div className="px-2 pb-1 text-xs uppercase tracking-[0.18em] text-ink-muted">
-                                Quick Actions
-                            </div>
-                            <div className="grid grid-cols-3 gap-1.5">
-                                {utilityActions.map((action) => (
-                                    <Link
-                                        key={action.href}
-                                        href={appendReturnTo(action.href, currentReturnTo)}
-                                        onClick={() => setIsMoreOpen(false)}
-                                        className="rounded-lg border border-white/10 bg-white/[0.03] px-1.5 py-2 text-center text-xs uppercase tracking-[0.08em] text-ink-secondary hover:text-white hover:bg-white/10 transition-colors"
-                                    >
-                                        {action.shortLabel || action.label}
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
-
                         {moreNavSections.map((section) => (
                             <div key={section.id} className="mb-2 last:mb-0">
                                 <div className="px-2 pb-1 text-xs uppercase tracking-[0.18em] text-ink-muted">

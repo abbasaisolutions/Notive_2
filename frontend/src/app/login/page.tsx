@@ -156,10 +156,10 @@ export default function LoginPage() {
                         <div className="absolute top-[-10rem] right-[-4rem] w-72 h-72 bg-primary/20 rounded-full blur-[90px] pointer-events-none" />
                         <div className="absolute bottom-[-8rem] left-[-4rem] w-72 h-72 bg-secondary/20 rounded-full blur-[90px] pointer-events-none" />
                         <div className="relative z-10 space-y-6">
-                            <span className="section-kicker">Welcome Back</span>
-                            <h1 className="text-4xl xl:text-5xl text-white leading-tight">Sign in and come back to your notes, patterns, and stories.</h1>
+                            <span className="section-kicker">Sign In</span>
+                            <h1 className="text-4xl xl:text-5xl text-white leading-tight">Come back to your notes, patterns, and stories.</h1>
                             <p className="text-base text-ink-secondary max-w-lg">
-                                Notive keeps your notes, patterns, and story building in one place.
+                                One calmer place for writing, reviewing memories, and shaping stories you can use later.
                             </p>
                         </div>
 
@@ -200,12 +200,12 @@ export default function LoginPage() {
                                     Notive.
                                 </motion.h1>
                             </Link>
-                            <p className="text-ink-secondary mt-2">Sign in to keep writing, seeing patterns, and using your stories.</p>
+                            <p className="text-ink-secondary mt-2">Sign in to keep writing, revisiting memories, and building useful stories.</p>
                         </div>
 
                         <div className="lg:hidden mb-6 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                            <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">How Notive Works</p>
-                            <p className="text-sm text-white mt-2">Write moments. See patterns. Use your stories.</p>
+                            <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">How It Works</p>
+                            <p className="text-sm text-white mt-2">Write moments. Reopen what matters. Shape stories you can use.</p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-5">

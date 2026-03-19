@@ -196,10 +196,10 @@ export default function RegisterPage() {
                         <div className="absolute bottom-[-8rem] right-[-4rem] w-72 h-72 bg-secondary/20 rounded-full blur-[95px] pointer-events-none" />
 
                         <div className="relative z-10 space-y-5">
-                            <span className="section-kicker">New Account</span>
-                            <h1 className="text-4xl xl:text-5xl text-white leading-tight">Start saving moments and building your story.</h1>
+                            <span className="section-kicker">Create Account</span>
+                            <h1 className="text-4xl xl:text-5xl text-white leading-tight">Start with notes now and shape stories later.</h1>
                             <p className="text-base text-ink-secondary">
-                                Your setup helps Notive ask better questions, show better patterns, and build useful stories.
+                                Your setup helps Notive ask better questions, show stronger patterns, and build more useful story packs.
                             </p>
                         </div>
 
@@ -230,7 +230,7 @@ export default function RegisterPage() {
                                     Notive.
                                 </motion.h1>
                             </Link>
-                            <p className="text-ink-muted mt-2">Create your account and start writing notes, seeing patterns, and building stories.</p>
+                            <p className="text-ink-muted mt-2">Create your account and start writing notes, revisiting memories, and building stories.</p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-5">

@@ -153,6 +153,32 @@ Open your browser and navigate to:
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 
+## Production Smoke Checks
+
+Once the frontend is built and the backend is running, you can run a lightweight smoke pass from the frontend workspace:
+
+```bash
+cd frontend
+npm run smoke:test
+```
+
+By default, the smoke runner checks the public app routes and backend root health on:
+
+- `SMOKE_FRONTEND_URL=http://127.0.0.1:3000`
+- `SMOKE_API_URL=http://127.0.0.1:8000/api/v1`
+
+To include authenticated staging checks, provide a real staging account:
+
+```powershell
+$env:SMOKE_FRONTEND_URL="https://your-frontend.example.com"
+$env:SMOKE_API_URL="https://your-api.example.com/api/v1"
+$env:SMOKE_EMAIL="staging-user@example.com"
+$env:SMOKE_PASSWORD="your-staging-password"
+npm run smoke:test
+```
+
+When the auth variables are not set, the protected API checks are skipped automatically.
+
 ## Voice Input
 
 The voice input feature uses the Web Speech API and is supported in:

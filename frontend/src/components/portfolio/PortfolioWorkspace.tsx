@@ -46,6 +46,7 @@ import { writeWorkspaceResume } from '@/utils/workspace-resume';
 
 type StatementVariant = 'standard' | 'college' | 'entry_job';
 type ExportType = 'resume' | 'statement' | 'interview' | 'growth';
+type DocumentExportType = 'resume' | 'statement';
 type ExportDownloadFormat = 'html' | 'markdown';
 type EvidenceField = 'situation' | 'action' | 'lesson' | 'outcome' | 'skills';
 type EvidenceFilter = 'all' | 'needs_attention' | 'ready_to_verify' | 'ready_to_export' | 'verified';
@@ -126,7 +127,7 @@ type Draft = {
 };
 
 type ExportPreview = {
-    type: ExportType;
+    type: DocumentExportType;
     fileName: string;
     content: string;
 };
@@ -138,7 +139,7 @@ type ExperienceMeta = {
     createdAtMs: number;
 };
 
-const exportTypes: ExportType[] = ['resume', 'statement', 'interview', 'growth'];
+const exportTypes: DocumentExportType[] = ['resume', 'statement'];
 const evidenceFilters: EvidenceFilter[] = ['all', 'needs_attention', 'ready_to_verify', 'ready_to_export', 'verified'];
 const portfolioViews: PortfolioView[] = ['export', 'evidence', 'interview', 'growth'];
 const EMPTY_FILTER_COUNTS: Record<EvidenceFilter, number> = {
@@ -162,17 +163,17 @@ const statementVariantLabels: Record<StatementVariant, string> = {
 };
 
 const exportTypeLabels: Record<ExportType, string> = {
-    resume: 'Work Stories',
-    statement: 'My Story Draft',
-    interview: 'Practice Stories',
-    growth: 'Progress Report',
+    resume: 'Resume',
+    statement: 'Statement',
+    interview: 'Interview',
+    growth: 'Growth',
 };
 
 const exportTypeDescriptions: Record<ExportType, string> = {
-    resume: 'Short stories and bullet points you can reuse for resumes, school, and applications.',
-    statement: 'A longer story draft that turns lived moments into direction, identity, and voice.',
-    interview: 'Simple STAR-style stories for practice, interviews, and speaking clearly.',
-    growth: 'A simple progress view with repeated topics, checked proof, and what is changing next.',
+    resume: 'Bullet points and short story fragments you can reuse for resumes, school, and applications.',
+    statement: 'A narrative draft that turns lived moments into direction, identity, and voice.',
+    interview: 'A focused STAR-style workspace for previewing and rehearsing your stories.',
+    growth: 'A progress view with repeated strengths, proof, and what to strengthen next.',
 };
 
 const exportTypeIcons: Record<ExportType, IconType> = {
@@ -191,9 +192,9 @@ const evidenceFilterLabels: Record<EvidenceFilter, string> = {
 };
 
 const portfolioViewLabels: Record<PortfolioView, string> = {
-    export: 'Use Stories',
-    evidence: 'Fix Stories',
-    interview: 'Practice',
+    export: 'Resume & Statement',
+    evidence: 'Evidence',
+    interview: 'Interview',
     growth: 'Progress',
 };
 
@@ -256,6 +257,7 @@ const formatRelativeTime = (value: string) => {
 };
 
 const formatRatioPercent = (value: number) => `${Math.round(value * 100)}%`;
+const normalizeDocumentExportType = (value: ExportType | null | undefined): DocumentExportType => value === 'statement' ? 'statement' : 'resume';
 
 const parseExportFileName = (contentDisposition: string | null, fallback: string) => {
     if (!contentDisposition) return fallback;
@@ -344,27 +346,22 @@ const getExperienceMeta = (experience: Experience): ExperienceMeta => {
     };
 };
 
-const getRecommendedExportType = (overview: Overview | null): ExportType => {
+const getRecommendedExportType = (overview: Overview | null): DocumentExportType => {
     if (!overview) return 'resume';
 
     const outputGoals = overview.profileContext?.outputGoals.map((goal) => goal.toLowerCase()) || [];
     let hasCollegeGoal = false;
-    let hasInterviewGoal = false;
     let hasResumeGoal = false;
 
     outputGoals.forEach((goal) => {
         if (goal.includes('college')) hasCollegeGoal = true;
-        if (goal.includes('interview')) hasInterviewGoal = true;
         if (goal.includes('resume') || goal.includes('portfolio')) hasResumeGoal = true;
     });
 
     if (hasCollegeGoal) return 'statement';
-    if (hasInterviewGoal) return 'interview';
     if (hasResumeGoal) return 'resume';
-    if (overview.profileContext?.track === 'personal') return 'growth';
-    if (overview.interviewStories.length >= 3) return 'interview';
     if (overview.resumeBullets.length > 0) return 'resume';
-    return 'growth';
+    return hasValue(overview.personalStatement) ? 'statement' : 'resume';
 };
 
 const getRecommendedPortfolioView = (
@@ -395,7 +392,7 @@ const getRecommendedPortfolioView = (
 
 const buildResumeLabel = (session: PortfolioSessionState) => {
     if (session.view === 'export') {
-        return `${portfolioViewLabels.export} · ${exportTypeLabels[session.selectedExportType]}`;
+        return exportTypeLabels[session.selectedExportType];
     }
 
     if (session.view === 'evidence') {
@@ -423,7 +420,7 @@ export default function PortfolioWorkspace() {
     const [trends, setTrends] = useState<Trends | null>(null);
     const [trendPeriod, setTrendPeriod] = useState<'week' | 'month'>('month');
     const [statementVariant, setStatementVariant] = useState<StatementVariant>('standard');
-    const [selectedExportType, setSelectedExportType] = useState<ExportType>('resume');
+    const [selectedExportType, setSelectedExportType] = useState<DocumentExportType>('resume');
     const [activeView, setActiveView] = useState<PortfolioView>('export');
     const [activeStoryEntryId, setActiveStoryEntryId] = useState<string | null>(null);
     const [practiceMode, setPracticeMode] = useState(false);
@@ -487,7 +484,7 @@ export default function PortfolioWorkspace() {
         fetchTrends(trendPeriod);
     }, [fetchTrends, isAuthenticated, trendPeriod]);
 
-    const buildExportUrl = useCallback((type: ExportType, format: ExportDownloadFormat) => (
+    const buildExportUrl = useCallback((type: DocumentExportType, format: ExportDownloadFormat) => (
         `${API_URL}/ai/opportunity/export?type=${type}&format=${format}&variant=${statementVariant}`
     ), [statementVariant]);
 
@@ -504,7 +501,7 @@ export default function PortfolioWorkspace() {
         syncViewInUrl(view, historyMode);
     }, [syncViewInUrl]);
 
-    const requestExportDocument = useCallback(async (type: ExportType, format: ExportDownloadFormat) => {
+    const requestExportDocument = useCallback(async (type: DocumentExportType, format: ExportDownloadFormat) => {
         const response = await apiFetch(buildExportUrl(type, format));
         if (!response.ok) throw new Error(`Failed to load ${format} export`);
 
@@ -517,7 +514,7 @@ export default function PortfolioWorkspace() {
         };
     }, [apiFetch, buildExportUrl]);
 
-    const loadExportPreview = useCallback(async (type: ExportType) => {
+    const loadExportPreview = useCallback(async (type: DocumentExportType) => {
         setSelectedExportType(type);
         setIsPreviewLoading(true);
         setPreviewError('');
@@ -542,7 +539,7 @@ export default function PortfolioWorkspace() {
         }
     }, [requestExportDocument]);
 
-    const downloadExport = useCallback(async (type: ExportType, format: ExportDownloadFormat) => {
+    const downloadExport = useCallback(async (type: DocumentExportType, format: ExportDownloadFormat) => {
         const key = `${type}:${format}`;
         setSelectedExportType(type);
         setDownloadingKey(key);
@@ -629,7 +626,7 @@ export default function PortfolioWorkspace() {
         setResumeSession(storedSession);
 
         if (storedSession) {
-            setSelectedExportType(storedSession.selectedExportType);
+            setSelectedExportType(normalizeDocumentExportType(storedSession.selectedExportType));
             setStatementVariant(storedSession.statementVariant);
             setEvidenceFilter(storedSession.evidenceFilter);
             setActiveStoryEntryId(storedSession.lastOpenedStoryId);
@@ -647,7 +644,12 @@ export default function PortfolioWorkspace() {
                 setActiveView(nextView);
             }
             if (nextExportType) {
-                setSelectedExportType(nextExportType);
+                setSelectedExportType(normalizeDocumentExportType(nextExportType));
+                if (nextExportType === 'interview') {
+                    setActiveView('interview');
+                } else if (nextExportType === 'growth') {
+                    setActiveView('growth');
+                }
             }
             if (nextFilter) {
                 setEvidenceFilter(nextFilter);
@@ -664,7 +666,7 @@ export default function PortfolioWorkspace() {
         const queryStoryId = params.get('story');
 
         if (queryExportType) {
-            setSelectedExportType(queryExportType);
+            setSelectedExportType(normalizeDocumentExportType(queryExportType));
         }
         if (queryFilter) {
             setEvidenceFilter(queryFilter);
@@ -673,7 +675,11 @@ export default function PortfolioWorkspace() {
             setActiveStoryEntryId(queryStoryId);
         }
 
-        if (queryView) {
+        if (queryExportType === 'interview') {
+            setActiveView('interview');
+        } else if (queryExportType === 'growth') {
+            setActiveView('growth');
+        } else if (queryView) {
             setActiveView(queryView);
         } else if (storedSession?.view) {
             setActiveView(storedSession.view);
@@ -908,14 +914,34 @@ export default function PortfolioWorkspace() {
             };
         }
 
+        if (recommendedView === 'interview') {
+            return {
+                title: 'Open interview practice',
+                description: 'Your evidence base is in good shape. Go straight into the interview workspace and rehearse one story at a time.',
+                actionLabel: 'Open Interview',
+                actionHref: null as string | null,
+                targetView: 'interview' as PortfolioView,
+            };
+        }
+
+        if (recommendedView === 'growth') {
+            return {
+                title: 'Review growth progress',
+                description: 'Your evidence base is stable. Step into growth mode to review momentum, proof, and what should strengthen next.',
+                actionLabel: 'Open Growth',
+                actionHref: null as string | null,
+                targetView: 'growth' as PortfolioView,
+            };
+        }
+
         return {
-            title: 'Preview the finished pack',
-            description: 'Your evidence base is in good shape. Open the export studio and tailor the document to the job, school, or reflection moment you need.',
-            actionLabel: 'Open Export Studio',
+            title: `Open ${exportTypeLabels[recommendedExportType]}`,
+            description: 'Your evidence base is in good shape. Open the document workspace and tailor the output to the audience you need right now.',
+            actionLabel: `Open ${exportTypeLabels[recommendedExportType]}`,
             actionHref: null as string | null,
             targetView: 'export' as PortfolioView,
         };
-    }, [captureHref, filterCounts.needs_attention, filterCounts.ready_to_verify, overview]);
+    }, [captureHref, filterCounts.needs_attention, filterCounts.ready_to_verify, overview, recommendedExportType, recommendedView]);
 
     const pathwayCards = useMemo(() => {
         if (!overview) return [];
@@ -927,24 +953,16 @@ export default function PortfolioWorkspace() {
             const readiness =
                 type === 'resume'
                     ? `${overview.resumeBullets.length} bullet${overview.resumeBullets.length === 1 ? '' : 's'} ready`
-                    : type === 'statement'
-                        ? hasValue(statement)
-                            ? 'Draft ready to refine'
-                            : 'Needs more profile direction'
-                        : type === 'interview'
-                            ? `${overview.interviewStories.length} stor${overview.interviewStories.length === 1 ? 'y' : 'ies'} mapped`
-                            : `${overview.stats.verifiedCount} verified experience${overview.stats.verifiedCount === 1 ? '' : 's'}`;
+                    : hasValue(statement)
+                        ? 'Draft ready to refine'
+                        : 'Needs more profile direction';
 
             const secondary =
-                type === 'growth'
-                    ? `${evidenceSummary.avgScore}% average evidence quality`
-                    : type === 'resume'
-                        ? `${filterCounts.ready_to_export} experience${filterCounts.ready_to_export === 1 ? '' : 's'} ready to export`
-                        : type === 'interview'
-                            ? `${filterCounts.verified} verified story source${filterCounts.verified === 1 ? '' : 's'}`
-                            : overview.profileContext?.track
-                                ? `${formatLabel(overview.profileContext.track)} track`
-                                : 'Use your strongest verified story';
+                type === 'resume'
+                    ? `${filterCounts.ready_to_export} experience${filterCounts.ready_to_export === 1 ? '' : 's'} ready to export`
+                    : overview.profileContext?.track
+                        ? `${formatLabel(overview.profileContext.track)} track`
+                        : 'Use your strongest verified story';
 
             return {
                 type,
@@ -957,6 +975,10 @@ export default function PortfolioWorkspace() {
             };
         });
     }, [evidenceSummary.avgScore, filterCounts.ready_to_export, filterCounts.verified, overview, recommendedExportType, statement]);
+    const selectedPathwayCard = useMemo(
+        () => pathwayCards.find((card) => card.type === selectedExportType) || pathwayCards[0] || null,
+        [pathwayCards, selectedExportType]
+    );
 
     const startEdit = (experience: Experience) => {
         setEditingEntryId(experience.entryId);
@@ -1038,7 +1060,7 @@ export default function PortfolioWorkspace() {
         }
     };
 
-    const openStudio = async (type: ExportType) => {
+    const openStudio = async (type: DocumentExportType) => {
         switchView('export');
         await loadExportPreview(type);
     };
@@ -1046,98 +1068,225 @@ export default function PortfolioWorkspace() {
     const resumePreviousSession = () => {
         if (!resumeSession) return;
 
-        setSelectedExportType(resumeSession.selectedExportType);
+        setSelectedExportType(normalizeDocumentExportType(resumeSession.selectedExportType));
         setStatementVariant(resumeSession.statementVariant);
         setEvidenceFilter(resumeSession.evidenceFilter);
         setActiveStoryEntryId(resumeSession.lastOpenedStoryId);
         setRecentViews(resumeSession.recentViews);
-        switchView(resumeSession.view);
+        switchView(
+            resumeSession.selectedExportType === 'interview'
+                ? 'interview'
+                : resumeSession.selectedExportType === 'growth'
+                    ? 'growth'
+                    : resumeSession.view
+        );
     };
 
     const renderExportMode = () => (
-        <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
             <div className="space-y-4">
-                <AppPanel className="space-y-4">
+                <AppPanel className="space-y-4" id="portfolio-export-controls">
                     <SectionHeader
-                        kicker="Export"
-                        title="Document Studio"
-                        description="Choose the pack, tune the variant, and keep the preview nearby while you refine the output."
+                        kicker="Documents"
+                        title={selectedExportType === 'resume' ? 'Resume workspace' : 'Statement workspace'}
+                        description="Open the document you need, preview it, and export it without losing your place."
                     />
-                    <ActionBar className="bg-black/20 border-white/10 overflow-x-auto">
-                        {(['standard', 'college', 'entry_job'] as StatementVariant[]).map((variant) => (
-                            <button
-                                key={variant}
-                                onClick={() => setStatementVariant(variant)}
-                                className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] whitespace-nowrap transition-colors ${
-                                    statementVariant === variant
-                                        ? 'bg-primary/15 text-primary'
-                                        : 'text-ink-secondary hover:text-white'
-                                }`}
-                            >
-                                {statementVariantLabels[variant]}
-                            </button>
-                        ))}
-                    </ActionBar>
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current draft angle</p>
-                        <p className="mt-3 text-sm leading-7 text-foreground">
-                            {statement || 'Build a little more evidence and profile direction to generate a stronger statement draft.'}
-                        </p>
-                    </div>
-                </AppPanel>
 
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                    {pathwayCards.map(({ type, Icon, title, description, readiness, secondary, isRecommended }) => (
-                        <article
-                            key={type}
-                            className={`rounded-[26px] border p-4 transition-colors ${
-                                selectedExportType === type
-                                    ? 'border-primary/35 bg-primary/12'
-                                    : 'border-white/10 bg-white/[0.03]'
-                            }`}
+                    <div className="flex flex-wrap gap-2">
+                        <a
+                            href="#portfolio-export-preview-panel"
+                            className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.07]"
                         >
-                            <div className="flex items-start justify-between gap-3">
-                                <div className={`rounded-2xl border p-3 ${isRecommended ? 'border-primary/30 bg-primary/10 text-primary' : 'border-white/10 bg-white/5 text-white'}`}>
-                                    <Icon size={18} aria-hidden="true" />
+                            <FiEye size={13} aria-hidden="true" />
+                            Jump to preview
+                        </a>
+                        <a
+                            href="#portfolio-export-downloads"
+                            className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.07]"
+                        >
+                            <FiDownload size={13} aria-hidden="true" />
+                            Jump to downloads
+                        </a>
+                    </div>
+
+                    <div
+                        role="tablist"
+                        aria-label="Choose which story document to open"
+                        className="grid gap-3 sm:grid-cols-2"
+                    >
+                        {pathwayCards.map(({ type, Icon, title, description, readiness, secondary, isRecommended }) => {
+                            const isActive = selectedExportType === type;
+
+                            return (
+                                <button
+                                    key={type}
+                                    id={`portfolio-export-tab-${type}`}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={isActive}
+                                    aria-controls="portfolio-export-preview-panel"
+                                    tabIndex={isActive ? 0 : -1}
+                                    onClick={() => {
+                                        void loadExportPreview(type);
+                                    }}
+                                    className={`rounded-[26px] border p-4 text-left transition-colors ${
+                                        isActive
+                                            ? 'border-primary/35 bg-primary/12'
+                                            : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.05]'
+                                    }`}
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className={`rounded-2xl border p-3 ${isActive || isRecommended ? 'border-primary/30 bg-primary/10 text-primary' : 'border-white/10 bg-white/5 text-white'}`}>
+                                            <Icon size={18} aria-hidden="true" />
+                                        </div>
+                                        {isRecommended && <TagPill tone="primary">Recommended</TagPill>}
+                                    </div>
+                                    <h3 className="mt-4 text-lg font-semibold text-white">{title}</h3>
+                                    <p className="mt-2 text-sm leading-6 text-ink-secondary">{description}</p>
+                                    <div className="mt-4 space-y-1">
+                                        <p className="text-sm text-white">{readiness}</p>
+                                        <p className="text-xs text-ink-muted">{secondary}</p>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {selectedPathwayCard && (
+                        <div className="rounded-[30px] border border-white/10 bg-black/20 p-5">
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Focused pack</p>
+                                        {selectedPathwayCard.isRecommended && <TagPill tone="primary">Recommended next</TagPill>}
+                                    </div>
+                                    <h3 className="mt-2 text-2xl font-semibold text-white">{selectedPathwayCard.title}</h3>
+                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">{selectedPathwayCard.description}</p>
                                 </div>
-                                {isRecommended && <TagPill tone="primary">Recommended</TagPill>}
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">Ready now</p>
+                                    <p className="mt-2 text-sm font-semibold text-white">{selectedPathwayCard.readiness}</p>
+                                </div>
                             </div>
-                            <h3 className="mt-4 text-lg font-semibold text-white">{title}</h3>
-                            <p className="mt-2 text-sm text-ink-secondary">{description}</p>
-                            <div className="mt-4 space-y-1">
-                                <p className="text-sm text-white">{readiness}</p>
-                                <p className="text-xs text-ink-muted">{secondary}</p>
+
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">Best fit</p>
+                                    <p className="mt-2 text-sm leading-6 text-white">{selectedPathwayCard.secondary}</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">Next move</p>
+                                    <p className="mt-2 text-sm leading-6 text-white">
+                                        {selectedExportType === 'resume' && 'Scan the preview for the strongest bullets, then export the pack you want to reuse.'}
+                                        {selectedExportType === 'statement' && 'Pick the angle that matches your audience, then read the draft aloud before exporting.'}
+                                    </p>
+                                </div>
                             </div>
+
+                            {selectedExportType === 'statement' && (
+                                <div className="mt-4 rounded-[26px] border border-primary/20 bg-primary/[0.08] p-4">
+                                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                        <div className="max-w-xl">
+                                            <p className="text-xs uppercase tracking-[0.12em] text-primary/85">Statement angle</p>
+                                            <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                                                Switch the tone for school, early-career work, or a general statement without leaving the preview.
+                                            </p>
+                                        </div>
+                                        <div
+                                            role="tablist"
+                                            aria-label="Choose the statement angle"
+                                            className="flex flex-wrap gap-2"
+                                        >
+                                            {(['standard', 'college', 'entry_job'] as StatementVariant[]).map((variant) => (
+                                                <button
+                                                    key={variant}
+                                                    id={`portfolio-statement-tab-${variant}`}
+                                                    type="button"
+                                                    role="tab"
+                                                    aria-selected={statementVariant === variant}
+                                                    aria-controls="portfolio-statement-draft"
+                                                    tabIndex={statementVariant === variant ? 0 : -1}
+                                                    onClick={() => setStatementVariant(variant)}
+                                                    className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] whitespace-nowrap transition-colors ${
+                                                        statementVariant === variant
+                                                            ? 'bg-primary text-white'
+                                                            : 'border border-white/10 bg-black/20 text-ink-secondary hover:text-white'
+                                                    }`}
+                                                >
+                                                    {statementVariantLabels[variant]}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        id="portfolio-statement-draft"
+                                        aria-live="polite"
+                                        className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4"
+                                    >
+                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current draft angle</p>
+                                        <p className="mt-3 text-sm leading-7 text-foreground">
+                                            {statement || 'Build a little more evidence and profile direction to generate a stronger statement draft.'}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="mt-4 flex flex-wrap gap-2">
                                 <button
-                                    onClick={() => loadExportPreview(type)}
-                                    className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary hover:bg-primary/20 transition-colors"
+                                    type="button"
+                                    onClick={() => {
+                                        void loadExportPreview(selectedPathwayCard.type);
+                                    }}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
                                 >
                                     <FiEye size={13} aria-hidden="true" />
                                     Preview
                                 </button>
                                 <button
-                                    onClick={() => downloadExport(type, 'html')}
-                                    disabled={downloadingKey === `${type}:html`}
-                                    className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary hover:text-white hover:bg-white/10 transition-colors disabled:opacity-60"
+                                    type="button"
+                                    onClick={() => {
+                                        void downloadExport(selectedPathwayCard.type, 'html');
+                                    }}
+                                    disabled={downloadingKey === `${selectedPathwayCard.type}:html`}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/10 disabled:opacity-60"
                                 >
                                     <FiDownload size={13} aria-hidden="true" />
-                                    {downloadingKey === `${type}:html` ? 'Working...' : 'HTML'}
+                                    {downloadingKey === `${selectedPathwayCard.type}:html` ? 'Preparing...' : 'HTML'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        void downloadExport(selectedPathwayCard.type, 'markdown');
+                                    }}
+                                    disabled={downloadingKey === `${selectedPathwayCard.type}:markdown`}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/10 disabled:opacity-60"
+                                >
+                                    <FiFileText size={13} aria-hidden="true" />
+                                    {downloadingKey === `${selectedPathwayCard.type}:markdown` ? 'Preparing...' : 'Markdown'}
                                 </button>
                             </div>
-                        </article>
-                    ))}
-                </div>
+                        </div>
+                    )}
+                </AppPanel>
             </div>
 
-            <AppPanel className="space-y-4 xl:sticky xl:top-28">
+            <AppPanel
+                id="portfolio-export-preview-panel"
+                className="space-y-4 xl:sticky xl:top-28"
+                aria-labelledby="portfolio-export-preview-heading"
+            >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Preview</p>
-                        <h2 className="mt-1 text-2xl font-semibold text-white">{exportTypeLabels[selectedExportType]}</h2>
+                        <h2 id="portfolio-export-preview-heading" className="mt-1 text-2xl font-semibold text-white">
+                            {exportTypeLabels[selectedExportType]}
+                        </h2>
+                        <p className="mt-1 text-sm text-ink-secondary">{exportTypeDescriptions[selectedExportType]}</p>
                     </div>
                     <ActionBar className="bg-black/20 border-white/10">
                         <button
+                            type="button"
                             onClick={printSelectedExport}
                             disabled={downloadingKey === `${selectedExportType}:print`}
                             className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary hover:text-white"
@@ -1148,7 +1297,18 @@ export default function PortfolioWorkspace() {
                     </ActionBar>
                 </div>
 
-                <div className="rounded-[32px] border border-white/10 bg-[#f3efe6] text-slate-900 overflow-hidden shadow-2xl shadow-black/20">
+                <div
+                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-ink-secondary"
+                    aria-live="polite"
+                >
+                    {isPreviewLoading
+                        ? `Loading ${exportTypeLabels[selectedExportType]} preview...`
+                        : previewError
+                            ? previewError
+                            : `Viewing ${exportPreview?.fileName || `${exportTypeLabels[selectedExportType]} preview`} in the print-ready reader.`}
+                </div>
+
+                <div className="rounded-[32px] overflow-hidden border border-white/10 bg-[#f3efe6] text-slate-900 shadow-2xl shadow-black/20">
                     <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 bg-white/80 px-4 py-3">
                         <div>
                             <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Quick View</p>
@@ -1161,16 +1321,16 @@ export default function PortfolioWorkspace() {
                         </div>
                     </div>
 
-                    <div className="relative min-h-[30rem] bg-[#f8f6f1]">
+                    <div id="portfolio-export-preview" className="relative min-h-[30rem] bg-[#f8f6f1]">
                         {isPreviewLoading && (
                             <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#f8f6f1]/80">
-                                <div className="animate-spin h-7 w-7 border-4 border-slate-400 border-t-transparent rounded-full" />
+                                <div className="h-7 w-7 animate-spin rounded-full border-4 border-slate-400 border-t-transparent" />
                             </div>
                         )}
 
                         {exportPreview && !previewError ? (
                             <iframe
-                                title={`${exportTypeLabels[exportPreview.type]} preview`}
+                                title={`${exportTypeLabels[exportPreview.type]} preview document`}
                                 srcDoc={exportPreview.content}
                                 sandbox=""
                                 className="h-[32rem] w-full bg-white"
@@ -1195,19 +1355,25 @@ export default function PortfolioWorkspace() {
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div id="portfolio-export-downloads" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <button
-                        onClick={() => downloadExport(selectedExportType, 'html')}
+                        type="button"
+                        onClick={() => {
+                            void downloadExport(selectedExportType, 'html');
+                        }}
                         disabled={downloadingKey === `${selectedExportType}:html`}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/35 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/25 transition-colors disabled:opacity-60"
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/35 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/25 disabled:opacity-60"
                     >
                         <FiDownload size={15} aria-hidden="true" />
                         {downloadingKey === `${selectedExportType}:html` ? 'Preparing HTML...' : 'Download HTML'}
                     </button>
                     <button
-                        onClick={() => downloadExport(selectedExportType, 'markdown')}
+                        type="button"
+                        onClick={() => {
+                            void downloadExport(selectedExportType, 'markdown');
+                        }}
                         disabled={downloadingKey === `${selectedExportType}:markdown`}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-ink-secondary hover:text-white hover:bg-white/10 transition-colors disabled:opacity-60"
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-ink-secondary transition-colors hover:text-white hover:bg-white/10 disabled:opacity-60"
                     >
                         <FiFileText size={15} aria-hidden="true" />
                         {downloadingKey === `${selectedExportType}:markdown` ? 'Preparing Markdown...' : 'Download Markdown'}
@@ -1268,16 +1434,16 @@ export default function PortfolioWorkspace() {
                             }}
                             className="rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary whitespace-nowrap hover:text-white"
                         >
-                            Preview Resume Pack
+                            Open Resume
                         </button>
                         <button
                             type="button"
                             onClick={() => {
-                                void openStudio('interview');
+                                switchView('interview');
                             }}
                             className="rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary whitespace-nowrap hover:text-white"
                         >
-                            Preview Interview Bank
+                            Open Interview
                         </button>
                     </ActionBar>
                 </div>
@@ -1379,9 +1545,9 @@ export default function PortfolioWorkspace() {
         if (!overview || overview.interviewStories.length === 0) {
             return (
                 <EmptyState
-                    title="No interview deck yet"
-                    description="Verify a few stronger experiences and the interview workspace will build a focused STAR story deck."
-                    actionLabel="Review Evidence Queue"
+                    title="No interview stories yet"
+                    description="Verify a few stronger experiences and the interview workspace will build a focused STAR story set."
+                    actionLabel="Open Evidence Queue"
                     actionHref={`${pathname}?view=evidence`}
                 />
             );
@@ -1400,8 +1566,8 @@ export default function PortfolioWorkspace() {
                 <AppPanel className="space-y-4">
                     <SectionHeader
                         kicker="Interview"
-                        title="Story Deck"
-                        description="Move through one story at a time and practice without losing the source context."
+                        title="Interview workspace"
+                        description="Preview one story at a time, then switch into practice mode without losing the source context."
                     />
                     <div className="space-y-2">
                         {stories.map((item, index) => (
@@ -1961,36 +2127,31 @@ export default function PortfolioWorkspace() {
     }
 
     const ActiveViewIcon = portfolioViewIcons[activeView];
+    const currentWorkspaceLabel = activeView === 'export' ? exportTypeLabels[selectedExportType] : portfolioViewLabels[activeView];
 
     return (
         <div className="space-y-6 px-1 pb-32 pt-2">
-            <AppPanel className="sticky top-20 z-20 space-y-5 border-white/15 bg-[radial-gradient(circle_at_top_left,rgba(31,96,255,0.18),transparent_42%),rgba(5,10,20,0.92)] backdrop-blur-xl">
+            <AppPanel className="sticky top-20 z-20 space-y-5 border-white/15 bg-[radial-gradient(circle_at_top_left,rgba(31,96,255,0.14),transparent_38%),rgba(5,10,20,0.92)] backdrop-blur-xl">
                 <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
                     <div className="space-y-4">
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Stories</p>
-                                <h1 className="mt-1 text-3xl font-semibold text-white">Turn real moments into stories you can use</h1>
+                                <h1 className="mt-1 text-3xl font-semibold text-white">Choose the story job you want to do now</h1>
                                 <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">
-                                    Fix story details, practice telling them, or turn them into something useful without losing your place.
+                                    Use one mode at a time: shape a pack, fix missing evidence, rehearse one story, or review growth.
                                 </p>
                             </div>
                             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-2 text-xs uppercase tracking-[0.12em] text-ink-muted">
                                 <ActiveViewIcon size={14} aria-hidden="true" />
-                                {portfolioViewLabels[activeView]}
+                                Current destination: {currentWorkspaceLabel}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                            <StatTile label="Story Quality" value={`${evidenceSummary.avgScore}%`} hint="Average completeness" />
-                            <StatTile label="Verified" value={overview.stats.verifiedCount} hint="Strongest source stories" tone="primary" />
-                            <StatTile label="Practice Stories" value={overview.interviewStories.length} hint="Stories ready to practice" />
-                            <StatTile
-                                label="Updated"
-                                value={formatShortDate(overview.generatedAt)}
-                                hint={formatLongDateTime(overview.generatedAt)}
-                                tone="subtle"
-                            />
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <StatTile label="Ready To Use" value={filterCounts.ready_to_export} hint="Stories you can export now" tone="primary" />
+                            <StatTile label="Need Work" value={filterCounts.needs_attention} hint="Stories missing detail" />
+                            <StatTile label="Practice Deck" value={overview.interviewStories.length} hint="Stories ready to rehearse" />
                         </div>
                     </div>
 
@@ -2001,7 +2162,7 @@ export default function PortfolioWorkspace() {
                                     <FiZap size={18} aria-hidden="true" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Recommended next step</p>
+                                    <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Today</p>
                                     <h2 className="mt-2 text-lg font-semibold text-white">{nextAction.title}</h2>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">{nextAction.description}</p>
                                 </div>
@@ -2034,7 +2195,7 @@ export default function PortfolioWorkspace() {
                                     <FiClock size={18} aria-hidden="true" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Pick up where you left off</p>
+                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Resume</p>
                                     {resumeSession ? (
                                         <>
                                             <h2 className="mt-2 text-lg font-semibold text-white">{buildResumeLabel(resumeSession)}</h2>
@@ -2064,45 +2225,96 @@ export default function PortfolioWorkspace() {
                 </div>
 
                 <div className="overflow-x-auto">
-                    <div className="inline-flex min-w-full gap-2 rounded-[22px] border border-white/10 bg-black/20 p-2">
-                        {portfolioViews.map((view) => {
-                            const Icon = portfolioViewIcons[view];
-                            const isActive = activeView === view;
-                            const isRecommended = recommendedView === view;
-
-                            return (
+                    <div className="space-y-3 rounded-[22px] border border-white/10 bg-black/20 p-3">
+                        <p className="px-1 text-xs uppercase tracking-[0.12em] text-ink-muted">Open a destination directly</p>
+                        <div className="grid gap-2 md:grid-cols-4">
+                            {[
+                                {
+                                    id: 'resume',
+                                    label: 'Resume',
+                                    detail: 'Preview and export',
+                                    icon: FiFileText,
+                                    active: activeView === 'export' && selectedExportType === 'resume',
+                                    recommended: recommendedView === 'export' && recommendedExportType === 'resume',
+                                    onClick: () => { void openStudio('resume'); },
+                                },
+                                {
+                                    id: 'statement',
+                                    label: 'Statement',
+                                    detail: 'Choose angle and export',
+                                    icon: FiBookOpen,
+                                    active: activeView === 'export' && selectedExportType === 'statement',
+                                    recommended: recommendedView === 'export' && recommendedExportType === 'statement',
+                                    onClick: () => { void openStudio('statement'); },
+                                },
+                                {
+                                    id: 'interview',
+                                    label: 'Interview',
+                                    detail: 'Preview and practice',
+                                    icon: FiMessageSquare,
+                                    active: activeView === 'interview',
+                                    recommended: recommendedView === 'interview',
+                                    onClick: () => switchView('interview'),
+                                },
+                                {
+                                    id: 'growth',
+                                    label: 'Growth',
+                                    detail: 'Review progress',
+                                    icon: FiTrendingUp,
+                                    active: activeView === 'growth',
+                                    recommended: recommendedView === 'growth',
+                                    onClick: () => switchView('growth'),
+                                },
+                            ].map(({ id, label, detail, icon: Icon, active, recommended, onClick }) => (
                                 <button
-                                    key={view}
+                                    key={id}
                                     type="button"
-                                    onClick={() => switchView(view)}
-                                    className={`inline-flex min-w-[11rem] items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors ${
-                                        isActive
+                                    onClick={onClick}
+                                    className={`inline-flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors ${
+                                        active
                                             ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                                            : 'bg-transparent text-ink-secondary hover:bg-white/[0.05] hover:text-white'
+                                            : 'bg-white/[0.02] text-ink-secondary hover:bg-white/[0.05] hover:text-white'
                                     }`}
                                 >
                                     <span className="inline-flex items-center gap-3">
-                                        <span className={`rounded-xl border p-2 ${isActive ? 'border-white/20 bg-white/10' : 'border-white/10 bg-white/[0.03]'}`}>
+                                        <span className={`rounded-xl border p-2 ${active ? 'border-white/20 bg-white/10' : 'border-white/10 bg-white/[0.03]'}`}>
                                             <Icon size={15} aria-hidden="true" />
                                         </span>
-                                            <span>
-                                                <span className="block text-sm font-semibold">{portfolioViewLabels[view]}</span>
-                                                <span className="block text-[11px] uppercase tracking-[0.12em] opacity-80">
-                                                {view === 'export' && 'Preview and use'}
-                                                {view === 'evidence' && 'Fix and check'}
-                                                {view === 'interview' && 'Practice one story'}
-                                                {view === 'growth' && 'See progress'}
-                                            </span>
+                                        <span>
+                                            <span className="block text-sm font-semibold">{label}</span>
+                                            <span className="block text-[11px] uppercase tracking-[0.12em] opacity-80">{detail}</span>
                                         </span>
                                     </span>
-                                    {isRecommended && (
-                                        <span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${isActive ? 'bg-white/15' : 'bg-primary/15 text-primary'}`}>
+                                    {recommended && (
+                                        <span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${active ? 'bg-white/15' : 'bg-primary/15 text-primary'}`}>
                                             Next
                                         </span>
                                     )}
                                 </button>
-                            );
-                        })}
+                            ))}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                onClick={() => switchView('evidence')}
+                                className={`rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors ${
+                                    activeView === 'evidence'
+                                        ? 'border-primary/30 bg-primary/12 text-primary'
+                                        : 'border-white/12 bg-white/[0.03] text-ink-secondary hover:text-white hover:bg-white/[0.06]'
+                                }`}
+                            >
+                                Evidence queue
+                            </button>
+                            {resumeSession && (
+                                <button
+                                    type="button"
+                                    onClick={resumePreviousSession}
+                                    className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.06]"
+                                >
+                                    Resume last place
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </AppPanel>

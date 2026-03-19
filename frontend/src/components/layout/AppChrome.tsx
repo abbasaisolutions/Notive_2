@@ -20,8 +20,12 @@ export default function AppChrome() {
                 <>
                     <MobileNav />
                     <CelebrationModal />
-                    <FloatingVoiceButton />
-                    <ProgressivePersonalizationPrompt />
+                    <div className="hidden md:block">
+                        <FloatingVoiceButton />
+                    </div>
+                    <div className="hidden md:block">
+                        <ProgressivePersonalizationPrompt />
+                    </div>
                 </>
             )}
         </>
