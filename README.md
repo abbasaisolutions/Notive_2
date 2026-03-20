@@ -2,6 +2,8 @@
 
 A modern, local-first journaling application with voice input, mood tracking, retrieval-powered memory search, and optional AI guidance.
 
+Notive is developed and owned by AbbasAi Solutions.
+
 ## Features
 
 - 📝 **Rich Text Editor** with voice input support
@@ -291,11 +293,16 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions for va
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+This repository is proprietary. Please contact AbbasAi Solutions before contributing,
+redistributing the codebase, or using it outside an authorized engagement.
 
 ## License
 
-This project is licensed under the MIT License.
+Copyright (c) 2026 AbbasAi Solutions. All rights reserved.
+
+This repository is proprietary and is not licensed for public use, copying,
+modification, or redistribution except with prior written permission from AbbasAi
+Solutions. See the [LICENSE](./LICENSE) file for details.
 
 ## Support
 

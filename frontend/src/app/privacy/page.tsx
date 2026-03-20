@@ -8,6 +8,7 @@ export default function PrivacyPage() {
                 <h1 className="mb-6 text-3xl font-serif text-white md:text-4xl">Privacy Policy</h1>
 
                 <div className="space-y-5 text-sm text-ink-secondary">
+                    <p>Notive is developed and operated by AbbasAi Solutions.</p>
                     <p>Notive collects account details and the entries or memories you provide to operate core features.</p>
                     <p>We use your data to deliver capture, signal reading, synchronization, optional social import, and output generation functionality.</p>
                     <p>You can export your data and request deletion from your profile settings.</p>
@@ -23,6 +24,8 @@ export default function PrivacyPage() {
                         View Terms
                     </Link>
                 </div>
+
+                <p className="mt-6 text-xs text-ink-muted">Copyright (c) 2026 AbbasAi Solutions. All rights reserved.</p>
             </div>
         </main>
     );

@@ -20,7 +20,9 @@ export const metadata: Metadata = {
     title: `${NOTIVE_VOICE.appName} | ${NOTIVE_VOICE.signature}`,
     description: NOTIVE_VOICE.longSummary,
     keywords: ["reflective writing", "memory tracking", "personal analytics", "story building", "privacy", "self understanding"],
-    authors: [{ name: "Notive Team" }],
+    authors: [{ name: "AbbasAi Solutions" }],
+    creator: "AbbasAi Solutions",
+    publisher: "AbbasAi Solutions",
     manifest: '/manifest.webmanifest',
     metadataBase: new URL('https://notive.app'),
     icons: {
@@ -37,6 +39,7 @@ export const metadata: Metadata = {
     },
     other: {
         'mobile-web-app-capable': 'yes',
+        copyright: 'Copyright (c) 2026 AbbasAi Solutions. All rights reserved.',
     },
     openGraph: {
         title: `${NOTIVE_VOICE.appName} | ${NOTIVE_VOICE.signature}`,
@@ -72,6 +75,19 @@ const jsonLd = {
     "name": NOTIVE_VOICE.appName,
     "operatingSystem": "Web",
     "applicationCategory": "LifestyleApplication",
+    "author": {
+        "@type": "Organization",
+        "name": "AbbasAi Solutions"
+    },
+    "publisher": {
+        "@type": "Organization",
+        "name": "AbbasAi Solutions"
+    },
+    "copyrightHolder": {
+        "@type": "Organization",
+        "name": "AbbasAi Solutions"
+    },
+    "copyrightYear": "2026",
     "offers": {
         "@type": "Offer",
         "price": "0",
@@ -126,6 +142,9 @@ export default function RootLayout({
                                                 <RouteHeader />
                                             </Suspense>
                                             {children}
+                                            <footer className="px-6 pb-8 pt-10 text-center text-xs text-ink-muted">
+                                                Notive is developed by AbbasAi Solutions. Copyright (c) 2026 AbbasAi Solutions. All rights reserved.
+                                            </footer>
                                         </main>
                                     </div>
                                 </SmartProvider>
