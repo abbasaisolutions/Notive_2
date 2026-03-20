@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ACCOUNT_DELETION_PATH, LEGAL_COPYRIGHT_NOTICE, LEGAL_ENTITY_NAME } from '@/config/legal';
 
 export default function PrivacyPage() {
     return (
@@ -8,10 +9,10 @@ export default function PrivacyPage() {
                 <h1 className="mb-6 text-3xl font-serif text-white md:text-4xl">Privacy Policy</h1>
 
                 <div className="space-y-5 text-sm text-ink-secondary">
-                    <p>Notive is developed and operated by AbbasAi Solutions.</p>
+                    <p>Notive is developed and operated by {LEGAL_ENTITY_NAME}.</p>
                     <p>Notive collects account details and the entries or memories you provide to operate core features.</p>
                     <p>We use your data to deliver capture, signal reading, synchronization, optional social import, and output generation functionality.</p>
-                    <p>You can export your data and request deletion from your profile settings.</p>
+                    <p>You can export your data and request deletion from your profile settings, or through the public account deletion page if you cannot access the app.</p>
                     <p>We apply security controls to protect account and content data, but no system is perfectly risk-free.</p>
                     <p>By using Notive, you consent to this policy and any future updates posted on this page.</p>
                 </div>
@@ -23,9 +24,12 @@ export default function PrivacyPage() {
                     <Link href="/terms" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-ink-secondary hover:text-white">
                         View Terms
                     </Link>
+                    <Link href={ACCOUNT_DELETION_PATH} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-ink-secondary hover:text-white">
+                        Account Deletion
+                    </Link>
                 </div>
 
-                <p className="mt-6 text-xs text-ink-muted">Copyright (c) 2026 AbbasAi Solutions. All rights reserved.</p>
+                <p className="mt-6 text-xs text-ink-muted">{LEGAL_COPYRIGHT_NOTICE}</p>
             </div>
         </main>
     );

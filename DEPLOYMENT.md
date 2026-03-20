@@ -43,7 +43,58 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 
 ## Deployment Options
 
-### Option 1: Vercel (Frontend) + Railway (Backend)
+### Option 1: Vercel (Frontend) + Vercel (API)
+
+This works well for the Next.js frontend and the main Express API when you split them into two Vercel projects:
+
+- `notive.abbasaisolutions.com` -> frontend project rooted at `frontend`
+- `api.abbasaisolutions.com` -> backend project rooted at `backend`
+
+Important: the optional Python NLP service and similarity-service are not Vercel Functions. For a Vercel-only launch, either disable those integrations or point the backend at separately hosted services.
+
+#### Deploy Frontend to Vercel
+
+1. Create a new Vercel project from this repo
+2. Set **Root Directory** to `frontend`
+3. Leave the framework preset as **Next.js**
+4. Set environment variables:
+   - `NEXT_PUBLIC_APP_URL=https://notive.abbasaisolutions.com`
+   - `NEXT_PUBLIC_API_URL=https://api.abbasaisolutions.com/api/v1`
+   - `NEXT_PUBLIC_GOOGLE_CLIENT_ID=...` (if using Google Sign-In)
+   - `NEXT_PUBLIC_SUPPORT_EMAIL=...` (optional)
+5. Add the production domain `notive.abbasaisolutions.com`
+6. In IONOS, point `notive.abbasaisolutions.com` to the Vercel DNS target shown in the Vercel Domains tab
+
+#### Deploy Backend API to Vercel
+
+1. Create a second Vercel project from the same repo
+2. Set **Root Directory** to `backend`
+3. Set **Build Command** to `npm run build`
+4. Add environment variables:
+   - `DATABASE_URL=...`
+   - `JWT_ACCESS_SECRET=...`
+   - `JWT_REFRESH_SECRET=...`
+   - `NODE_ENV=production`
+   - `CORS_ORIGINS=https://notive.abbasaisolutions.com`
+   - `CLIENT_URL=https://notive.abbasaisolutions.com`
+   - `API_URL=https://api.abbasaisolutions.com/api/v1`
+   - `TRUST_PROXY=1`
+   - `AUTH_COOKIE_DOMAIN=.abbasaisolutions.com`
+   - `AUTH_COOKIE_SAME_SITE=lax`
+   - `ENABLE_HEALTH_CRON=false`
+5. For a baseline Vercel-only deployment, also set:
+   - `USE_EMBEDDINGS=false`
+   - `NLP_SERVICE_URL=`
+6. Add the production domain `api.abbasaisolutions.com`
+7. In IONOS, point `api.abbasaisolutions.com` to the Vercel DNS target shown in the Vercel Domains tab
+
+#### Backend Notes
+
+- The backend project now serves the API through `backend/api/v1/[...route].ts`
+- Local disk uploads are not a good fit for Vercel. Use object storage in production
+- Preview frontend deployments may need extra CORS allow-list entries if you test auth against the production API
+
+### Option 2: Vercel (Frontend) + Railway (Backend)
 
 #### Deploy Backend to Railway
 
@@ -66,13 +117,13 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
    - **Framework Preset**: Next.js
    - **Root Directory**: `frontend`
    - **Build Command**: `npm run build`
-   - **Output Directory**: `.next`
 4. Set environment variables:
+   - `NEXT_PUBLIC_APP_URL`: `https://notive.abbasaisolutions.com` or your production frontend URL
    - `NEXT_PUBLIC_API_URL`: Your Railway backend URL + `/api/v1`
    - `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: Your Google OAuth client ID
 5. Deploy!
 
-### Option 2: Docker Deployment
+### Option 3: Docker Deployment
 
 #### Build Docker Images
 
@@ -133,7 +184,7 @@ Run with:
 docker-compose -f docker-compose.prod.yml up -d
 ```
 
-### Option 3: Traditional VPS (DigitalOcean, AWS EC2, etc.)
+### Option 4: Traditional VPS (DigitalOcean, AWS EC2, etc.)
 
 1. **Set up the server**:
    ```bash

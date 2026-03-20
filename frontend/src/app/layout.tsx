@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Fraunces } from "next/font/google";
 import { Suspense } from "react";
+import Link from "next/link";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth-context";
 import { SmartProvider } from "@/context/smart-context";
@@ -12,6 +13,8 @@ import OnboardingGuard from "@/components/onboarding/OnboardingGuard";
 import { NOTIVE_VOICE } from "@/content/notive-voice";
 import { getCredentialSsoClientId } from "@/utils/sso";
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { ACCOUNT_DELETION_PATH, LEGAL_COPYRIGHT_NOTICE, LEGAL_ENTITY_NAME } from "@/config/legal";
+import { PUBLIC_APP_ORIGIN, PUBLIC_APP_URL, PUBLIC_OG_IMAGE_URL } from "@/config/site";
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: '--font-sans' });
 const fraunces = Fraunces({ subsets: ["latin"], variable: '--font-serif' });
@@ -20,11 +23,11 @@ export const metadata: Metadata = {
     title: `${NOTIVE_VOICE.appName} | ${NOTIVE_VOICE.signature}`,
     description: NOTIVE_VOICE.longSummary,
     keywords: ["reflective writing", "memory tracking", "personal analytics", "story building", "privacy", "self understanding"],
-    authors: [{ name: "AbbasAi Solutions" }],
-    creator: "AbbasAi Solutions",
-    publisher: "AbbasAi Solutions",
+    authors: [{ name: LEGAL_ENTITY_NAME }],
+    creator: LEGAL_ENTITY_NAME,
+    publisher: LEGAL_ENTITY_NAME,
     manifest: '/manifest.webmanifest',
-    metadataBase: new URL('https://notive.app'),
+    metadataBase: PUBLIC_APP_ORIGIN,
     icons: {
         icon: [
             { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -39,16 +42,16 @@ export const metadata: Metadata = {
     },
     other: {
         'mobile-web-app-capable': 'yes',
-        copyright: 'Copyright (c) 2026 AbbasAi Solutions. All rights reserved.',
+        copyright: LEGAL_COPYRIGHT_NOTICE,
     },
     openGraph: {
         title: `${NOTIVE_VOICE.appName} | ${NOTIVE_VOICE.signature}`,
         description: NOTIVE_VOICE.shortSummary,
-        url: "https://notive.app",
+        url: PUBLIC_APP_URL,
         siteName: "Notive",
         images: [
             {
-                url: "https://notive.app/og-image.png",
+                url: PUBLIC_OG_IMAGE_URL,
                 width: 1200,
                 height: 630,
             },
@@ -60,7 +63,7 @@ export const metadata: Metadata = {
         card: "summary_large_image",
         title: `${NOTIVE_VOICE.appName} | ${NOTIVE_VOICE.signature}`,
         description: NOTIVE_VOICE.shortSummary,
-        images: ["https://notive.app/og-image.png"],
+        images: [PUBLIC_OG_IMAGE_URL],
     },
 };
 
@@ -77,15 +80,15 @@ const jsonLd = {
     "applicationCategory": "LifestyleApplication",
     "author": {
         "@type": "Organization",
-        "name": "AbbasAi Solutions"
+        "name": LEGAL_ENTITY_NAME
     },
     "publisher": {
         "@type": "Organization",
-        "name": "AbbasAi Solutions"
+        "name": LEGAL_ENTITY_NAME
     },
     "copyrightHolder": {
         "@type": "Organization",
-        "name": "AbbasAi Solutions"
+        "name": LEGAL_ENTITY_NAME
     },
     "copyrightYear": "2026",
     "offers": {
@@ -143,7 +146,12 @@ export default function RootLayout({
                                             </Suspense>
                                             {children}
                                             <footer className="px-6 pb-8 pt-10 text-center text-xs text-ink-muted">
-                                                Notive is developed by AbbasAi Solutions. Copyright (c) 2026 AbbasAi Solutions. All rights reserved.
+                                                <p>Notive is developed by {LEGAL_ENTITY_NAME}. {LEGAL_COPYRIGHT_NOTICE}</p>
+                                                <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-[0.76rem]">
+                                                    <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+                                                    <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+                                                    <Link href={ACCOUNT_DELETION_PATH} className="hover:text-white transition-colors">Account deletion</Link>
+                                                </div>
                                             </footer>
                                         </main>
                                     </div>

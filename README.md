@@ -2,7 +2,7 @@
 
 A modern, local-first journaling application with voice input, mood tracking, retrieval-powered memory search, and optional AI guidance.
 
-Notive is developed and owned by AbbasAi Solutions.
+Notive is developed and owned by AbbasAI Solutions, LLC.
 
 ## Features
 
@@ -71,6 +71,7 @@ cp .env.example .env
 Required environment variables:
 - `DATABASE_URL`: PostgreSQL connection string
 - `JWT_ACCESS_SECRET` & `JWT_REFRESH_SECRET`: Random secure strings
+- `NEXT_PUBLIC_APP_URL`: Public frontend URL (production example: `https://notive.abbasaisolutions.com`)
 - `NEXT_PUBLIC_API_URL`: Backend API URL (default: http://localhost:8000/api/v1)
 - `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: Google OAuth client ID (optional)
 
@@ -249,9 +250,25 @@ npm run android:build:debug
 
 `android:prepare` clears stale exported assets, rebuilds the static web app, syncs Capacitor, and verifies that the Android bundle only includes the current `manifest.webmanifest` path. `android:build:debug` then builds the APK with a supported Java runtime, preferring Android Studio's bundled Java 21 if your machine-wide `java.exe` is too new.
 
+### Android Release Bundle
+
+To prepare a signed Google Play bundle, copy [key.properties.example](./frontend/android/key.properties.example) to `frontend/android/key.properties`, point `storeFile` at your upload keystore, and fill in the signing passwords and alias. You can also provide the same values through the environment variables `PLAY_UPLOAD_STORE_FILE`, `PLAY_UPLOAD_STORE_PASSWORD`, `PLAY_UPLOAD_KEY_ALIAS`, and `PLAY_UPLOAD_KEY_PASSWORD`.
+
+Then build the Play-ready bundle:
+
+```powershell
+cd frontend
+$env:NOTIVE_VERSION_CODE="2"
+$env:NOTIVE_VERSION_NAME="1.0.1"
+npm run android:build:release
+```
+
+The release script keeps using Android Studio's bundled Java runtime when available and produces a signed `.aab` through `bundleRelease`.
+
 ## Deployment
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions for various platforms including:
+- Vercel (Frontend) + Vercel (API)
 - Vercel (Frontend) + Railway (Backend)
 - Docker
 - Traditional VPS
@@ -293,16 +310,16 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions for va
 
 ## Contributing
 
-This repository is proprietary. Please contact AbbasAi Solutions before contributing,
+This repository is proprietary. Please contact AbbasAI Solutions, LLC before contributing,
 redistributing the codebase, or using it outside an authorized engagement.
 
 ## License
 
-Copyright (c) 2026 AbbasAi Solutions. All rights reserved.
+Copyright (c) 2026 AbbasAI Solutions, LLC. All rights reserved.
 
 This repository is proprietary and is not licensed for public use, copying,
-modification, or redistribution except with prior written permission from AbbasAi
-Solutions. See the [LICENSE](./LICENSE) file for details.
+modification, or redistribution except with prior written permission from AbbasAI
+Solutions, LLC. See the [LICENSE](./LICENSE) file for details.
 
 ## Support
 

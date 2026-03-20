@@ -1,5 +1,50 @@
 apply plugin: 'com.android.application'
 
+import java.util.Properties
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { stream ->
+        keystoreProperties.load(stream)
+    }
+}
+
+def resolveOptionalConfig = { envKey, propertyKey ->
+    def envValue = System.getenv(envKey)
+    if (envValue != null && envValue.toString().trim()) {
+        return envValue.toString().trim()
+    }
+
+    def propertyValue = keystoreProperties.getProperty(propertyKey)
+    if (propertyValue != null && propertyValue.toString().trim()) {
+        return propertyValue.toString().trim()
+    }
+
+    return null
+}
+
+def resolveVersionCodeValue = {
+    def rawValue = (System.getenv('NOTIVE_VERSION_CODE') ?: project.findProperty('NOTIVE_VERSION_CODE') ?: '1').toString().trim()
+    try {
+        return Integer.parseInt(rawValue)
+    } catch (Exception ignored) {
+        return 1
+    }
+}
+
+def resolveVersionNameValue = {
+    def rawValue = (System.getenv('NOTIVE_VERSION_NAME') ?: project.findProperty('NOTIVE_VERSION_NAME') ?: '1.0.0').toString().trim()
+    return rawValue ?: '1.0.0'
+}
+
+def releaseStoreFilePath = resolveOptionalConfig('PLAY_UPLOAD_STORE_FILE', 'storeFile')
+def releaseStoreFile = releaseStoreFilePath ? rootProject.file(releaseStoreFilePath) : null
+def releaseStorePassword = resolveOptionalConfig('PLAY_UPLOAD_STORE_PASSWORD', 'storePassword')
+def releaseKeyAlias = resolveOptionalConfig('PLAY_UPLOAD_KEY_ALIAS', 'keyAlias')
+def releaseKeyPassword = resolveOptionalConfig('PLAY_UPLOAD_KEY_PASSWORD', 'keyPassword')
+def hasReleaseSigning = releaseStoreFile != null && releaseStoreFile.exists() && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
 android {
     namespace "com.notive.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,8 +52,8 @@ android {
         applicationId "com.notive.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode resolveVersionCodeValue()
+        versionName resolveVersionNameValue()
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +61,33 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile releaseStoreFile
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name == 'bundleRelease' || task.name == 'assembleRelease') {
+        task.doFirst {
+            if (!hasReleaseSigning) {
+                throw new GradleException('Release signing is not configured. Add frontend/android/key.properties or set PLAY_UPLOAD_STORE_FILE, PLAY_UPLOAD_STORE_PASSWORD, PLAY_UPLOAD_KEY_ALIAS, and PLAY_UPLOAD_KEY_PASSWORD.')
+            }
         }
     }
 }

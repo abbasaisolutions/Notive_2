@@ -90,5 +90,9 @@ export const securityConfig = {
             windowMs: readPositiveInt(process.env.RATE_LIMIT_SOCIAL_IMPORT_WINDOW_MS, 10 * ONE_MINUTE_MS),
             max: readPositiveInt(process.env.RATE_LIMIT_SOCIAL_IMPORT_MAX, 20),
         },
+        accountDeletion: {
+            windowMs: readPositiveInt(process.env.RATE_LIMIT_ACCOUNT_DELETION_WINDOW_MS, ONE_HOUR_MS),
+            max: readPositiveInt(process.env.RATE_LIMIT_ACCOUNT_DELETION_MAX, 6),
+        },
     },
 };
