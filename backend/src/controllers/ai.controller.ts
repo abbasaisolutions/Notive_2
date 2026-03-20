@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { upsertEntryAnalysisFromNlp } from '../services/entry-analysis.service';
 import embeddingService from '../services/embedding.service';
+import { executeHybridSearch } from '../services/hybrid-search.service';
 import {
     buildOpportunityExport,
     buildOpportunityOverview,
@@ -32,6 +33,117 @@ const LOCAL_GUIDE_SUGGESTIONS = [
 
 const isGuidedReflectionLens = (value: unknown): value is GuidedReflectionLens =>
     value === 'clarity' || value === 'memory' || value === 'growth' || value === 'patterns';
+
+type CoachHighlight = {
+    id: string;
+    title: string | null;
+    createdAt: string;
+    mood: string | null;
+    reason: string;
+    excerpt: string;
+};
+
+type CoachContextBundle = {
+    context: string;
+    strategy: 'hybrid' | 'recent' | 'starter';
+    highlights: CoachHighlight[];
+};
+
+const formatCoachDate = (value: Date): string =>
+    value.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+const clipText = (value: string, maxLength: number): string => {
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    if (normalized.length <= maxLength) return normalized;
+    return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}...`;
+};
+
+const buildCoachContextBundle = async (userId: string, query: string): Promise<CoachContextBundle> => {
+    const normalizedQuery = query.trim();
+    const searchResult = normalizedQuery.length >= 2
+        ? await executeHybridSearch({
+            userId,
+            query: normalizedQuery,
+            limit: 6,
+        }).catch((error) => {
+            console.error('Coach retrieval search failed:', error);
+            return null;
+        })
+        : null;
+
+    const retrievedResults = (searchResult?.results || []).slice(0, 6);
+    if (retrievedResults.length > 0) {
+        const highlights = retrievedResults.map((result) => ({
+            id: result.id,
+            title: result.title,
+            createdAt: formatCoachDate(result.createdAt),
+            mood: result.mood,
+            reason: result.matchReasons?.[0] || `${result.strategy} match`,
+            excerpt: clipText(result.content || '', 220),
+        }));
+
+        const context = highlights.map((highlight, index) => {
+            const titleLine = highlight.title ? `Title: ${highlight.title}\n` : '';
+            const moodLine = highlight.mood ? `Mood: ${highlight.mood}\n` : '';
+            return `[Snippet ${index + 1} | ${highlight.createdAt}]
+${titleLine}${moodLine}Why relevant: ${highlight.reason}
+Excerpt: ${highlight.excerpt}`;
+        }).join('\n\n');
+
+        return {
+            context,
+            strategy:
+                searchResult?.searchMode === 'hybrid' || searchResult?.searchMode === 'semantic'
+                    ? 'hybrid'
+                    : 'recent',
+            highlights,
+        };
+    }
+
+    const recentEntries = await prisma.entry.findMany({
+        where: { userId, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 4,
+        select: {
+            id: true,
+            title: true,
+            content: true,
+            mood: true,
+            createdAt: true,
+        },
+    });
+
+    if (recentEntries.length === 0) {
+        return {
+            context: '',
+            strategy: 'starter',
+            highlights: [],
+        };
+    }
+
+    const highlights = recentEntries.map((entry) => ({
+        id: entry.id,
+        title: entry.title,
+        createdAt: formatCoachDate(entry.createdAt),
+        mood: entry.mood,
+        reason: 'Recent note',
+        excerpt: clipText(entry.content, 220),
+    }));
+
+    const context = highlights.map((highlight, index) => {
+        const titleLine = highlight.title ? `Title: ${highlight.title}\n` : '';
+        const moodLine = highlight.mood ? `Mood: ${highlight.mood}\n` : '';
+        return `[Snippet ${index + 1} | ${highlight.createdAt}]
+${titleLine}${moodLine}Why relevant: ${highlight.reason}
+Excerpt: ${highlight.excerpt}`;
+    }).join('\n\n');
+
+    return {
+        context,
+        strategy: 'recent',
+        highlights,
+    };
+};
 
 const mapAnalysisRecordToInsights = (record: any) => {
     if (!record) return null;
@@ -182,18 +294,8 @@ export const chatWithJournal = async (req: Request, res: Response) => {
             return res.json(guidedResponse);
         }
 
-        // Fetch recent 10 entries for context (simple RAG)
-        const entries = await prisma.entry.findMany({
-            where: { userId, deletedAt: null },
-            orderBy: { createdAt: 'desc' },
-            take: 10
-        });
-
-        const context = entries
-            .map((entry: (typeof entries)[number]) => `[${entry.createdAt.toISOString().split('T')[0]}] ${entry.content}`)
-            .join('\n\n');
-
-        const response = await nlpService.chat(query, context);
+        const contextBundle = await buildCoachContextBundle(userId, query);
+        const response = await nlpService.chat(query, contextBundle.context);
 
         return res.json({
             response,
@@ -201,6 +303,8 @@ export const chatWithJournal = async (req: Request, res: Response) => {
             vendor: availability.vendor,
             model: availability.model,
             mode: availability.provider === 'llm' ? 'llm' : 'hosted_fallback',
+            strategy: contextBundle.strategy,
+            highlights: contextBundle.highlights,
         });
     } catch (error) {
         console.error('Chat error:', error);
@@ -224,6 +328,16 @@ export const analyzeEntry = async (req: Request, res: Response) => {
         let contentToAnalyze = content;
         let existingAnalysis: any = null;
         let contentHash = '';
+        let entryEmbeddingContext: {
+            title?: string | null;
+            mood?: string | null;
+            tags?: string[];
+            skills?: string[];
+            lessons?: string[];
+            reflection?: string | null;
+            category?: string | null;
+            lifeArea?: string | null;
+        } | null = null;
 
         // If entryId is provided, fetch from DB
         if (entryId) {
@@ -237,6 +351,16 @@ export const analyzeEntry = async (req: Request, res: Response) => {
             contentToAnalyze = entry.content;
             contentHash = crypto.createHash('sha256').update(contentToAnalyze).digest('hex');
             existingAnalysis = entry.analysis || null;
+            entryEmbeddingContext = {
+                title: entry.title,
+                mood: entry.mood,
+                tags: entry.tags,
+                skills: entry.skills,
+                lessons: entry.lessons,
+                reflection: entry.reflection,
+                category: entry.category,
+                lifeArea: entry.lifeArea,
+            };
 
             const contentHashFromRecord = entry.analysisRecord?.contentHash;
             if (contentHashFromRecord === contentHash) {
@@ -263,7 +387,7 @@ export const analyzeEntry = async (req: Request, res: Response) => {
             contentHash = crypto.createHash('sha256').update(contentToAnalyze).digest('hex');
         }
 
-        const analysis = await nlpService.analyzeContent(contentToAnalyze);
+        const analysis = await nlpService.analyzeContent(contentToAnalyze, entryEmbeddingContext?.title || undefined);
 
         const aiInsights = {
             contentHash,
@@ -305,6 +429,14 @@ export const analyzeEntry = async (req: Request, res: Response) => {
                 entryId,
                 userId,
                 content: contentToAnalyze,
+                title: entryEmbeddingContext?.title,
+                mood: entryEmbeddingContext?.mood,
+                tags: entryEmbeddingContext?.tags,
+                skills: analysis.topics?.length ? analysis.topics : entryEmbeddingContext?.skills,
+                lessons: entryEmbeddingContext?.lessons,
+                reflection: entryEmbeddingContext?.reflection,
+                category: entryEmbeddingContext?.category,
+                lifeArea: entryEmbeddingContext?.lifeArea,
             });
         }
 

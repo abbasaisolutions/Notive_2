@@ -64,6 +64,7 @@ model User {
   entryTags     EntryTag[]
   entryAnalyses EntryAnalysis[]
   entryEmbeddings EntryEmbedding[]
+  entryEmbeddingChunks EntryEmbeddingChunk[]
   personalizationEvents PersonalizationEvent[]
   
   // Chapters
@@ -108,6 +109,7 @@ model Entry {
   entryTags   EntryTag[]
   analysisRecord EntryAnalysis?
   entryEmbeddings EntryEmbedding[]
+  entryEmbeddingChunks EntryEmbeddingChunk[]
   
   // Phase 2: Insights & Sharing
   lessons     String[]
@@ -190,9 +192,9 @@ model EntryEmbedding {
   entryId    String
   userId     String
   model      String   @default("text-embedding-3-small")
-  dimensions Int      @default(1536)
+  dimensions Int
   contentHash String
-  embedding  Unsupported("vector(1536)")
+  embedding  Unsupported("vector")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -202,6 +204,29 @@ model EntryEmbedding {
   @@unique([entryId, model, dimensions])
   @@index([userId, updatedAt])
   @@index([userId, model, dimensions])
+}
+
+model EntryEmbeddingChunk {
+  id          String   @id @default(cuid())
+  entryId     String
+  userId      String
+  model       String   @default("text-embedding-3-small")
+  dimensions  Int
+  contentHash String
+  chunkIndex  Int
+  chunkCount  Int
+  chunkText   String   @db.Text
+  embedding   Unsupported("vector")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, chunkIndex, model, dimensions])
+  @@index([entryId, model, dimensions])
+  @@index([userId, model, dimensions])
+  @@index([userId, updatedAt])
 }
 
 enum EntrySource {

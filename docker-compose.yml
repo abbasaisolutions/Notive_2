@@ -38,10 +38,18 @@ services:
     build:
       context: ./similarity-service
       dockerfile: Dockerfile
+      args:
+        INSTALL_ONNX: ${SIMILARITY_INSTALL_ONNX:-1}
     environment:
-      MODEL_NAME: BAAI/bge-small-en-v1.5
-      PAD_TO_DIMS: 1536
-      RERANKER_MODEL_NAME: cross-encoder/ms-marco-MiniLM-L6-v2
+      MODEL_NAME: ${SIMILARITY_MODEL_NAME:-BAAI/bge-small-en-v1.5}
+      PAD_TO_DIMS: ${SIMILARITY_PAD_TO_DIMS:-0}
+      RERANKER_MODEL_NAME: ${SIMILARITY_RERANKER_MODEL_NAME:-cross-encoder/ms-marco-MiniLM-L6-v2}
+      EMBEDDING_BACKEND: ${SIMILARITY_EMBEDDING_BACKEND:-onnx}
+      RERANKER_BACKEND: ${SIMILARITY_RERANKER_BACKEND:-torch}
+      EMBED_BATCH_SIZE: ${SIMILARITY_EMBED_BATCH_SIZE:-32}
+      RERANK_BATCH_SIZE: ${SIMILARITY_RERANK_BATCH_SIZE:-16}
+      TORCH_NUM_THREADS: ${SIMILARITY_TORCH_NUM_THREADS:-0}
+      TORCH_NUM_INTEROP_THREADS: ${SIMILARITY_TORCH_NUM_INTEROP_THREADS:-0}
     volumes:
       - similarity_cache:/app/.cache
     ports:

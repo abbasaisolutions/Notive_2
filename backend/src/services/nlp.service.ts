@@ -384,6 +384,7 @@ export class NLPService {
         try {
             const response = await createLlmChatCompletion({
                 model: aiRuntime.analysisModel,
+                response_format: { type: 'json_object' },
                 messages: [
                     {
                         role: 'system',
@@ -867,18 +868,19 @@ Rules:
                     model: aiRuntime.chatModel,
                     messages: [
                         {
-                            role: 'system',
-                            content: `You are a helpful and empathetic AI journaling assistant. 
-                            You have access to the user's past journal entries. 
-                            Use the context provided to answer the user's question about their life, patterns, and feelings.
-                            
-                            Context (Journal Entries):
+                        role: 'system',
+                        content: `You are a helpful and empathetic AI journaling assistant.
+                            You only have access to the grounded note snippets provided below, not the user's full journal.
+                            Use that context to answer the user's question about their life, patterns, and feelings.
+
+                            Context (Grounded Note Snippets):
                             ${context}
-                            
+
                             Instructions:
                             - Be supportive and insightful.
-                            - Cite specific dates or events if possible from the context.
-                            - If the answer isn't in the context, say so gently and offer general advice.`
+                            - Stay grounded in the provided snippets and do not invent missing facts.
+                            - Cite specific dates, titles, moods, or events when possible from the context.
+                            - If the evidence is thin or the answer is not in the snippets, say so gently and offer a next question or general advice.`
                         },
                         { role: 'user', content: query }
                     ],
@@ -892,8 +894,9 @@ Rules:
             const hfToken = (process.env.HF_API_KEY || process.env.HUGGINGFACE_API_KEY || '').trim();
             const hfModel = "mistralai/Mistral-7B-Instruct-v0.2";
 
-            const prompt = `<s>[INST] You are a helpful and empathetic AI journaling assistant. 
-Uses the following journal entries as context to answer the user's question.
+            const prompt = `<s>[INST] You are a helpful and empathetic AI journaling assistant.
+Use only the grounded note snippets below to answer the user's question.
+Do not invent details that are not in the snippets.
 
 Context:
 ${context}

@@ -291,18 +291,28 @@ class RetrievalInsightsService {
         }
 
         const entryMap = await this.getEntriesByIds(input.userId, denseMatches.map((match) => match.entryId));
-        const rerankResults = await semanticSearchService.rerankCandidates(
-            query,
-            denseMatches
-                .map((match) => entryMap.get(match.entryId))
-                .filter((entry): entry is InsightEntry => Boolean(entry))
-                .map((entry) => ({
-                    id: entry.id,
-                    title: entry.title,
-                    content: entry.title ? `${entry.title}\n\n${entry.content}` : entry.content,
-                })),
-            Math.max(input.limit || 4, 4)
+        const rerankPool = denseMatches.slice(
+            0,
+            semanticSearchService.getDenseOnlyRerankPoolLimit(input.limit || 4)
         );
+        const rerankResults = semanticSearchService.shouldSkipDenseOnlyRerank(rerankPool)
+            ? []
+            : await semanticSearchService.rerankCandidates(
+                query,
+                rerankPool
+                    .map((match) => {
+                        const entry = entryMap.get(match.entryId);
+                        if (!entry) return null;
+
+                        return {
+                            id: entry.id,
+                            title: entry.title,
+                            content: match.contentSnippet || (entry.title ? `${entry.title}\n\n${entry.content}` : entry.content),
+                        };
+                    })
+                    .filter((entry): entry is { id: string; title: string | null; content: string } => Boolean(entry)),
+                Math.max(1, Math.min(rerankPool.length, input.limit || 4, 4))
+            );
         const rerankMap = new Map(rerankResults.map((result) => [result.id, result.score]));
 
         return denseMatches
@@ -321,7 +331,7 @@ class RetrievalInsightsService {
                 return {
                     id: entry.id,
                     title: entry.title,
-                    contentPreview: clip(entry.analysisRecord?.summary || entry.content, 180),
+                    contentPreview: clip(match.contentSnippet || entry.analysisRecord?.summary || entry.content, 180),
                     mood: entry.mood,
                     tags: entry.tags,
                     createdAt: entry.createdAt,

@@ -58,8 +58,14 @@ async def health_check():
     return {
         "status": "healthy",
         "embedding_model": similarity_service.model_name,
+        "embedding_backend": similarity_service.active_embedding_backend(),
+        "configured_embedding_backend": similarity_service.configured_embedding_backend(),
         "native_dimensions": similarity_service.cached_native_embedding_dimensions(),
         "reranker_model": similarity_service.RERANKER_MODEL_NAME,
+        "reranker_backend": similarity_service.active_reranker_backend(),
+        "configured_reranker_backend": similarity_service.configured_reranker_backend(),
+        "embed_batch_size": similarity_service.EMBED_BATCH_SIZE,
+        "rerank_batch_size": similarity_service.RERANK_BATCH_SIZE,
     }
 
 

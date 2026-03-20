@@ -71,8 +71,26 @@ const clamp01 = (value: number) => Math.max(0, Math.min(0.99, value));
 const normalizeScore = (value: number | null | undefined) =>
     Number.isFinite(Number(value)) ? Number(value) : 0;
 
+const parsePositiveInt = (value: string | undefined, fallback: number) => {
+    const parsed = Number.parseInt(String(value || ''), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const clipContent = (value: string, maxLength: number) => {
+    const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+    if (normalized.length <= maxLength) return normalized;
+    return `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+};
+
 const LEXICAL_TAIL_MIN_RELEVANCE = clamp01(
     Number.parseFloat(process.env.SEARCH_LEXICAL_TAIL_MIN_RELEVANCE || '0.05') || 0.05
+);
+const SEARCH_RERANK_POOL_LIMIT = parsePositiveInt(process.env.SEARCH_RERANK_POOL_LIMIT, 8);
+const SEARCH_RERANK_SKIP_CONFIDENCE = clamp01(
+    Number.parseFloat(process.env.SEARCH_RERANK_SKIP_CONFIDENCE || '0.86') || 0.86
+);
+const SEARCH_RERANK_SKIP_GAP = clamp01(
+    Number.parseFloat(process.env.SEARCH_RERANK_SKIP_GAP || '0.08') || 0.08
 );
 
 const buildLexicalWhereTokens = (normalized: string): string[] =>
@@ -181,6 +199,42 @@ const buildDisplayRelevance = (candidate: Pick<SearchCandidate, 'lexicalScore' |
     return clamp01(strongest);
 };
 
+const buildBaseConfidence = (candidate: Pick<SearchCandidate, 'lexicalScore' | 'semanticScore'>) => {
+    const strongest = Math.max(candidate.lexicalScore, candidate.semanticScore);
+    if (candidate.lexicalScore > 0 && candidate.semanticScore > 0) {
+        return clamp01(strongest + 0.05);
+    }
+    return clamp01(strongest);
+};
+
+const shouldSkipRerank = (
+    rerankPool: SearchCandidate[],
+    preRerankFusion: Map<string, {
+        lexicalRank?: number;
+        denseRank?: number;
+        rerankScore?: number;
+        fusedScore: number;
+    }>
+) => {
+    if (rerankPool.length < 2) return true;
+
+    const topCandidate = rerankPool[0];
+    const secondCandidate = rerankPool[1];
+    const topFusion = preRerankFusion.get(topCandidate.id);
+    const topConfidence = buildBaseConfidence(topCandidate);
+    const secondConfidence = buildBaseConfidence(secondCandidate);
+    const confidenceGap = topConfidence - secondConfidence;
+    const topAgreesAcrossSignals = topCandidate.lexicalScore > 0 && topCandidate.semanticScore > 0;
+    const topDominatesBothRanks = topFusion?.lexicalRank === 1 && topFusion?.denseRank === 1;
+
+    return Boolean(
+        topAgreesAcrossSignals
+        && topDominatesBothRanks
+        && topConfidence >= SEARCH_RERANK_SKIP_CONFIDENCE
+        && confidenceGap >= SEARCH_RERANK_SKIP_GAP
+    );
+};
+
 export const executeHybridSearch = async ({
     userId,
     query,
@@ -206,6 +260,7 @@ export const executeHybridSearch = async ({
             limit: lexicalLimit,
         }),
     ]);
+    const denseMatchMap = new Map(denseMatches.map((match) => [match.entryId, match]));
 
     const candidateMap = new Map<string, SearchCandidate>();
     lexicalResults.forEach((row) => {
@@ -245,10 +300,11 @@ export const executeHybridSearch = async ({
         });
 
         denseOnlyEntries.forEach((entry) => {
+            const denseMatch = denseMatchMap.get(entry.id);
             candidateMap.set(entry.id, {
                 id: entry.id,
                 title: entry.title,
-                content: entry.content.slice(0, 600),
+                content: clipContent(denseMatch?.contentSnippet || entry.content, 600),
                 mood: entry.mood,
                 createdAt: entry.createdAt,
                 lexicalScore: 0,
@@ -265,6 +321,9 @@ export const executeHybridSearch = async ({
         const candidate = candidateMap.get(match.entryId);
         if (!candidate) return;
         candidate.semanticScore = clamp01(match.semanticScore);
+        if (match.contentSnippet) {
+            candidate.content = clipContent(match.contentSnippet, 600);
+        }
     });
 
     if (candidateMap.size === 0) {
@@ -322,17 +381,20 @@ export const executeHybridSearch = async ({
 
     const rerankPool = [...candidateMap.values()]
         .sort((left, right) => (preRerankFusion.get(right.id)?.fusedScore || 0) - (preRerankFusion.get(left.id)?.fusedScore || 0))
-        .slice(0, Math.max(limit * 2, 12));
+        .slice(0, Math.max(limit, SEARCH_RERANK_POOL_LIMIT));
 
-    const rerankResults = await semanticSearchService.rerankCandidates(
-        normalized,
-        rerankPool.map((candidate) => ({
-            id: candidate.id,
-            title: candidate.title,
-            content: candidate.content,
-        })),
-        Math.max(limit, 8)
-    );
+    const useReranker = rerankerConfigured && !shouldSkipRerank(rerankPool, preRerankFusion);
+    const rerankResults = useReranker
+        ? await semanticSearchService.rerankCandidates(
+            normalized,
+            rerankPool.map((candidate) => ({
+                id: candidate.id,
+                title: candidate.title,
+                content: candidate.content,
+            })),
+            Math.max(1, Math.min(rerankPool.length, limit))
+        )
+        : [];
     const rerankMap = new Map(rerankResults.map((result) => [result.id, result.score]));
 
     const fused = semanticSearchService.fuseRankedIds({

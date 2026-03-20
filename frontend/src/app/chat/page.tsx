@@ -190,6 +190,66 @@ export default function ChatPage() {
         : coachAvailable
             ? 'Ask Notive about your notes, your patterns, or what to write next.'
             : 'This environment is running without a live guide right now.';
+    const renderMessageMeta = (message: Message, index: number) => {
+        if (message.role !== 'assistant' || !message.meta) return null;
+
+        const hasHighlights = !!message.meta.highlights?.length;
+        const hasPrompts = !!message.meta.prompts?.length;
+        const hasMetadata = !!message.meta.strategy || !!message.meta.lens;
+        if (!hasHighlights && !hasPrompts && !hasMetadata) return null;
+
+        const isGuidedReflection = message.meta.mode === 'guided_reflection';
+
+        return (
+            <div className="mt-3 space-y-3">
+                <div className="flex flex-wrap gap-2">
+                    {message.meta.lens && <TagPill tone="primary">{message.meta.lens}</TagPill>}
+                    {message.meta.strategy && <TagPill>{message.meta.strategy}</TagPill>}
+                    {!isGuidedReflection && message.meta.model && <TagPill>{message.meta.model}</TagPill>}
+                </div>
+
+                {hasHighlights && (
+                    <div className="grid gap-2 md:grid-cols-2">
+                        {message.meta.highlights?.map((highlight) => (
+                            <Link
+                                key={`${index}-${highlight.id}`}
+                                href={`/entry/view?id=${highlight.id}`}
+                                className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 transition-colors hover:border-white/15 hover:bg-black/30"
+                            >
+                                <div className="flex items-start justify-between gap-2">
+                                    <div>
+                                        <p className="text-[11px] uppercase tracking-[0.12em] text-ink-muted">{highlight.createdAt}</p>
+                                        <p className="mt-1 text-sm font-semibold text-white">{highlight.title || 'Untitled note'}</p>
+                                    </div>
+                                    <FiArrowRight size={14} className="text-ink-muted" aria-hidden="true" />
+                                </div>
+                                <p className="mt-2 text-xs leading-6 text-ink-secondary">{highlight.excerpt}</p>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    {highlight.mood && <TagPill tone="primary">{highlight.mood}</TagPill>}
+                                    <TagPill>{highlight.reason}</TagPill>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                )}
+
+                {hasPrompts && (
+                    <div className="flex flex-wrap gap-2">
+                        {message.meta.prompts?.map((prompt) => (
+                            <button
+                                key={`${index}-${prompt}`}
+                                type="button"
+                                onClick={() => setInput(prompt)}
+                                className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs text-ink-secondary hover:text-white hover:bg-white/10 transition-colors"
+                            >
+                                {prompt}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     return (
         <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
@@ -279,54 +339,7 @@ export default function ChatPage() {
                                     >
                                         <p className="whitespace-pre-wrap">{message.content}</p>
 
-                                        {message.role === 'assistant' && message.meta?.mode === 'guided_reflection' && (
-                                            <div className="mt-3 space-y-3">
-                                                <div className="flex flex-wrap gap-2">
-                                                    {message.meta.lens && <TagPill tone="primary">{message.meta.lens}</TagPill>}
-                                                    {message.meta.strategy && <TagPill>{message.meta.strategy}</TagPill>}
-                                                </div>
-
-                                                {message.meta.highlights && message.meta.highlights.length > 0 && (
-                                                    <div className="grid gap-2 md:grid-cols-2">
-                                                        {message.meta.highlights.map((highlight) => (
-                                                            <Link
-                                                                key={`${index}-${highlight.id}`}
-                                                                href={`/entry/view?id=${highlight.id}`}
-                                                                className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 transition-colors hover:border-white/15 hover:bg-black/30"
-                                                            >
-                                                                <div className="flex items-start justify-between gap-2">
-                                                                    <div>
-                                                                        <p className="text-[11px] uppercase tracking-[0.12em] text-ink-muted">{highlight.createdAt}</p>
-                                                                        <p className="mt-1 text-sm font-semibold text-white">{highlight.title || 'Untitled note'}</p>
-                                                                    </div>
-                                                                    <FiArrowRight size={14} className="text-ink-muted" aria-hidden="true" />
-                                                                </div>
-                                                                <p className="mt-2 text-xs leading-6 text-ink-secondary">{highlight.excerpt}</p>
-                                                                <div className="mt-2 flex flex-wrap gap-2">
-                                                                    {highlight.mood && <TagPill tone="primary">{highlight.mood}</TagPill>}
-                                                                    <TagPill>{highlight.reason}</TagPill>
-                                                                </div>
-                                                            </Link>
-                                                        ))}
-                                                    </div>
-                                                )}
-
-                                                {message.meta.prompts && message.meta.prompts.length > 0 && (
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {message.meta.prompts.map((prompt) => (
-                                                            <button
-                                                                key={`${index}-${prompt}`}
-                                                                type="button"
-                                                                onClick={() => setInput(prompt)}
-                                                                className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs text-ink-secondary hover:text-white hover:bg-white/10 transition-colors"
-                                                            >
-                                                                {prompt}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
+                                        {renderMessageMeta(message, index)}
                                     </div>
                                 </div>
                             ))

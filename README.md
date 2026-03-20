@@ -82,6 +82,7 @@ docker-compose up -d
 
 This starts a PostgreSQL database on port 5432.
 This also starts MongoDB, Redis, the deterministic NLP service, and the local similarity service.
+The similarity service now defaults to the validated local CPU mix: ONNX embeddings plus a torch reranker.
 
 ### 5. Run Database Migrations
 
@@ -233,6 +234,18 @@ npm run build
 cd ../backend
 npm run build
 ```
+
+### Android Debug Build
+
+On Windows, the frontend workspace now includes a repeatable Android prep/build flow:
+
+```powershell
+cd frontend
+npm run android:prepare
+npm run android:build:debug
+```
+
+`android:prepare` clears stale exported assets, rebuilds the static web app, syncs Capacitor, and verifies that the Android bundle only includes the current `manifest.webmanifest` path. `android:build:debug` then builds the APK with a supported Java runtime, preferring Android Studio's bundled Java 21 if your machine-wide `java.exe` is too new.
 
 ## Deployment
 

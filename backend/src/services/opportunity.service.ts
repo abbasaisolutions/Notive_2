@@ -172,6 +172,22 @@ const COMMON_STOPWORDS = new Set([
     'just', 'very', 'much', 'more', 'also', 'some', 'your', 'their', 'them', 'they', 'than', 'then', 'over',
 ]);
 
+const SKILL_STOPWORDS = new Set([
+    'learned', 'realized', 'noticed', 'discovered', 'because', 'after', 'before', 'today', 'yesterday',
+    'feeling', 'felt', 'feels', 'should', 'could', 'would', 'need', 'needed', 'trying', 'tried',
+]);
+
+const THEME_STOPWORDS = new Set([
+    ...COMMON_STOPWORDS,
+    'learned', 'realized', 'noticed', 'discovered', 'lesson', 'takeaway',
+]);
+
+const RESULT_HINT = /\b(achieved|improved|increased|reduced|launched|completed|delivered|resolved|saved|earned|won|shipped|published|grew|raised|improved|helped)\b/i;
+const METRIC_SIGNAL = /\b(\d+%|\d+\s*(users|clients|customers|days|hours|weeks|months|years|points|tickets|tasks|people|students|projects|events)|\$[\d,.]+)\b/i;
+const FIRST_PERSON_LEAD = /^(i|we)\s+/i;
+const RESUME_RESULT_LEAD = /^(the result was|this led to|it led to|it resulted in|resulted in|led to|was able to)\s+/i;
+const LESSON_LEAD = /^(i|we)\s+(learned|realized|noticed|discovered|understood)(\s+that)?\s+/i;
+
 const takeFirstSentence = (text: string): string => {
     const trimmed = text.trim();
     if (!trimmed) return '';
@@ -337,6 +353,38 @@ const normalizeSkill = (value: string): string => {
     return toTitleCase(cleaned);
 };
 
+const normalizeSkillLabel = (value: string): string => {
+    const cleaned = value
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (!cleaned || COMMON_STOPWORDS.has(cleaned) || SKILL_STOPWORDS.has(cleaned)) return '';
+
+    const tokens = cleaned.split(' ').filter(Boolean);
+    if (tokens.length === 0 || tokens.length > 4) return '';
+    if (tokens.some((token) => COMMON_STOPWORDS.has(token) || SKILL_STOPWORDS.has(token))) return '';
+    if (/\b(i|we|my|our|me|us)\b/.test(cleaned)) return '';
+
+    return toTitleCase(cleaned);
+};
+
+const normalizeLessonTheme = (value: string): string => {
+    const sentence = compactWhitespace(value)
+        .replace(LESSON_LEAD, '')
+        .replace(/^(that|how)\s+/i, '')
+        .trim();
+    if (!sentence) return '';
+
+    const tokens = (sentence.toLowerCase().match(/\b[a-z0-9'-]+\b/g) || [])
+        .filter((token) => token.length >= 3 && !THEME_STOPWORDS.has(token))
+        .slice(0, 6);
+    if (tokens.length === 0) {
+        return takeFirstSentence(sentence).slice(0, 72);
+    }
+    return toTitleCase(tokens.join(' '));
+};
+
 const normalizeTextField = (value: unknown): string | undefined => {
     if (typeof value !== 'string') return undefined;
     const normalized = compactWhitespace(value);
@@ -382,7 +430,7 @@ const getOpportunityMeta = (analysis: unknown): OpportunityMeta => {
         skills: Array.isArray(obj.skills)
             ? obj.skills
                 .filter((value): value is string => typeof value === 'string')
-                .map(normalizeSkill)
+                .map(normalizeSkillLabel)
                 .filter(Boolean)
                 .slice(0, 10)
             : undefined,
@@ -393,8 +441,8 @@ const incrementCount = (countMap: Map<string, number>, key: string) => {
     countMap.set(key, (countMap.get(key) || 0) + 1);
 };
 
-const addNormalizedCount = (countMap: Map<string, number>, raw: string) => {
-    const normalized = normalizeSkill(raw);
+const addNormalizedCount = (countMap: Map<string, number>, raw: string, normalizer: (value: string) => string = normalizeSkill) => {
+    const normalized = normalizer(raw);
     if (!normalized) return;
     incrementCount(countMap, normalized);
 };
@@ -407,17 +455,16 @@ const getTopCountValues = (countMap: Map<string, number>, limit: number): string
 
 const deriveSkills = (entry: OpportunityEntry, opportunityMeta?: OpportunityMeta): string[] => {
     if (opportunityMeta?.skills && opportunityMeta.skills.length > 0) {
-        return Array.from(new Set(opportunityMeta.skills.map(normalizeSkill).filter(Boolean))).slice(0, 6);
+        return Array.from(new Set(opportunityMeta.skills.map(normalizeSkillLabel).filter(Boolean))).slice(0, 6);
     }
 
     const combined = [
         ...(entry.skills || []),
-        ...(entry.lessons || []),
         ...(entry.tags || []),
         ...(entry.analysisRecord?.topics || []),
         ...(entry.analysisRecord?.keywords || []),
     ];
-    const unique = Array.from(new Set(combined.map(normalizeSkill).filter(Boolean)));
+    const unique = Array.from(new Set(combined.map(normalizeSkillLabel).filter(Boolean)));
     return unique.slice(0, 6);
 };
 
@@ -516,12 +563,106 @@ export const buildEntryStorySignal = (entry: OpportunityEntry): EntryStorySignal
     };
 };
 
+const buildExperiencePriority = (experience: ExperienceEvidence): number => {
+    const ageDays = Math.max(
+        0,
+        Math.floor((Date.now() - new Date(experience.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+    );
+    const recencyScore = Math.max(0, 1 - Math.min(ageDays, 365) / 365);
+    const quantifiedOutcome = METRIC_SIGNAL.test(experience.outcome);
+    const resultSignal = RESULT_HINT.test(experience.outcome) || quantifiedOutcome;
+    const completeCore = hasText(experience.action) && hasText(experience.outcome);
+
+    let score = 0;
+    score += experience.verified ? 3.2 : 0;
+    score += (experience.completeness.score / 100) * 2.4;
+    score += experience.confidence * 2;
+    score += completeCore ? 1.2 : 0;
+    score += quantifiedOutcome ? 1.5 : 0;
+    score += resultSignal ? 0.8 : 0;
+    score += Math.min(experience.skills.length, 4) * 0.2;
+    score += recencyScore * 0.35;
+
+    return Number(score.toFixed(3));
+};
+
+const selectTopExperiences = (
+    experiences: ExperienceEvidence[],
+    limit: number,
+    predicate: (experience: ExperienceEvidence) => boolean = () => true
+): ExperienceEvidence[] => {
+    const pool = experiences.filter(predicate).slice();
+    const selected: ExperienceEvidence[] = [];
+    const usedSkillKeys = new Set<string>();
+    const usedTitleKeys = new Set<string>();
+
+    while (pool.length > 0 && selected.length < limit) {
+        let bestIndex = 0;
+        let bestScore = -Infinity;
+
+        pool.forEach((experience, index) => {
+            const novelSkillCount = experience.skills.filter((skill) => !usedSkillKeys.has(skill.toLowerCase())).length;
+            const titleKey = experience.title.toLowerCase();
+            const diversityBonus = novelSkillCount * 0.45 - (usedTitleKeys.has(titleKey) ? 0.75 : 0);
+            const totalScore = buildExperiencePriority(experience) + diversityBonus;
+
+            if (totalScore > bestScore) {
+                bestScore = totalScore;
+                bestIndex = index;
+            }
+        });
+
+        const [chosen] = pool.splice(bestIndex, 1);
+        if (!chosen) break;
+        selected.push(chosen);
+        usedTitleKeys.add(chosen.title.toLowerCase());
+        chosen.skills.forEach((skill) => usedSkillKeys.add(skill.toLowerCase()));
+    }
+
+    return selected;
+};
+
+const stripTrailingPunctuation = (value: string) => value.replace(/[.!?]+$/g, '').trim();
+
+const normalizeResumeLead = (value: string): string => {
+    const normalized = stripTrailingPunctuation(compactWhitespace(value))
+        .replace(FIRST_PERSON_LEAD, '')
+        .replace(/^was able to\s+/i, '')
+        .trim();
+    if (!normalized) return '';
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
+const normalizeResumeOutcome = (value: string): string => {
+    const normalized = stripTrailingPunctuation(compactWhitespace(value))
+        .replace(RESUME_RESULT_LEAD, '')
+        .replace(FIRST_PERSON_LEAD, '')
+        .trim();
+    if (!normalized) return '';
+    if (RESULT_HINT.test(normalized) || METRIC_SIGNAL.test(normalized)) {
+        return `resulting in ${normalized.charAt(0).toLowerCase()}${normalized.slice(1)}`;
+    }
+    return `with impact on ${normalized.charAt(0).toLowerCase()}${normalized.slice(1)}`;
+};
+
+const normalizeResumeContext = (value: string): string => {
+    const normalized = stripTrailingPunctuation(compactWhitespace(value));
+    if (!normalized || normalized.length > 90) return '';
+    return `in ${normalized.charAt(0).toLowerCase()}${normalized.slice(1)}`;
+};
+
 const buildResumeBullet = (experience: ExperienceEvidence): ResumeBullet => {
-    const evidence = [experience.action, experience.outcome].map(compactWhitespace).filter(Boolean);
-    const skillSuffix = experience.skills.length > 0
-        ? ` Skills: ${experience.skills.slice(0, 3).join(', ')}.`
-        : '';
-    const bullet = `${evidence.map(ensureSentence).join(' ')}${skillSuffix}`;
+    const lead = normalizeResumeLead(experience.action || experience.title);
+    const outcome = normalizeResumeOutcome(experience.outcome);
+    const context = outcome ? '' : normalizeResumeContext(experience.situation);
+    const skills = experience.skills.length > 0 ? `using ${experience.skills.slice(0, 3).join(', ')}` : '';
+    const clauses = [lead, context, outcome];
+
+    if (skills && clauses.join(', ').length < 145) {
+        clauses.push(skills);
+    }
+
+    const bullet = ensureSentence(clauses.filter(Boolean).join(', '));
 
     return {
         id: `bullet-${experience.entryId}`,
@@ -545,71 +686,136 @@ const buildInterviewStory = (experience: ExperienceEvidence): InterviewStory => 
     result: experience.outcome,
 });
 
-const buildPersonalStatement = (experiences: ExperienceEvidence[], topSkills: string[], topLessons: string[]): string => {
-    if (experiences.length === 0) {
-        return 'Add detailed entries with concrete actions, outcomes, and lessons to generate a portfolio statement.';
-    }
-
-    const strongest = experiences.find((experience) => hasText(experience.action) || hasText(experience.lesson) || hasText(experience.outcome)) || experiences[0];
-    const skillPhrase = topSkills.slice(0, 3).join(', ');
-    const lessonPhrase = topLessons.slice(0, 2).join('; ');
-
-    const lines = [
-        `One defining experience was "${strongest.title}".`,
-        hasText(strongest.situation) ? `Situation: ${ensureSentence(strongest.situation)}` : '',
-        hasText(strongest.action) ? `Action: ${ensureSentence(strongest.action)}` : '',
-        hasText(strongest.outcome) ? `Outcome: ${ensureSentence(strongest.outcome)}` : '',
-        skillPhrase ? `Repeated strengths: ${skillPhrase}.` : '',
-        lessonPhrase ? `Key lessons: ${lessonPhrase}.` : '',
-    ].filter(Boolean);
-
-    return lines.join(' ');
+const buildNarrativeAction = (value: string): string => {
+    const normalized = stripTrailingPunctuation(compactWhitespace(value))
+        .replace(FIRST_PERSON_LEAD, '')
+        .trim();
+    if (!normalized) return '';
+    return `${normalized.charAt(0).toLowerCase()}${normalized.slice(1)}`;
 };
 
-const buildPersonalStatementVariant = (
-    overview: Pick<OpportunityOverview, 'personalStatement' | 'topSkills' | 'topLessons' | 'experiences'>,
+const buildNarrativeOutcome = (value: string): string => {
+    const normalized = stripTrailingPunctuation(compactWhitespace(value))
+        .replace(RESUME_RESULT_LEAD, '')
+        .replace(FIRST_PERSON_LEAD, '')
+        .trim();
+    if (!normalized) return '';
+    return `${normalized.charAt(0).toLowerCase()}${normalized.slice(1)}`;
+};
+
+const buildStatementDraft = (
+    overview: Pick<OpportunityOverview, 'profileContext' | 'topSkills' | 'topLessons' | 'experiences'>,
     variant: OpportunityTemplateVariant
 ): string => {
-    if (variant === 'standard') {
-        return overview.personalStatement;
+    if (overview.experiences.length === 0) {
+        return 'Add detailed entries with concrete actions, outcomes, and lessons to generate a stronger draft.';
     }
 
-    const leadExperience = overview.experiences.find((experience) => hasText(experience.action) || hasText(experience.lesson) || hasText(experience.outcome));
-    const skills = overview.topSkills.slice(0, 3).join(', ');
-    const lessons = overview.topLessons.slice(0, 2).join('; ');
+    const anchors = selectTopExperiences(
+        overview.experiences,
+        3,
+        (experience) => hasText(experience.action) || hasText(experience.outcome) || hasText(experience.lesson)
+    );
+    const lead = anchors[0] || overview.experiences[0];
+    const growth = anchors.find((experience) => experience.entryId !== lead.entryId && hasText(experience.lesson)) || anchors[1] || null;
+    const support = anchors.find((experience) => experience.entryId !== lead.entryId && (!growth || experience.entryId !== growth.entryId)) || anchors[2] || null;
+    const topSkills = overview.topSkills.slice(0, 3);
+    const topLessons = overview.topLessons.slice(0, 2);
+    const primaryGoal = overview.profileContext?.primaryGoal;
+    const focusArea = overview.profileContext?.focusArea;
+    const outputGoal = overview.profileContext?.outputGoals?.[0] || null;
+    const experienceLevel = overview.profileContext?.experienceLevel;
+    const skillPhrase = topSkills.length > 0 ? topSkills.join(', ') : 'adaptability and follow-through';
 
-    if (!leadExperience) {
-        return 'Add at least one detailed entry with action, lesson, and outcome to generate this statement variant.';
+    const sentences: string[] = [];
+    if (variant === 'college') {
+        sentences.push(
+            primaryGoal
+                ? `I am building toward ${primaryGoal}, and my journal shows that the work I care about most is grounded in ${skillPhrase}.`
+                : `My journal points to a consistent pattern of curiosity, effort, and growth through ${skillPhrase}.`
+        );
+    } else if (variant === 'entry_job') {
+        sentences.push(
+            primaryGoal
+                ? `I am preparing for ${primaryGoal} by building repeatable strengths in ${skillPhrase}.`
+                : `I am early in my journey, but my entries already show dependable strengths in ${skillPhrase}.`
+        );
+    } else {
+        sentences.push(
+            primaryGoal
+                ? `I am building toward ${primaryGoal}, with repeated evidence of ${skillPhrase}.`
+                : `Across my entries, a clear direction emerges through repeated strengths in ${skillPhrase}.`
+        );
+    }
+
+    const leadAction = buildNarrativeAction(lead.action);
+    const leadOutcome = buildNarrativeOutcome(lead.outcome);
+    if (leadAction && leadOutcome) {
+        sentences.push(`In "${lead.title}", I ${leadAction}, which ${leadOutcome}.`);
+    } else if (leadAction) {
+        sentences.push(`In "${lead.title}", I ${leadAction}.`);
+    } else if (leadOutcome) {
+        sentences.push(`A defining result from "${lead.title}" was that it ${leadOutcome}.`);
+    }
+
+    if (growth?.lesson) {
+        const lesson = stripTrailingPunctuation(growth.lesson).replace(LESSON_LEAD, '').trim();
+        if (lesson) {
+            sentences.push(
+                variant === 'college'
+                    ? `That process also taught me ${lesson.charAt(0).toLowerCase()}${lesson.slice(1)}, which is shaping how I approach new challenges.`
+                    : `That work taught me ${lesson.charAt(0).toLowerCase()}${lesson.slice(1)}, and it now shapes how I work.`
+            );
+        }
+    } else if (topLessons.length > 0) {
+        sentences.push(`A recurring lesson across these entries is ${topLessons.join(' and ').toLowerCase()}.`);
+    }
+
+    if (support) {
+        const supportAction = buildNarrativeAction(support.action);
+        const supportOutcome = buildNarrativeOutcome(support.outcome);
+        if (supportAction && supportOutcome) {
+            sentences.push(`That same pattern appears again in "${support.title}", where I ${supportAction} and ${supportOutcome}.`);
+        }
     }
 
     if (variant === 'college') {
-        return [
-            `A defining experience was "${leadExperience.title}".`,
-            hasText(leadExperience.action) ? `I took action by ${ensureSentence(leadExperience.action).replace(/[.!?]$/, '')}.` : '',
-            hasText(leadExperience.outcome) ? `The result was ${ensureSentence(leadExperience.outcome).replace(/[.!?]$/, '')}.` : '',
-            hasText(leadExperience.lesson) ? `That experience taught me ${ensureSentence(leadExperience.lesson).replace(/[.!?]$/, '')}.` : '',
-            skills ? `Demonstrated strengths: ${skills}.` : '',
-            lessons ? `Across entries, key lessons include ${lessons}.` : '',
-        ].filter(Boolean).join(' ');
+        sentences.push(
+            outputGoal
+                ? `I want to bring that mix of reflection and initiative into ${outputGoal.replace(/-/g, ' ')}.`
+                : `I want to bring that mix of reflection and initiative into the next learning environment I join.`
+        );
+    } else if (variant === 'entry_job') {
+        sentences.push(
+            outputGoal
+                ? `I am ready to keep growing in ${outputGoal.replace(/-/g, ' ')}, while contributing with the same consistency.`
+                : `I am ready to contribute in an early-career role while continuing to grow through real work.`
+        );
+    } else {
+        const direction = outputGoal || primaryGoal || focusArea || experienceLevel;
+        sentences.push(
+            direction
+                ? `Together, these experiences shape how I approach ${String(direction).replace(/-/g, ' ')}.`
+                : 'Together, these experiences show how I approach growth with intention, evidence, and follow-through.'
+        );
     }
 
-    const leadLine = hasText(leadExperience.action)
-        ? `In "${leadExperience.title}", I ${ensureSentence(leadExperience.action).replace(/[.!?]$/, '')}.`
-        : hasText(leadExperience.situation)
-            ? `In "${leadExperience.title}", the situation was ${ensureSentence(leadExperience.situation).replace(/[.!?]$/, '')}.`
-            : `In "${leadExperience.title}".`;
+    return sentences.filter(Boolean).join(' ');
+};
 
-    return [
-        leadLine,
-        hasText(leadExperience.outcome) ? `This led to ${ensureSentence(leadExperience.outcome).replace(/[.!?]$/, '')}.` : '',
-        skills ? `I consistently demonstrated ${skills}.` : '',
-        lessons ? `I learned ${lessons}.` : '',
-    ].filter(Boolean).join(' ');
+const buildPersonalStatementVariant = (
+    overview: Pick<OpportunityOverview, 'personalStatement' | 'topSkills' | 'topLessons' | 'experiences' | 'profileContext'>,
+    variant: OpportunityTemplateVariant
+): string => {
+    return variant === 'standard'
+        ? overview.personalStatement
+        : buildStatementDraft(overview, variant);
 };
 
 const sortExperiencesByPriority = (experiences: ExperienceEvidence[]): ExperienceEvidence[] =>
     experiences.sort((a, b) => {
-        if (a.verified !== b.verified) return a.verified ? -1 : 1;
+        const scoreDiff = buildExperiencePriority(b) - buildExperiencePriority(a);
+        if (scoreDiff !== 0) return scoreDiff;
         return b.createdAt.localeCompare(a.createdAt);
     });
 
@@ -621,8 +827,6 @@ export const buildOpportunityOverview = (
     const experiences = sortExperiencesByPriority(entries.map(deriveExperienceEvidence));
     const skillCounts = new Map<string, number>();
     const lessonCounts = new Map<string, number>();
-    const resumeBullets: ResumeBullet[] = [];
-    const interviewStories: InterviewStory[] = [];
     let verifiedCount = 0;
 
     experiences.forEach((experience) => {
@@ -630,30 +834,26 @@ export const buildOpportunityOverview = (
             verifiedCount += 1;
         }
 
-        experience.skills.forEach((skill) => addNormalizedCount(skillCounts, skill));
+        experience.skills.forEach((skill) => addNormalizedCount(skillCounts, skill, normalizeSkillLabel));
         if (hasText(experience.lesson)) {
-            addNormalizedCount(lessonCounts, experience.lesson);
-        }
-
-        if (resumeBullets.length < 12 && hasText(experience.action) && hasText(experience.outcome)) {
-            resumeBullets.push(buildResumeBullet(experience));
-        }
-
-        if (
-            interviewStories.length < 6 &&
-            hasText(experience.situation) &&
-            hasText(experience.action) &&
-            hasText(experience.outcome)
-        ) {
-            interviewStories.push(buildInterviewStory(experience));
+            addNormalizedCount(lessonCounts, experience.lesson, normalizeLessonTheme);
         }
     });
 
     const topSkills = getTopCountValues(skillCounts, 8);
     const topLessons = getTopCountValues(lessonCounts, 6);
-    const personalStatement = buildPersonalStatement(experiences, topSkills, topLessons);
+    const resumeBullets = selectTopExperiences(
+        experiences,
+        12,
+        (experience) => hasText(experience.action) && hasText(experience.outcome)
+    ).map(buildResumeBullet);
+    const interviewStories = selectTopExperiences(
+        experiences,
+        6,
+        (experience) => hasText(experience.situation) && hasText(experience.action) && hasText(experience.outcome)
+    ).map(buildInterviewStory);
     const statementVariants: Record<OpportunityTemplateVariant, string> = {
-        standard: personalStatement,
+        standard: '',
         college: '',
         entry_job: '',
     };
@@ -672,10 +872,12 @@ export const buildOpportunityOverview = (
         experiences,
         resumeBullets,
         interviewStories,
-        personalStatement,
+        personalStatement: '',
         statementVariants,
     };
 
+    overview.personalStatement = buildStatementDraft(overview, 'standard');
+    overview.statementVariants.standard = overview.personalStatement;
     overview.statementVariants.college = buildPersonalStatementVariant(overview, 'college');
     overview.statementVariants.entry_job = buildPersonalStatementVariant(overview, 'entry_job');
     return overview;
@@ -926,41 +1128,12 @@ const buildRefinementLines = (overview: OpportunityOverview): string[] => {
 const buildExperienceMap = (overview: OpportunityOverview): Map<string, ExperienceEvidence> =>
     new Map(overview.experiences.map((experience) => [experience.entryId, experience]));
 
-const getHighlightedExperiences = (overview: OpportunityOverview, limit = 4): ExperienceEvidence[] => {
-    const experienceMap = buildExperienceMap(overview);
-    const selected: ExperienceEvidence[] = [];
-    const seen = new Set<string>();
-
-    overview.resumeBullets.forEach((bullet) => {
-        const match = experienceMap.get(bullet.entryId);
-        if (!match || seen.has(match.entryId) || selected.length >= limit) return;
-        selected.push(match);
-        seen.add(match.entryId);
-    });
-
-    overview.interviewStories.forEach((story) => {
-        const match = experienceMap.get(story.entryId);
-        if (!match || seen.has(match.entryId) || selected.length >= limit) return;
-        selected.push(match);
-        seen.add(match.entryId);
-    });
-
-    overview.experiences
-        .filter((experience) => experience.verified)
-        .forEach((experience) => {
-            if (seen.has(experience.entryId) || selected.length >= limit) return;
-            selected.push(experience);
-            seen.add(experience.entryId);
-        });
-
-    overview.experiences.forEach((experience) => {
-        if (seen.has(experience.entryId) || selected.length >= limit) return;
-        selected.push(experience);
-        seen.add(experience.entryId);
-    });
-
-    return selected.slice(0, limit);
-};
+const getHighlightedExperiences = (overview: OpportunityOverview, limit = 4): ExperienceEvidence[] =>
+    selectTopExperiences(
+        overview.experiences,
+        limit,
+        (experience) => hasText(experience.action) || hasText(experience.outcome) || experience.verified
+    );
 
 const escapeHtml = (value: string): string =>
     value

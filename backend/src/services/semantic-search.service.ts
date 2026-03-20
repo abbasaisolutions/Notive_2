@@ -4,14 +4,20 @@ import { extractSearchTerms } from '../utils/search-terms';
 
 type DenseMatchRow = {
     entryId: string;
+    contentSnippet: string | null;
+    chunkIndex: number | null;
     semanticScore: number | null;
     distance: number | null;
+    source: string | null;
 };
 
 export type DenseMatch = {
     entryId: string;
+    contentSnippet: string | null;
+    chunkIndex: number | null;
     semanticScore: number;
     distance: number;
+    source: 'chunk' | 'entry';
 };
 
 export type RerankCandidate = {
@@ -50,10 +56,14 @@ const DENSE_LIMIT = parsePositiveInt(process.env.SEMANTIC_SEARCH_CANDIDATES, 24)
 const DENSE_MIN_SCORE = parseScore(process.env.SEMANTIC_SEARCH_MIN_SCORE, 0.16);
 const RELATED_MIN_SCORE = parseScore(process.env.RELATED_ENTRIES_MIN_SCORE, 0.18);
 const RERANK_LIMIT = parsePositiveInt(process.env.SEMANTIC_SEARCH_RERANK_LIMIT, 10);
+const SEMANTIC_RERANK_POOL_LIMIT = parsePositiveInt(process.env.SEMANTIC_RERANK_POOL_LIMIT, 6);
+const SEMANTIC_RERANK_SKIP_CONFIDENCE = parseScore(process.env.SEMANTIC_RERANK_SKIP_CONFIDENCE, 0.88);
+const SEMANTIC_RERANK_SKIP_GAP = parseScore(process.env.SEMANTIC_RERANK_SKIP_GAP, 0.08);
 const RRF_K = parsePositiveInt(process.env.SEMANTIC_SEARCH_RRF_K, 60);
 const SIMILARITY_SERVICE_URL = (process.env.SIMILARITY_SERVICE_URL || '').trim().replace(/\/$/, '');
 
 const toVectorLiteral = (values: number[]) => `[${values.join(',')}]`;
+const toVectorDimension = (value: number) => Math.max(1, Math.trunc(value));
 
 const normalizeScore = (value: number | null | undefined): number =>
     Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -83,6 +93,15 @@ const buildRerankDocument = (candidate: RerankCandidate): string => {
 
 const reciprocalRankFusion = (rank: number) => 1 / (RRF_K + rank);
 
+const clipSnippet = (value: string | null | undefined, maxLength: number): string => {
+    const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+    if (normalized.length <= maxLength) {
+        return normalized;
+    }
+
+    return `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+};
+
 export class SemanticSearchService {
     isDenseSearchEnabled() {
         return embeddingService.isEnabled();
@@ -90,6 +109,24 @@ export class SemanticSearchService {
 
     canUseReranker() {
         return SIMILARITY_SERVICE_URL.length > 0;
+    }
+
+    getDenseOnlyRerankPoolLimit(limit?: number) {
+        return Math.max(limit || 0, SEMANTIC_RERANK_POOL_LIMIT);
+    }
+
+    shouldSkipDenseOnlyRerank(matches: Array<Pick<DenseMatch, 'semanticScore' | 'distance'>>) {
+        if (matches.length <= 1) {
+            return true;
+        }
+
+        const [topMatch, secondMatch] = matches;
+        const semanticGap = topMatch.semanticScore - secondMatch.semanticScore;
+        const distanceGap = secondMatch.distance - topMatch.distance;
+
+        return topMatch.semanticScore >= SEMANTIC_RERANK_SKIP_CONFIDENCE
+            && semanticGap >= SEMANTIC_RERANK_SKIP_GAP
+            && distanceGap >= SEMANTIC_RERANK_SKIP_GAP / 2;
     }
 
     async findDenseMatches(input: {
@@ -117,16 +154,88 @@ export class SemanticSearchService {
         }
 
         const activeConfig = embeddingService.getActiveConfig();
+        const vectorDimensions = toVectorDimension(activeConfig.dimensions);
         const vectorLiteral = toVectorLiteral(queryEmbedding);
         const limit = Math.max(1, Math.min(input.limit || DENSE_LIMIT, 60));
         const minScore = input.minScore ?? DENSE_MIN_SCORE;
+        const candidateLimit = Math.max(limit * 3, 18);
 
-        const rows = await prisma.$queryRawUnsafe<DenseMatchRow[]>(
+        const chunkRows = await prisma.$queryRawUnsafe<DenseMatchRow[]>(
+            `
+            WITH top_chunks AS (
+                SELECT
+                    chunk."entryId" AS "entryId",
+                    chunk."chunkText" AS "contentSnippet",
+                    chunk."chunkIndex" AS "chunkIndex",
+                    GREATEST(0, 1 - ((chunk.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions}))))::REAL AS "semanticScore",
+                    ((chunk.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions})))::REAL AS distance
+                FROM "EntryEmbeddingChunk" chunk
+                JOIN "Entry" e ON e.id = chunk."entryId"
+                WHERE chunk."userId" = $2
+                    AND e."userId" = $2
+                    AND e."deletedAt" IS NULL
+                    AND chunk.model = $3
+                    AND chunk.dimensions = $4
+                    AND ($5::text IS NULL OR chunk."entryId" <> $5)
+                ORDER BY (chunk.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions})) ASC, chunk."chunkIndex" ASC
+                LIMIT $6
+            ),
+            ranked_chunks AS (
+                SELECT
+                    "entryId",
+                    "contentSnippet",
+                    "chunkIndex",
+                    "semanticScore",
+                    distance,
+                    ROW_NUMBER() OVER (PARTITION BY "entryId" ORDER BY distance ASC, "chunkIndex" ASC) AS entry_rank
+                FROM top_chunks
+            )
+            SELECT
+                "entryId",
+                "contentSnippet",
+                "chunkIndex",
+                "semanticScore",
+                distance,
+                'chunk'::text AS source
+            FROM ranked_chunks
+            WHERE entry_rank = 1
+            ORDER BY distance ASC
+            LIMIT $7
+            `,
+            vectorLiteral,
+            input.userId,
+            activeConfig.model,
+            activeConfig.dimensions,
+            input.excludeEntryId || null,
+            candidateLimit,
+            limit
+        );
+
+        const chunkMatches = chunkRows
+            .map((row) => ({
+                entryId: row.entryId,
+                contentSnippet: clipSnippet(row.contentSnippet, 420) || null,
+                chunkIndex: row.chunkIndex,
+                semanticScore: normalizeScore(row.semanticScore),
+                distance: normalizeScore(row.distance),
+                source: 'chunk' as const,
+            }))
+            .filter((row) => row.semanticScore >= minScore);
+
+        if (chunkMatches.length >= limit) {
+            return chunkMatches.slice(0, limit);
+        }
+
+        const chunkEntryIds = new Set(chunkMatches.map((match) => match.entryId));
+        const entryRows = await prisma.$queryRawUnsafe<DenseMatchRow[]>(
             `
             SELECT
                 emb."entryId" AS "entryId",
-                GREATEST(0, 1 - (emb.embedding <=> $1::vector))::REAL AS "semanticScore",
-                (emb.embedding <=> $1::vector)::REAL AS distance
+                NULL::text AS "contentSnippet",
+                NULL::integer AS "chunkIndex",
+                GREATEST(0, 1 - ((emb.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions}))))::REAL AS "semanticScore",
+                ((emb.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions})))::REAL AS distance,
+                'entry'::text AS source
             FROM "EntryEmbedding" emb
             JOIN "Entry" e ON e.id = emb."entryId"
             WHERE emb."userId" = $2
@@ -135,7 +244,7 @@ export class SemanticSearchService {
                 AND emb.model = $3
                 AND emb.dimensions = $4
                 AND ($5::text IS NULL OR emb."entryId" <> $5)
-            ORDER BY emb.embedding <=> $1::vector ASC, e."createdAt" DESC
+            ORDER BY (emb.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions})) ASC, e."createdAt" DESC
             LIMIT $6
             `,
             vectorLiteral,
@@ -143,16 +252,23 @@ export class SemanticSearchService {
             activeConfig.model,
             activeConfig.dimensions,
             input.excludeEntryId || null,
-            limit
+            candidateLimit
         );
 
-        return rows
+        const entryMatches = entryRows
             .map((row) => ({
                 entryId: row.entryId,
+                contentSnippet: null,
+                chunkIndex: null,
                 semanticScore: normalizeScore(row.semanticScore),
                 distance: normalizeScore(row.distance),
+                source: 'entry' as const,
             }))
-            .filter((row) => row.semanticScore >= minScore);
+            .filter((row) => row.semanticScore >= minScore && !chunkEntryIds.has(row.entryId));
+
+        return [...chunkMatches, ...entryMatches]
+            .sort((left, right) => left.distance - right.distance || right.semanticScore - left.semanticScore)
+            .slice(0, limit);
     }
 
     async rerankCandidates(
@@ -356,37 +472,38 @@ export class SemanticSearchService {
         }
 
         const entryMap = new Map(entries.map((entry) => [entry.id, entry]));
-        const rerankCandidates = denseMatches
-            .map((match) => entryMap.get(match.entryId))
-            .filter((entry): entry is RelatedEntryRecord => Boolean(entry))
-            .map((entry) => ({
-                id: entry.id,
-                title: entry.title,
-                content: buildRerankDocument(entry),
-            }));
+        const rerankPool = denseMatches.slice(0, this.getDenseOnlyRerankPoolLimit(input.limit || 4));
+        const rerankCandidates = rerankPool
+            .map((match) => {
+                const entry = entryMap.get(match.entryId);
+                if (!entry) return null;
 
-        const rerankResults = await this.rerankCandidates(
-            input.title?.trim() ? `${input.title}\n\n${input.content}` : input.content,
-            rerankCandidates,
-            Math.max(input.limit || 4, 4)
-        );
+                return {
+                    id: entry.id,
+                    title: entry.title,
+                    content: match.contentSnippet || buildRerankDocument(entry),
+                };
+            })
+            .filter((entry): entry is RerankCandidate => Boolean(entry));
+
+        const rerankResults = this.shouldSkipDenseOnlyRerank(rerankPool)
+            ? []
+            : await this.rerankCandidates(
+                input.title?.trim() ? `${input.title}\n\n${input.content}` : input.content,
+                rerankCandidates,
+                Math.max(1, Math.min(rerankCandidates.length, input.limit || 4, 4))
+            );
         const rerankMap = new Map(rerankResults.map((result) => [result.id, result.score]));
-        const fused = this.fuseRankedIds({
-            lexicalIds: [],
-            denseIds: denseMatches.map((match) => match.entryId),
-            rerankScores: rerankMap,
-        });
 
         return denseMatches
             .map((match) => {
                 const entry = entryMap.get(match.entryId);
                 if (!entry) return null;
 
-                const fusedData = fused.get(match.entryId);
                 return {
                     id: entry.id,
                     title: entry.title,
-                    contentPreview: entry.content.slice(0, 220),
+                    contentPreview: clipSnippet(match.contentSnippet || entry.content, 220),
                     mood: entry.mood,
                     tags: entry.tags,
                     coverImage: entry.coverImage,

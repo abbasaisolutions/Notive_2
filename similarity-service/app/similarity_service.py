@@ -1,9 +1,15 @@
 import os
+from contextlib import nullcontext
 from typing import List, Tuple, Optional
 import numpy as np
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
 from .text_processor import TextProcessor
+
+try:
+    import torch
+except Exception:  # pragma: no cover - runtime dependency guard
+    torch = None
 
 
 class SimilarityService:
@@ -30,7 +36,17 @@ class SimilarityService:
     MODEL_NAME = os.getenv('MODEL_NAME', 'BAAI/bge-small-en-v1.5')
     RERANKER_MODEL_NAME = os.getenv('RERANKER_MODEL_NAME', 'cross-encoder/ms-marco-MiniLM-L6-v2')
     RERANK_TOP_K = int(os.getenv('RERANK_TOP_K', '10'))
-    PAD_TO_DIMS = int(os.getenv('PAD_TO_DIMS', '1536'))
+    # Local CPU benchmarking showed the best quality/latency tradeoff with
+    # ONNX for dense embeddings and torch for the cross-encoder reranker.
+    EMBEDDING_BACKEND = os.getenv('EMBEDDING_BACKEND', 'onnx').strip().lower()
+    RERANKER_BACKEND = os.getenv('RERANKER_BACKEND', 'torch').strip().lower()
+    EMBED_BATCH_SIZE = int(os.getenv('EMBED_BATCH_SIZE', '32'))
+    RERANK_BATCH_SIZE = int(os.getenv('RERANK_BATCH_SIZE', '16'))
+    TORCH_NUM_THREADS = int(os.getenv('TORCH_NUM_THREADS', '0'))
+    TORCH_NUM_INTEROP_THREADS = int(os.getenv('TORCH_NUM_INTEROP_THREADS', '0'))
+    # Keep native dimensions by default; optional padding stays available for callers
+    # that need a fixed-width legacy layout.
+    PAD_TO_DIMS = int(os.getenv('PAD_TO_DIMS', '0'))
     BGE_QUERY_PREFIX = os.getenv(
         'BGE_QUERY_PREFIX',
         'Represent this sentence for searching relevant passages: '
@@ -48,13 +64,78 @@ class SimilarityService:
         self.model_name = model_name or self.MODEL_NAME
         self._model: Optional[SentenceTransformer] = None
         self._reranker: Optional[CrossEncoder] = None
+        self.embedding_backend = self._normalize_backend(self.EMBEDDING_BACKEND)
+        self.reranker_backend = self._normalize_backend(self.RERANKER_BACKEND)
+        self._active_embedding_backend: Optional[str] = None
+        self._active_reranker_backend: Optional[str] = None
+        self._configure_runtime()
+
+    def _normalize_backend(self, backend: str) -> str:
+        normalized = (backend or 'torch').strip().lower()
+        if normalized in {'torch', 'onnx'}:
+            return normalized
+        print(f"Unsupported backend '{backend}', falling back to torch.")
+        return 'torch'
+
+    def _configure_runtime(self) -> None:
+        os.environ.setdefault('TOKENIZERS_PARALLELISM', 'false')
+
+        if torch is None:
+            return
+
+        if self.TORCH_NUM_THREADS > 0:
+            try:
+                torch.set_num_threads(self.TORCH_NUM_THREADS)
+            except RuntimeError as exc:
+                print(f"Unable to set torch intra-op threads: {exc}")
+
+        if self.TORCH_NUM_INTEROP_THREADS > 0:
+            try:
+                torch.set_num_interop_threads(self.TORCH_NUM_INTEROP_THREADS)
+            except RuntimeError as exc:
+                print(f"Unable to set torch inter-op threads: {exc}")
+
+    def _build_sentence_transformer(self) -> SentenceTransformer:
+        if self.embedding_backend == 'onnx':
+            try:
+                model = SentenceTransformer(self.model_name, backend='onnx')
+                self._active_embedding_backend = 'onnx'
+                return model
+            except TypeError as exc:
+                print(f"Encoder ONNX backend is not supported by this sentence-transformers build: {exc}")
+            except Exception as exc:
+                print(f"Falling back to torch encoder backend after ONNX load failure: {exc}")
+
+        model = SentenceTransformer(self.model_name)
+        self._active_embedding_backend = 'torch'
+        return model
+
+    def _build_cross_encoder(self) -> CrossEncoder:
+        if self.reranker_backend == 'onnx':
+            try:
+                reranker = CrossEncoder(self.RERANKER_MODEL_NAME, backend='onnx')
+                self._active_reranker_backend = 'onnx'
+                return reranker
+            except TypeError as exc:
+                print(f"Reranker ONNX backend is not supported by this sentence-transformers build: {exc}")
+            except Exception as exc:
+                print(f"Falling back to torch reranker backend after ONNX load failure: {exc}")
+
+        reranker = CrossEncoder(self.RERANKER_MODEL_NAME)
+        self._active_reranker_backend = 'torch'
+        return reranker
+
+    def _inference_context(self):
+        if torch is not None and hasattr(torch, 'inference_mode'):
+            return torch.inference_mode()
+        return nullcontext()
     
     @property
     def model(self) -> SentenceTransformer:
         """Lazy load the model to avoid slow startup."""
         if self._model is None:
-            print(f"Loading sentence transformer model: {self.model_name}")
-            self._model = SentenceTransformer(self.model_name)
+            print(f"Loading sentence transformer model: {self.model_name} (backend={self.embedding_backend})")
+            self._model = self._build_sentence_transformer()
             print("Model loaded successfully!")
         return self._model
 
@@ -62,10 +143,22 @@ class SimilarityService:
     def reranker(self) -> CrossEncoder:
         """Lazy load the reranker so search still starts fast."""
         if self._reranker is None:
-            print(f"Loading local reranker model: {self.RERANKER_MODEL_NAME}")
-            self._reranker = CrossEncoder(self.RERANKER_MODEL_NAME)
+            print(f"Loading local reranker model: {self.RERANKER_MODEL_NAME} (backend={self.reranker_backend})")
+            self._reranker = self._build_cross_encoder()
             print("Reranker loaded successfully!")
         return self._reranker
+
+    def configured_embedding_backend(self) -> str:
+        return self.embedding_backend
+
+    def configured_reranker_backend(self) -> str:
+        return self.reranker_backend
+
+    def active_embedding_backend(self) -> str:
+        return self._active_embedding_backend or 'not_loaded'
+
+    def active_reranker_backend(self) -> str:
+        return self._active_reranker_backend or 'not_loaded'
 
     def native_embedding_dimensions(self) -> int:
         """Return the model's native embedding dimensionality."""
@@ -149,28 +242,31 @@ class SimilarityService:
             return np.array([])
 
         prepared_texts = self._prepare_texts(texts, mode)
-
-        if mode == 'query' and hasattr(self.model, 'encode_query'):
-            embeddings = self.model.encode_query(
-                prepared_texts,
-                convert_to_numpy=True,
-                normalize_embeddings=normalize,
-                show_progress_bar=False
-            )
-        elif mode == 'document' and hasattr(self.model, 'encode_document'):
-            embeddings = self.model.encode_document(
-                prepared_texts,
-                convert_to_numpy=True,
-                normalize_embeddings=normalize,
-                show_progress_bar=False
-            )
-        else:
-            embeddings = self.model.encode(
-                prepared_texts,
-                convert_to_numpy=True,
-                normalize_embeddings=normalize,
-                show_progress_bar=False
-            )
+        with self._inference_context():
+            if mode == 'query' and hasattr(self.model, 'encode_query'):
+                embeddings = self.model.encode_query(
+                    prepared_texts,
+                    batch_size=self.EMBED_BATCH_SIZE,
+                    convert_to_numpy=True,
+                    normalize_embeddings=normalize,
+                    show_progress_bar=False
+                )
+            elif mode == 'document' and hasattr(self.model, 'encode_document'):
+                embeddings = self.model.encode_document(
+                    prepared_texts,
+                    batch_size=self.EMBED_BATCH_SIZE,
+                    convert_to_numpy=True,
+                    normalize_embeddings=normalize,
+                    show_progress_bar=False
+                )
+            else:
+                embeddings = self.model.encode(
+                    prepared_texts,
+                    batch_size=self.EMBED_BATCH_SIZE,
+                    convert_to_numpy=True,
+                    normalize_embeddings=normalize,
+                    show_progress_bar=False
+                )
 
         return self._pad_embeddings(embeddings, pad_to_dims)
 
@@ -387,7 +483,12 @@ class SimilarityService:
         if not prepared:
             return []
 
-        scores = self.reranker.predict(prepared)
+        with self._inference_context():
+            scores = self.reranker.predict(
+                prepared,
+                batch_size=self.RERANK_BATCH_SIZE,
+                show_progress_bar=False,
+            )
         ranked = [
             (ids[index], float(scores[index]))
             for index in range(len(ids))

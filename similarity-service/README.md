@@ -16,6 +16,7 @@ This service provides **semantic similarity** retrieval for Notive. Unlike keywo
 - **Deep Understanding**: Captures synonyms, related concepts, and contextual meaning
 - **Fast & Efficient**: Pre-normalized embeddings with batch processing support
 - **Local Reranking**: Cross-encoder reranking endpoint for second-stage result refinement
+- **Runtime Tuning**: Optional ONNX backends plus batch/thread controls for CPU deployments
 - **Backend Embedding API**: Dedicated `/embed` endpoint for persisted dense retrieval in the backend
 - **Docker Ready**: Includes Dockerfile for containerized deployment
 
@@ -24,7 +25,7 @@ This service provides **semantic similarity** retrieval for Notive. Unlike keywo
 - **Python 3.11+**
 - **FastAPI** - Web framework
 - **Sentence Transformers** - Semantic embeddings
-- **PyTorch** - Deep learning backend
+- **ONNX Runtime / PyTorch** - CPU inference backends
 - **Pydantic** - Request/response validation
 
 ## Installation
@@ -39,6 +40,9 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
+# Recommended for the default local CPU path
+pip install -r requirements-onnx.txt
+
 # Run the service
 uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 ```
@@ -46,11 +50,14 @@ uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 ### Docker
 
 ```bash
-# Build the image
+# Build the baseline image
 docker build -t similarity-service .
 
-# Run the container
-docker run -d -p 8002:8001 --name similarity-service similarity-service
+# Recommended CPU image: includes ONNX Runtime + Optimum
+docker build --build-arg INSTALL_ONNX=1 -t similarity-service:onnx .
+
+# Run the recommended backend mix
+docker run -d -p 8002:8001 --name similarity-service similarity-service:onnx
 ```
 
 ## API Endpoints
@@ -122,8 +129,7 @@ Generate local embeddings for queries or documents.
     "feeling happy about my promotion"
   ],
   "mode": "query",
-  "normalize": true,
-  "pad_to": 1536
+  "normalize": true
 }
 ```
 
@@ -132,7 +138,7 @@ Generate local embeddings for queries or documents.
 {
   "model": "BAAI/bge-small-en-v1.5",
   "mode": "query",
-  "dimensions": 1536,
+  "dimensions": 384,
   "native_dimensions": 384,
   "embeddings": [[0.01, 0.02, 0.03]]
 }
@@ -141,7 +147,7 @@ Generate local embeddings for queries or documents.
 Notes:
 
 - `mode` should be `query` for search text and `document` for entry content.
-- `pad_to` is used by Notive's backend to fit the current pgvector schema width without losing similarity geometry.
+- `pad_to` is optional and only needed if a caller wants fixed-width vectors for a custom storage layout.
 
 ### POST /rerank
 
@@ -176,8 +182,22 @@ The service uses the following configurable parameters (in `similarity_service.p
 | `SIMILARITY_THRESHOLD` | 0.3 | Minimum similarity score to consider an entry relevant |
 | `TOP_K` | 5 | Maximum number of entries to return |
 | `MODEL_NAME` | `BAAI/bge-small-en-v1.5` | Local retrieval encoder |
-| `PAD_TO_DIMS` | `1536` | Optional zero-padding target for backend persistence |
+| `PAD_TO_DIMS` | `0` | Optional zero-padding target for custom persistence layouts; `0` keeps native dimensions |
 | `RERANKER_MODEL_NAME` | `cross-encoder/ms-marco-MiniLM-L6-v2` | Local reranker model |
+| `EMBEDDING_BACKEND` | `onnx` | `torch` or `onnx` for the embedding encoder |
+| `RERANKER_BACKEND` | `torch` | `torch` or `onnx` for the cross-encoder reranker |
+| `EMBED_BATCH_SIZE` | `32` | Batch size for embedding generation |
+| `RERANK_BATCH_SIZE` | `16` | Batch size for local reranking |
+| `TORCH_NUM_THREADS` | `0` | Optional intra-op CPU thread cap |
+| `TORCH_NUM_INTEROP_THREADS` | `0` | Optional inter-op CPU thread cap |
+
+Notes:
+
+- `requirements-onnx.txt` installs both `onnxruntime` and `optimum`, which sentence-transformers needs for ONNX encoder loading.
+- The recommended local CPU configuration is `EMBEDDING_BACKEND=onnx` and `RERANKER_BACKEND=torch`.
+- On the current `sentence-transformers==3.4.1` stack, the encoder can run on ONNX but the cross-encoder reranker still falls back to `torch`.
+- If `onnx` is requested but the runtime or installed libraries do not support it, the service falls back to `torch`.
+- `GET /health` reports the configured and active backends so you can verify whether ONNX is actually in use.
 
 ### Alternative Models
 

@@ -30,7 +30,7 @@ const llmVendor: ActiveLlmVendor =
             ? 'openai'
             : 'disabled';
 
-const defaultChatModel = process.env.LLM_MODEL || 'gpt-3.5-turbo';
+const defaultChatModel = process.env.LLM_MODEL || 'gpt-4o-mini';
 const defaultFastModel = process.env.LLM_FAST_MODEL || defaultChatModel;
 const embeddingServiceUrl = (process.env.EMBEDDING_SERVICE_URL || process.env.SIMILARITY_SERVICE_URL || '').trim().replace(/\/$/, '');
 const rawEmbeddingProvider = (process.env.EMBEDDING_PROVIDER || '').trim().toLowerCase();

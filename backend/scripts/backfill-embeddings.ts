@@ -27,6 +27,13 @@ const run = async () => {
                 userId: true,
                 title: true,
                 content: true,
+                mood: true,
+                tags: true,
+                skills: true,
+                lessons: true,
+                reflection: true,
+                category: true,
+                lifeArea: true,
             },
         });
 
@@ -39,6 +46,13 @@ const run = async () => {
                 userId: entry.userId,
                 title: entry.title,
                 content: entry.content,
+                mood: entry.mood,
+                tags: entry.tags,
+                skills: entry.skills,
+                lessons: entry.lessons,
+                reflection: entry.reflection,
+                category: entry.category,
+                lifeArea: entry.lifeArea,
                 force,
             });
 

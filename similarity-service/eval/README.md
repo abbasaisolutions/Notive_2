@@ -20,6 +20,13 @@ npm run retrieval:build-eval
 
 That writes an ignored dataset under `similarity-service/eval/private/` so private notes do not get committed.
 
+To benchmark the live backend retrieval pipeline, including chunked dense retrieval and hybrid reranking:
+
+```bash
+cd backend
+npm run retrieval:evaluate-pipeline
+```
+
 ## Run the evaluator
 
 ```powershell
@@ -48,3 +55,4 @@ python scripts/evaluate_retrieval.py --output eval/reports/latest.json
 ## Goal
 
 Use this to compare dense-only retrieval against dense-plus-rerank before switching models or thresholds in production.
+Use the backend pipeline evaluator when you want to measure the exact shipped retrieval stack instead of encoder-only quality.

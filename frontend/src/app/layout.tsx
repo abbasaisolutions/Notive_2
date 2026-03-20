@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     description: NOTIVE_VOICE.longSummary,
     keywords: ["reflective writing", "memory tracking", "personal analytics", "story building", "privacy", "self understanding"],
     authors: [{ name: "Notive Team" }],
-    manifest: '/manifest.json',
+    manifest: '/manifest.webmanifest',
     metadataBase: new URL('https://notive.app'),
     icons: {
         icon: [

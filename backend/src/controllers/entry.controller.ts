@@ -485,6 +485,13 @@ export const createEntry = async (req: Request, res: Response) => {
             userId,
             content,
             title: typeof title === 'string' ? title : null,
+            mood: entry.mood,
+            tags: entry.tags,
+            skills: entry.skills,
+            lessons: entry.lessons,
+            reflection: entry.reflection,
+            category: entry.category,
+            lifeArea: entry.lifeArea,
         });
 
         await upsertAutoOpportunityEvidence({
@@ -813,6 +820,13 @@ export const updateEntry = async (req: Request, res: Response) => {
             userId,
             content: nextContent,
             title: typeof nextTitle === 'string' ? nextTitle : null,
+            mood: entry.mood,
+            tags: entry.tags,
+            skills: entry.skills,
+            lessons: entry.lessons,
+            reflection: entry.reflection,
+            category: entry.category,
+            lifeArea: entry.lifeArea,
         });
 
         await upsertAutoOpportunityEvidence({
