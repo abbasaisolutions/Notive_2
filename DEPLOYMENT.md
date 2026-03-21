@@ -113,6 +113,8 @@ If the build fails because `routes-manifest.json` could not be found, clear any 
 5. Set environment variables in Railway dashboard
 6. Note your backend URL (e.g., `https://your-app.railway.app`)
 
+Railway monorepo note: this repository is an isolated monorepo. Set the Railway service **Root Directory** to `backend` so Railpack sees `backend/package.json`. If you use Config as Code, point Railway at `/backend/railway.json`, because Railway's config-file path is absolute and does not follow the Root Directory setting.
+
 #### Deploy Frontend to Vercel
 
 1. Create a Vercel account at [vercel.com](https://vercel.com)
