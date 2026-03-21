@@ -66,7 +66,8 @@ Important: the optional Python NLP service and similarity-service are not Vercel
 6. In IONOS, point `notive.abbasaisolutions.com` to the Vercel DNS target shown in the Vercel Domains tab
 
 Troubleshooting: if the build fails with `No Next.js version detected`, confirm the Vercel project's Root Directory is exactly `frontend`. The repository root does not contain the Next.js `package.json`.
-If the build fails with `Command "npm --prefix frontend install" exited with 254`, the Root Directory is already `frontend` but the project is still using old repo-root commands. Change the install command to `npm install`, the build command to `npm run build`, and the output directory to `out`.
+If the build fails with `Command "npm --prefix frontend install" exited with 254`, the Root Directory is already `frontend` but the project is still using old repo-root commands. Change the install command to `npm install` and the build command to `npm run build`.
+If the build fails because `routes-manifest.json` could not be found, clear any custom **Output Directory** override. For a Next.js project, leave it at the default unless you changed Next.js `distDir`.
 
 #### Deploy Backend API to Vercel
 
@@ -127,7 +128,8 @@ If the build fails with `Command "npm --prefix frontend install" exited with 254
 5. Deploy!
 
 If Vercel shows `No Next.js version detected`, the project is pointing at the wrong folder. Set **Root Directory** to `frontend`, because the Next.js app and its `package.json` live there.
-If the Root Directory is already `frontend`, do not keep repo-root command overrides such as `npm --prefix frontend install` or `npm --prefix frontend run build`. In that setup, use `npm install`, `npm run build`, and `out`.
+If the Root Directory is already `frontend`, do not keep repo-root command overrides such as `npm --prefix frontend install` or `npm --prefix frontend run build`. In that setup, use `npm install` and `npm run build`.
+Do not override **Output Directory** for this Next.js frontend. Even though static export writes an `out` folder, Vercel's Next.js deployment should use its default output handling.
 
 ### Option 3: Docker Deployment
 
