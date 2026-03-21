@@ -65,6 +65,8 @@ Important: the optional Python NLP service and similarity-service are not Vercel
 5. Add the production domain `notive.abbasaisolutions.com`
 6. In IONOS, point `notive.abbasaisolutions.com` to the Vercel DNS target shown in the Vercel Domains tab
 
+Troubleshooting: if the build fails with `No Next.js version detected`, confirm the Vercel project's Root Directory is exactly `frontend`. The repository root does not contain the Next.js `package.json`.
+
 #### Deploy Backend API to Vercel
 
 1. Create a second Vercel project from the same repo
@@ -122,6 +124,8 @@ Important: the optional Python NLP service and similarity-service are not Vercel
    - `NEXT_PUBLIC_API_URL`: Your Railway backend URL + `/api/v1`
    - `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: Your Google OAuth client ID
 5. Deploy!
+
+If Vercel shows `No Next.js version detected`, the project is pointing at the wrong folder. Set **Root Directory** to `frontend`, because the Next.js app and its `package.json` live there.
 
 ### Option 3: Docker Deployment
 
