@@ -2,6 +2,8 @@
 // File: backend/src/services/nlp.service.ts
 
 import { aiRuntime, createLlmChatCompletion, hasLlmProvider, type AnalysisProvider } from '../config/ai';
+import analysisMemoryService, { type AnalysisMemoryContext } from './analysis-memory.service';
+import entryPersonalizationService, { type EntryPersonalizationSuggestions } from './entry-personalization.service';
 
 export interface SentimentResult {
     score: number; // -1 (negative) to 1 (positive)
@@ -34,6 +36,15 @@ export interface AnalysisResult {
     };
     modelInfo?: Record<string, string>;
     provider?: AnalysisProvider;
+    memory?: AnalysisMemoryContext;
+    suggestions?: EntryPersonalizationSuggestions;
+}
+
+export interface AnalyzeContentOptions {
+    title?: string;
+    userId?: string;
+    excludeEntryId?: string | null;
+    preferAdvanced?: boolean;
 }
 
 export interface OpportunityEvidenceSynthesis {
@@ -140,6 +151,22 @@ Object.entries(EMOTION_LEXICON).forEach(([emotion, keywords]) => {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
+const mergeUniqueStrings = (primary: string[] = [], secondary: string[] = [], limit = primary.length || secondary.length) => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+
+    [...primary, ...secondary].forEach((value) => {
+        const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+        if (!normalized) return;
+        const key = normalized.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        result.push(normalized);
+    });
+
+    return result.slice(0, limit);
+};
+
 const normalizeEmotionScores = (scores: Record<string, number>): Record<string, number> | undefined => {
     const entries = Object.entries(scores);
     if (entries.length === 0) return undefined;
@@ -175,6 +202,72 @@ const mergeAnalysis = (baseline: AnalysisResult, llm: AnalysisResult): AnalysisR
 export class NLPService {
     private canUseLlmEvidence = hasLlmProvider();
     private loggedEvidenceProviderDisable = false;
+
+    private enrichWithMemorySignals(
+        analysis: AnalysisResult,
+        memory: AnalysisMemoryContext | null
+    ): AnalysisResult {
+        if (!memory) return analysis;
+
+        const memoryHighlights: string[] = [];
+        if (memory.summary) {
+            memoryHighlights.push(memory.summary);
+        }
+        if (memory.familiarity === 'repeat') {
+            memoryHighlights.push('This note is very close to a recurring pattern in your journal.');
+        } else if (memory.familiarity === 'related') {
+            memoryHighlights.push('This note lines up with an ongoing pattern in your journal.');
+        }
+
+        return {
+            ...analysis,
+            topics: mergeUniqueStrings(analysis.topics || [], memory.recurringThemes, 6),
+            keywords: mergeUniqueStrings(
+                analysis.keywords || [],
+                [...memory.recurringSkills, ...memory.recurringLessons],
+                10
+            ),
+            highlights: mergeUniqueStrings(analysis.highlights || [], memoryHighlights, 5),
+            memory,
+        };
+    }
+
+    private enrichWithPersonalizationSignals(
+        analysis: AnalysisResult,
+        suggestions: EntryPersonalizationSuggestions | null
+    ): AnalysisResult {
+        if (!suggestions) return analysis;
+
+        const personalizationHighlights: string[] = [];
+        if (suggestions.summary) {
+            personalizationHighlights.push(suggestions.summary);
+        }
+        if (suggestions.chapter?.confidence && suggestions.chapter.confidence >= 0.8) {
+            personalizationHighlights.push(`A similar note history points toward the chapter "${suggestions.chapter.name}".`);
+        }
+
+        return {
+            ...analysis,
+            keywords: mergeUniqueStrings(
+                analysis.keywords || [],
+                suggestions.tags.map((tag) => tag.value),
+                10
+            ),
+            highlights: mergeUniqueStrings(analysis.highlights || [], personalizationHighlights, 5),
+            suggestions,
+        };
+    }
+
+    private applyAnalysisEnrichment(
+        analysis: AnalysisResult,
+        memory: AnalysisMemoryContext | null,
+        suggestions: EntryPersonalizationSuggestions | null
+    ): AnalysisResult {
+        return this.enrichWithPersonalizationSignals(
+            this.enrichWithMemorySignals(analysis, memory),
+            suggestions
+        );
+    }
 
     getChatAvailability(): ChatAvailability {
         if (hasLlmProvider()) {
@@ -234,7 +327,10 @@ export class NLPService {
         return parts.join(' ');
     }
 
-    private async analyzeWithPython(content: string, title?: string): Promise<AnalysisResult | null> {
+    private async analyzeWithPython(
+        content: string,
+        options: { title?: string; preferAdvanced?: boolean } = {}
+    ): Promise<AnalysisResult | null> {
         const serviceUrl = process.env.NLP_SERVICE_URL;
         if (!serviceUrl) return null;
 
@@ -242,7 +338,11 @@ export class NLPService {
             const response = await fetch(`${serviceUrl.replace(/\/$/, '')}/analyze`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content, title }),
+                body: JSON.stringify({
+                    content,
+                    title: options.title,
+                    preferAdvanced: Boolean(options.preferAdvanced),
+                }),
             });
 
             if (!response.ok) {
@@ -452,10 +552,14 @@ export class NLPService {
      * Analyze text content for sentiment, entities, and insights.
      * Prefers Python microservice, then deterministic fallback, and only uses LLM if explicitly enabled.
      */
-    async analyzeContent(content: string, title?: string): Promise<AnalysisResult> {
+    async analyzeContent(content: string, options: AnalyzeContentOptions = {}): Promise<AnalysisResult> {
+        const title = typeof options.title === 'string' && options.title.trim()
+            ? options.title.trim()
+            : undefined;
         const words = content.split(/\s+/).filter(Boolean);
         const wordCount = words.length;
         const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+        const preferAdvanced = options.preferAdvanced ?? (wordCount >= 130 || content.length >= 900);
 
         if (!content || content.trim().length < 5) {
             return {
@@ -470,8 +574,36 @@ export class NLPService {
             };
         }
 
-        const pythonResult = await this.analyzeWithPython(content, title);
-        if (pythonResult) return pythonResult;
+        const [memoryContext, personalizationSuggestions, pythonResult] = await Promise.all([
+            options.userId
+                ? analysisMemoryService.buildContext({
+                    userId: options.userId,
+                    content,
+                    title,
+                    excludeEntryId: options.excludeEntryId || null,
+                })
+                : Promise.resolve(null),
+            options.userId
+                ? entryPersonalizationService.suggestForDraft({
+                    userId: options.userId,
+                    content,
+                    title,
+                    excludeEntryId: options.excludeEntryId || null,
+                })
+                : Promise.resolve(null),
+            this.analyzeWithPython(content, {
+                title,
+                preferAdvanced,
+            }),
+        ]);
+
+        if (pythonResult) {
+            return this.applyAnalysisEnrichment(
+                pythonResult,
+                memoryContext,
+                personalizationSuggestions
+            );
+        }
 
         // Default local-first path for cost/perf reliability.
         const deterministic = this.analyzeDeterministic(content);
@@ -479,10 +611,20 @@ export class NLPService {
         // Escalate to LLM only for low-confidence or sparse extraction cases.
         if (this.shouldUseLlmRefinement(content, deterministic)) {
             const llmResult = await this.analyzeWithLLM(content);
-            if (llmResult) return mergeAnalysis(deterministic, llmResult);
+            if (llmResult) {
+                return this.applyAnalysisEnrichment(
+                    mergeAnalysis(deterministic, llmResult),
+                    memoryContext,
+                    personalizationSuggestions
+                );
+            }
         }
 
-        return deterministic;
+        return this.applyAnalysisEnrichment(
+            deterministic,
+            memoryContext,
+            personalizationSuggestions
+        );
     }
 
     private splitSentences(content: string): string[] {

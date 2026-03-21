@@ -3,14 +3,20 @@ export type PassageChunk = {
     text: string;
 };
 
+type PassageUnit = {
+    text: string;
+    tokenCount: number;
+};
+
 const parsePositiveInt = (value: string | undefined, fallback: number): number => {
     const parsed = Number.parseInt(String(value || ''), 10);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-const BASE_TARGET_CHARS = parsePositiveInt(process.env.EMBEDDING_CHUNK_TARGET_CHARS, 720);
-const OVERLAP_CHARS = parsePositiveInt(process.env.EMBEDDING_CHUNK_OVERLAP_CHARS, 140);
+const BASE_TARGET_TOKENS = parsePositiveInt(process.env.EMBEDDING_CHUNK_TARGET_TOKENS, 180);
+const OVERLAP_TOKENS = parsePositiveInt(process.env.EMBEDDING_CHUNK_OVERLAP_TOKENS, 36);
 const MAX_CHUNK_COUNT = parsePositiveInt(process.env.EMBEDDING_CHUNK_MAX_COUNT, 12);
+const LONG_SEGMENT_FALLBACK_WORDS = parsePositiveInt(process.env.EMBEDDING_CHUNK_LONG_SEGMENT_WORDS, 110);
 
 const normalizeWhitespace = (value: string): string =>
     value
@@ -26,83 +32,105 @@ const collapseInlineWhitespace = (value: string): string =>
         .replace(/\s+/g, ' ')
         .trim();
 
-const splitLongSegment = (segment: string, targetChars: number): string[] => {
-    const normalized = collapseInlineWhitespace(segment);
-    if (!normalized) return [];
-    if (normalized.length <= targetChars) return [normalized];
+const estimateTokenCount = (value: string): number =>
+    Math.max(
+        1,
+        (collapseInlineWhitespace(value).match(/[A-Za-z0-9']+|[^\sA-Za-z0-9]/g) || []).length
+    );
 
-    const slices: string[] = [];
-    let remaining = normalized;
-
-    while (remaining.length > targetChars) {
-        const preferredBreaks = [
-            remaining.lastIndexOf('. ', targetChars),
-            remaining.lastIndexOf('! ', targetChars),
-            remaining.lastIndexOf('? ', targetChars),
-            remaining.lastIndexOf('; ', targetChars),
-            remaining.lastIndexOf(', ', targetChars),
-            remaining.lastIndexOf(' ', targetChars),
-        ];
-
-        let splitAt = Math.max(...preferredBreaks);
-        if (splitAt < Math.floor(targetChars * 0.55)) {
-            splitAt = targetChars;
-        } else {
-            splitAt += 1;
-        }
-
-        slices.push(remaining.slice(0, splitAt).trim());
-        remaining = remaining.slice(splitAt).trim();
+const splitWordWindow = (segment: string, maxWords: number): string[] => {
+    const words = collapseInlineWhitespace(segment).split(' ').filter(Boolean);
+    if (words.length <= maxWords) {
+        return words.length > 0 ? [words.join(' ')] : [];
     }
 
-    if (remaining) {
-        slices.push(remaining);
+    const windows: string[] = [];
+    for (let index = 0; index < words.length; index += maxWords) {
+        windows.push(words.slice(index, index + maxWords).join(' '));
     }
-
-    return slices;
+    return windows;
 };
 
-const toSegments = (content: string, targetChars: number): string[] => {
-    const normalized = normalizeWhitespace(content);
-    if (!normalized) return [];
+const groupClauses = (clauses: string[], targetTokens: number): string[] => {
+    const grouped: string[] = [];
+    let current: string[] = [];
+    let currentTokens = 0;
 
-    const paragraphs = normalized.split(/\n{2,}/).flatMap((paragraph) => {
-        const trimmedParagraph = paragraph.trim();
-        if (!trimmedParagraph) return [];
+    clauses.forEach((clause) => {
+        const tokenCount = estimateTokenCount(clause);
+        if (current.length > 0 && currentTokens + tokenCount > targetTokens) {
+            grouped.push(current.join(' '));
+            current = [];
+            currentTokens = 0;
+        }
 
-        const sentences = trimmedParagraph
-            .split(/(?<=[.!?])\s+/)
-            .map((sentence) => sentence.trim())
-            .filter(Boolean);
-
-        const source = sentences.length > 0 ? sentences : [trimmedParagraph];
-        return source.flatMap((segment) => splitLongSegment(segment, targetChars));
+        current.push(clause);
+        currentTokens += tokenCount;
     });
 
-    return paragraphs.filter(Boolean);
+    if (current.length > 0) {
+        grouped.push(current.join(' '));
+    }
+
+    return grouped;
 };
 
-const getChunkLength = (segments: string[]): number => segments.join(' ').length;
+const splitLongSegment = (segment: string, targetTokens: number): string[] => {
+    const normalized = collapseInlineWhitespace(segment);
+    if (!normalized) return [];
+    if (estimateTokenCount(normalized) <= targetTokens) return [normalized];
 
-const getOverlapSegments = (segments: string[]): string[] => {
-    if (segments.length === 0 || OVERLAP_CHARS <= 0) return [];
+    const clauses = normalized
+        .split(/(?<=[,;:])\s+|\s[-–]\s/g)
+        .map((clause) => clause.trim())
+        .filter(Boolean);
 
-    const overlap: string[] = [];
-    let overlapLength = 0;
+    if (clauses.length > 1) {
+        return groupClauses(clauses, targetTokens)
+            .flatMap((clauseGroup) => splitLongSegment(clauseGroup, targetTokens))
+            .filter(Boolean);
+    }
 
-    for (let index = segments.length - 1; index >= 0; index -= 1) {
-        const segment = segments[index];
-        const projectedLength = overlapLength + segment.length + (overlap.length > 0 ? 1 : 0);
-        if (projectedLength > OVERLAP_CHARS && overlap.length > 0) {
+    return splitWordWindow(normalized, Math.max(20, Math.floor(LONG_SEGMENT_FALLBACK_WORDS)));
+};
+
+const splitParagraphToUnits = (paragraph: string, targetTokens: number): PassageUnit[] => {
+    const normalized = collapseInlineWhitespace(paragraph);
+    if (!normalized) return [];
+
+    const sentences = normalized
+        .split(/(?<=[.!?])\s+/)
+        .map((sentence) => sentence.trim())
+        .filter(Boolean);
+
+    const source = sentences.length > 0 ? sentences : [normalized];
+
+    return source
+        .flatMap((sentence) => splitLongSegment(sentence, targetTokens))
+        .map((text) => ({
+            text,
+            tokenCount: estimateTokenCount(text),
+        }))
+        .filter((unit) => unit.text.length > 0);
+};
+
+const getChunkTokenCount = (units: PassageUnit[]): number =>
+    units.reduce((total, unit) => total + unit.tokenCount, 0);
+
+const getOverlapUnits = (units: PassageUnit[]): PassageUnit[] => {
+    if (units.length === 0 || OVERLAP_TOKENS <= 0) return [];
+
+    const overlap: PassageUnit[] = [];
+    let tokenCount = 0;
+
+    for (let index = units.length - 1; index >= 0; index -= 1) {
+        const unit = units[index];
+        if (tokenCount >= OVERLAP_TOKENS && overlap.length > 0) {
             break;
         }
 
-        overlap.unshift(segment);
-        overlapLength = projectedLength;
-
-        if (overlapLength >= OVERLAP_CHARS) {
-            break;
-        }
+        overlap.unshift(unit);
+        tokenCount += unit.tokenCount;
     }
 
     return overlap;
@@ -112,54 +140,57 @@ export const buildPassageChunks = (content: string): PassageChunk[] => {
     const normalized = normalizeWhitespace(content);
     if (!normalized) return [];
 
-    const dynamicTargetChars = Math.max(
-        BASE_TARGET_CHARS,
-        Math.ceil(normalized.length / Math.max(1, MAX_CHUNK_COUNT))
+    const totalTokens = estimateTokenCount(normalized);
+    const dynamicTargetTokens = Math.max(
+        BASE_TARGET_TOKENS,
+        Math.ceil(totalTokens / Math.max(1, MAX_CHUNK_COUNT))
     );
-    const targetChars = Math.max(dynamicTargetChars, OVERLAP_CHARS + 120);
-    const segments = toSegments(normalized, targetChars);
+    const targetTokens = Math.max(dynamicTargetTokens, OVERLAP_TOKENS + 28);
 
-    if (segments.length === 0) {
+    const units = normalized
+        .split(/\n{2,}/)
+        .flatMap((paragraph) => splitParagraphToUnits(paragraph, targetTokens));
+
+    if (units.length === 0) {
         return [];
     }
 
-    const chunkSegments: string[][] = [];
-    let current: string[] = [];
+    const chunkUnits: PassageUnit[][] = [];
+    let current: PassageUnit[] = [];
 
     const flushCurrent = () => {
         if (current.length === 0) return;
-
-        chunkSegments.push([...current]);
-        current = getOverlapSegments(current);
+        chunkUnits.push([...current]);
+        current = getOverlapUnits(current);
     };
 
-    segments.forEach((segment) => {
+    units.forEach((unit) => {
         if (current.length === 0) {
-            current = [segment];
+            current = [unit];
             return;
         }
 
-        const nextLength = getChunkLength([...current, segment]);
-        if (nextLength <= targetChars) {
-            current.push(segment);
+        const projected = getChunkTokenCount([...current, unit]);
+        if (projected <= targetTokens) {
+            current.push(unit);
             return;
         }
 
         flushCurrent();
 
-        while (current.length > 0 && getChunkLength([...current, segment]) > targetChars) {
+        while (current.length > 0 && getChunkTokenCount([...current, unit]) > targetTokens) {
             current.shift();
         }
 
-        current.push(segment);
+        current.push(unit);
     });
 
     flushCurrent();
 
-    return chunkSegments
+    return chunkUnits
         .map((parts, index) => ({
             index,
-            text: collapseInlineWhitespace(parts.join(' ')),
+            text: collapseInlineWhitespace(parts.map((part) => part.text).join(' ')),
         }))
         .filter((chunk, index, chunks) =>
             Boolean(chunk.text) && (index === 0 || chunk.text !== chunks[index - 1]?.text)

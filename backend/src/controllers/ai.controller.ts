@@ -387,7 +387,11 @@ export const analyzeEntry = async (req: Request, res: Response) => {
             contentHash = crypto.createHash('sha256').update(contentToAnalyze).digest('hex');
         }
 
-        const analysis = await nlpService.analyzeContent(contentToAnalyze, entryEmbeddingContext?.title || undefined);
+        const analysis = await nlpService.analyzeContent(contentToAnalyze, {
+            title: entryEmbeddingContext?.title || undefined,
+            userId,
+            excludeEntryId: entryId || null,
+        });
 
         const aiInsights = {
             contentHash,
@@ -402,6 +406,8 @@ export const analyzeEntry = async (req: Request, res: Response) => {
             emotions: analysis.emotions || null,
             highlights: analysis.highlights || [],
             evidence: analysis.evidence || null,
+            memory: analysis.memory || null,
+            suggestions: analysis.suggestions || null,
             modelInfo: analysis.modelInfo || null,
             provider: analysis.provider || null,
         };
@@ -435,6 +441,10 @@ export const analyzeEntry = async (req: Request, res: Response) => {
                 skills: analysis.topics?.length ? analysis.topics : entryEmbeddingContext?.skills,
                 lessons: entryEmbeddingContext?.lessons,
                 reflection: entryEmbeddingContext?.reflection,
+                analysis: {
+                    ...(existingAnalysis || {}),
+                    ai: aiInsights,
+                },
                 category: entryEmbeddingContext?.category,
                 lifeArea: entryEmbeddingContext?.lifeArea,
             });

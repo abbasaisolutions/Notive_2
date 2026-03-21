@@ -168,9 +168,9 @@ const upsertAutoOpportunityEvidence = async (entry: {
     reflection: string | null;
     createdAt: Date;
     analysis: unknown;
-}) => {
+}): Promise<Prisma.JsonObject | null> => {
     if (entry.analysis !== null && entry.analysis !== undefined && !isJsonObject(entry.analysis)) {
-        return;
+        return null;
     }
 
     const sourceEntry: OpportunityEntry = {
@@ -242,7 +242,7 @@ const upsertAutoOpportunityEvidence = async (entry: {
     if (synthesized?.provider) nextFields.provider = synthesized.provider;
     if (typeof synthesized?.confidence === 'number') nextFields.confidence = Number(synthesized.confidence.toFixed(3));
 
-    if (Object.keys(nextFields).length === 0) return;
+    if (Object.keys(nextFields).length === 0) return null;
 
     const mergedOpportunity: Prisma.JsonObject = {
         ...existingOpportunity,
@@ -259,6 +259,8 @@ const upsertAutoOpportunityEvidence = async (entry: {
         where: { id: entry.id },
         data: { analysis: nextAnalysis },
     });
+
+    return nextAnalysis as unknown as Prisma.JsonObject;
 };
 
 const dedupeStrings = (values: string[]): string[] => {
@@ -343,6 +345,15 @@ const deriveGrowthSignalsFromNlp = (
     };
 };
 
+const resolveSuggestedLifeArea = (analysis: AnalysisResult | null): string | null => {
+    const suggestion = analysis?.suggestions?.lifeArea;
+    if (!suggestion || suggestion.confidence < 0.72) {
+        return null;
+    }
+
+    return normalizeLifeArea(suggestion.value);
+};
+
 const buildAiInsightsFromNlp = (analysis: AnalysisResult) => ({
     generatedAt: new Date().toISOString(),
     sentiment: analysis.sentiment,
@@ -355,6 +366,8 @@ const buildAiInsightsFromNlp = (analysis: AnalysisResult) => ({
     emotions: analysis.emotions || null,
     highlights: analysis.highlights || [],
     evidence: analysis.evidence || null,
+    memory: analysis.memory || null,
+    suggestions: analysis.suggestions || null,
     modelInfo: analysis.modelInfo || null,
     provider: analysis.provider || 'deterministic',
 });
@@ -394,18 +407,38 @@ export const createEntry = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid category. Use PERSONAL or PROFESSIONAL.' });
         }
 
+        let nlpFallback: AnalysisResult | null = null;
         const providedTags = Array.isArray(tags) ? tags : [];
         let autoTagMeta: Array<{ name: string; confidence: number; source: TagSource }> = [];
+        const safeContentHtml = sanitizeHtml(contentHtml);
+        const payloadAnalysis = isJsonObject(analysis) ? analysis : null;
+        const hasPayloadAiInsights = hasPersistableAiInsights(payloadAnalysis);
+        const payloadGrowthSignals = hasPayloadAiInsights ? deriveGrowthSignalsFromAnalysis(payloadAnalysis) : null;
+
+        if (!hasPayloadAiInsights) {
+            const nlpTitle = typeof title === 'string' && title.trim() ? title : undefined;
+            nlpFallback = await nlpService.analyzeContent(content, {
+                title: nlpTitle,
+                userId,
+            });
+        }
 
         if (autoTag || (providedTags.length === 0 && content.length > 20)) {
             try {
-                const suggestedTags = await taggingService.suggestTags(content, title);
+                const text = `${title ? `Title: ${title}\n` : ''}${content}`.trim();
+                const suggestedTags = nlpFallback
+                    ? await taggingService.suggestTagsFromAnalysis(text, nlpFallback)
+                    : await taggingService.suggestTags(content, title, { userId });
                 autoTagMeta = suggestedTags
                     .filter(t => t.confidence > 0.5)
                     .map(t => ({
                         name: t.name,
                         confidence: t.confidence,
-                        source: t.source === 'ai' ? TagSource.AI : TagSource.NLP,
+                        source: t.source === 'ai'
+                            ? TagSource.AI
+                            : t.source === 'user'
+                                ? TagSource.SYSTEM
+                                : TagSource.NLP,
                     }));
             } catch (tagError) {
                 console.error('Auto-tagging failed, using user tags:', tagError);
@@ -420,21 +453,11 @@ export const createEntry = async (req: Request, res: Response) => {
         const finalTags = tagMeta.map(t => t.name);
         const providedTagKeys = new Set(providedTags.map((tag: string) => String(tag).toLowerCase()));
 
-        const safeContentHtml = sanitizeHtml(contentHtml);
-        const payloadAnalysis = isJsonObject(analysis) ? analysis : null;
-        const hasPayloadAiInsights = hasPersistableAiInsights(payloadAnalysis);
-        const payloadGrowthSignals = hasPayloadAiInsights ? deriveGrowthSignalsFromAnalysis(payloadAnalysis) : null;
-
-        let nlpFallback: AnalysisResult | null = null;
-        if (!hasPayloadAiInsights) {
-            const nlpTitle = typeof title === 'string' && title.trim() ? title : undefined;
-            nlpFallback = await nlpService.analyzeContent(content, nlpTitle);
-        }
         const nlpGrowthSignals = deriveGrowthSignalsFromNlp(nlpFallback);
         const growthSignals = payloadGrowthSignals || nlpGrowthSignals;
         const resolvedMood = mood || nlpFallback?.suggestedMood || null;
         const resolvedCategory = VALID_CATEGORIES.has(String(category)) ? String(category) : 'PERSONAL';
-        const resolvedLifeArea = normalizeLifeArea(lifeArea);
+        const resolvedLifeArea = normalizeLifeArea(lifeArea) || resolveSuggestedLifeArea(nlpFallback);
 
         const entry = await prisma.entry.create({
             data: {
@@ -480,21 +503,7 @@ export const createEntry = async (req: Request, res: Response) => {
             });
         }
 
-        embeddingService.enqueueEntryEmbedding({
-            entryId: entry.id,
-            userId,
-            content,
-            title: typeof title === 'string' ? title : null,
-            mood: entry.mood,
-            tags: entry.tags,
-            skills: entry.skills,
-            lessons: entry.lessons,
-            reflection: entry.reflection,
-            category: entry.category,
-            lifeArea: entry.lifeArea,
-        });
-
-        await upsertAutoOpportunityEvidence({
+        const opportunityAnalysis = await upsertAutoOpportunityEvidence({
             id: entry.id,
             title: entry.title,
             content: entry.content,
@@ -507,11 +516,31 @@ export const createEntry = async (req: Request, res: Response) => {
             analysis: entry.analysis,
         });
 
+        embeddingService.enqueueEntryEmbedding({
+            entryId: entry.id,
+            userId,
+            content,
+            title: typeof title === 'string' ? title : null,
+            mood: entry.mood,
+            tags: entry.tags,
+            skills: entry.skills,
+            lessons: entry.lessons,
+            reflection: entry.reflection,
+            analysis: opportunityAnalysis ?? entry.analysis,
+            category: entry.category,
+            lifeArea: entry.lifeArea,
+        });
+
+        const responseEntry = opportunityAnalysis
+            ? { ...entry, analysis: opportunityAnalysis }
+            : entry;
+
         return res.status(201).json({
-            entry: attachEntryStorySignal(entry),
+            entry: attachEntryStorySignal(responseEntry),
             suggestedTags: autoTagMeta
                 .map(t => t.name)
                 .filter(tag => !providedTagKeys.has(tag.toLowerCase())),
+            suggestions: nlpFallback?.suggestions || null,
         });
     } catch (error) {
         console.error('Create entry error:', error);
@@ -745,7 +774,11 @@ export const updateEntry = async (req: Request, res: Response) => {
         let nlpFallback: AnalysisResult | null = null;
         if (!hasPayloadAiInsights && contentChanged) {
             const nlpTitle = typeof nextTitle === 'string' && nextTitle.trim() ? nextTitle : undefined;
-            nlpFallback = await nlpService.analyzeContent(nextContent, nlpTitle);
+            nlpFallback = await nlpService.analyzeContent(nextContent, {
+                title: nlpTitle,
+                userId,
+                excludeEntryId: existing.id,
+            });
         }
         const nlpGrowthSignals = deriveGrowthSignalsFromNlp(nlpFallback);
         const growthSignals = payloadGrowthSignals || (nlpFallback ? nlpGrowthSignals : null);
@@ -757,7 +790,7 @@ export const updateEntry = async (req: Request, res: Response) => {
             : existing.category;
         const resolvedLifeArea = lifeArea !== undefined
             ? normalizeLifeArea(lifeArea)
-            : existing.lifeArea;
+            : (existing.lifeArea || resolveSuggestedLifeArea(nlpFallback));
         const mergedPayloadAnalysis: Prisma.JsonObject | null = payloadAnalysis
             ? {
                 ...(isJsonObject(existing.analysis) ? existing.analysis : {}),
@@ -815,21 +848,7 @@ export const updateEntry = async (req: Request, res: Response) => {
             });
         }
 
-        embeddingService.enqueueEntryEmbedding({
-            entryId: entry.id,
-            userId,
-            content: nextContent,
-            title: typeof nextTitle === 'string' ? nextTitle : null,
-            mood: entry.mood,
-            tags: entry.tags,
-            skills: entry.skills,
-            lessons: entry.lessons,
-            reflection: entry.reflection,
-            category: entry.category,
-            lifeArea: entry.lifeArea,
-        });
-
-        await upsertAutoOpportunityEvidence({
+        const opportunityAnalysis = await upsertAutoOpportunityEvidence({
             id: entry.id,
             title: entry.title,
             content: entry.content,
@@ -842,7 +861,29 @@ export const updateEntry = async (req: Request, res: Response) => {
             analysis: entry.analysis,
         });
 
-        return res.status(200).json({ entry: attachEntryStorySignal(entry) });
+        embeddingService.enqueueEntryEmbedding({
+            entryId: entry.id,
+            userId,
+            content: nextContent,
+            title: typeof nextTitle === 'string' ? nextTitle : null,
+            mood: entry.mood,
+            tags: entry.tags,
+            skills: entry.skills,
+            lessons: entry.lessons,
+            reflection: entry.reflection,
+            analysis: opportunityAnalysis ?? entry.analysis,
+            category: entry.category,
+            lifeArea: entry.lifeArea,
+        });
+
+        const responseEntry = opportunityAnalysis
+            ? { ...entry, analysis: opportunityAnalysis }
+            : entry;
+
+        return res.status(200).json({
+            entry: attachEntryStorySignal(responseEntry),
+            suggestions: nlpFallback?.suggestions || null,
+        });
     } catch (error) {
         console.error('Update entry error:', error);
         return res.status(500).json({ message: 'Internal server error' });

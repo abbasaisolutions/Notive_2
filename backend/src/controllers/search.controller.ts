@@ -3,12 +3,24 @@ import prisma from '../config/prisma';
 import semanticSearchService from '../services/semantic-search.service';
 import { executeHybridSearch } from '../services/hybrid-search.service';
 import retrievalInsightsService from '../services/retrieval-insights.service';
+import type { SearchIntent } from '../utils/search-intent';
+
+const VALID_SEARCH_INTENTS = new Set<SearchIntent>([
+    'general',
+    'emotion',
+    'lesson',
+    'skill',
+    'reflection',
+    'memory',
+    'action',
+]);
 
 export class SearchController {
     async searchEntries(req: Request, res: Response) {
         try {
             const userId = req.userId;
             const query = (req.query.q ?? req.query.search) as string | undefined;
+            const requestedIntent = typeof req.query.intent === 'string' ? req.query.intent.trim().toLowerCase() : '';
             const limitRaw = parseInt(req.query.limit as string, 10) || 20;
             const limit = Math.min(Math.max(limitRaw, 1), 50);
 
@@ -27,6 +39,9 @@ export class SearchController {
                 userId,
                 query: normalized,
                 limit,
+                intent: VALID_SEARCH_INTENTS.has(requestedIntent as SearchIntent)
+                    ? (requestedIntent as SearchIntent)
+                    : undefined,
             });
 
             return res.json(result);

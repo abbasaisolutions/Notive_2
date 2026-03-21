@@ -28,7 +28,7 @@ app = FastAPI(title="Notive NLP Service", version="0.2.0")
 _analyzer = SentimentIntensityAnalyzer()
 _kw_extractor = yake.KeywordExtractor(lan="en", n=2, top=12)
 
-ADVANCED_MODE_ENABLED = os.getenv("NLP_ENABLE_ADVANCED_MODELS", "false").lower() == "true"
+ADVANCED_MODE_DEFAULT_ENABLED = os.getenv("NLP_ENABLE_ADVANCED_MODELS", "false").lower() == "true"
 ADVANCED_EVIDENCE_MIN_SCORE = float(os.getenv("NLP_EVIDENCE_MIN_SCORE", "0.45"))
 ADVANCED_MAX_SENTENCES = max(4, int(os.getenv("NLP_EVIDENCE_MAX_SENTENCES", "12")))
 HF_CACHE_DIR = os.getenv("HF_MODEL_CACHE_DIR")
@@ -105,6 +105,7 @@ EVIDENCE_LABELS = ["situation", "action", "lesson", "outcome"]
 class AnalyzeRequest(BaseModel):
     content: str
     title: Optional[str] = None
+    preferAdvanced: Optional[bool] = None
 
 
 class Entity(BaseModel):
@@ -154,8 +155,8 @@ class AdvancedModelSuite:
         self.zero_shot = None
         self.model_info: Dict[str, str] = {}
 
-    def enabled(self) -> bool:
-        return ADVANCED_MODE_ENABLED and pipeline is not None
+    def enabled(self, force: bool = False) -> bool:
+        return pipeline is not None and (ADVANCED_MODE_DEFAULT_ENABLED or force)
 
     def _pipeline_kwargs(self) -> Dict[str, Any]:
         kwargs: Dict[str, Any] = {}
@@ -163,8 +164,8 @@ class AdvancedModelSuite:
             kwargs["cache_dir"] = HF_CACHE_DIR
         return kwargs
 
-    def load_sentiment(self):
-        if not self.enabled():
+    def load_sentiment(self, force: bool = False):
+        if not self.enabled(force=force):
             return None
         if self.sentiment is not None:
             return self.sentiment
@@ -175,8 +176,8 @@ class AdvancedModelSuite:
             self.sentiment = None
         return self.sentiment
 
-    def load_emotion(self):
-        if not self.enabled():
+    def load_emotion(self, force: bool = False):
+        if not self.enabled(force=force):
             return None
         if self.emotion is not None:
             return self.emotion
@@ -187,8 +188,8 @@ class AdvancedModelSuite:
             self.emotion = None
         return self.emotion
 
-    def load_zero_shot(self):
-        if not self.enabled():
+    def load_zero_shot(self, force: bool = False):
+        if not self.enabled(force=force):
             return None
         if self.zero_shot is not None:
             return self.zero_shot
@@ -201,6 +202,14 @@ class AdvancedModelSuite:
 
 
 _advanced = AdvancedModelSuite()
+
+
+def _should_use_advanced(prefer_advanced: Optional[bool] = None) -> bool:
+    if pipeline is None:
+        return False
+    if prefer_advanced is None:
+        return ADVANCED_MODE_DEFAULT_ENABLED
+    return bool(prefer_advanced)
 
 
 def _word_count(text: str) -> int:
@@ -236,8 +245,8 @@ def _map_sentiment_label(raw_label: str) -> str:
     return "neutral"
 
 
-def _sentiment_advanced(text: str) -> Optional[Sentiment]:
-    model = _advanced.load_sentiment()
+def _sentiment_advanced(text: str, force: bool = False) -> Optional[Sentiment]:
+    model = _advanced.load_sentiment(force=force)
     if model is None:
         return None
 
@@ -355,8 +364,8 @@ def _extract_emotions_fallback(text: str) -> Dict[str, float]:
     return {emotion: round(score / max_score, 3) for emotion, score in scores.items()}
 
 
-def _extract_emotions_advanced(text: str) -> Optional[Dict[str, float]]:
-    model = _advanced.load_emotion()
+def _extract_emotions_advanced(text: str, force: bool = False) -> Optional[Dict[str, float]]:
+    model = _advanced.load_emotion(force=force)
     if model is None:
         return None
 
@@ -465,8 +474,8 @@ def _extract_evidence_heuristic(sentences: List[str]) -> Dict[str, EvidencePoint
     return evidence
 
 
-def _extract_evidence_advanced(sentences: List[str]) -> Dict[str, EvidencePoint]:
-    classifier = _advanced.load_zero_shot()
+def _extract_evidence_advanced(sentences: List[str], force: bool = False) -> Dict[str, EvidencePoint]:
+    classifier = _advanced.load_zero_shot(force=force)
     if classifier is None:
         return {}
 
@@ -508,14 +517,14 @@ def _merge_evidence(heuristic: Dict[str, EvidencePoint], advanced: Dict[str, Evi
     return merged
 
 
-def _build_evidence(text: str) -> Dict[str, EvidencePoint]:
+def _build_evidence(text: str, use_advanced: bool = False) -> Dict[str, EvidencePoint]:
     sentences = _split_sentences(text)
     heuristic = _extract_evidence_heuristic(sentences)
 
-    if not ADVANCED_MODE_ENABLED:
+    if not use_advanced:
         return heuristic
 
-    advanced = _extract_evidence_advanced(sentences)
+    advanced = _extract_evidence_advanced(sentences, force=use_advanced)
     return _merge_evidence(heuristic, advanced)
 
 
@@ -560,7 +569,7 @@ def _build_model_info() -> Optional[Dict[str, str]]:
 
 @lru_cache(maxsize=1)
 def _warm_up_models() -> bool:
-    if not ADVANCED_MODE_ENABLED:
+    if not ADVANCED_MODE_DEFAULT_ENABLED:
         return False
     if pipeline is None:
         return False
@@ -588,13 +597,14 @@ async def analyze(payload: AnalyzeRequest):
 
     full_text = f"{payload.title}. {content}" if payload.title else content
     words = _word_count(full_text)
+    use_advanced = _should_use_advanced(payload.preferAdvanced)
 
-    sentiment = _sentiment_advanced(full_text) or _sentiment_fallback(full_text)
-    emotions = _extract_emotions_advanced(full_text) or _extract_emotions_fallback(full_text)
+    sentiment = _sentiment_advanced(full_text, force=use_advanced) or _sentiment_fallback(full_text)
+    emotions = _extract_emotions_advanced(full_text, force=use_advanced) or _extract_emotions_fallback(full_text)
     keywords = _extract_keywords(full_text)
     entities = _extract_entities(full_text)
     topics = _extract_topics(keywords, entities)
-    evidence_map = _build_evidence(full_text)
+    evidence_map = _build_evidence(full_text, use_advanced=use_advanced)
     suggested = _suggest_mood(sentiment, emotions)
     highlights = _build_highlights(sentiment, emotions, topics, entities, evidence_map)
 

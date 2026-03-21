@@ -35,6 +35,13 @@ enum AnalysisSource {
   IMPORT
 }
 
+enum EmbeddingJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 enum AccountDeletionRequestStatus {
   PENDING
   FULFILLED
@@ -71,6 +78,8 @@ model User {
   entryAnalyses EntryAnalysis[]
   entryEmbeddings EntryEmbedding[]
   entryEmbeddingChunks EntryEmbeddingChunk[]
+  entryEmbeddingFacets EntryEmbeddingFacet[]
+  embeddingJobs EmbeddingJob[]
   personalizationEvents PersonalizationEvent[]
   accountDeletionRequests AccountDeletionRequest[]
   
@@ -117,6 +126,8 @@ model Entry {
   analysisRecord EntryAnalysis?
   entryEmbeddings EntryEmbedding[]
   entryEmbeddingChunks EntryEmbeddingChunk[]
+  entryEmbeddingFacets EntryEmbeddingFacet[]
+  embeddingJobs EmbeddingJob[]
   
   // Phase 2: Insights & Sharing
   lessons     String[]
@@ -234,6 +245,57 @@ model EntryEmbeddingChunk {
   @@index([entryId, model, dimensions])
   @@index([userId, model, dimensions])
   @@index([userId, updatedAt])
+}
+
+model EntryEmbeddingFacet {
+  id          String   @id @default(cuid())
+  entryId      String
+  userId       String
+  model        String   @default("text-embedding-3-small")
+  dimensions   Int
+  contentHash  String
+  facetType    String   @db.VarChar(64)
+  facetKey     String   @db.VarChar(128)
+  facetText    String   @db.Text
+  embedding    Unsupported("vector")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, facetType, facetKey, model, dimensions])
+  @@index([entryId, model, dimensions])
+  @@index([userId, model, dimensions])
+  @@index([userId, facetType, model, dimensions])
+  @@index([userId, updatedAt])
+}
+
+model EmbeddingJob {
+  id           String             @id @default(cuid())
+  entryId       String
+  userId        String
+  model         String             @default("text-embedding-3-small")
+  dimensions    Int
+  payload       Json
+  status        EmbeddingJobStatus @default(PENDING)
+  attemptCount  Int                @default(0)
+  maxAttempts   Int                @default(4)
+  runAfter      DateTime           @default(now())
+  lockedAt      DateTime?
+  lockedBy      String?            @db.VarChar(128)
+  lastError     String?            @db.Text
+  completedAt   DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, model, dimensions])
+  @@index([status, runAfter, createdAt])
+  @@index([userId, status, runAfter])
+  @@index([entryId, status])
 }
 
 enum EntrySource {

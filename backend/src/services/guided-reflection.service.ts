@@ -2,6 +2,7 @@ import prisma from '../config/prisma';
 import embeddingService from './embedding.service';
 import { executeHybridSearch, type HybridSearchResult } from './hybrid-search.service';
 import nlpService from './nlp.service';
+import type { SearchIntent } from '../utils/search-intent';
 
 type GuidedReflectionIntent = 'summary' | 'pattern' | 'emotion' | 'next_step' | 'memory' | 'general';
 export type GuidedReflectionLens = 'clarity' | 'memory' | 'growth' | 'patterns';
@@ -160,6 +161,21 @@ const applyLensToIntent = (lens: GuidedReflectionLens, intent: GuidedReflectionI
             return 'pattern';
         default:
             return 'summary';
+    }
+};
+
+const mapReflectionIntentToSearchIntent = (intent: GuidedReflectionIntent): SearchIntent => {
+    switch (intent) {
+        case 'emotion':
+            return 'emotion';
+        case 'memory':
+            return 'memory';
+        case 'next_step':
+            return 'action';
+        case 'pattern':
+            return 'lesson';
+        default:
+            return 'general';
     }
 };
 
@@ -382,6 +398,7 @@ class GuidedReflectionService {
                 userId: input.userId,
                 query: normalizedQuery,
                 limit: 4,
+                intent: mapReflectionIntentToSearchIntent(intent),
             })
             : null;
 

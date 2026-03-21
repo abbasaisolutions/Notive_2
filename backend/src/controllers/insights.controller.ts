@@ -230,8 +230,10 @@ class InsightsController {
                 return res.status(400).json({ message: 'Content is required' });
             }
 
-            const fullText = title ? `${title}. ${content}` : content;
-            const analysis = await nlpService.analyzeContent(fullText);
+            const analysis = await nlpService.analyzeContent(content, {
+                title,
+                userId: req.userId,
+            });
 
             return res.json({
                 analysis,

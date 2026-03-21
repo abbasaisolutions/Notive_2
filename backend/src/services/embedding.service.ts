@@ -1,7 +1,13 @@
 import crypto from 'crypto';
+import { EmbeddingJobStatus, Prisma } from '@prisma/client';
 import { aiRuntime, createEmbedding, hasEmbeddingProvider } from '../config/ai';
 import prisma from '../config/prisma';
 import { buildPassageChunks } from '../utils/passage-chunking';
+import {
+    buildEntryEmbeddingFacets,
+    getEmbeddingFacetLabel,
+    type EntryEmbeddingFacetRecord,
+} from '../utils/embedding-facets';
 
 type UpsertEntryEmbeddingInput = {
     entryId: string;
@@ -13,6 +19,7 @@ type UpsertEntryEmbeddingInput = {
     skills?: string[];
     lessons?: string[];
     reflection?: string | null;
+    analysis?: unknown;
     category?: string | null;
     lifeArea?: string | null;
     force?: boolean;
@@ -22,6 +29,28 @@ type UpsertEntryEmbeddingResult =
     | { status: 'disabled' | 'skipped'; reason: string }
     | { status: 'embedded'; dimensions: number }
     | { status: 'failed'; reason: string };
+
+type ExistingFacetRow = {
+    facetType: string;
+    facetKey: string;
+    contentHash: string;
+};
+
+type ExistingChunkRow = {
+    id: string;
+    chunkIndex: number;
+    contentHash: string;
+    chunkText: string;
+};
+
+type EmbeddingJobPayload = UpsertEntryEmbeddingInput;
+
+type EmbeddingJobRecord = {
+    id: string;
+    attemptCount: number;
+    maxAttempts: number;
+    payload: Prisma.JsonValue;
+};
 
 const parsePositiveInt = (value: string | undefined, fallback: number): number => {
     const parsed = Number.parseInt(String(value || ''), 10);
@@ -44,7 +73,8 @@ const ACTIVE_EMBEDDING_MODEL =
 
 const OPENAI_MODEL_DIMS: Record<string, number> = {
     'text-embedding-3-small': 1536,
-    // Keep the large model's default projection pgvector-safe for the current storage layer.
+    // Keep this under pgvector's HNSW/vector indexing ceiling (2,000 dims).
+    // A full 3,072-dim rollout would require a storage/index refactor such as halfvec.
     'text-embedding-3-large': 1536,
 };
 
@@ -77,6 +107,11 @@ const resolveEmbeddingDimensions = (): number => {
 const EMBEDDING_DIMS = resolveEmbeddingDimensions();
 
 const USE_EMBEDDINGS = process.env.USE_EMBEDDINGS === 'true';
+const EMBEDDING_JOB_BATCH_SIZE = parsePositiveInt(process.env.EMBEDDING_JOB_BATCH_SIZE, 2);
+const EMBEDDING_JOB_POLL_MS = parsePositiveInt(process.env.EMBEDDING_JOB_POLL_MS, 12000);
+const EMBEDDING_JOB_MAX_ATTEMPTS = parsePositiveInt(process.env.EMBEDDING_JOB_MAX_ATTEMPTS, 4);
+const EMBEDDING_JOB_STALE_MINUTES = parsePositiveInt(process.env.EMBEDDING_JOB_STALE_MINUTES, 10);
+const EMBEDDING_JOB_WORKER_ID = `embed-worker-${process.pid}`;
 
 type EmbeddingContextInput = Pick<
     UpsertEntryEmbeddingInput,
@@ -151,7 +186,60 @@ const buildChunkEmbeddingText = (
     return [header, heading, safeChunkText].filter(Boolean).join('\n\n').trim();
 };
 
+const buildFacetEmbeddingText = (
+    facet: EntryEmbeddingFacetRecord,
+    context: EmbeddingContextInput
+) => {
+    const header = buildEmbeddingHeader({
+        title: context.title,
+        mood: context.mood,
+        tags: context.tags,
+        category: context.category,
+        lifeArea: context.lifeArea,
+    });
+
+    return [
+        header,
+        `${getEmbeddingFacetLabel(facet.facetType)}:\n${facet.facetText}`.trim(),
+    ].filter(Boolean).join('\n\n').trim();
+};
+
 const hashText = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
+
+const cloneJsonValue = <T>(value: T): T =>
+    JSON.parse(JSON.stringify(value ?? null)) as T;
+
+const asStringArray = (value: unknown): string[] | undefined =>
+    Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === 'string')
+        : undefined;
+
+const parseJobPayload = (value: Prisma.JsonValue): EmbeddingJobPayload | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return null;
+    }
+
+    const record = value as Record<string, unknown>;
+    if (typeof record.entryId !== 'string' || typeof record.userId !== 'string' || typeof record.content !== 'string') {
+        return null;
+    }
+
+    return {
+        entryId: record.entryId,
+        userId: record.userId,
+        content: record.content,
+        title: typeof record.title === 'string' ? record.title : null,
+        mood: typeof record.mood === 'string' ? record.mood : null,
+        tags: asStringArray(record.tags),
+        skills: asStringArray(record.skills),
+        lessons: asStringArray(record.lessons),
+        reflection: typeof record.reflection === 'string' ? record.reflection : null,
+        analysis: record.analysis,
+        category: typeof record.category === 'string' ? record.category : null,
+        lifeArea: typeof record.lifeArea === 'string' ? record.lifeArea : null,
+        force: Boolean(record.force),
+    };
+};
 
 const normalizeVector = (values: number[]) => {
     const magnitude = Math.sqrt(values.reduce((sum, value) => sum + (value * value), 0));
@@ -196,6 +284,9 @@ const localHashEmbedding = (text: string, dimensions: number) => {
 };
 
 export class EmbeddingService {
+    private workerTimer: NodeJS.Timeout | null = null;
+    private isDrainingJobs = false;
+
     isEnabled() {
         if (!USE_EMBEDDINGS) return false;
         if (embeddingProvider === 'local_hash') return true;
@@ -326,9 +417,16 @@ export class EmbeddingService {
             return { status: 'skipped', reason: 'Content too short for passage embeddings.' };
         }
         const chunkCount = passageChunks.length;
+        const entryFacets = buildEntryEmbeddingFacets({
+            title: input.title,
+            reflection: input.reflection,
+            lessons: input.lessons,
+            skills: input.skills,
+            analysis: input.analysis,
+        });
 
         try {
-            const [existingEntry, existingChunks] = await Promise.all([
+            const [existingEntry, existingChunks, existingFacets] = await Promise.all([
                 prisma.entryEmbedding.findFirst({
                     where: {
                         entryId: input.entryId,
@@ -347,24 +445,58 @@ export class EmbeddingService {
                         dimensions: EMBEDDING_DIMS,
                     },
                     select: {
+                        id: true,
+                        chunkIndex: true,
                         contentHash: true,
+                        chunkText: true,
+                    },
+                    orderBy: {
+                        chunkIndex: 'asc',
                     },
                 }),
+                prisma.$queryRawUnsafe<ExistingFacetRow[]>(
+                    `
+                    SELECT
+                        "facetType" AS "facetType",
+                        "facetKey" AS "facetKey",
+                        "contentHash" AS "contentHash"
+                    FROM "EntryEmbeddingFacet"
+                    WHERE "entryId" = $1
+                      AND model = $2
+                      AND dimensions = $3
+                    `,
+                    input.entryId,
+                    ACTIVE_EMBEDDING_MODEL,
+                    EMBEDDING_DIMS
+                ),
             ]);
 
             const isEntryCurrent = existingEntry?.contentHash === contentHash;
             const isChunkSetCurrent = existingChunks.length === chunkCount
-                && existingChunks.every((chunk) => chunk.contentHash === contentHash);
+                && existingChunks.every((chunk, index) =>
+                    chunk.contentHash === contentHash
+                    && chunk.chunkIndex === passageChunks[index]?.index
+                    && chunk.chunkText === passageChunks[index]?.text
+                );
+            const facetHashMap = new Map(
+                entryFacets.map((facet) => [`${facet.facetType}:${facet.facetKey}`, facet.contentHash])
+            );
+            const isFacetSetCurrent = existingFacets.length === entryFacets.length
+                && existingFacets.every((facet) =>
+                    facetHashMap.get(`${facet.facetType}:${facet.facetKey}`) === facet.contentHash
+                );
 
-            if (!input.force && isEntryCurrent && isChunkSetCurrent) {
+            if (!input.force && isEntryCurrent && isChunkSetCurrent && isFacetSetCurrent) {
                 return { status: 'skipped', reason: 'Embedding already up to date for current content hash.' };
             }
 
             const needsEntryRefresh = input.force || !isEntryCurrent;
             const needsChunkRefresh = input.force || !isChunkSetCurrent;
+            const needsFacetRefresh = input.force || !isFacetSetCurrent;
             const embeddingTasks: Array<
                 | { kind: 'entry'; embeddingText: string }
                 | { kind: 'chunk'; chunkIndex: number; chunkText: string; embeddingText: string }
+                | { kind: 'facet'; facet: EntryEmbeddingFacetRecord; embeddingText: string }
             > = [];
 
             if (needsEntryRefresh) {
@@ -382,12 +514,23 @@ export class EmbeddingService {
                 });
             }
 
+            if (needsFacetRefresh && entryFacets.length > 0) {
+                entryFacets.forEach((facet) => {
+                    embeddingTasks.push({
+                        kind: 'facet',
+                        facet,
+                        embeddingText: buildFacetEmbeddingText(facet, input),
+                    });
+                });
+            }
+
             const generatedEmbeddings = await this.generateEmbeddings(
                 embeddingTasks.map((task) => task.embeddingText),
                 'document'
             );
 
             const chunkVectorLiterals = new Map<number, string>();
+            const facetVectorLiterals = new Map<string, string>();
             let entryVectorLiteral: string | null = null;
 
             for (let index = 0; index < embeddingTasks.length; index += 1) {
@@ -407,8 +550,13 @@ export class EmbeddingService {
 
                 if (task.kind === 'entry') {
                     entryVectorLiteral = toVectorLiteral(normalized);
-                } else {
+                } else if (task.kind === 'chunk') {
                     chunkVectorLiterals.set(task.chunkIndex, toVectorLiteral(normalized));
+                } else {
+                    facetVectorLiterals.set(
+                        `${task.facet.facetType}:${task.facet.facetKey}`,
+                        toVectorLiteral(normalized)
+                    );
                 }
             }
 
@@ -423,6 +571,13 @@ export class EmbeddingService {
                 return {
                     status: 'failed',
                     reason: `Chunk embedding count mismatch. Expected ${chunkCount}, received ${chunkVectorLiterals.size}.`,
+                };
+            }
+
+            if (needsFacetRefresh && facetVectorLiterals.size !== entryFacets.length) {
+                return {
+                    status: 'failed',
+                    reason: `Facet embedding count mismatch. Expected ${entryFacets.length}, received ${facetVectorLiterals.size}.`,
                 };
             }
 
@@ -503,6 +658,62 @@ export class EmbeddingService {
                         ...values
                     );
                 }
+
+                if (needsFacetRefresh) {
+                    await tx.$executeRawUnsafe(
+                        `
+                        DELETE FROM "EntryEmbeddingFacet"
+                        WHERE "entryId" = $1
+                          AND model = $2
+                          AND dimensions = $3
+                        `,
+                        input.entryId,
+                        ACTIVE_EMBEDDING_MODEL,
+                        EMBEDDING_DIMS
+                    );
+
+                    if (entryFacets.length > 0) {
+                        const facetRows = entryFacets.map((facet) => ({
+                            id: crypto.randomUUID(),
+                            facet,
+                            vectorLiteral: facetVectorLiterals.get(`${facet.facetType}:${facet.facetKey}`) || null,
+                        }));
+
+                        if (facetRows.some((facetRow) => !facetRow.vectorLiteral)) {
+                            throw new Error('Failed to generate one or more facet embeddings.');
+                        }
+
+                        const placeholders = facetRows
+                            .map((_, index) => {
+                                const offset = index * 10;
+                                return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}::vector, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`;
+                            })
+                            .join(', ');
+
+                        const values = facetRows.flatMap((facetRow) => [
+                            facetRow.id,
+                            input.entryId,
+                            input.userId,
+                            ACTIVE_EMBEDDING_MODEL,
+                            EMBEDDING_DIMS,
+                            facetRow.facet.contentHash,
+                            facetRow.facet.facetType,
+                            facetRow.facet.facetKey,
+                            facetRow.facet.facetText,
+                            facetRow.vectorLiteral,
+                        ]);
+
+                        await tx.$executeRawUnsafe(
+                            `
+                            INSERT INTO "EntryEmbeddingFacet"
+                                (id, "entryId", "userId", model, dimensions, "contentHash", "facetType", "facetKey", "facetText", embedding, "createdAt", "updatedAt")
+                            VALUES
+                                ${placeholders}
+                            `,
+                            ...values
+                        );
+                    }
+                }
             });
 
             return { status: 'embedded', dimensions: EMBEDDING_DIMS };
@@ -515,12 +726,215 @@ export class EmbeddingService {
         }
     }
 
+    startJobWorker() {
+        if (!this.isEnabled() || this.workerTimer) {
+            return;
+        }
+
+        const tick = () => {
+            void this.drainEmbeddingJobs();
+        };
+
+        this.workerTimer = setInterval(tick, EMBEDDING_JOB_POLL_MS);
+        this.workerTimer.unref?.();
+        tick();
+    }
+
+    private async claimPendingJobs(batchSize: number): Promise<EmbeddingJobRecord[]> {
+        const now = new Date();
+        const staleBefore = new Date(Date.now() - (EMBEDDING_JOB_STALE_MINUTES * 60 * 1000));
+        const candidates = await prisma.embeddingJob.findMany({
+            where: {
+                OR: [
+                    {
+                        status: EmbeddingJobStatus.PENDING,
+                        runAfter: { lte: now },
+                    },
+                    {
+                        status: EmbeddingJobStatus.PROCESSING,
+                        lockedAt: { lt: staleBefore },
+                    },
+                ],
+            },
+            orderBy: [
+                { runAfter: 'asc' },
+                { createdAt: 'asc' },
+            ],
+            take: batchSize,
+            select: {
+                id: true,
+                attemptCount: true,
+                maxAttempts: true,
+                payload: true,
+            },
+        });
+
+        const claimed: EmbeddingJobRecord[] = [];
+        for (const candidate of candidates) {
+            const updated = await prisma.embeddingJob.updateMany({
+                where: {
+                    id: candidate.id,
+                    OR: [
+                        {
+                            status: EmbeddingJobStatus.PENDING,
+                            runAfter: { lte: now },
+                        },
+                        {
+                            status: EmbeddingJobStatus.PROCESSING,
+                            lockedAt: { lt: staleBefore },
+                        },
+                    ],
+                },
+                data: {
+                    status: EmbeddingJobStatus.PROCESSING,
+                    lockedAt: now,
+                    lockedBy: EMBEDDING_JOB_WORKER_ID,
+                    lastError: null,
+                },
+            });
+
+            if (updated.count > 0) {
+                claimed.push(candidate);
+            }
+        }
+
+        return claimed;
+    }
+
+    private async finalizeJob(jobId: string, data: Prisma.EmbeddingJobUpdateManyMutationInput) {
+        await prisma.embeddingJob.updateMany({
+            where: {
+                id: jobId,
+                status: EmbeddingJobStatus.PROCESSING,
+                lockedBy: EMBEDDING_JOB_WORKER_ID,
+            },
+            data,
+        });
+    }
+
+    private async rescheduleJob(job: EmbeddingJobRecord, reason: string) {
+        const attemptCount = job.attemptCount + 1;
+        const maxAttempts = Math.max(1, job.maxAttempts || EMBEDDING_JOB_MAX_ATTEMPTS);
+        const exhausted = attemptCount >= maxAttempts;
+
+        if (exhausted) {
+            await this.finalizeJob(job.id, {
+                status: EmbeddingJobStatus.FAILED,
+                attemptCount,
+                lastError: reason.slice(0, 4000),
+                lockedAt: null,
+                lockedBy: null,
+            });
+            return;
+        }
+
+        const retryDelayMs = Math.min(15 * 60 * 1000, Math.pow(2, Math.max(0, attemptCount - 1)) * 15000);
+        await this.finalizeJob(job.id, {
+            status: EmbeddingJobStatus.PENDING,
+            attemptCount,
+            runAfter: new Date(Date.now() + retryDelayMs),
+            lastError: reason.slice(0, 4000),
+            lockedAt: null,
+            lockedBy: null,
+        });
+    }
+
+    private async processEmbeddingJob(job: EmbeddingJobRecord) {
+        const payload = parseJobPayload(job.payload);
+        if (!payload) {
+            await this.finalizeJob(job.id, {
+                status: EmbeddingJobStatus.FAILED,
+                attemptCount: job.attemptCount + 1,
+                lastError: 'Invalid embedding job payload.',
+                lockedAt: null,
+                lockedBy: null,
+            });
+            return;
+        }
+
+        try {
+            const result = await this.upsertEntryEmbedding(payload);
+            if (result.status === 'failed') {
+                await this.rescheduleJob(job, result.reason);
+                return;
+            }
+
+            await this.finalizeJob(job.id, {
+                status: EmbeddingJobStatus.COMPLETED,
+                completedAt: new Date(),
+                lastError: null,
+                lockedAt: null,
+                lockedBy: null,
+            });
+        } catch (error: any) {
+            await this.rescheduleJob(job, error?.message || 'Unknown embedding job failure');
+        }
+    }
+
+    private async drainEmbeddingJobs() {
+        if (!this.isEnabled() || this.isDrainingJobs) {
+            return;
+        }
+
+        this.isDrainingJobs = true;
+        try {
+            while (true) {
+                const jobs = await this.claimPendingJobs(EMBEDDING_JOB_BATCH_SIZE);
+                if (jobs.length === 0) {
+                    break;
+                }
+
+                for (const job of jobs) {
+                    await this.processEmbeddingJob(job);
+                }
+            }
+        } finally {
+            this.isDrainingJobs = false;
+        }
+    }
+
     enqueueEntryEmbedding(input: UpsertEntryEmbeddingInput) {
         if (!this.isEnabled()) return;
-        setImmediate(() => {
-            this.upsertEntryEmbedding(input).catch((error) => {
-                console.error('Queued embedding task failed:', error);
-            });
+
+        const payload = cloneJsonValue(input) as Prisma.InputJsonValue;
+        const now = new Date();
+
+        void prisma.embeddingJob.upsert({
+            where: {
+                entryId_model_dimensions: {
+                    entryId: input.entryId,
+                    model: ACTIVE_EMBEDDING_MODEL,
+                    dimensions: EMBEDDING_DIMS,
+                },
+            },
+            create: {
+                entryId: input.entryId,
+                userId: input.userId,
+                model: ACTIVE_EMBEDDING_MODEL,
+                dimensions: EMBEDDING_DIMS,
+                payload,
+                status: EmbeddingJobStatus.PENDING,
+                attemptCount: 0,
+                maxAttempts: EMBEDDING_JOB_MAX_ATTEMPTS,
+                runAfter: now,
+            },
+            update: {
+                userId: input.userId,
+                payload,
+                status: EmbeddingJobStatus.PENDING,
+                attemptCount: 0,
+                maxAttempts: EMBEDDING_JOB_MAX_ATTEMPTS,
+                runAfter: now,
+                lockedAt: null,
+                lockedBy: null,
+                lastError: null,
+                completedAt: null,
+            },
+        }).then(() => {
+            this.startJobWorker();
+            void this.drainEmbeddingJobs();
+        }).catch((error) => {
+            console.error('Failed to enqueue embedding job:', error);
         });
     }
 }

@@ -1,6 +1,8 @@
 import prisma from '../config/prisma';
 import embeddingService from './embedding.service';
+import { getEmbeddingFacetLabel } from '../utils/embedding-facets';
 import { extractSearchTerms } from '../utils/search-terms';
+import { buildSearchIntentPlan, isPreferredFacetType, type SearchIntent } from '../utils/search-intent';
 
 type DenseMatchRow = {
     entryId: string;
@@ -9,6 +11,7 @@ type DenseMatchRow = {
     semanticScore: number | null;
     distance: number | null;
     source: string | null;
+    facetType: string | null;
 };
 
 export type DenseMatch = {
@@ -17,7 +20,8 @@ export type DenseMatch = {
     chunkIndex: number | null;
     semanticScore: number;
     distance: number;
-    source: 'chunk' | 'entry';
+    source: 'chunk' | 'entry' | 'facet';
+    facetType: string | null;
 };
 
 export type RerankCandidate = {
@@ -102,6 +106,48 @@ const clipSnippet = (value: string | null | undefined, maxLength: number): strin
     return `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
 };
 
+const boostDenseMatchScore = (input: {
+    score: number;
+    source: DenseMatch['source'];
+    facetType: string | null;
+    preferredFacetTypes: string[];
+    intent: SearchIntent;
+}) => {
+    const preferredFacet = isPreferredFacetType(input.facetType, input.preferredFacetTypes);
+
+    if (input.source === 'facet') {
+        const boosted = preferredFacet
+            ? (input.score * 1.12) + 0.04
+            : input.intent === 'general'
+                ? (input.score * 0.98)
+                : (input.score * 0.98);
+        return clamp01(boosted);
+    }
+
+    if (input.source === 'chunk' && (input.intent === 'memory' || input.intent === 'action')) {
+        return clamp01(input.score * 1.04);
+    }
+
+    if (input.source === 'entry' && input.intent !== 'general') {
+        return clamp01(input.score * 0.97);
+    }
+
+    return clamp01(input.score);
+};
+
+const choosePreferredDenseMatch = (current: DenseMatch | undefined, next: DenseMatch) => {
+    if (!current) return next;
+
+    if (next.semanticScore !== current.semanticScore) {
+        return next.semanticScore > current.semanticScore ? next : current;
+    }
+
+    if (next.distance !== current.distance) {
+        return next.distance < current.distance ? next : current;
+    }
+    return current;
+};
+
 export class SemanticSearchService {
     isDenseSearchEnabled() {
         return embeddingService.isEnabled();
@@ -135,6 +181,7 @@ export class SemanticSearchService {
         limit?: number;
         excludeEntryId?: string | null;
         minScore?: number;
+        intent?: SearchIntent;
     }): Promise<DenseMatch[]> {
         if (!this.isDenseSearchEnabled()) {
             return [];
@@ -145,8 +192,12 @@ export class SemanticSearchService {
             return [];
         }
 
+        const intentPlan = buildSearchIntentPlan({
+            query: normalizedQuery,
+            intentHint: input.intent,
+        });
         const queryEmbedding = await embeddingService.embedText({
-            content: normalizedQuery,
+            content: intentPlan.embeddingQuery,
             purpose: 'query',
         });
         if (!queryEmbedding || queryEmbedding.length === 0) {
@@ -158,75 +209,155 @@ export class SemanticSearchService {
         const vectorLiteral = toVectorLiteral(queryEmbedding);
         const limit = Math.max(1, Math.min(input.limit || DENSE_LIMIT, 60));
         const minScore = input.minScore ?? DENSE_MIN_SCORE;
-        const candidateLimit = Math.max(limit * 3, 18);
+        const candidateLimit = Math.max(limit * 4, 24);
+        const combinedMatches = new Map<string, DenseMatch>();
 
-        const chunkRows = await prisma.$queryRawUnsafe<DenseMatchRow[]>(
-            `
-            WITH top_chunks AS (
-                SELECT
-                    chunk."entryId" AS "entryId",
-                    chunk."chunkText" AS "contentSnippet",
-                    chunk."chunkIndex" AS "chunkIndex",
-                    GREATEST(0, 1 - ((chunk.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions}))))::REAL AS "semanticScore",
-                    ((chunk.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions})))::REAL AS distance
-                FROM "EntryEmbeddingChunk" chunk
-                JOIN "Entry" e ON e.id = chunk."entryId"
-                WHERE chunk."userId" = $2
-                    AND e."userId" = $2
-                    AND e."deletedAt" IS NULL
-                    AND chunk.model = $3
-                    AND chunk.dimensions = $4
-                    AND ($5::text IS NULL OR chunk."entryId" <> $5)
-                ORDER BY (chunk.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions})) ASC, chunk."chunkIndex" ASC
-                LIMIT $6
-            ),
-            ranked_chunks AS (
+        const [facetRows, chunkRows] = await Promise.all([
+            intentPlan.intent === 'general'
+                ? Promise.resolve([] as DenseMatchRow[])
+                : prisma.$queryRawUnsafe<DenseMatchRow[]>(
+                    `
+                    WITH top_facets AS (
+                        SELECT
+                            facet."entryId" AS "entryId",
+                            facet."facetText" AS "contentSnippet",
+                            NULL::integer AS "chunkIndex",
+                            GREATEST(0, 1 - ((facet.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions}))))::REAL AS "semanticScore",
+                            ((facet.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions})))::REAL AS distance,
+                            facet."facetType" AS "facetType"
+                        FROM "EntryEmbeddingFacet" facet
+                        JOIN "Entry" e ON e.id = facet."entryId"
+                        WHERE facet."userId" = $2
+                            AND e."userId" = $2
+                            AND e."deletedAt" IS NULL
+                            AND facet.model = $3
+                            AND facet.dimensions = $4
+                            AND ($5::text IS NULL OR facet."entryId" <> $5)
+                        ORDER BY (facet.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions})) ASC, facet."updatedAt" DESC
+                        LIMIT $6
+                    ),
+                    ranked_facets AS (
+                        SELECT
+                            "entryId",
+                            "contentSnippet",
+                            "chunkIndex",
+                            "semanticScore",
+                            distance,
+                            "facetType",
+                            ROW_NUMBER() OVER (PARTITION BY "entryId" ORDER BY distance ASC) AS entry_rank
+                        FROM top_facets
+                    )
+                    SELECT
+                        "entryId",
+                        "contentSnippet",
+                        "chunkIndex",
+                        "semanticScore",
+                        distance,
+                        'facet'::text AS source,
+                        "facetType"
+                    FROM ranked_facets
+                    WHERE entry_rank = 1
+                    ORDER BY distance ASC
+                    LIMIT $7
+                    `,
+                    vectorLiteral,
+                    input.userId,
+                    activeConfig.model,
+                    activeConfig.dimensions,
+                    input.excludeEntryId || null,
+                    candidateLimit,
+                    limit
+                ),
+            prisma.$queryRawUnsafe<DenseMatchRow[]>(
+                `
+                WITH top_chunks AS (
+                    SELECT
+                        chunk."entryId" AS "entryId",
+                        chunk."chunkText" AS "contentSnippet",
+                        chunk."chunkIndex" AS "chunkIndex",
+                        GREATEST(0, 1 - ((chunk.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions}))))::REAL AS "semanticScore",
+                        ((chunk.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions})))::REAL AS distance,
+                        NULL::text AS "facetType"
+                    FROM "EntryEmbeddingChunk" chunk
+                    JOIN "Entry" e ON e.id = chunk."entryId"
+                    WHERE chunk."userId" = $2
+                        AND e."userId" = $2
+                        AND e."deletedAt" IS NULL
+                        AND chunk.model = $3
+                        AND chunk.dimensions = $4
+                        AND ($5::text IS NULL OR chunk."entryId" <> $5)
+                    ORDER BY (chunk.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions})) ASC, chunk."chunkIndex" ASC
+                    LIMIT $6
+                ),
+                ranked_chunks AS (
+                    SELECT
+                        "entryId",
+                        "contentSnippet",
+                        "chunkIndex",
+                        "semanticScore",
+                        distance,
+                        "facetType",
+                        ROW_NUMBER() OVER (PARTITION BY "entryId" ORDER BY distance ASC, "chunkIndex" ASC) AS entry_rank
+                    FROM top_chunks
+                )
                 SELECT
                     "entryId",
                     "contentSnippet",
                     "chunkIndex",
                     "semanticScore",
                     distance,
-                    ROW_NUMBER() OVER (PARTITION BY "entryId" ORDER BY distance ASC, "chunkIndex" ASC) AS entry_rank
-                FROM top_chunks
-            )
-            SELECT
-                "entryId",
-                "contentSnippet",
-                "chunkIndex",
-                "semanticScore",
-                distance,
-                'chunk'::text AS source
-            FROM ranked_chunks
-            WHERE entry_rank = 1
-            ORDER BY distance ASC
-            LIMIT $7
-            `,
-            vectorLiteral,
-            input.userId,
-            activeConfig.model,
-            activeConfig.dimensions,
-            input.excludeEntryId || null,
-            candidateLimit,
-            limit
-        );
+                    'chunk'::text AS source,
+                    "facetType"
+                FROM ranked_chunks
+                WHERE entry_rank = 1
+                ORDER BY distance ASC
+                LIMIT $7
+                `,
+                vectorLiteral,
+                input.userId,
+                activeConfig.model,
+                activeConfig.dimensions,
+                input.excludeEntryId || null,
+                candidateLimit,
+                limit
+            ),
+        ]);
 
-        const chunkMatches = chunkRows
-            .map((row) => ({
+        [...facetRows, ...chunkRows].forEach((row) => {
+            const source = row.source === 'facet' ? 'facet' : 'chunk';
+            const semanticScore = boostDenseMatchScore({
+                score: normalizeScore(row.semanticScore),
+                source,
+                facetType: row.facetType,
+                preferredFacetTypes: intentPlan.preferredFacetTypes,
+                intent: intentPlan.intent,
+            });
+            if (semanticScore < minScore) {
+                return;
+            }
+
+            const candidate: DenseMatch = {
                 entryId: row.entryId,
                 contentSnippet: clipSnippet(row.contentSnippet, 420) || null,
                 chunkIndex: row.chunkIndex,
-                semanticScore: normalizeScore(row.semanticScore),
+                semanticScore,
                 distance: normalizeScore(row.distance),
-                source: 'chunk' as const,
-            }))
-            .filter((row) => row.semanticScore >= minScore);
+                source,
+                facetType: row.facetType,
+            };
 
-        if (chunkMatches.length >= limit) {
-            return chunkMatches.slice(0, limit);
+            combinedMatches.set(
+                candidate.entryId,
+                choosePreferredDenseMatch(combinedMatches.get(candidate.entryId), candidate)
+            );
+        });
+
+        if (combinedMatches.size >= limit) {
+            return [...combinedMatches.values()]
+                .sort((left, right) => right.semanticScore - left.semanticScore || left.distance - right.distance)
+                .slice(0, limit);
         }
 
-        const chunkEntryIds = new Set(chunkMatches.map((match) => match.entryId));
         const entryRows = await prisma.$queryRawUnsafe<DenseMatchRow[]>(
             `
             SELECT
@@ -235,7 +366,8 @@ export class SemanticSearchService {
                 NULL::integer AS "chunkIndex",
                 GREATEST(0, 1 - ((emb.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions}))))::REAL AS "semanticScore",
                 ((emb.embedding::vector(${vectorDimensions})) <=> ($1::vector(${vectorDimensions})))::REAL AS distance,
-                'entry'::text AS source
+                'entry'::text AS source,
+                NULL::text AS "facetType"
             FROM "EntryEmbedding" emb
             JOIN "Entry" e ON e.id = emb."entryId"
             WHERE emb."userId" = $2
@@ -255,19 +387,32 @@ export class SemanticSearchService {
             candidateLimit
         );
 
-        const entryMatches = entryRows
+        entryRows
             .map((row) => ({
                 entryId: row.entryId,
                 contentSnippet: null,
                 chunkIndex: null,
-                semanticScore: normalizeScore(row.semanticScore),
+                semanticScore: boostDenseMatchScore({
+                    score: normalizeScore(row.semanticScore),
+                    source: 'entry',
+                    facetType: null,
+                    preferredFacetTypes: intentPlan.preferredFacetTypes,
+                    intent: intentPlan.intent,
+                }),
                 distance: normalizeScore(row.distance),
                 source: 'entry' as const,
+                facetType: null,
             }))
-            .filter((row) => row.semanticScore >= minScore && !chunkEntryIds.has(row.entryId));
+            .filter((row) => row.semanticScore >= minScore)
+            .forEach((row) => {
+                combinedMatches.set(
+                    row.entryId,
+                    choosePreferredDenseMatch(combinedMatches.get(row.entryId), row)
+                );
+            });
 
-        return [...chunkMatches, ...entryMatches]
-            .sort((left, right) => left.distance - right.distance || right.semanticScore - left.semanticScore)
+        return [...combinedMatches.values()]
+            .sort((left, right) => right.semanticScore - left.semanticScore || left.distance - right.distance)
             .slice(0, limit);
     }
 
@@ -370,6 +515,8 @@ export class SemanticSearchService {
         lexicalScore?: number;
         semanticScore?: number;
         rerankScore?: number;
+        source?: DenseMatch['source'];
+        facetType?: string | null;
     }): string[] {
         const reasons = new Set<string>();
         const terms = extractSearchTerms(input.query);
@@ -386,6 +533,9 @@ export class SemanticSearchService {
         }
         if ((input.rerankScore || 0) >= 0.5) {
             reasons.add('Locally reranked higher');
+        }
+        if (input.source === 'facet' && input.facetType) {
+            reasons.add(`Matched ${getEmbeddingFacetLabel(input.facetType as Parameters<typeof getEmbeddingFacetLabel>[0]).toLowerCase()}`);
         }
         if ((input.lexicalScore || 0) > 0 && reasons.size === 0) {
             reasons.add('Keyword match');

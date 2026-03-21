@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import app from './app';
+import embeddingService from './services/embedding.service';
 import { healthCronService } from './services/health-cron.service';
 import { serverLogger } from './utils/server-logger';
 
@@ -31,4 +32,6 @@ app.listen(port, () => {
     if (process.env.ENABLE_HEALTH_CRON !== 'false') {
         void healthCronService.start();
     }
+
+    embeddingService.startJobWorker();
 });

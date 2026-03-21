@@ -53,6 +53,15 @@ export class TaggingService {
             if (normalized) tags.set(normalized, Math.max(tags.get(normalized) || 0, 0.5));
         }
 
+        (analysis.suggestions?.tags || []).forEach((tag) => {
+            const normalized = normalizeTag(tag.value);
+            if (!normalized) return;
+            tags.set(
+                normalized,
+                Math.max(tags.get(normalized) || 0, Math.min(0.82, Math.max(0.58, tag.confidence)))
+            );
+        });
+
         const hashtagMatches = text.match(/#(\w+)/g) || [];
         hashtagMatches.forEach(tag => {
             const normalized = normalizeTag(tag);
@@ -105,19 +114,12 @@ export class TaggingService {
             .slice(0, 5);
     }
 
-    /**
-     * Automatically suggest tags for a journal entry.
-     * Prefers deterministic NLP, optional LLM if explicitly enabled.
-     */
-    async suggestTags(content: string, title?: string): Promise<TagSuggestion[]> {
-        const text = `${title ? `Title: ${title}\n` : ''}${content}`.trim();
-        if (text.length < 10) return [];
-
-        // Deterministic: use NLP analysis topics/keywords + hashtag extraction
-        const analysis = await nlpService.analyzeContent(content, title);
+    async suggestTagsFromAnalysis(
+        text: string,
+        analysis: Awaited<ReturnType<typeof nlpService.analyzeContent>>
+    ): Promise<TagSuggestion[]> {
         const deterministicTags = this.mapTagScores(this.collectDeterministicTags(text, analysis), 'nlp');
 
-        // Local-first: only call LLM if deterministic extraction is sparse.
         if (!allowLLMTagging || deterministicTags.length >= llmTaggingMinLocalTags) {
             return deterministicTags;
         }
@@ -125,6 +127,27 @@ export class TaggingService {
         const llmTags = await this.suggestTagsWithLLM(text);
         if (llmTags.length === 0) return deterministicTags;
         return this.mergeTagSuggestions(deterministicTags, llmTags);
+    }
+
+    /**
+     * Automatically suggest tags for a journal entry.
+     * Prefers deterministic NLP, optional LLM if explicitly enabled.
+     */
+    async suggestTags(
+        content: string,
+        title?: string,
+        options: { userId?: string; excludeEntryId?: string | null } = {}
+    ): Promise<TagSuggestion[]> {
+        const text = `${title ? `Title: ${title}\n` : ''}${content}`.trim();
+        if (text.length < 10) return [];
+
+        // Deterministic: use NLP analysis topics/keywords + hashtag extraction
+        const analysis = await nlpService.analyzeContent(content, {
+            title,
+            userId: options.userId,
+            excludeEntryId: options.excludeEntryId || null,
+        });
+        return this.suggestTagsFromAnalysis(text, analysis);
     }
 
     private async suggestTagsWithLLM(text: string): Promise<TagSuggestion[]> {

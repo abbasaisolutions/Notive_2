@@ -2,6 +2,7 @@ import prisma from '../config/prisma';
 import embeddingService from './embedding.service';
 import semanticSearchService from './semantic-search.service';
 import { extractSearchTerms } from '../utils/search-terms';
+import { buildSearchIntentPlan, type SearchIntent } from '../utils/search-intent';
 
 type SearchRow = {
     id: string;
@@ -36,11 +37,13 @@ export type HybridSearchResponse = {
     results: HybridSearchResult[];
     count: number;
     query: string;
+    intent: SearchIntent;
     searchMode: 'lexical' | 'semantic' | 'hybrid' | 'fallback';
     debug: {
         embeddingProvider: string;
         embeddingModel: string;
         embeddingDimensions: number;
+        searchIntent: SearchIntent;
         rerankerConfigured: boolean;
         rerankerModel: string | null;
         rerankerUsed: boolean;
@@ -64,6 +67,8 @@ type SearchCandidate = {
     relevance: number;
     strategy: 'lexical' | 'semantic' | 'hybrid' | 'fallback';
     matchReasons: string[];
+    semanticSource?: 'chunk' | 'entry' | 'facet';
+    semanticFacetType?: string | null;
 };
 
 const clamp01 = (value: number) => Math.max(0, Math.min(0.99, value));
@@ -239,12 +244,18 @@ export const executeHybridSearch = async ({
     userId,
     query,
     limit,
+    intent,
 }: {
     userId: string;
     query: string;
     limit: number;
+    intent?: SearchIntent;
 }): Promise<HybridSearchResponse> => {
     const normalized = query.trim();
+    const intentPlan = buildSearchIntentPlan({
+        query: normalized,
+        intentHint: intent,
+    });
     const lexicalLimit = Math.max(limit * 2, 12);
     const activeEmbeddingConfig = embeddingService.getActiveConfig();
     const rerankerConfigured = semanticSearchService.canUseReranker();
@@ -258,6 +269,7 @@ export const executeHybridSearch = async ({
             userId,
             query: normalized,
             limit: lexicalLimit,
+            intent: intentPlan.intent,
         }),
     ]);
     const denseMatchMap = new Map(denseMatches.map((match) => [match.entryId, match]));
@@ -276,6 +288,8 @@ export const executeHybridSearch = async ({
             relevance: 0,
             strategy: 'lexical',
             matchReasons: [],
+            semanticSource: undefined,
+            semanticFacetType: null,
         });
     });
 
@@ -313,6 +327,8 @@ export const executeHybridSearch = async ({
                 relevance: 0,
                 strategy: 'semantic',
                 matchReasons: [],
+                semanticSource: denseMatch?.source,
+                semanticFacetType: denseMatch?.facetType || null,
             });
         });
     }
@@ -321,6 +337,8 @@ export const executeHybridSearch = async ({
         const candidate = candidateMap.get(match.entryId);
         if (!candidate) return;
         candidate.semanticScore = clamp01(match.semanticScore);
+        candidate.semanticSource = match.source;
+        candidate.semanticFacetType = match.facetType || null;
         if (match.contentSnippet) {
             candidate.content = clipContent(match.contentSnippet, 600);
         }
@@ -357,11 +375,13 @@ export const executeHybridSearch = async ({
             results,
             count: results.length,
             query: normalized,
+            intent: intentPlan.intent,
             searchMode: 'fallback',
             debug: {
                 embeddingProvider: activeEmbeddingConfig.provider,
                 embeddingModel: activeEmbeddingConfig.model,
                 embeddingDimensions: activeEmbeddingConfig.dimensions,
+                searchIntent: intentPlan.intent,
                 rerankerConfigured,
                 rerankerModel,
                 rerankerUsed: false,
@@ -415,6 +435,8 @@ export const executeHybridSearch = async ({
                 lexicalScore: candidate.lexicalScore,
                 semanticScore: candidate.semanticScore,
                 rerankScore: candidate.rerankScore,
+                source: candidate.semanticSource,
+                facetType: candidate.semanticFacetType,
             });
 
             return {
@@ -474,11 +496,13 @@ export const executeHybridSearch = async ({
         results,
         count: results.length,
         query: normalized,
+        intent: intentPlan.intent,
         searchMode,
         debug: {
             embeddingProvider: activeEmbeddingConfig.provider,
             embeddingModel: activeEmbeddingConfig.model,
             embeddingDimensions: activeEmbeddingConfig.dimensions,
+            searchIntent: intentPlan.intent,
             rerankerConfigured,
             rerankerModel,
             rerankerUsed: results.some((result) => result.debug.rerankerUsed),
