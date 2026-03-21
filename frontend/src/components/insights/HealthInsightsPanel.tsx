@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/auth-context';
+import { resolveApiUrl } from '@/constants/config';
 import {
     FiActivity,
     FiCpu,
@@ -78,7 +79,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+    const API_URL = resolveApiUrl();
 
     const fetchInsights = useCallback(async () => {
         try {

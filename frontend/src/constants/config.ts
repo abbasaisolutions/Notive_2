@@ -1,5 +1,29 @@
 // Centralized application configuration
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const LOCAL_API_URL = 'http://localhost:8000/api/v1';
+const PRODUCTION_API_URL = 'https://notive2-production.up.railway.app/api/v1';
+
+const normalizeUrl = (value: string) => value.replace(/\/$/, '');
+
+const isLocalHostname = (hostname: string) =>
+    hostname === 'localhost'
+    || hostname === '127.0.0.1'
+    || hostname === '0.0.0.0'
+    || hostname.endsWith('.local');
+
+export const resolveApiUrl = () => {
+    const configuredUrl = (process.env.NEXT_PUBLIC_API_URL || '').trim();
+    if (configuredUrl) {
+        return normalizeUrl(configuredUrl);
+    }
+
+    if (typeof window !== 'undefined' && isLocalHostname(window.location.hostname)) {
+        return LOCAL_API_URL;
+    }
+
+    return PRODUCTION_API_URL;
+};
+
+export const API_URL = resolveApiUrl();
 
 // Performance settings
 export const DEBOUNCE_DELAY = 500;

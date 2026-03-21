@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
+import { API_URL } from '@/constants/config';
 import {
     LEGAL_COPYRIGHT_NOTICE,
     LEGAL_ENTITY_NAME,
     SUPPORT_EMAIL,
 } from '@/config/legal';
 
-const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '');
+const apiBaseUrl = API_URL.replace(/\/$/, '');
 
 export default function AccountDeletionPage() {
     const [email, setEmail] = useState('');

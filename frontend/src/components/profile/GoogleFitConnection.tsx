@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/auth-context';
+import { resolveApiUrl } from '@/constants/config';
 import {
     FiActivity,
     FiAlertCircle,
@@ -57,7 +58,7 @@ export default function GoogleFitConnection() {
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+    const API_URL = resolveApiUrl();
 
     const fetchStatus = useCallback(async () => {
         try {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/auth-context';
+import { API_URL } from '@/constants/config';
 import type { HealthContextSummary } from '@/types/health';
 
 interface HealthConnectionStatus {
@@ -14,8 +15,6 @@ interface UseHealthContextReturn {
     error: string | null;
     refetch: () => Promise<void>;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 /**
  * Hook to fetch health context for journal entries
