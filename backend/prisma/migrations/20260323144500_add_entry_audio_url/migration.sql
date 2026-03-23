@@ -1,0 +1,2 @@
+ALTER TABLE "Entry"
+ADD COLUMN IF NOT EXISTS "audioUrl" TEXT;
