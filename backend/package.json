@@ -18,7 +18,8 @@
         "retrieval:doctor": "ts-node scripts/retrieval-rollout-check.ts",
         "retrieval:build-eval": "ts-node scripts/build-private-retrieval-eval.ts",
         "retrieval:evaluate-pipeline": "ts-node scripts/evaluate-retrieval-pipeline.ts",
-        "backfill:opportunity": "ts-node scripts/backfill-opportunity-evidence.ts"
+        "backfill:opportunity": "ts-node scripts/backfill-opportunity-evidence.ts",
+        "seed:admin": "ts-node prisma/seed-admin.ts"
     },
     "dependencies": {
         "@prisma/adapter-pg": "^7.4.1",
