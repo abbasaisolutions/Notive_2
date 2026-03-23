@@ -1,6 +1,9 @@
 'use strict';
 
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
+const dotenv = require('dotenv');
 const { PrismaClient } = require('@prisma/client');
 
 const PASSWORD_POLICY_MESSAGE = 'Password must be at least 8 characters and include uppercase, lowercase, and a number';
@@ -20,7 +23,41 @@ if (password && !hasStrongPassword(password)) {
     process.exit(1);
 }
 
-const prisma = new PrismaClient();
+const ensureDatabaseUrl = () => {
+    if (process.env.DATABASE_URL) return;
+
+    const candidates = [
+        path.resolve(process.cwd(), '.env'),
+        path.resolve(process.cwd(), 'backend/.env'),
+        path.resolve(__dirname, '../.env'),
+    ];
+
+    for (const envPath of candidates) {
+        if (!fs.existsSync(envPath)) continue;
+        dotenv.config({ path: envPath, override: false });
+        if (process.env.DATABASE_URL) return;
+    }
+};
+
+const createPrismaClient = () => {
+    ensureDatabaseUrl();
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+        throw new Error('DATABASE_URL is required to initialize Prisma.');
+    }
+
+    let PrismaPg;
+    try {
+        ({ PrismaPg } = require('@prisma/adapter-pg'));
+    } catch (_error) {
+        throw new Error('Missing dependency @prisma/adapter-pg for Prisma 7.');
+    }
+
+    const adapter = new PrismaPg({ connectionString });
+    return new PrismaClient({ adapter });
+};
+
+const prisma = createPrismaClient();
 
 async function run() {
     const existingUser = await prisma.user.findUnique({
