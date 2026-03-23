@@ -115,6 +115,14 @@ If the build fails because `routes-manifest.json` could not be found, clear any 
 
 Railway monorepo note: this repository is an isolated monorepo. Set the Railway service **Root Directory** to `backend` so Railpack sees `backend/package.json`. If you use Config as Code, point Railway at `/backend/railway.json`, because Railway's config-file path is absolute and does not follow the Root Directory setting.
 
+Initial admin note: to create or promote a production superadmin from a Railway shell, run:
+
+```bash
+npm run user:create-superadmin -- --email you@example.com --password StrongPass123 --name "Your Name"
+```
+
+If the user already exists, this promotes the account to `SUPERADMIN`. If the user does not exist yet, it creates one.
+
 #### Deploy Frontend to Vercel
 
 1. Create a Vercel account at [vercel.com](https://vercel.com)
