@@ -45,6 +45,21 @@ export const PROMPT_FREQUENCY_OPTIONS: Array<{ value: PromptFrequency; label: st
     { value: 'off', label: 'Off' },
 ];
 
+export type TrustedContactChannel = 'text' | 'call' | 'in_person';
+export type SafetyRegion = 'auto' | 'us' | 'intl';
+
+export const SAFETY_REGION_OPTIONS: Array<{ value: SafetyRegion; label: string }> = [
+    { value: 'auto', label: 'Auto detect' },
+    { value: 'us', label: 'United States' },
+    { value: 'intl', label: 'Outside U.S.' },
+];
+
+export const TRUSTED_CONTACT_CHANNEL_OPTIONS: Array<{ value: TrustedContactChannel; label: string }> = [
+    { value: 'text', label: 'Text' },
+    { value: 'call', label: 'Call' },
+    { value: 'in_person', label: 'In person' },
+];
+
 export type EditTab = 'profile' | 'preferences' | 'security' | 'privacy';
 export type EditableTab = Exclude<EditTab, 'security'>;
 
@@ -128,6 +143,40 @@ export type PersonalizationSignalMetrics = {
     lastActionAt?: string;
 };
 
+export type TrustedContactPreference = {
+    id: string;
+    name: string;
+    relationship?: string;
+    channel: TrustedContactChannel;
+    note?: string;
+    phoneNumber?: string;
+    emailAddress?: string;
+    isPrimary?: boolean;
+};
+
+export type SupportContactOutcome = {
+    id: string;
+    contactId?: string;
+    contactName: string;
+    outcome: 'helped' | 'still_need_support';
+    source: 'bridge' | 'safety';
+    surface: 'dashboard' | 'guide' | 'entry' | 'safety';
+    actionKind?: 'copy' | 'text' | 'call' | 'email' | 'manual';
+    channel?: TrustedContactChannel;
+    riskLevel?: 'none' | 'yellow' | 'orange' | 'red';
+    entryId?: string;
+    recordedAt: string;
+};
+
+export type SupportPreferences = {
+    pinnedPeople?: string[];
+    groundingRoutines?: string[];
+    trustedContacts?: TrustedContactPreference[];
+    contactOutcomes?: SupportContactOutcome[];
+    safetyRegion?: SafetyRegion;
+    updatedAt?: string;
+};
+
 export type PersonalizationSignals = {
     version?: number;
     updatedAt?: string;
@@ -141,6 +190,7 @@ export type PersonalizationSignals = {
     lastPromptAt?: string;
     dismissedUntil?: string;
     lastSyncedSignature?: string;
+    supportPreferences?: SupportPreferences;
     [key: string]: unknown;
 };
 
@@ -157,6 +207,15 @@ export type ConflictState = {
 
 export type SignalEntry = StoredAnswer & {
     key: string;
+};
+
+export type TrustedContactDraft = {
+    name: string;
+    relationship: string;
+    channel: TrustedContactChannel;
+    note: string;
+    phoneNumber: string;
+    emailAddress: string;
 };
 
 export type ChecklistItem = {
@@ -206,6 +265,15 @@ export const EMPTY_PRIVACY_DRAFT: PrivacyDraft = {
     personalizationSignals: null,
 };
 
+export const EMPTY_TRUSTED_CONTACT_DRAFT: TrustedContactDraft = {
+    name: '',
+    relationship: '',
+    channel: 'text',
+    note: '',
+    phoneNumber: '',
+    emailAddress: '',
+};
+
 export const resolveEditTab = (value: string | null): EditTab =>
     value && LEGACY_TAB_MAP[value] ? LEGACY_TAB_MAP[value] : 'profile';
 
@@ -237,6 +305,167 @@ export const asPromptFrequency = (value: unknown): PromptFrequency =>
 export const serializeDraft = (value: unknown): string => JSON.stringify(value ?? null);
 
 const cloneJson = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
+
+const normalizePhoneNumber = (value: unknown): string => {
+    if (typeof value !== 'string') return '';
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+
+    const normalized = trimmed.replace(/[^\d+]/g, '');
+    const plusPrefixed = normalized.startsWith('+');
+    const digits = normalized.replace(/\D/g, '');
+    if ((plusPrefixed && digits.length < 8) || (!plusPrefixed && digits.length < 7)) {
+        return '';
+    }
+
+    return plusPrefixed ? `+${digits}` : digits;
+};
+
+const normalizeEmailAddress = (value: unknown): string => {
+    if (typeof value !== 'string') return '';
+    const trimmed = value.trim().toLowerCase();
+    if (!trimmed) return '';
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? trimmed : '';
+};
+
+const buildTrustedContactId = (name: string, relationship?: string) =>
+    `${normalizeTag(name, 40).toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'contact'}-${normalizeTag(relationship || 'support', 24).toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'support'}`;
+
+const normalizeTrustedContacts = (value: unknown): TrustedContactPreference[] => {
+    if (!Array.isArray(value)) return [];
+
+    const seen = new Set<string>();
+    const contacts = value.reduce<TrustedContactPreference[]>((acc, item) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return acc;
+
+        const source = item as TrustedContactPreference;
+        const name = normalizeTag(String(source.name || ''), 60);
+        if (!name) return acc;
+
+        const relationship = normalizeTag(String(source.relationship || ''), 40);
+        const note = normalizeTag(String(source.note || ''), 160);
+        const phoneNumber = normalizePhoneNumber(source.phoneNumber);
+        const emailAddress = normalizeEmailAddress(source.emailAddress);
+        const channel: TrustedContactChannel = source.channel === 'call' || source.channel === 'in_person'
+            ? source.channel
+            : 'text';
+        const id = normalizeTag(String(source.id || buildTrustedContactId(name, relationship)), 80)
+            || buildTrustedContactId(name, relationship);
+        const key = `${name.toLowerCase()}::${relationship.toLowerCase()}`;
+        if (seen.has(key) || acc.length >= 4) return acc;
+
+        seen.add(key);
+        acc.push({
+            id,
+            name,
+            channel,
+            relationship: relationship || undefined,
+            note: note || undefined,
+            phoneNumber: phoneNumber || undefined,
+            emailAddress: emailAddress || undefined,
+            isPrimary: Boolean(source.isPrimary),
+        });
+        return acc;
+    }, []);
+
+    const primaryIndex = contacts.findIndex((item) => item.isPrimary);
+    if (primaryIndex > 0) {
+        const [primary] = contacts.splice(primaryIndex, 1);
+        if (primary) {
+            contacts.unshift({ ...primary, isPrimary: true });
+        }
+    }
+
+    return contacts.map((item, index) => ({
+        ...item,
+        isPrimary: index === 0 ? Boolean(item.isPrimary) : false,
+    }));
+};
+
+const normalizeContactOutcomes = (value: unknown): SupportContactOutcome[] => {
+    if (!Array.isArray(value)) return [];
+
+    return value
+        .reduce<SupportContactOutcome[]>((acc, item, index) => {
+            if (!item || typeof item !== 'object' || Array.isArray(item)) return acc;
+
+            const source = item as SupportContactOutcome;
+            const contactName = normalizeTag(String(source.contactName || ''), 80);
+            const recordedAt = typeof source.recordedAt === 'string' ? source.recordedAt : '';
+            const outcome = source.outcome === 'helped' || source.outcome === 'still_need_support'
+                ? source.outcome
+                : null;
+            const contactSource = source.source === 'bridge' || source.source === 'safety'
+                ? source.source
+                : null;
+            const surface = source.surface === 'dashboard' || source.surface === 'guide' || source.surface === 'entry' || source.surface === 'safety'
+                ? source.surface
+                : null;
+
+            if (!contactName || !recordedAt || !outcome || !contactSource || !surface) {
+                return acc;
+            }
+
+            acc.push({
+                id: normalizeTag(String(source.id || `support-outcome-${index}`), 80) || `support-outcome-${index}`,
+                ...(source.contactId ? { contactId: normalizeTag(String(source.contactId), 80) } : {}),
+                contactName,
+                outcome,
+                source: contactSource,
+                surface,
+                ...(source.actionKind === 'copy' || source.actionKind === 'text' || source.actionKind === 'call' || source.actionKind === 'email' || source.actionKind === 'manual'
+                    ? { actionKind: source.actionKind }
+                    : {}),
+                ...(source.channel === 'text' || source.channel === 'call' || source.channel === 'in_person'
+                    ? { channel: source.channel }
+                    : {}),
+                ...(source.riskLevel === 'none' || source.riskLevel === 'yellow' || source.riskLevel === 'orange' || source.riskLevel === 'red'
+                    ? { riskLevel: source.riskLevel }
+                    : {}),
+                ...(source.entryId ? { entryId: normalizeTag(String(source.entryId), 80) } : {}),
+                recordedAt,
+            });
+            return acc;
+        }, [])
+        .sort((left, right) => new Date(right.recordedAt).getTime() - new Date(left.recordedAt).getTime())
+        .slice(0, 24);
+};
+
+const normalizeSupportPreferences = (value: unknown): SupportPreferences | undefined => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return undefined;
+    }
+
+    const source = value as SupportPreferences;
+    const pinnedPeople = normalizeStringArray(source.pinnedPeople).slice(0, 6).map((item) => normalizeTag(item, 60));
+    const groundingRoutines = normalizeStringArray(source.groundingRoutines).slice(0, 6).map((item) => normalizeTag(item, 60));
+    const trustedContacts = normalizeTrustedContacts(source.trustedContacts);
+    const contactOutcomes = normalizeContactOutcomes(source.contactOutcomes);
+    const safetyRegion: SafetyRegion = source.safetyRegion === 'us' || source.safetyRegion === 'intl'
+        ? source.safetyRegion
+        : 'auto';
+    const updatedAt = typeof source.updatedAt === 'string' ? source.updatedAt : undefined;
+
+    if (
+        pinnedPeople.length === 0
+        && groundingRoutines.length === 0
+        && trustedContacts.length === 0
+        && contactOutcomes.length === 0
+        && safetyRegion === 'auto'
+        && !updatedAt
+    ) {
+        return undefined;
+    }
+
+    return {
+        ...(pinnedPeople.length > 0 ? { pinnedPeople } : {}),
+        ...(groundingRoutines.length > 0 ? { groundingRoutines } : {}),
+        ...(trustedContacts.length > 0 ? { trustedContacts } : {}),
+        ...(contactOutcomes.length > 0 ? { contactOutcomes } : {}),
+        ...(safetyRegion !== 'auto' ? { safetyRegion } : {}),
+        ...(updatedAt ? { updatedAt } : {}),
+    };
+};
 
 export const buildProfileDraft = (source: SnapshotUser | null | undefined): ProfileDraft => ({
     name: source?.name || '',
@@ -304,6 +533,7 @@ export const normalizeSignals = (value: unknown): PersonalizationSignals | null 
         answers,
         history,
         seenQuestionIds,
+        supportPreferences: normalizeSupportPreferences(source.supportPreferences),
     };
 };
 
@@ -352,11 +582,18 @@ export const compactSignals = (value: PersonalizationSignals | null | undefined)
     const promptedCount = normalized.metrics?.promptedCount || 0;
     const answeredCount = normalized.metrics?.answeredCount || 0;
     const dismissedCount = normalized.metrics?.dismissedCount || 0;
+    const supportPreferences = normalizeSupportPreferences(normalized.supportPreferences);
     const hasExtras = Boolean(
         normalized.lastPromptAt ||
         normalized.dismissedUntil ||
         normalized.lastSyncedSignature ||
-        (normalized.seenQuestionIds?.length || 0) > 0
+        (normalized.seenQuestionIds?.length || 0) > 0 ||
+        (supportPreferences?.pinnedPeople?.length || 0) > 0 ||
+        (supportPreferences?.groundingRoutines?.length || 0) > 0 ||
+        (supportPreferences?.trustedContacts?.length || 0) > 0 ||
+        (supportPreferences?.contactOutcomes?.length || 0) > 0 ||
+        supportPreferences?.safetyRegion === 'us' ||
+        supportPreferences?.safetyRegion === 'intl'
     );
 
     if (
@@ -372,7 +609,10 @@ export const compactSignals = (value: PersonalizationSignals | null | undefined)
         return null;
     }
 
-    return normalized;
+    return {
+        ...normalized,
+        ...(supportPreferences ? { supportPreferences } : {}),
+    };
 };
 
 export const buildPrivacyDraft = (source: SnapshotUser | null | undefined): PrivacyDraft => ({

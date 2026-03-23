@@ -19,8 +19,8 @@ const FACETS_BY_INTENT: Record<SearchIntent, string[]> = {
     lesson: ['lesson', 'opportunity_lesson', 'reflection'],
     skill: ['skill', 'opportunity_action', 'opportunity_outcome'],
     reflection: ['reflection', 'lesson', 'opportunity_situation'],
-    memory: ['title', 'reflection', 'opportunity_situation', 'opportunity_outcome'],
-    action: ['opportunity_action', 'skill', 'opportunity_outcome'],
+    memory: ['title', 'reflection', 'opportunity_situation', 'opportunity_outcome', 'coping_action', 'steadying_routine'],
+    action: ['coping_action', 'steadying_routine', 'support_person', 'opportunity_action', 'skill', 'opportunity_outcome'],
 };
 
 const EMBEDDING_HINTS: Record<SearchIntent, string> = {
@@ -29,8 +29,8 @@ const EMBEDDING_HINTS: Record<SearchIntent, string> = {
     lesson: 'Focus on lessons, realizations, takeaways, and what was learned.',
     skill: 'Focus on skills, strengths, capabilities, and repeated competencies.',
     reflection: 'Focus on reflection, meaning, interpretation, and what stands out.',
-    memory: 'Focus on similar past moments, situations, context, and outcomes.',
-    action: 'Focus on actions taken, work done, decisions made, and outcomes.',
+    memory: 'Focus on similar past moments, situations, what helped before, and outcomes.',
+    action: 'Focus on helpful actions, steadying routines, reach-out options, and outcomes.',
 };
 
 const INTENT_RULES: Array<{ intent: SearchIntent; pattern: RegExp }> = [

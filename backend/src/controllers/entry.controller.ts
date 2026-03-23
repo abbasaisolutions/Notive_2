@@ -8,6 +8,7 @@ import nlpService, { AnalysisResult } from '../services/nlp.service';
 import embeddingService from '../services/embedding.service';
 import { sanitizeHtml } from '../utils/html';
 import { buildEntryStorySignal, deriveExperienceEvidence, OpportunityEntry } from '../services/opportunity.service';
+import studentActionService from '../services/student-action.service';
 import {
     buildEntryListWhere,
     filterEntriesByTemporalContext,
@@ -515,6 +516,13 @@ export const createEntry = async (req: Request, res: Response) => {
             createdAt: entry.createdAt,
             analysis: entry.analysis,
         });
+        const { mergedAnalysis } = await studentActionService.persistEntrySignals({
+            entryId: entry.id,
+            userId,
+            title: entry.title,
+            content: entry.content,
+            analysis: opportunityAnalysis ?? entry.analysis,
+        });
 
         embeddingService.enqueueEntryEmbedding({
             entryId: entry.id,
@@ -526,14 +534,12 @@ export const createEntry = async (req: Request, res: Response) => {
             skills: entry.skills,
             lessons: entry.lessons,
             reflection: entry.reflection,
-            analysis: opportunityAnalysis ?? entry.analysis,
+            analysis: mergedAnalysis,
             category: entry.category,
             lifeArea: entry.lifeArea,
         });
 
-        const responseEntry = opportunityAnalysis
-            ? { ...entry, analysis: opportunityAnalysis }
-            : entry;
+        const responseEntry = { ...entry, analysis: mergedAnalysis };
 
         return res.status(201).json({
             entry: attachEntryStorySignal(responseEntry),
@@ -860,6 +866,13 @@ export const updateEntry = async (req: Request, res: Response) => {
             createdAt: entry.createdAt,
             analysis: entry.analysis,
         });
+        const { mergedAnalysis } = await studentActionService.persistEntrySignals({
+            entryId: entry.id,
+            userId,
+            title: entry.title,
+            content: entry.content,
+            analysis: opportunityAnalysis ?? entry.analysis,
+        });
 
         embeddingService.enqueueEntryEmbedding({
             entryId: entry.id,
@@ -871,14 +884,12 @@ export const updateEntry = async (req: Request, res: Response) => {
             skills: entry.skills,
             lessons: entry.lessons,
             reflection: entry.reflection,
-            analysis: opportunityAnalysis ?? entry.analysis,
+            analysis: mergedAnalysis,
             category: entry.category,
             lifeArea: entry.lifeArea,
         });
 
-        const responseEntry = opportunityAnalysis
-            ? { ...entry, analysis: opportunityAnalysis }
-            : entry;
+        const responseEntry = { ...entry, analysis: mergedAnalysis };
 
         return res.status(200).json({
             entry: attachEntryStorySignal(responseEntry),

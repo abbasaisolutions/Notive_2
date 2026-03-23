@@ -12,6 +12,11 @@ import { getMoodEmoji, normalizeMood } from '@/constants/moods';
 import { AppPanel, TagPill } from '@/components/ui/surface';
 import { formatStoryConfidence, storyFieldLabel, storyStatusClassName, storyStatusLabel, type StorySignal } from '@/utils/story-engine';
 import { FiArrowLeft, FiArrowRight, FiBriefcase, FiMic, FiUploadCloud } from 'react-icons/fi';
+import ActionBriefPanel from '@/components/action/ActionBriefPanel';
+import BridgeCard from '@/components/action/BridgeCard';
+import SafetyBanner from '@/components/safety/SafetyBanner';
+import type { StudentActionResponse } from '@/components/action/types';
+import useTelemetry from '@/hooks/use-telemetry';
 
 
 interface Entry {
@@ -51,6 +56,7 @@ function EntryDetailContent() {
     const { backHref, backLabel, navigateBack, withCurrentReturnTo } = useContextNavigation('/timeline', 'timeline');
     const { isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { apiFetch } = useApi();
+    const { trackEvent } = useTelemetry();
     const [entry, setEntry] = useState<Entry | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -61,6 +67,7 @@ function EntryDetailContent() {
     const [actionError, setActionError] = useState<string | null>(null);
     const [relatedEntries, setRelatedEntries] = useState<RelatedEntry[]>([]);
     const [isLoadingRelated, setIsLoadingRelated] = useState(false);
+    const [entryAction, setEntryAction] = useState<StudentActionResponse | null>(null);
     const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
@@ -128,6 +135,39 @@ function EntryDetailContent() {
             controller.abort();
         };
     }, [backHref, id, router, apiFetch]);
+
+    useEffect(() => {
+        if (!entry?.id) return;
+        const controller = new AbortController();
+
+        const fetchEntryAction = async () => {
+            try {
+                const response = await apiFetch(`${API_URL}/ai/action/preview`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        entryId: entry.id,
+                    }),
+                    signal: controller.signal,
+                });
+
+                if (!response.ok) return;
+                const data = await response.json().catch(() => null);
+                setEntryAction(data || null);
+            } catch (error) {
+                if (controller.signal.aborted) return;
+                console.error('Failed to fetch entry action:', error);
+            }
+        };
+
+        void fetchEntryAction();
+
+        return () => {
+            controller.abort();
+        };
+    }, [entry?.id, apiFetch]);
 
     const handleShare = async () => {
         if (!id) return;
@@ -241,6 +281,18 @@ function EntryDetailContent() {
                     ? 'This note has the main story parts. Check it once and move it into stronger story use.'
                     : 'This note needs a little more structure before it becomes a story you can use.'
         : 'Open Story Check to see how this note can become a stronger story.';
+    const handleEntryBridgeCopy = (recipient: string) => {
+        void trackEvent({
+            eventType: 'student_bridge_copied',
+            field: 'recipient',
+            value: recipient,
+            metadata: {
+                surface: 'entry_detail',
+                entryId: entry.id,
+                riskLevel: entryAction?.risk.level || 'none',
+            },
+        });
+    };
 
     return (
         <div className="min-h-screen p-4 md:p-8">
@@ -435,6 +487,35 @@ function EntryDetailContent() {
                             </div>
                         )}
                     </AppPanel>
+                )}
+
+                {entryAction && (
+                    <div className="mb-8 space-y-4">
+                        <SafetyBanner risk={entryAction.risk} safetyCard={entryAction.safetyCard} surface="entry" entryId={entry.id} />
+                        {entryAction.brief && (
+                            <div>
+                                <p className="mb-3 text-xs uppercase tracking-[0.14em] text-ink-muted">Use This Note</p>
+                                <ActionBriefPanel
+                                    brief={entryAction.brief}
+                                    surface="entry"
+                                    entryId={entry.id}
+                                    openEntryHref={(entryId) => withCurrentReturnTo(`/entry/view?id=${entryId}`)}
+                                />
+                            </div>
+                        )}
+                        {entryAction.bridge && (
+                            <div>
+                                <p className="mb-3 text-xs uppercase tracking-[0.14em] text-ink-muted">Bridge This Note</p>
+                                <BridgeCard
+                                    bridge={entryAction.bridge}
+                                    surface="entry"
+                                    entryId={entry.id}
+                                    openEntryHref={(entryId) => withCurrentReturnTo(`/entry/view?id=${entryId}`)}
+                                    onCopyDraft={() => handleEntryBridgeCopy(entryAction.bridge?.recommendedRecipient || 'trusted contact')}
+                                />
+                            </div>
+                        )}
+                    </div>
                 )}
 
                 {entry.coverImage && (

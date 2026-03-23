@@ -4,6 +4,8 @@ import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import useTelemetry from '@/hooks/use-telemetry';
+import useApi from '@/hooks/use-api';
+import { API_URL } from '@/constants/config';
 import {
     useAnalytics,
     type PatternDrilldown,
@@ -15,6 +17,8 @@ import { SkeletonCard, SkeletonStat } from '@/components/ui/SkeletonLoader';
 import MoodRiver from '@/components/insights/MoodRiver';
 import ActivityHeatmap from '@/components/insights/ActivityHeatmap';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
+import SupportConstellation from '@/components/patterns/SupportConstellation';
+import type { SupportMapResponse } from '@/components/patterns/types';
 import { ActionBar, AppPanel, SectionHeader, StatTile, TagPill } from '@/components/ui/surface';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import { writeWorkspaceResume } from '@/utils/workspace-resume';
@@ -108,12 +112,15 @@ function InsightsPageContent() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const { trackEvent } = useTelemetry();
+    const { apiFetch } = useApi();
     const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>(
         () => normalizePeriod(searchParams.get('period'))
     );
     const [selectedDrilldownId, setSelectedDrilldownId] = useState<string | null>(
         () => normalizeDrilldown(searchParams.get('drilldown'))
     );
+    const [supportMap, setSupportMap] = useState<SupportMapResponse | null>(null);
+    const [isSupportLoading, setIsSupportLoading] = useState(true);
     const { analytics, signature, isLoading, error } = useAnalytics(selectedPeriod);
 
     const heatmapData = useMemo(
@@ -131,6 +138,48 @@ function InsightsPageContent() {
         setSelectedPeriod((current) => (current === nextPeriod ? current : nextPeriod));
         setSelectedDrilldownId((current) => (current === nextDrilldown ? current : nextDrilldown));
     }, [searchParams]);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        let mounted = true;
+
+        const fetchSupportMap = async () => {
+            setIsSupportLoading(true);
+            try {
+                const response = await apiFetch(`${API_URL}/ai/support-map?period=${selectedPeriod}`, {
+                    signal: controller.signal,
+                });
+                if (!response.ok) throw new Error('Failed to load support map');
+                const data = await response.json().catch(() => null);
+                if (!mounted) return;
+                setSupportMap(data || null);
+                void trackEvent({
+                    eventType: 'support_map_loaded',
+                    value: selectedPeriod,
+                    metadata: {
+                        anchorCount: Array.isArray(data?.anchors) ? data.anchors.length : 0,
+                    },
+                });
+            } catch (loadError) {
+                if (controller.signal.aborted) return;
+                console.error('Failed to load support map:', loadError);
+                if (mounted) {
+                    setSupportMap(null);
+                }
+            } finally {
+                if (mounted) {
+                    setIsSupportLoading(false);
+                }
+            }
+        };
+
+        void fetchSupportMap();
+
+        return () => {
+            mounted = false;
+            controller.abort();
+        };
+    }, [apiFetch, selectedPeriod, trackEvent]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -916,6 +965,48 @@ function InsightsPageContent() {
                         )}
                     </AppPanel>
                 </section>
+
+                {isSupportLoading ? (
+                    <AppPanel className="space-y-4">
+                        <SectionHeader
+                            kicker="Support"
+                            title="Loading your support map"
+                            description="Notive is gathering the people, places, and routines that seem to steady you."
+                        />
+                        <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)]">
+                            <div className="h-72 animate-pulse rounded-[2rem] border border-white/10 bg-white/[0.03]" />
+                            <div className="space-y-4">
+                                <div className="h-28 animate-pulse rounded-[2rem] border border-white/10 bg-white/[0.03]" />
+                                <div className="h-40 animate-pulse rounded-[2rem] border border-white/10 bg-white/[0.03]" />
+                            </div>
+                        </div>
+                    </AppPanel>
+                ) : (
+                    <SupportConstellation
+                        supportMap={supportMap}
+                        openEntryHref={(entryId) => appendReturnTo(`/entry/view?id=${entryId}`, currentReturnTo)}
+                        onAnchorSelect={(anchor) => {
+                            void trackEvent({
+                                eventType: 'support_anchor_selected',
+                                value: anchor.id,
+                                metadata: {
+                                    period: selectedPeriod,
+                                    type: anchor.type,
+                                },
+                            });
+                        }}
+                        onCopyStarter={(anchor) => {
+                            void trackEvent({
+                                eventType: 'support_prompt_copied',
+                                value: anchor.id,
+                                metadata: {
+                                    period: selectedPeriod,
+                                    type: anchor.type,
+                                },
+                            });
+                        }}
+                    />
+                )}
 
                 <AppPanel tone="accent" className="space-y-4">
                     <div className="flex items-center gap-3">

@@ -3,9 +3,14 @@ import embeddingService from './embedding.service';
 import { executeHybridSearch, type HybridSearchResult } from './hybrid-search.service';
 import nlpService from './nlp.service';
 import type { SearchIntent } from '../utils/search-intent';
+import studentActionService, {
+    type StudentActionBrief,
+    type StudentBridgeDraft,
+} from './student-action.service';
+import type { StudentRisk, StudentSafetyCard } from './student-safety.service';
 
-type GuidedReflectionIntent = 'summary' | 'pattern' | 'emotion' | 'next_step' | 'memory' | 'general';
-export type GuidedReflectionLens = 'clarity' | 'memory' | 'growth' | 'patterns';
+type GuidedReflectionIntent = 'summary' | 'pattern' | 'emotion' | 'next_step' | 'memory' | 'bridge' | 'general';
+export type GuidedReflectionLens = 'clarity' | 'memory' | 'growth' | 'patterns' | 'bridge';
 type WritingPreference = 'guided' | 'structured' | 'freeform' | null;
 
 type ReflectionEntry = {
@@ -57,13 +62,17 @@ export type GuidedReflectionResponse = {
         reason: string;
         excerpt: string;
     }>;
+    brief?: StudentActionBrief | null;
+    bridge?: StudentBridgeDraft | null;
+    risk?: StudentRisk;
+    safetyCard?: StudentSafetyCard | null;
 };
 
 const DEFAULT_SUGGESTIONS = [
     'What feels like the biggest pattern in my notes lately?',
-    'What should I write about tonight?',
+    'Help me talk to someone about this.',
     'Which past entry feels closest to how I am doing now?',
-    'Summarize the last week of notes.',
+    'What should I write about tonight?',
 ];
 
 const GUIDED_LENSES: GuidedReflectionStatus['lenses'] = [
@@ -86,6 +95,11 @@ const GUIDED_LENSES: GuidedReflectionStatus['lenses'] = [
         id: 'patterns',
         label: 'Patterns',
         description: 'Zoom out and look for repeated themes.',
+    },
+    {
+        id: 'bridge',
+        label: 'Bridge',
+        description: 'Prepare a grounded message or conversation.',
     },
 ];
 
@@ -127,6 +141,9 @@ const inferIntent = (query: string): GuidedReflectionIntent => {
     if (/(what should i write|write next|start writing|journal about|prompt)/.test(normalized)) {
         return 'next_step';
     }
+    if (/(talk to|talk with|say to|message|text|call|reach out|ask for help|tell my|tell the|how do i say|help me talk)/.test(normalized)) {
+        return 'bridge';
+    }
     if (/(recurring|repeat|pattern|theme|always|keep happening)/.test(normalized)) {
         return 'pattern';
     }
@@ -144,6 +161,7 @@ const inferIntent = (query: string): GuidedReflectionIntent => {
 
 const resolveLens = (lens: GuidedReflectionLens | null | undefined, intent: GuidedReflectionIntent): GuidedReflectionLens => {
     if (lens) return lens;
+    if (intent === 'bridge') return 'bridge';
     if (intent === 'memory') return 'memory';
     if (intent === 'next_step') return 'growth';
     if (intent === 'pattern') return 'patterns';
@@ -153,6 +171,8 @@ const resolveLens = (lens: GuidedReflectionLens | null | undefined, intent: Guid
 const applyLensToIntent = (lens: GuidedReflectionLens, intent: GuidedReflectionIntent): GuidedReflectionIntent => {
     if (intent !== 'general') return intent;
     switch (lens) {
+        case 'bridge':
+            return 'bridge';
         case 'memory':
             return 'memory';
         case 'growth':
@@ -168,6 +188,8 @@ const mapReflectionIntentToSearchIntent = (intent: GuidedReflectionIntent): Sear
     switch (intent) {
         case 'emotion':
             return 'emotion';
+        case 'bridge':
+            return 'action';
         case 'memory':
             return 'memory';
         case 'next_step':
@@ -221,6 +243,11 @@ const buildPrompts = (input: {
             `If you only wrote six sentences tonight, what would you want to say about ${secondaryTopic}?`,
             'What small next step deserves to be captured before the day ends?',
         ],
+        bridge: [
+            'What do you want this person to understand before they try to fix it?',
+            `What is the hardest sentence to say out loud about ${topic}?`,
+            'What kind of help are you actually hoping for from this conversation?',
+        ],
         memory: [
             'What feels similar between then and now?',
             'What has changed since that earlier entry?',
@@ -235,6 +262,8 @@ const buildPrompts = (input: {
 
     const lensLead = input.lens === 'memory'
         ? 'Use memory mode:'
+        : input.lens === 'bridge'
+            ? 'Use bridge mode:'
         : input.lens === 'growth'
             ? 'Use growth mode:'
             : input.lens === 'patterns'
@@ -261,6 +290,9 @@ const buildOverviewLine = (input: {
     }
     if (input.lens === 'growth') {
         return `Across ${input.entryCount} note${input.entryCount === 1 ? '' : 's'}, the tone leans ${input.dominantMood || 'mixed'}${topicText}. That suggests a clear growth edge for the next note.`;
+    }
+    if (input.lens === 'bridge') {
+        return `Across ${input.entryCount} note${input.entryCount === 1 ? '' : 's'}, the clearest support thread is around ${input.topTopics[0] || input.dominantMood || 'getting through something hard'}. This is a good moment to keep the human path visible.`;
     }
     if (input.lens === 'patterns') {
         return `Across ${input.entryCount} note${input.entryCount === 1 ? '' : 's'}, the strongest repeated pattern is ${input.topTopics[0] || input.dominantMood || 'still emerging'}. The recent trend looks ${input.moodTrend}.`;
@@ -296,8 +328,8 @@ class GuidedReflectionService {
             ? [
                 'Summarize the last week of notes.',
                 'What pattern keeps repeating lately?',
+                'Help me talk to someone about this.',
                 'Help me structure tonight’s reflection.',
-                'Which past note feels closest to today?',
             ]
             : DEFAULT_SUGGESTIONS;
 
@@ -365,6 +397,10 @@ class GuidedReflectionService {
         const writingPreference = (profile?.writingPreference?.trim().toLowerCase() || null) as WritingPreference;
 
         if (recentEntries.length === 0) {
+            const actionResponse = await studentActionService.preview({
+                userId: input.userId,
+                content: normalizedQuery,
+            });
             const prompts = buildPrompts({
                 intent: intent === 'next_step' ? 'next_step' : 'general',
                 lens,
@@ -389,6 +425,10 @@ class GuidedReflectionService {
                 lens,
                 prompts,
                 highlights: [],
+                brief: null,
+                bridge: actionResponse.bridge,
+                risk: actionResponse.risk,
+                safetyCard: actionResponse.safetyCard,
             };
         }
 
@@ -475,6 +515,10 @@ class GuidedReflectionService {
             starterPrompt: profile?.starterPrompt || null,
             dominantMood: insights.dominantMood,
         });
+        const actionResponse = await studentActionService.preview({
+            userId: input.userId,
+            content: normalizedQuery,
+        });
 
         const highlights = focalEntries.slice(0, 3).map((entry) => {
             const searchMatch = searchMatchMap.get(entry.id);
@@ -496,33 +540,99 @@ class GuidedReflectionService {
             };
         });
 
+        if (actionResponse.risk.level === 'red' && actionResponse.safetyCard) {
+            return {
+                response: [
+                    actionResponse.safetyCard.headline,
+                    actionResponse.safetyCard.body,
+                    actionResponse.safetyCard.draftMessage
+                        ? `You could say: "${actionResponse.safetyCard.draftMessage}"`
+                        : '',
+                ].filter(Boolean).join('\n\n'),
+                provider: 'guided_reflection',
+                vendor: 'local',
+                mode: 'guided_reflection',
+                model: `${activeEmbeddingConfig.model} + guided-reflection-v1`,
+                strategy: buildStrategyLabel(searchResult?.results || null, recentEntries.length),
+                lens,
+                prompts,
+                highlights: actionResponse.highlights.length > 0 ? actionResponse.highlights : highlights,
+                brief: null,
+                bridge: actionResponse.bridge,
+                risk: actionResponse.risk,
+                safetyCard: actionResponse.safetyCard,
+            };
+        }
+
         const intro = searchResult?.results?.length
             ? `Guide is running in ${lens} mode, so I stayed close to the notes that best match your question.`
             : `Guide is running in ${lens} mode, so I grounded this in your most recent notes instead of generating a freeform answer.`;
 
         const responseSections: string[] = [
             intro,
-            [
-                'What I found',
-                ...highlights.map((highlight) =>
-                    `- ${highlight.createdAt}: ${highlight.title || 'Untitled note'}${highlight.mood ? ` (${highlight.mood})` : ''} - ${highlight.excerpt} [${highlight.reason}]`
-                ),
-            ].join('\n'),
-            [
-                'Pattern to notice',
-                buildOverviewLine({
-                    lens,
-                    dominantMood: insights.dominantMood,
-                    moodTrend: insights.moodTrend,
-                    topTopics: topics,
-                    entryCount: insightEntries.length,
-                }),
-            ].join('\n'),
-            [
-                'Try exploring next',
-                ...prompts.map((prompt, index) => `${index + 1}. ${prompt}`),
-            ].join('\n'),
         ];
+
+        if (lens === 'bridge' && actionResponse.bridge) {
+            responseSections.push(
+                [
+                    'What I found',
+                    ...highlights.map((highlight) =>
+                        `- ${highlight.createdAt}: ${highlight.title || 'Untitled note'}${highlight.mood ? ` (${highlight.mood})` : ''} - ${highlight.excerpt} [${highlight.reason}]`
+                    ),
+                ].join('\n'),
+                actionResponse.brief
+                    ? [
+                        'Why this feels live right now',
+                        actionResponse.brief.pattern,
+                    ].join('\n')
+                    : '',
+                actionResponse.brief?.whatHelpedBefore
+                    ? [
+                        'What helped before',
+                        actionResponse.brief.whatHelpedBefore.summary,
+                    ].join('\n')
+                    : '',
+                [
+                    'Who could help now',
+                    `${actionResponse.bridge.recommendedRecipient}${actionResponse.bridge.channelLabel ? ` (${actionResponse.bridge.channelLabel.toLowerCase()})` : ''}: ${actionResponse.bridge.whyNow}`,
+                ].join('\n'),
+                [
+                    'What to say first',
+                    actionResponse.bridge.messageDraft,
+                ].join('\n'),
+                [
+                    'Keep the conversation small',
+                    ...actionResponse.bridge.talkTrack.map((item, index) => `${index + 1}. ${item}`),
+                ].join('\n'),
+                [
+                    'If you want to write before reaching out',
+                    ...prompts.map((prompt, index) => `${index + 1}. ${prompt}`),
+                ].join('\n')
+            );
+        } else {
+            responseSections.push(
+                [
+                    'What I found',
+                    ...highlights.map((highlight) =>
+                        `- ${highlight.createdAt}: ${highlight.title || 'Untitled note'}${highlight.mood ? ` (${highlight.mood})` : ''} - ${highlight.excerpt} [${highlight.reason}]`
+                    ),
+                ].join('\n'),
+                [
+                    'Pattern to notice',
+                    buildOverviewLine({
+                        lens,
+                        dominantMood: insights.dominantMood,
+                        moodTrend: insights.moodTrend,
+                        topTopics: topics,
+                        entryCount: insightEntries.length,
+                    }),
+                ].join('\n'),
+                [
+                    'Try exploring next',
+                    ...prompts.map((prompt, index) => `${index + 1}. ${prompt}`),
+                ].join('\n')
+            );
+        }
 
         if (insights.suggestions.length > 0) {
             responseSections.push([
@@ -531,8 +641,29 @@ class GuidedReflectionService {
             ].join('\n'));
         }
 
+        if (actionResponse.brief) {
+            responseSections.splice(2, 0,
+                [
+                    'What this seems like',
+                    actionResponse.brief.pattern,
+                ].join('\n'),
+                actionResponse.brief.whatHelpedBefore
+                    ? [
+                        'What helped before',
+                        actionResponse.brief.whatHelpedBefore.summary,
+                    ].join('\n')
+                    : '',
+                actionResponse.brief.nextMove
+                    ? [
+                        'One move for today',
+                        actionResponse.brief.nextMove.description,
+                    ].join('\n')
+                    : ''
+            );
+        }
+
         return {
-            response: responseSections.join('\n\n'),
+            response: responseSections.filter(Boolean).join('\n\n'),
             provider: 'guided_reflection',
             vendor: 'local',
             mode: 'guided_reflection',
@@ -540,7 +671,11 @@ class GuidedReflectionService {
             strategy: buildStrategyLabel(searchResult?.results || null, recentEntries.length),
             lens,
             prompts,
-            highlights,
+            highlights: actionResponse.highlights.length > 0 ? actionResponse.highlights : highlights,
+            brief: actionResponse.brief,
+            bridge: actionResponse.bridge,
+            risk: actionResponse.risk,
+            safetyCard: actionResponse.safetyCard,
         };
     }
 }

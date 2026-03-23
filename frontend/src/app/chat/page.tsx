@@ -9,8 +9,13 @@ import { NOTIVE_VOICE } from '@/content/notive-voice';
 import useContextNavigation from '@/hooks/use-context-navigation';
 import { ActionBar, AppPanel, EmptyState, SectionHeader, TagPill } from '@/components/ui/surface';
 import { FiArrowLeft, FiArrowRight, FiCpu, FiSend } from 'react-icons/fi';
+import ActionBriefPanel from '@/components/action/ActionBriefPanel';
+import BridgeCard from '@/components/action/BridgeCard';
+import SafetyBanner from '@/components/safety/SafetyBanner';
+import type { StudentActionBrief, StudentBridgeDraft, StudentRisk, StudentSafetyCard } from '@/components/action/types';
+import useTelemetry from '@/hooks/use-telemetry';
 
-type GuidedLens = 'clarity' | 'memory' | 'growth' | 'patterns';
+type GuidedLens = 'clarity' | 'memory' | 'growth' | 'patterns' | 'bridge';
 
 interface MessageMeta {
     mode?: 'guided_reflection' | 'llm' | 'hosted_fallback';
@@ -26,6 +31,10 @@ interface MessageMeta {
         reason: string;
         excerpt: string;
     }>;
+    brief?: StudentActionBrief | null;
+    bridge?: StudentBridgeDraft | null;
+    risk?: StudentRisk;
+    safetyCard?: StudentSafetyCard | null;
 }
 
 interface Message {
@@ -52,6 +61,7 @@ interface CoachStatus {
 export default function ChatPage() {
     const { isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { apiFetch } = useApi();
+    const { trackEvent } = useTelemetry();
     const { backLabel, navigateBack } = useContextNavigation('/dashboard', 'dashboard');
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
@@ -136,6 +146,10 @@ export default function ChatPage() {
                     lens: data.lens,
                     prompts: Array.isArray(data.prompts) ? data.prompts : [],
                     highlights: Array.isArray(data.highlights) ? data.highlights : [],
+                    brief: data.brief || null,
+                    bridge: data.bridge || null,
+                    risk: data.risk || undefined,
+                    safetyCard: data.safetyCard || null,
                 },
             }]);
         } catch (error) {
@@ -179,31 +193,120 @@ export default function ChatPage() {
             ? 'live'
             : 'disabled';
     const suggestions = coachStatus?.suggestions || [
-        'When was I last happy?',
-        'What stressed me out recently?',
-        'Summarize my week',
-        'What are my recurring themes?',
+        'What feels like the biggest pattern in my notes lately?',
+        'Help me talk to someone about this.',
+        'Which past entry feels closest to how I am doing now?',
+        'What should I write about tonight?',
     ];
     const guidedLenses = coachStatus?.lenses || [];
+    const lensLabelMap = new Map(guidedLenses.map((lens) => [lens.id, lens.label]));
+    const selectedLensLabel = lensLabelMap.get(selectedLens) || selectedLens;
     const headerDescription = coachMode === 'guided'
-        ? 'Use local reflection mode to surface relevant notes, patterns, and your next writing question.'
+        ? selectedLens === 'bridge'
+            ? 'Turn a hard conversation into a grounded draft, a smaller talk track, and one human next step.'
+            : 'Use local reflection mode to surface relevant notes, patterns, and your next writing question.'
         : coachAvailable
             ? 'Ask Notive about your notes, your patterns, or what to write next.'
             : 'This environment is running without a live guide right now.';
+
+    const describeStarter = (suggestion: string) => {
+        const normalized = suggestion.toLowerCase();
+        if (normalized.includes('talk to') || normalized.includes('message') || normalized.includes('text') || normalized.includes('say')) {
+            return 'Get a grounded draft and a smaller talk track before you reach out.';
+        }
+        if (normalized.includes('pattern')) return 'Spot the thread that keeps coming back instead of rereading everything.';
+        if (normalized.includes('write') || normalized.includes('prompt')) return 'Turn the archive into one grounded prompt you can answer tonight.';
+        if (normalized.includes('closest') || normalized.includes('past') || normalized.includes('similar')) return 'Reconnect the present moment to an earlier note that matches.';
+        if (normalized.includes('week') || normalized.includes('summary')) return 'Zoom out and get a stitched-together view of recent notes.';
+        return coachMode === 'guided'
+            ? 'Keep the next question grounded in your own notes and patterns.'
+            : 'Start with a narrower question so the guide can be more useful.';
+    };
+    const starterDeckCardClassName = coachMode === 'guided' && selectedLens === 'bridge'
+        ? 'rounded-[1.4rem] border border-amber-300/20 bg-[linear-gradient(135deg,rgba(120,84,22,0.22),rgba(8,12,22,0.84))] p-5 text-left transition-colors hover:border-amber-200/30 hover:bg-[linear-gradient(135deg,rgba(140,98,28,0.30),rgba(8,12,22,0.92))]'
+        : 'rounded-[1.4rem] border border-white/12 bg-[linear-gradient(135deg,rgba(36,56,96,0.22),rgba(8,12,22,0.82))] p-5 text-left transition-colors hover:border-white/20 hover:bg-[linear-gradient(135deg,rgba(46,70,116,0.32),rgba(8,12,22,0.92))]';
+    const starterDeckTagTone: 'default' | 'primary' | 'muted' = coachMode === 'guided' && selectedLens === 'bridge'
+        ? 'default'
+        : coachMode === 'guided'
+            ? 'primary'
+            : 'muted';
+
+    const handleStarterSelection = (prompt: string, surface: 'starter_deck' | 'suggestion_chip' | 'follow_up_prompt') => {
+        setInput(prompt);
+        void trackEvent({
+            eventType: 'guide_starter_selected',
+            value: prompt.slice(0, 140),
+            metadata: {
+                surface,
+                mode: coachMode,
+                lens: selectedLens,
+            },
+        });
+    };
+
+    const handleBridgeCopy = (recipient: string, surface: 'guide_card') => {
+        void trackEvent({
+            eventType: 'student_bridge_copied',
+            field: 'recipient',
+            value: recipient,
+            metadata: {
+                surface,
+                mode: coachMode,
+                lens: selectedLens,
+            },
+        });
+    };
+
     const renderMessageMeta = (message: Message, index: number) => {
         if (message.role !== 'assistant' || !message.meta) return null;
 
         const hasHighlights = !!message.meta.highlights?.length;
         const hasPrompts = !!message.meta.prompts?.length;
-        const hasMetadata = !!message.meta.strategy || !!message.meta.lens;
+        const hasMetadata = !!message.meta.strategy || !!message.meta.lens || !!message.meta.brief || !!message.meta.bridge || !!message.meta.risk;
         if (!hasHighlights && !hasPrompts && !hasMetadata) return null;
 
         const isGuidedReflection = message.meta.mode === 'guided_reflection';
+        const isBridgeMode = message.meta.lens === 'bridge';
 
         return (
             <div className="mt-3 space-y-3">
+                {message.meta.risk && (
+                    <SafetyBanner
+                        risk={message.meta.risk}
+                        safetyCard={message.meta.safetyCard || null}
+                        surface="guide"
+                        compact={message.meta.risk.level === 'yellow'}
+                    />
+                )}
+
+                {isBridgeMode && message.meta.bridge && (
+                    <BridgeCard
+                        bridge={message.meta.bridge}
+                        surface="guide"
+                        openEntryHref={(entryId) => `/entry/view?id=${entryId}`}
+                        onCopyDraft={() => handleBridgeCopy(message.meta?.bridge?.recommendedRecipient || 'trusted contact', 'guide_card')}
+                    />
+                )}
+
+                {message.meta.brief && (
+                    <ActionBriefPanel
+                        brief={message.meta.brief}
+                        surface="guide"
+                        openEntryHref={(entryId) => `/entry/view?id=${entryId}`}
+                    />
+                )}
+
+                {!isBridgeMode && message.meta.bridge && (
+                    <BridgeCard
+                        bridge={message.meta.bridge}
+                        surface="guide"
+                        openEntryHref={(entryId) => `/entry/view?id=${entryId}`}
+                        onCopyDraft={() => handleBridgeCopy(message.meta?.bridge?.recommendedRecipient || 'trusted contact', 'guide_card')}
+                    />
+                )}
+
                 <div className="flex flex-wrap gap-2">
-                    {message.meta.lens && <TagPill tone="primary">{message.meta.lens}</TagPill>}
+                    {message.meta.lens && <TagPill tone="primary">{lensLabelMap.get(message.meta.lens) || message.meta.lens}</TagPill>}
                     {message.meta.strategy && <TagPill>{message.meta.strategy}</TagPill>}
                     {!isGuidedReflection && message.meta.model && <TagPill>{message.meta.model}</TagPill>}
                 </div>
@@ -239,7 +342,7 @@ export default function ChatPage() {
                             <button
                                 key={`${index}-${prompt}`}
                                 type="button"
-                                onClick={() => setInput(prompt)}
+                                onClick={() => handleStarterSelection(prompt, 'follow_up_prompt')}
                                 className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs text-ink-secondary hover:text-white hover:bg-white/10 transition-colors"
                             >
                                 {prompt}
@@ -266,9 +369,9 @@ export default function ChatPage() {
                             <FiArrowLeft size={20} aria-hidden="true" />
                         </button>
                         <SectionHeader
-                            title={coachMode === 'guided' ? 'Guided Reflection' : NOTIVE_VOICE.surfaces.reflectionCoach}
+                            title={coachMode === 'guided' ? 'Action Console' : NOTIVE_VOICE.surfaces.reflectionCoach}
                             description={headerDescription}
-                            kicker={coachMode === 'guided' ? 'Reflect' : 'Guide'}
+                            kicker={coachMode === 'guided' ? selectedLensLabel : 'Guide'}
                             className="items-center"
                         />
                     </div>
@@ -286,7 +389,7 @@ export default function ChatPage() {
                                 <p>{coachMessage}</p>
                                 <p>It stays grounded in your own notes, related entries, and fixed reflection prompts instead of open-ended generation.</p>
                                 {guidedLenses.length > 0 && (
-                                    <div className="grid gap-2 md:grid-cols-4">
+                                    <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-5">
                                         {guidedLenses.map((lens) => {
                                             const active = selectedLens === lens.id;
                                             return (
@@ -319,11 +422,43 @@ export default function ChatPage() {
                         )}
 
                         {messages.length === 0 ? (
-                            <EmptyState
-                                title={coachMode === 'guided' ? 'Pick a lens and begin' : 'Ask Notive anything'}
-                                description={coachAvailable ? 'Use one of the reflection starters below or type your own question.' : 'Come back when a guide provider is enabled to use chat.'}
-                                className="py-12"
-                            />
+                            <div className="space-y-4 py-6">
+                                <EmptyState
+                                    title={coachMode === 'guided'
+                                        ? selectedLens === 'bridge'
+                                            ? 'Draft the conversation before you have it'
+                                            : 'Pick a lens and begin'
+                                        : 'Ask Notive anything'}
+                                    description={coachAvailable
+                                        ? selectedLens === 'bridge'
+                                            ? 'Use a starter below or name the person you need to talk to and what feels hard to say.'
+                                            : 'Use one of the reflection starters below or type your own question.'
+                                        : 'Come back when a guide provider is enabled to use chat.'}
+                                    className="py-8"
+                                />
+
+                                {coachAvailable && (
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                        {suggestions.slice(0, 4).map((suggestion) => (
+                                            <button
+                                                key={suggestion}
+                                                type="button"
+                                                onClick={() => handleStarterSelection(suggestion, 'starter_deck')}
+                                                className={starterDeckCardClassName}
+                                            >
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <TagPill tone={starterDeckTagTone}>
+                                                        {coachMode === 'guided' ? `${selectedLensLabel} lens` : 'Guide starter'}
+                                                    </TagPill>
+                                                    <FiArrowRight size={14} className="text-ink-muted" aria-hidden="true" />
+                                                </div>
+                                                <p className="mt-4 text-base font-semibold leading-7 text-white">{suggestion}</p>
+                                                <p className="mt-2 text-sm leading-7 text-ink-secondary">{describeStarter(suggestion)}</p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         ) : (
                             messages.map((message, index) => (
                                 <div
@@ -371,7 +506,7 @@ export default function ChatPage() {
                             <button
                                 key={suggestion}
                                 type="button"
-                                onClick={() => setInput(suggestion)}
+                                onClick={() => handleStarterSelection(suggestion, 'suggestion_chip')}
                                 className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
                                     coachMode === 'guided'
                                         ? 'border-primary/20 bg-primary/10 text-white hover:bg-primary/16'
@@ -393,7 +528,9 @@ export default function ChatPage() {
                             onKeyDown={handleKeyDown}
                             placeholder={
                                 coachMode === 'guided'
-                                    ? 'Describe what you want to reflect on, or choose a starter above...'
+                                    ? selectedLens === 'bridge'
+                                        ? 'Who do you need to talk to, and what feels hard to say?...'
+                                        : 'Describe what you want to reflect on, or choose a starter above...'
                                     : coachAvailable
                                         ? 'Ask about a note, a feeling, a topic, or what to write next...'
                                         : 'Guide is unavailable in this environment.'
@@ -408,7 +545,13 @@ export default function ChatPage() {
                             className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/15 px-5 py-3 text-sm font-semibold text-white hover:bg-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             <FiSend size={16} aria-hidden="true" />
-                            {coachMode === 'guided' ? 'Continue' : coachAvailable ? 'Send' : 'Unavailable'}
+                            {coachMode === 'guided'
+                                ? selectedLens === 'bridge'
+                                    ? 'Build Draft'
+                                    : 'Continue'
+                                : coachAvailable
+                                    ? 'Send'
+                                    : 'Unavailable'}
                         </button>
                     </div>
                 </AppPanel>

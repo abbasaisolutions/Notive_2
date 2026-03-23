@@ -29,6 +29,7 @@ import {
     EMPTY_PREFERENCES_DRAFT,
     EMPTY_PRIVACY_DRAFT,
     EMPTY_PROFILE_DRAFT,
+    EMPTY_TRUSTED_CONTACT_DRAFT,
     ensureSignalsDraft,
     PASSWORD_COMPLEXITY_REGEX,
     PASSWORD_MIN_LENGTH,
@@ -44,8 +45,10 @@ import {
     type PreferencesDraft,
     type PrivacyDraft,
     type ProfileDraft,
+    type SafetyRegion,
     type SignalEntry,
     type SnapshotUser,
+    type TrustedContactDraft,
 } from './types';
 
 export function ProfileSettingsEditor() {
@@ -65,6 +68,9 @@ export function ProfileSettingsEditor() {
     const [savedPrivacyDraft, setSavedPrivacyDraft] = useState<PrivacyDraft>(EMPTY_PRIVACY_DRAFT);
     const [lifeGoalsDraft, setLifeGoalsDraft] = useState('');
     const [outputGoalsDraft, setOutputGoalsDraft] = useState('');
+    const [pinnedPeopleDraft, setPinnedPeopleDraft] = useState('');
+    const [groundingRoutinesDraft, setGroundingRoutinesDraft] = useState('');
+    const [trustedContactDraft, setTrustedContactDraft] = useState<TrustedContactDraft>(EMPTY_TRUSTED_CONTACT_DRAFT);
     const [serverUserUpdatedAt, setServerUserUpdatedAt] = useState<string | null>(null);
     const [serverProfileUpdatedAt, setServerProfileUpdatedAt] = useState<string | null>(null);
     const [notice, setNotice] = useState<Notice | null>(null);
@@ -104,6 +110,9 @@ export function ProfileSettingsEditor() {
         setSavedPrivacyDraft(nextPrivacy);
         setLifeGoalsDraft('');
         setOutputGoalsDraft('');
+        setPinnedPeopleDraft('');
+        setGroundingRoutinesDraft('');
+        setTrustedContactDraft(EMPTY_TRUSTED_CONTACT_DRAFT);
         setSignInEmailDraft(source?.email || '');
         setConfirmSignInEmailDraft('');
         setServerUserUpdatedAt(source?.updatedAt || null);
@@ -234,6 +243,10 @@ export function ProfileSettingsEditor() {
     );
 
     const promptFrequency = asPromptFrequency(privacyDraft.personalizationSignals?.settings?.promptFrequency);
+    const safetyRegion = (privacyDraft.personalizationSignals?.supportPreferences?.safetyRegion || 'auto') as SafetyRegion;
+    const pinnedPeople = privacyDraft.personalizationSignals?.supportPreferences?.pinnedPeople || [];
+    const groundingRoutines = privacyDraft.personalizationSignals?.supportPreferences?.groundingRoutines || [];
+    const trustedContacts = privacyDraft.personalizationSignals?.supportPreferences?.trustedContacts || [];
     const promptedCount = privacyDraft.personalizationSignals?.metrics?.promptedCount || 0;
     const answeredCount = privacyDraft.personalizationSignals?.metrics?.answeredCount || signalEntries.length;
     const dismissedCount = privacyDraft.personalizationSignals?.metrics?.dismissedCount || 0;
@@ -305,6 +318,170 @@ export function ProfileSettingsEditor() {
         resetNoticeState();
     };
 
+    const updateSupportPreferences = (updater: (current: NonNullable<PrivacyDraft['personalizationSignals']>) => void) => {
+        setPrivacyDraft((current) => {
+            const nextSignals = ensureSignalsDraft(current.personalizationSignals);
+            updater(nextSignals);
+            nextSignals.updatedAt = new Date().toISOString();
+            nextSignals.supportPreferences = nextSignals.supportPreferences && (
+                (nextSignals.supportPreferences.pinnedPeople?.length || 0) > 0 ||
+                (nextSignals.supportPreferences.groundingRoutines?.length || 0) > 0 ||
+                (nextSignals.supportPreferences.trustedContacts?.length || 0) > 0 ||
+                (nextSignals.supportPreferences.contactOutcomes?.length || 0) > 0 ||
+                nextSignals.supportPreferences.safetyRegion === 'us' ||
+                nextSignals.supportPreferences.safetyRegion === 'intl'
+            )
+                ? {
+                    ...nextSignals.supportPreferences,
+                    updatedAt: nextSignals.updatedAt,
+                }
+                : undefined;
+
+            return {
+                personalizationSignals: compactSignals(nextSignals),
+            };
+        });
+        resetNoticeState();
+    };
+
+    const handleAddPinnedPerson = () => {
+        const nextValues = addTag(pinnedPeople, pinnedPeopleDraft, 6, 60);
+        if (nextValues.length === pinnedPeople.length) {
+            setPinnedPeopleDraft('');
+            return;
+        }
+        updateSupportPreferences((nextSignals) => {
+            nextSignals.supportPreferences = {
+                ...(nextSignals.supportPreferences || {}),
+                pinnedPeople: nextValues,
+            };
+        });
+        setPinnedPeopleDraft('');
+    };
+
+    const handleRemovePinnedPerson = (value: string) => {
+        updateSupportPreferences((nextSignals) => {
+            nextSignals.supportPreferences = {
+                ...(nextSignals.supportPreferences || {}),
+                pinnedPeople: (nextSignals.supportPreferences?.pinnedPeople || []).filter((item) => item !== value),
+            };
+        });
+    };
+
+    const handleAddGroundingRoutine = () => {
+        const nextValues = addTag(groundingRoutines, groundingRoutinesDraft, 6, 60);
+        if (nextValues.length === groundingRoutines.length) {
+            setGroundingRoutinesDraft('');
+            return;
+        }
+        updateSupportPreferences((nextSignals) => {
+            nextSignals.supportPreferences = {
+                ...(nextSignals.supportPreferences || {}),
+                groundingRoutines: nextValues,
+            };
+        });
+        setGroundingRoutinesDraft('');
+    };
+
+    const handleRemoveGroundingRoutine = (value: string) => {
+        updateSupportPreferences((nextSignals) => {
+            nextSignals.supportPreferences = {
+                ...(nextSignals.supportPreferences || {}),
+                groundingRoutines: (nextSignals.supportPreferences?.groundingRoutines || []).filter((item) => item !== value),
+            };
+        });
+    };
+
+    const handleSafetyRegionChange = (value: SafetyRegion) => {
+        updateSupportPreferences((nextSignals) => {
+            nextSignals.supportPreferences = {
+                ...(nextSignals.supportPreferences || {}),
+                ...(value !== 'auto' ? { safetyRegion: value } : {}),
+            };
+
+            if (value === 'auto' && nextSignals.supportPreferences) {
+                delete nextSignals.supportPreferences.safetyRegion;
+            }
+        });
+    };
+
+    const handleTrustedContactDraftChange = (patch: Partial<TrustedContactDraft>) => {
+        setTrustedContactDraft((current) => ({
+            ...current,
+            ...patch,
+        }));
+        resetNoticeState();
+    };
+
+    const handleAddTrustedContact = () => {
+        const name = trustedContactDraft.name.trim();
+        if (!name) {
+            return;
+        }
+
+        if (
+            trustedContacts.length >= 4
+            || trustedContacts.some((contact) => contact.name.toLowerCase() === name.toLowerCase())
+        ) {
+            setTrustedContactDraft(EMPTY_TRUSTED_CONTACT_DRAFT);
+            return;
+        }
+
+        updateSupportPreferences((nextSignals) => {
+            const currentContacts = nextSignals.supportPreferences?.trustedContacts || [];
+            const contactId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+            const nextContacts = [
+                ...currentContacts,
+                {
+                    id: contactId,
+                    name,
+                    channel: trustedContactDraft.channel,
+                    ...(trustedContactDraft.relationship.trim() ? { relationship: trustedContactDraft.relationship.trim() } : {}),
+                    ...(trustedContactDraft.note.trim() ? { note: trustedContactDraft.note.trim() } : {}),
+                    ...(trustedContactDraft.phoneNumber.trim() ? { phoneNumber: trustedContactDraft.phoneNumber.trim() } : {}),
+                    ...(trustedContactDraft.emailAddress.trim() ? { emailAddress: trustedContactDraft.emailAddress.trim() } : {}),
+                    ...(currentContacts.length === 0 ? { isPrimary: true } : {}),
+                },
+            ].slice(0, 4);
+
+            nextSignals.supportPreferences = {
+                ...(nextSignals.supportPreferences || {}),
+                trustedContacts: nextContacts.map((contact, index) => ({
+                    ...contact,
+                    isPrimary: index === 0 ? Boolean(contact.isPrimary) : false,
+                })),
+                pinnedPeople: addTag(nextSignals.supportPreferences?.pinnedPeople || [], name, 6, 60),
+            };
+        });
+
+        setTrustedContactDraft(EMPTY_TRUSTED_CONTACT_DRAFT);
+    };
+
+    const handleRemoveTrustedContact = (id: string) => {
+        updateSupportPreferences((nextSignals) => {
+            const remainingContacts = (nextSignals.supportPreferences?.trustedContacts || []).filter((contact) => contact.id !== id);
+            nextSignals.supportPreferences = {
+                ...(nextSignals.supportPreferences || {}),
+                trustedContacts: remainingContacts.map((contact, index) => ({
+                    ...contact,
+                    isPrimary: index === 0 ? true : false,
+                })),
+            };
+        });
+    };
+
+    const handleSetPrimaryTrustedContact = (id: string) => {
+        updateSupportPreferences((nextSignals) => {
+            nextSignals.supportPreferences = {
+                ...(nextSignals.supportPreferences || {}),
+                trustedContacts: (nextSignals.supportPreferences?.trustedContacts || []).map((contact) => ({
+                    ...contact,
+                    isPrimary: contact.id === id,
+                })),
+            };
+        });
+    };
+
     const handleRemoveSignal = (entry: SignalEntry) => {
         setPrivacyDraft((current) => {
             const nextSignals = ensureSignalsDraft(current.personalizationSignals);
@@ -350,6 +527,7 @@ export function ProfileSettingsEditor() {
     };
 
     const handleResetSignalsDraft = () => {
+        const existingSupportPreferences = privacyDraft.personalizationSignals?.supportPreferences;
         const nextSignals = promptFrequency === 'normal'
             ? null
             : {
@@ -358,7 +536,23 @@ export function ProfileSettingsEditor() {
             };
 
         setPrivacyDraft({
-            personalizationSignals: nextSignals,
+            personalizationSignals: compactSignals(
+                nextSignals
+                    ? {
+                        ...nextSignals,
+                        ...(existingSupportPreferences ? { supportPreferences: existingSupportPreferences } : {}),
+                    }
+                    : existingSupportPreferences
+                        ? {
+                            ...createSignalsDraft(promptFrequency),
+                            updatedAt: new Date().toISOString(),
+                            supportPreferences: {
+                                ...existingSupportPreferences,
+                                updatedAt: new Date().toISOString(),
+                            },
+                        }
+                        : null
+            ),
         });
         resetNoticeState();
     };
@@ -928,6 +1122,13 @@ export function ProfileSettingsEditor() {
                     <SlideUp>
                         <PrivacySection
                             promptFrequency={promptFrequency}
+                            safetyRegion={safetyRegion}
+                            pinnedPeople={pinnedPeople}
+                            pinnedPeopleDraft={pinnedPeopleDraft}
+                            groundingRoutines={groundingRoutines}
+                            groundingRoutinesDraft={groundingRoutinesDraft}
+                            trustedContacts={trustedContacts}
+                            trustedContactDraft={trustedContactDraft}
                             signalEntries={signalEntries}
                             promptedCount={promptedCount}
                             answeredCount={answeredCount}
@@ -935,6 +1136,17 @@ export function ProfileSettingsEditor() {
                             lastSignalAction={lastSignalAction}
                             isExporting={isExporting}
                             onPromptFrequencyChange={handlePromptFrequencyChange}
+                            onSafetyRegionChange={handleSafetyRegionChange}
+                            onPinnedPeopleDraftChange={setPinnedPeopleDraft}
+                            onAddPinnedPerson={handleAddPinnedPerson}
+                            onRemovePinnedPerson={handleRemovePinnedPerson}
+                            onGroundingRoutinesDraftChange={setGroundingRoutinesDraft}
+                            onAddGroundingRoutine={handleAddGroundingRoutine}
+                            onRemoveGroundingRoutine={handleRemoveGroundingRoutine}
+                            onTrustedContactDraftChange={handleTrustedContactDraftChange}
+                            onAddTrustedContact={handleAddTrustedContact}
+                            onRemoveTrustedContact={handleRemoveTrustedContact}
+                            onSetPrimaryTrustedContact={handleSetPrimaryTrustedContact}
                             onResetSignals={handleResetSignalsDraft}
                             onRemoveSignal={handleRemoveSignal}
                             onExportData={handleExportData}

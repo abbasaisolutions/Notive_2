@@ -16,6 +16,8 @@ import {
 } from '../services/opportunity.service';
 import { buildProfileContextSummary } from '../services/profile-context.service';
 import guidedReflectionService, { type GuidedReflectionLens } from '../services/guided-reflection.service';
+import supportMapService from '../services/support-map.service';
+import studentActionService from '../services/student-action.service';
 
 const LIVE_COACH_SUGGESTIONS = [
     'When was I last happy?',
@@ -26,13 +28,13 @@ const LIVE_COACH_SUGGESTIONS = [
 
 const LOCAL_GUIDE_SUGGESTIONS = [
     'What feels like the biggest pattern in my notes lately?',
-    'What should I write about tonight?',
+    'Help me talk to someone about this.',
     'Which past entry feels closest to how I am doing now?',
-    'Summarize the last week of notes.',
+    'What should I write about tonight?',
 ];
 
 const isGuidedReflectionLens = (value: unknown): value is GuidedReflectionLens =>
-    value === 'clarity' || value === 'memory' || value === 'growth' || value === 'patterns';
+    value === 'clarity' || value === 'memory' || value === 'growth' || value === 'patterns' || value === 'bridge';
 
 type CoachHighlight = {
     id: string;
@@ -309,6 +311,106 @@ export const chatWithJournal = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Chat error:', error);
         return res.status(500).json({ message: 'Failed to chat with journal' });
+    }
+};
+
+export const getTodayAction = async (req: Request, res: Response) => {
+    try {
+        const action = await studentActionService.getTodayAction(req.userId);
+        return res.status(200).json(action);
+    } catch (error) {
+        console.error('Get today action error:', error);
+        return res.status(500).json({ message: 'Failed to build today action' });
+    }
+};
+
+export const previewActionBrief = async (req: Request, res: Response) => {
+    try {
+        const entryId = typeof req.body?.entryId === 'string' ? req.body.entryId : null;
+        const content = typeof req.body?.content === 'string' ? req.body.content : null;
+        const title = typeof req.body?.title === 'string' ? req.body.title : null;
+
+        if (!entryId && !content) {
+            return res.status(400).json({ message: 'Entry ID or content is required' });
+        }
+
+        const action = await studentActionService.preview({
+            userId: req.userId,
+            entryId,
+            content,
+            title,
+        });
+
+        return res.status(200).json(action);
+    } catch (error) {
+        console.error('Preview action brief error:', error);
+        return res.status(500).json({ message: 'Failed to preview action brief' });
+    }
+};
+
+export const getSupportMap = async (req: Request, res: Response) => {
+    try {
+        const rawPeriod = typeof req.query.period === 'string' ? req.query.period : undefined;
+        const period = rawPeriod === 'week' || rawPeriod === 'month' || rawPeriod === 'year'
+            ? rawPeriod
+            : undefined;
+
+        const supportMap = await supportMapService.getSupportMap(req.userId, { period });
+        return res.status(200).json(supportMap);
+    } catch (error) {
+        console.error('Get support map error:', error);
+        return res.status(500).json({ message: 'Failed to build support map' });
+    }
+};
+
+export const recordContactOutcome = async (req: Request, res: Response) => {
+    try {
+        const contactName = typeof req.body?.contactName === 'string' ? req.body.contactName.trim() : '';
+        const contactId = typeof req.body?.contactId === 'string' ? req.body.contactId.trim() : null;
+        const outcome = req.body?.outcome === 'helped' || req.body?.outcome === 'still_need_support'
+            ? req.body.outcome
+            : null;
+        const source = req.body?.source === 'bridge' || req.body?.source === 'safety'
+            ? req.body.source
+            : null;
+        const surface = req.body?.surface === 'dashboard' || req.body?.surface === 'guide' || req.body?.surface === 'entry' || req.body?.surface === 'safety'
+            ? req.body.surface
+            : null;
+        const actionKind = req.body?.actionKind === 'copy' || req.body?.actionKind === 'text' || req.body?.actionKind === 'call' || req.body?.actionKind === 'email' || req.body?.actionKind === 'manual'
+            ? req.body.actionKind
+            : undefined;
+        const channel = req.body?.channel === 'text' || req.body?.channel === 'call' || req.body?.channel === 'in_person'
+            ? req.body.channel
+            : undefined;
+        const riskLevel = req.body?.riskLevel === 'none' || req.body?.riskLevel === 'yellow' || req.body?.riskLevel === 'orange' || req.body?.riskLevel === 'red'
+            ? req.body.riskLevel
+            : undefined;
+        const entryId = typeof req.body?.entryId === 'string' ? req.body.entryId.trim() : null;
+
+        if ((!contactId && !contactName) || !outcome || !source || !surface) {
+            return res.status(400).json({ message: 'Missing required contact outcome fields' });
+        }
+
+        const result = await supportMapService.recordContactOutcome({
+            userId: req.userId,
+            contactId,
+            contactName,
+            outcome,
+            source,
+            surface,
+            actionKind,
+            channel,
+            riskLevel,
+            entryId,
+        });
+
+        return res.status(200).json({
+            message: 'Contact outcome recorded',
+            outcome: result.outcome,
+        });
+    } catch (error) {
+        console.error('Record contact outcome error:', error);
+        return res.status(500).json({ message: 'Failed to record contact outcome' });
     }
 };
 

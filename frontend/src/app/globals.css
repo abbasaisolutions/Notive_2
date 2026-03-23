@@ -240,6 +240,30 @@
     z-index: -1;
   }
 
+  .signal-lines {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .signal-lines::before {
+    content: '';
+    position: absolute;
+    inset: -22%;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 14% 18%, transparent 0 42%, rgba(148, 163, 184, 0.09) 42.7%, transparent 43.6%, transparent 50%, rgba(148, 163, 184, 0.05) 50.8%, transparent 51.8%),
+      radial-gradient(circle at 84% 74%, transparent 0 36%, rgba(245, 158, 11, 0.07) 36.8%, transparent 37.6%, transparent 44%, rgba(245, 158, 11, 0.04) 44.8%, transparent 45.6%),
+      linear-gradient(140deg, rgba(255, 255, 255, 0.04), transparent 46%);
+    opacity: 0.62;
+    z-index: 0;
+  }
+
+  .signal-lines > * {
+    position: relative;
+    z-index: 1;
+  }
+
   .section-kicker {
     display: inline-flex;
     align-items: center;

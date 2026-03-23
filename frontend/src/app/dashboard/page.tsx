@@ -12,8 +12,15 @@ import { getOnboardingState, getOnboardingStateFromProfile, getRecommendedPrompt
 import { progressivePersonalizationService } from '@/services/progressive-personalization.service';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { SmartSearch } from '@/components/search/SmartSearch';
-import { FiCompass, FiCpu, FiEdit3, FiLayers, FiPlus, FiRepeat, FiTrendingUp } from 'react-icons/fi';
+import { FiCompass, FiCpu, FiLayers, FiPlus, FiRepeat, FiTrendingUp } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
+import BridgeCard from '@/components/action/BridgeCard';
+import CompassCard from '@/components/action/CompassCard';
+import FallbackSupportCallout from '@/components/action/FallbackSupportCallout';
+import SupportMemoryCallout from '@/components/action/SupportMemoryCallout';
+import type { StudentActionResponse } from '@/components/action/types';
+import SafetyBanner from '@/components/safety/SafetyBanner';
+import useTelemetry from '@/hooks/use-telemetry';
 
 
 interface Entry {
@@ -65,11 +72,13 @@ export default function DashboardPage() {
     const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { simulateEvent } = useSmartContext();
     const { apiFetch } = useApi();
+    const { trackEvent } = useTelemetry();
     const [entries, setEntries] = useState<Entry[]>([]);
     const [resurfacedMoments, setResurfacedMoments] = useState<ResurfacedMoment[]>([]);
     const [themeClusters, setThemeClusters] = useState<ThemeCluster[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
+    const [todayAction, setTodayAction] = useState<StudentActionResponse | null>(null);
 
     useEffect(() => {
         const fromProfile = getOnboardingStateFromProfile(user?.profile);
@@ -88,7 +97,7 @@ export default function DashboardPage() {
         const fetchEntries = async () => {
             setIsLoading(true);
             try {
-                const [entriesResponse, resurfacedResponse, clustersResponse] = await Promise.all([
+                const [entriesResponse, resurfacedResponse, clustersResponse, actionResponse] = await Promise.all([
                     apiFetch(`${API_URL}/entries`, {
                         signal: controller.signal,
                     }),
@@ -96,6 +105,9 @@ export default function DashboardPage() {
                         signal: controller.signal,
                     }).catch(() => null),
                     apiFetch(`${API_URL}/entries/theme-clusters?limit=4`, {
+                        signal: controller.signal,
+                    }).catch(() => null),
+                    apiFetch(`${API_URL}/ai/action/today`, {
                         signal: controller.signal,
                     }).catch(() => null),
                 ]);
@@ -118,6 +130,13 @@ export default function DashboardPage() {
                 } else if (mounted) {
                     setThemeClusters([]);
                 }
+
+                if (mounted && actionResponse?.ok) {
+                    const data = await actionResponse.json().catch(() => null);
+                    setTodayAction(data || null);
+                } else if (mounted) {
+                    setTodayAction(null);
+                }
             } catch (error) {
                 if (controller.signal.aborted) return;
                 console.error('Failed to fetch entries:', error);
@@ -139,7 +158,7 @@ export default function DashboardPage() {
     }, [user, apiFetch]);
 
     const profileRecommendedPrompt = progressivePersonalizationService.getPromptSuggestionForProfile(user?.profile);
-    const recommendedPrompt = onboarding?.starterPrompt?.trim() || profileRecommendedPrompt || getRecommendedPrompt(onboarding);
+    const recommendedPrompt = todayAction?.starter?.prompt || onboarding?.starterPrompt?.trim() || profileRecommendedPrompt || getRecommendedPrompt(onboarding);
     const dashboardReturnTo = buildCurrentReturnTo('/dashboard', '');
     const newEntryHref = appendReturnTo('/entry/new', dashboardReturnTo);
     const recommendedHref = appendReturnTo(`/entry/new?prompt=${encodeURIComponent(recommendedPrompt)}&source=dashboard_reco`, dashboardReturnTo);
@@ -157,6 +176,23 @@ export default function DashboardPage() {
                 : 'Personal Reflection';
     const statusValue = onboarding?.completed ? 'Ready' : 'Setup';
     const statusLabel = 'Status';
+    const todayBrief = todayAction?.brief || null;
+    const todayBridge = todayAction?.bridge || null;
+    const todaySupportMemory = todayBrief?.reachOut?.supportMemory || todayBridge?.supportMemory || null;
+    const todayFallbackSupport = todayBrief?.reachOut?.fallbackSupport || todayBridge?.fallbackSupport || null;
+    const todayGroundingCount = todayBrief?.groundingEntryIds?.length || todayAction?.highlights?.length || 0;
+    const openDashboardEntryHref = (entryId: string) => appendReturnTo(`/entry/view?id=${entryId}`, dashboardReturnTo);
+    const handleDashboardBridgeCopy = (recipient: string) => {
+        void trackEvent({
+            eventType: 'student_bridge_copied',
+            field: 'recipient',
+            value: recipient,
+            metadata: {
+                surface: 'dashboard',
+                riskLevel: todayAction?.risk.level || 'none',
+            },
+        });
+    };
 
 
     if (authLoading) {
@@ -262,7 +298,7 @@ export default function DashboardPage() {
                                     Welcome back, {firstName}.
                                 </h1>
                                 <p className="mt-4 text-base leading-8 text-ink-secondary md:text-lg">
-                                    Pick one thing to do next: write a fresh note, reopen an important thread, or turn a strong moment into a story you can use later.
+                                    {todayBrief?.headline || 'Pick one thing to do next: write a fresh note, reopen an important thread, or turn a strong moment into a story you can use later.'}
                                 </p>
                             </div>
 
@@ -318,9 +354,122 @@ export default function DashboardPage() {
                                     </Link>
                                 </div>
                             </div>
+
+                            {todayAction && (
+                                <div className="mt-6 space-y-5">
+                                    <SafetyBanner risk={todayAction.risk} safetyCard={todayAction.safetyCard} surface="dashboard" compact />
+
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <CompassCard
+                                            kicker="Now"
+                                            title={todayBrief?.headline || 'Start with one honest note'}
+                                            body={todayBrief?.pattern || 'Once there is a little history, Notive can start turning notes into grounded next moves.'}
+                                            grounding={todayGroundingCount > 0 ? `Built from ${todayGroundingCount} recent note${todayGroundingCount === 1 ? '' : 's'}` : 'Built from recent notes'}
+                                        />
+                                        <CompassCard
+                                            kicker="Next Move"
+                                            title={todayBrief?.nextMove?.label || 'Write one honest note'}
+                                            body={todayBrief?.nextMove?.description || recommendedPrompt}
+                                            grounding={todayBrief?.followUpPrompt || 'One useful next move beats solving everything at once.'}
+                                            accent="primary"
+                                        />
+                                        <CompassCard
+                                            kicker="Reach Out"
+                                            title={todayBrief?.reachOut?.label || 'One person who feels steady'}
+                                            body={todayBrief?.reachOut?.rationale || 'When things feel heavier, a short check-in with a real person can help.'}
+                                            grounding={todayFallbackSupport
+                                                ? 'A backup lane is ready if this still feels heavy'
+                                                : todaySupportMemory
+                                                ? 'Grounded in your past support history'
+                                                : todayBrief?.reachOut?.draftStarter
+                                                    ? `Try saying: ${todayBrief.reachOut.draftStarter}`
+                                                    : 'Human support stays visible by design.'}
+                                            accent="support"
+                                        />
+                                        <CompassCard
+                                            kicker="Keep"
+                                            title={todayBrief?.keep?.label || 'Quiet proof is building'}
+                                            body={todayBrief?.keep?.evidence || 'Small notes can become strengths, stories, and future evidence over time.'}
+                                            grounding={todayBrief?.whatHelpedBefore?.summary ? 'Grounded in what helped before' : 'Grounded in repeated patterns'}
+                                        />
+                                    </div>
+
+                                    {!todayBridge && (todaySupportMemory || todayFallbackSupport) && (
+                                        <div className={`grid gap-3 ${todaySupportMemory && todayFallbackSupport ? 'lg:grid-cols-2' : 'grid-cols-1'}`}>
+                                            {todaySupportMemory && (
+                                                <SupportMemoryCallout
+                                                    memory={todaySupportMemory}
+                                                    title="Why This Person Is Showing Up Today"
+                                                    className="border-white/10 bg-[linear-gradient(135deg,rgba(16,64,56,0.28),rgba(8,12,22,0.78))]"
+                                                />
+                                            )}
+
+                                            {todayFallbackSupport && (
+                                                <FallbackSupportCallout
+                                                    fallback={todayFallbackSupport}
+                                                    title="If This Still Feels Heavy Today"
+                                                    surface="dashboard"
+                                                    className="border-white/10 bg-[linear-gradient(135deg,rgba(94,67,20,0.26),rgba(8,12,22,0.78))]"
+                                                />
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {(todayBrief?.whatHelpedBefore || todayAction.highlights.length > 0) && (
+                                        <div className="rounded-[1.6rem] border border-white/10 bg-black/20 p-5">
+                                            <div className="flex items-center gap-3">
+                                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/30 bg-primary/12 text-primary">
+                                                    <FiRepeat size={18} aria-hidden="true" />
+                                                </span>
+                                                <div>
+                                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">What Helped Before</p>
+                                                    <h3 className="text-xl font-serif text-white">Reopen a steadier thread</h3>
+                                                </div>
+                                            </div>
+                                            {todayBrief?.whatHelpedBefore && (
+                                                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                    <p className="text-sm leading-7 text-white/90">{todayBrief.whatHelpedBefore.summary}</p>
+                                                    {todayBrief.whatHelpedBefore.entryId && (
+                                                        <Link
+                                                            href={appendReturnTo(`/entry/view?id=${todayBrief.whatHelpedBefore.entryId}`, dashboardReturnTo)}
+                                                            className="mt-3 inline-flex rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary transition-colors hover:bg-white/[0.08] hover:text-white"
+                                                        >
+                                                            Open that note
+                                                        </Link>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {todayAction.highlights.length > 0 && (
+                                                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                                    {todayAction.highlights.slice(0, 2).map((highlight) => (
+                                                        <Link
+                                                            key={highlight.id}
+                                                            href={appendReturnTo(`/entry/view?id=${highlight.id}`, dashboardReturnTo)}
+                                                            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:bg-white/[0.06]"
+                                                        >
+                                                            <p className="text-[11px] uppercase tracking-[0.12em] text-ink-muted">{highlight.createdAt}</p>
+                                                            <p className="mt-2 text-sm font-semibold text-white">{highlight.title || 'Untitled note'}</p>
+                                                            <p className="mt-2 text-sm leading-6 text-ink-secondary">{highlight.excerpt}</p>
+                                                        </Link>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </section>
 
                         <aside className="grid gap-4">
+                            {todayBridge && (
+                                <BridgeCard
+                                    bridge={todayBridge}
+                                    surface="dashboard"
+                                    openEntryHref={openDashboardEntryHref}
+                                    onCopyDraft={() => handleDashboardBridgeCopy(todayBridge.recommendedRecipient)}
+                                />
+                            )}
+
                             <div className="bento-box p-6">
                                 <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Quick search</p>
                                 <h2 className="mt-2 text-xl font-serif text-white">Find a note or topic fast</h2>
@@ -335,10 +484,12 @@ export default function DashboardPage() {
                                         <FiLayers size={18} aria-hidden="true" />
                                     </span>
                                     <div className="min-w-0">
-                                        <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Next place to look</p>
-                                        <h2 className="mt-2 text-lg font-semibold text-white">Memories for context, outputs for reuse</h2>
+                                        <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">{todayBridge ? 'Action Console' : 'Next place to look'}</p>
+                                        <h2 className="mt-2 text-lg font-semibold text-white">{todayBridge ? 'Keep one human move visible' : 'Memories for context, outputs for reuse'}</h2>
                                         <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                            Search when you know what you need. Open Memories to browse the archive. Jump straight into Resume, Statement, or Interview when you already know the output you want.
+                                            {todayBridge
+                                                ? 'Bridge Builder stays separate from journaling on purpose. You can copy the draft above, then come back here to reopen context or turn a note into a future-ready story.'
+                                                : 'Search when you know what you need. Open Memories to browse the archive. Jump straight into Resume, Statement, or Interview when you already know the output you want.'}
                                         </p>
                                     </div>
                                 </div>

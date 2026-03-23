@@ -72,7 +72,7 @@ export function TextField({
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
-    type?: 'text' | 'email' | 'url' | 'password';
+    type?: 'text' | 'email' | 'url' | 'password' | 'tel';
     helper?: string;
 }) {
     return (

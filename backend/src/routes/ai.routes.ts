@@ -5,8 +5,12 @@ import {
     exportOpportunityPack,
     generatePersonalStatement,
     getAiCoachStatus,
+    recordContactOutcome,
+    getSupportMap,
+    getTodayAction,
     getOpportunityOverview,
     getOpportunityTrends,
+    previewActionBrief,
     updateOpportunityEvidence,
 } from '../controllers/ai.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
@@ -25,6 +29,10 @@ const aiLimiter = createRateLimiter({
 
 router.get('/status', authMiddleware, getAiCoachStatus);
 router.post('/chat', authMiddleware, aiLimiter, chatWithJournal);
+router.get('/action/today', authMiddleware, getTodayAction);
+router.post('/action/preview', authMiddleware, aiLimiter, previewActionBrief);
+router.post('/contact-outcome', authMiddleware, aiLimiter, recordContactOutcome);
+router.get('/support-map', authMiddleware, getSupportMap);
 router.post('/analyze/:entryId?', authMiddleware, aiLimiter, analyzeEntry);
 router.get('/statement', authMiddleware, generatePersonalStatement);
 router.get('/opportunity/overview', authMiddleware, getOpportunityOverview);

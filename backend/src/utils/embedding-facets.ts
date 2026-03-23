@@ -5,6 +5,10 @@ export type EmbeddingFacetType =
     | 'reflection'
     | 'lesson'
     | 'skill'
+    | 'coping_action'
+    | 'steadying_routine'
+    | 'stress_trigger'
+    | 'support_person'
     | 'opportunity_situation'
     | 'opportunity_action'
     | 'opportunity_lesson'
@@ -68,6 +72,12 @@ const getAnalysisRecord = (analysis: unknown): Record<string, unknown> =>
         ? (analysis as Record<string, unknown>)
         : {};
 
+const readNestedText = (value: unknown, key: string, maxLength: number): string => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
+    const record = value as Record<string, unknown>;
+    return normalizeText(record[key], maxLength);
+};
+
 const buildFacetHash = (facetType: EmbeddingFacetType, facetText: string) =>
     crypto.createHash('sha256').update(`${facetType}\n${facetText}`).digest('hex');
 
@@ -81,6 +91,14 @@ export const getEmbeddingFacetLabel = (facetType: EmbeddingFacetType): string =>
             return 'Lesson';
         case 'skill':
             return 'Skill';
+        case 'coping_action':
+            return 'Helpful Action';
+        case 'steadying_routine':
+            return 'Steadying Routine';
+        case 'stress_trigger':
+            return 'Stress Trigger';
+        case 'support_person':
+            return 'Support Person';
         case 'opportunity_situation':
             return 'Opportunity Situation';
         case 'opportunity_action':
@@ -98,9 +116,31 @@ export const buildEntryEmbeddingFacets = (input: EmbeddingFacetInput): EntryEmbe
     const analysisRecord = getAnalysisRecord(input.analysis);
     const aiRecord = getAnalysisRecord(analysisRecord.ai);
     const aiEvidence = getAnalysisRecord(aiRecord.evidence);
+    const actionRecord = getAnalysisRecord(analysisRecord.action);
+    const supportRecord = getAnalysisRecord(analysisRecord.support);
+    const whatHelpedBefore = getAnalysisRecord(actionRecord.whatHelpedBefore);
+    const nextMove = getAnalysisRecord(actionRecord.nextMove);
+    const reachOut = getAnalysisRecord(actionRecord.reachOut);
     const opportunityRecord = getAnalysisRecord(analysisRecord.opportunity);
+    const supportPeople = normalizeList(supportRecord.supportivePeople, 4, 120);
+    const supportRoutines = normalizeList(supportRecord.supportiveRoutines, 4, 120);
 
     const opportunityFields: Array<{ facetType: EmbeddingFacetType; facetKey: string; value: string }> = [
+        {
+            facetType: 'coping_action',
+            facetKey: 'helped-before',
+            value: readNestedText(whatHelpedBefore, 'summary', 280),
+        },
+        {
+            facetType: 'steadying_routine',
+            facetKey: 'next-move',
+            value: readNestedText(nextMove, 'description', 220),
+        },
+        {
+            facetType: 'support_person',
+            facetKey: 'reach-out',
+            value: readNestedText(reachOut, 'label', 120),
+        },
         {
             facetType: 'opportunity_situation',
             facetKey: 'situation',
@@ -128,6 +168,11 @@ export const buildEntryEmbeddingFacets = (input: EmbeddingFacetInput): EntryEmbe
             value:
                 normalizeText(opportunityRecord.outcome, 280)
                 || readEvidenceText(aiEvidence.outcome, 280),
+        },
+        {
+            facetType: 'stress_trigger',
+            facetKey: 'pattern',
+            value: normalizeText(actionRecord.pattern, 280),
         },
     ];
 
@@ -166,6 +211,22 @@ export const buildEntryEmbeddingFacets = (input: EmbeddingFacetInput): EntryEmbe
             facetType: 'skill',
             facetKey: `skill:${index}`,
             facetText: skill,
+        });
+    });
+
+    supportPeople.forEach((person, index) => {
+        rawFacets.push({
+            facetType: 'support_person',
+            facetKey: `support-person:${index}`,
+            facetText: person,
+        });
+    });
+
+    supportRoutines.forEach((routine, index) => {
+        rawFacets.push({
+            facetType: 'steadying_routine',
+            facetKey: `support-routine:${index}`,
+            facetText: routine,
         });
     });
 

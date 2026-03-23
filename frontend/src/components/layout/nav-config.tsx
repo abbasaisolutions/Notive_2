@@ -225,13 +225,13 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
     {
         prefix: '/chat',
         meta: {
-            title: 'Guided Reflection',
-            description: 'Use a quieter reflection tool to surface notes, patterns, and your next question.',
+            title: 'Action Console',
+            description: 'Turn a hard moment into one grounded next move, one support draft, or one clearer writing question.',
             section: 'Reflect',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Guided Reflection' }],
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Action Console' }],
             primaryAction: { label: 'Open Memories', shortLabel: 'Memories', href: '/timeline' },
             secondaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
-            visibleInfo: ['Reflection', 'Ideas', 'Next step'],
+            visibleInfo: ['Action brief', 'Bridge draft', 'Next step'],
             journeyStage: 'reflect',
             headerMode: 'none',
         },
