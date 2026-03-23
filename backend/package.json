@@ -8,6 +8,7 @@
         "dev": "nodemon --exec \"ts-node --files\" src/index.ts",
         "build": "prisma generate && tsc",
         "typecheck": "tsc --noEmit",
+        "seed:admin": "node scripts/seed-admin.js",
         "user:create-superadmin": "ts-node scripts/create-superadmin.ts",
         "audit:runtime": "npm audit --omit=dev --omit=peer --omit=optional --audit-level=high",
         "audit:full": "npm audit",
