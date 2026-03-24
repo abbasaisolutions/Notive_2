@@ -4,6 +4,7 @@
 import { Request, Response } from 'express';
 import socialImportService from '../services/social-import.service';
 import prisma from '../config/prisma';
+import { getConfiguredApiUrl, getConfiguredClientOrigin } from '../config/public-env';
 
 class SocialImportController {
     constructor() {
@@ -56,7 +57,12 @@ class SocialImportController {
                 : req.get('host');
 
         if (!host) {
-            return process.env.API_URL || 'http://localhost:8000/api/v1';
+            const configuredApiUrl = getConfiguredApiUrl();
+            if (configuredApiUrl) {
+                return configuredApiUrl;
+            }
+
+            throw new Error('API_URL is required when the request host is unavailable.');
         }
 
         return `${protocol}://${host}/api/v1`;
@@ -196,13 +202,17 @@ class SocialImportController {
      * GET /api/v1/import/callback/instagram
      */
     async instagramCallback(req: Request, res: Response) {
-        const fallbackClientOrigin = this.resolveClientOrigin(process.env.CLIENT_URL) || 'http://localhost:3000';
+        const fallbackClientOrigin = getConfiguredClientOrigin();
         try {
             const { code, state, error } = req.query;
             const stateData = state ? socialImportService.decodeState(state as string) : null;
             const returnTo = this.resolveReturnTo(stateData?.returnTo);
             const clientOrigin = stateData?.clientOrigin || fallbackClientOrigin;
             const apiBaseUrl = this.resolveApiBaseUrl(req);
+
+            if (!clientOrigin) {
+                return res.status(500).json({ message: 'CLIENT_URL or FRONTEND_URL is required for social OAuth redirects.' });
+            }
 
             if (error) {
                 return res.redirect(this.buildClientRedirect(clientOrigin, returnTo, {
@@ -244,6 +254,9 @@ class SocialImportController {
             }));
         } catch (error: any) {
             console.error('Instagram callback error:', error);
+            if (!fallbackClientOrigin) {
+                return res.status(500).json({ message: 'Instagram connection failed' });
+            }
             return res.redirect(this.buildClientRedirect(fallbackClientOrigin, '/profile', {
                 import: 'error',
                 message: 'Instagram connection failed',
@@ -256,13 +269,17 @@ class SocialImportController {
      * GET /api/v1/import/callback/facebook
      */
     async facebookCallback(req: Request, res: Response) {
-        const fallbackClientOrigin = this.resolveClientOrigin(process.env.CLIENT_URL) || 'http://localhost:3000';
+        const fallbackClientOrigin = getConfiguredClientOrigin();
         try {
             const { code, state, error } = req.query;
             const stateData = state ? socialImportService.decodeState(state as string) : null;
             const returnTo = this.resolveReturnTo(stateData?.returnTo);
             const clientOrigin = stateData?.clientOrigin || fallbackClientOrigin;
             const apiBaseUrl = this.resolveApiBaseUrl(req);
+
+            if (!clientOrigin) {
+                return res.status(500).json({ message: 'CLIENT_URL or FRONTEND_URL is required for social OAuth redirects.' });
+            }
 
             if (error) {
                 return res.redirect(this.buildClientRedirect(clientOrigin, returnTo, {
@@ -304,6 +321,9 @@ class SocialImportController {
             }));
         } catch (error: any) {
             console.error('Facebook callback error:', error);
+            if (!fallbackClientOrigin) {
+                return res.status(500).json({ message: 'Facebook connection failed' });
+            }
             return res.redirect(this.buildClientRedirect(fallbackClientOrigin, '/profile', {
                 import: 'error',
                 message: 'Facebook connection failed',

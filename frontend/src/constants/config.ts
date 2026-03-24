@@ -4,6 +4,19 @@ const PRODUCTION_API_URL = 'https://notive2-production.up.railway.app/api/v1';
 
 const normalizeUrl = (value: string) => value.replace(/\/$/, '');
 
+const isNativePlatform = () => {
+    if (typeof window === 'undefined') return false;
+
+    const cap = (window as any).Capacitor;
+    if (cap?.isNativePlatform) return cap.isNativePlatform();
+    if (cap?.getPlatform) {
+        const platform = cap.getPlatform();
+        return platform === 'ios' || platform === 'android';
+    }
+
+    return false;
+};
+
 const isLocalHostname = (hostname: string) =>
     hostname === 'localhost'
     || hostname === '127.0.0.1'
@@ -14,6 +27,10 @@ export const resolveApiUrl = () => {
     const configuredUrl = (process.env.NEXT_PUBLIC_API_URL || '').trim();
     if (configuredUrl) {
         return normalizeUrl(configuredUrl);
+    }
+
+    if (isNativePlatform()) {
+        return PRODUCTION_API_URL;
     }
 
     if (typeof window !== 'undefined' && isLocalHostname(window.location.hostname)) {

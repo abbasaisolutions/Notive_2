@@ -1,4 +1,5 @@
 import { User } from '@prisma/client';
+import { getConfiguredClientUrl } from '../config/public-env';
 
 /**
  * Service to handle email sending
@@ -10,7 +11,12 @@ export class EmailService {
      */
     async sendPasswordResetEmail(user: User, token: string): Promise<void> {
         // In a real app, this would use a template and an email provider like SendGrid or AWS SES
-        const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+        const clientUrl = getConfiguredClientUrl();
+        if (!clientUrl) {
+            throw new Error('CLIENT_URL or FRONTEND_URL is required to send password reset emails.');
+        }
+
+        const resetLink = `${clientUrl}/reset-password?token=${token}`;
 
         console.log('---------------------------------------------------------');
         console.log(`[Email Mock] Sending Password Reset Email to ${user.email}`);

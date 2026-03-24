@@ -6,8 +6,22 @@ import { googleFitOAuthService } from '../services/googlefit-oauth.service';
 import { healthSyncService } from '../services/health-sync.service';
 import { healthInsightsService } from '../services/health-insights.service';
 import { buildHealthFeaturePayload, getHealthFeatureState } from '../services/health-feature.service';
+import { getConfiguredClientUrl } from '../config/public-env';
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = getConfiguredClientUrl();
+
+const redirectToFrontendProfile = (
+    res: Response,
+    params: Record<string, string>,
+    fallbackMessage = 'CLIENT_URL or FRONTEND_URL is required for Google Fit redirects.'
+) => {
+    if (!FRONTEND_URL) {
+        return res.status(500).json({ message: fallbackMessage });
+    }
+
+    const query = new URLSearchParams(params).toString();
+    return res.redirect(`${FRONTEND_URL}/profile?${query}`);
+};
 
 const respondWithUnavailableHealthFeature = async (res: Response, requiresConnectionFlow = false) => {
     const state = await getHealthFeatureState();
@@ -77,24 +91,36 @@ export const handleCallback = async (req: Request, res: Response) => {
     try {
         const healthState = await getHealthFeatureState();
         if (!healthState.connectAvailable) {
-            return res.redirect(`${FRONTEND_URL}/profile?googlefit=error&reason=${healthState.reason}`);
+            return redirectToFrontendProfile(res, {
+                googlefit: 'error',
+                reason: healthState.reason || 'unavailable',
+            });
         }
 
         const { code, state, error } = req.query;
 
         if (error) {
             console.error('OAuth error:', error);
-            return res.redirect(`${FRONTEND_URL}/profile?googlefit=error&reason=${error}`);
+            return redirectToFrontendProfile(res, {
+                googlefit: 'error',
+                reason: String(error),
+            });
         }
 
         if (!code || !state) {
-            return res.redirect(`${FRONTEND_URL}/profile?googlefit=error&reason=missing_params`);
+            return redirectToFrontendProfile(res, {
+                googlefit: 'error',
+                reason: 'missing_params',
+            });
         }
 
         // Parse state to get user ID
         const stateData = googleFitOAuthService.parseState(state as string);
         if (!stateData) {
-            return res.redirect(`${FRONTEND_URL}/profile?googlefit=error&reason=invalid_state`);
+            return redirectToFrontendProfile(res, {
+                googlefit: 'error',
+                reason: 'invalid_state',
+            });
         }
 
         // Exchange code for tokens
@@ -114,10 +140,13 @@ export const handleCallback = async (req: Request, res: Response) => {
             // Don't fail the connection, sync can happen later
         }
 
-        return res.redirect(`${FRONTEND_URL}/profile?googlefit=success`);
+        return redirectToFrontendProfile(res, { googlefit: 'success' });
     } catch (error) {
         console.error('OAuth callback error:', error);
-        return res.redirect(`${FRONTEND_URL}/profile?googlefit=error&reason=callback_failed`);
+        return redirectToFrontendProfile(res, {
+            googlefit: 'error',
+            reason: 'callback_failed',
+        });
     }
 };
 

@@ -11,6 +11,7 @@ import prisma from '../config/prisma';
 import { Prisma, TagSource } from '@prisma/client';
 import { buildTagMetaList, syncEntryTags } from './tag-manager.service';
 import embeddingService from './embedding.service';
+import { getConfiguredApiBaseUrl, getConfiguredApiUrl } from '../config/public-env';
 
 // Types for social media data
 export interface InstagramPost {
@@ -1087,9 +1088,7 @@ export class SocialImportService {
     }
 
     private getPublicBaseUrl(): string | null {
-        const apiUrl = process.env.API_URL || 'http://localhost:8000/api/v1';
-        if (!apiUrl) return null;
-        return apiUrl.replace(/\/api\/v1\/?$/, '');
+        return getConfiguredApiBaseUrl();
     }
 
     private normalizeClientOrigin(clientOrigin?: string): string | undefined {
@@ -1136,7 +1135,7 @@ export class SocialImportService {
         const explicit = provider === 'INSTAGRAM'
             ? this.INSTAGRAM_REDIRECT_URI
             : this.FACEBOOK_REDIRECT_URI;
-        const apiBase = apiBaseUrl || process.env.API_URL || '';
+        const apiBase = apiBaseUrl || getConfiguredApiUrl() || '';
         const derivedBase = this.buildRedirectUriFromApiBase(apiBase);
         const derived = derivedBase
             ? `${derivedBase}/${provider.toLowerCase()}`

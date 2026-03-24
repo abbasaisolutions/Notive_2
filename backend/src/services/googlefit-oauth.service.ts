@@ -4,6 +4,7 @@
 import { OAuth2Client, Credentials } from 'google-auth-library';
 import prisma from '../config/prisma';
 import crypto from 'crypto';
+import { getGoogleFitRedirectUri } from '../config/public-env';
 
 // Google Fit scopes - Read-only, privacy-first
 const GOOGLE_FIT_SCOPES = [
@@ -15,7 +16,7 @@ const GOOGLE_FIT_SCOPES = [
 // Environment variables
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-const GOOGLE_FIT_REDIRECT_URI = process.env.GOOGLE_FIT_REDIRECT_URI || 'http://localhost:8000/api/v1/health/google-fit/callback';
+const GOOGLE_FIT_REDIRECT_URI = getGoogleFitRedirectUri() || '';
 
 // Token encryption key (should be in env)
 const ENCRYPTION_KEY = process.env.TOKEN_ENCRYPTION_KEY || 'default-32-char-encryption-key!!';
