@@ -58,6 +58,7 @@ export function ProfileSettingsEditor() {
     const { apiFetch } = useApi();
 
     const [activeTab, setActiveTab] = useState<EditTab>(resolveEditTab(searchParams.get('tab')));
+    const [showSectionPicker, setShowSectionPicker] = useState(false);
     const [hydratedUserId, setHydratedUserId] = useState<string | null>(null);
     const [profileDraft, setProfileDraft] = useState<ProfileDraft>(EMPTY_PROFILE_DRAFT);
     const [savedProfileDraft, setSavedProfileDraft] = useState<ProfileDraft>(EMPTY_PROFILE_DRAFT);
@@ -163,6 +164,14 @@ export function ProfileSettingsEditor() {
     }, [hasDirtyChanges]);
 
     const activeEditableTab = EDITABLE_TABS.find((tab) => tab === activeTab) || null;
+    const activeTabItem = TAB_ITEMS.find((tab) => tab.id === activeTab) || TAB_ITEMS[0];
+    const activeTabDescription = activeTab === 'profile'
+        ? 'Name the basics about you and keep your public-facing details current.'
+        : activeTab === 'preferences'
+            ? 'Shape prompts, goals, and starter guidance without opening the rest of settings.'
+            : activeTab === 'security'
+                ? 'Handle sign-in, password, and account protection in one guarded place.'
+                : 'Manage signals, exports, support anchors, and what Notive stores.';
     const dirtyByTab: Record<EditableTab, boolean> = {
         profile: profileDirty,
         preferences: preferencesDirty,
@@ -255,6 +264,7 @@ export function ProfileSettingsEditor() {
 
     const handleTabChange = (tab: EditTab) => {
         setActiveTab(tab);
+        setShowSectionPicker(false);
         const params = new URLSearchParams(searchParams.toString());
         if (tab === 'profile') {
             params.delete('tab');
@@ -1023,29 +1033,51 @@ export function ProfileSettingsEditor() {
 
                 {notice && <NoticeBanner notice={notice} />}
 
-                <SlideUp className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-2">
-                    <div className="flex flex-wrap gap-2" role="tablist" aria-label="Settings sections">
-                        {TAB_ITEMS.map((tab) => {
-                            const isActive = activeTab === tab.id;
-                            return (
-                                <button
-                                    key={tab.id}
-                                    type="button"
-                                    role="tab"
-                                    aria-selected={isActive}
-                                    onClick={() => handleTabChange(tab.id)}
-                                    className={`flex items-center gap-2 rounded-[1.2rem] px-4 py-3 text-sm font-semibold transition-all ${
-                                        isActive
-                                            ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                                            : 'text-ink-secondary hover:text-white hover:bg-white/5'
-                                    }`}
-                                >
-                                    <tab.Icon size={15} aria-hidden="true" />
-                                    <span>{tab.label}</span>
-                                </button>
-                            );
-                        })}
+                <SlideUp className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="flex items-start gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-white">
+                                <activeTabItem.Icon size={18} aria-hidden="true" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Current section</p>
+                                <h2 className="mt-2 text-2xl font-serif text-white">{activeTabItem.label}</h2>
+                                <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{activeTabDescription}</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowSectionPicker((current) => !current)}
+                            className="rounded-[1.1rem] border border-white/12 bg-black/20 px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:bg-black/30 hover:text-white"
+                            aria-expanded={showSectionPicker}
+                        >
+                            {showSectionPicker ? 'Keep this section' : 'Change section'}
+                        </button>
                     </div>
+                    {showSectionPicker && (
+                        <div className="mt-5 flex flex-wrap gap-2" role="tablist" aria-label="Settings sections">
+                            {TAB_ITEMS.map((tab) => {
+                                const isActive = activeTab === tab.id;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={isActive}
+                                        onClick={() => handleTabChange(tab.id)}
+                                        className={`flex items-center gap-2 rounded-[1.2rem] px-4 py-3 text-sm font-semibold transition-all ${
+                                            isActive
+                                                ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                                : 'text-ink-secondary hover:text-white hover:bg-white/5'
+                                        }`}
+                                    >
+                                        <tab.Icon size={15} aria-hidden="true" />
+                                        <span>{tab.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                 </SlideUp>
 
                 {activeTab === 'profile' && (

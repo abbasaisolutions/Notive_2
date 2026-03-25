@@ -74,7 +74,7 @@ export function GoogleSsoPanel({
         <div className={`rounded-2xl border border-white/10 bg-white/[0.03] p-4 ${ALIGNMENT[align]}`}>
             <div className={`flex w-full flex-col gap-4 ${ALIGNMENT[align]}`}>
                 <div className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-muted">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-muted">
                         {copy.eyebrow}
                     </p>
                     <div className="space-y-1">

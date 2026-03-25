@@ -115,7 +115,7 @@ export default function EntryCard({ entry, delay = 0 }: EntryCardProps) {
                         </div>
                         <div className="flex flex-wrap justify-end gap-2">
                             {storySignal && (
-                                <span className={`px-3 py-1 rounded-full text-[11px] uppercase tracking-widest font-semibold border ${storyStatusClassName[storySignal.status]}`}>
+                                <span className={`px-3 py-1 rounded-full text-xs uppercase tracking-widest font-semibold border ${storyStatusClassName[storySignal.status]}`}>
                                     {storyStatusLabel[storySignal.status]}
                                 </span>
                             )}

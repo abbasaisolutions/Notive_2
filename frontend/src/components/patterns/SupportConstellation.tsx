@@ -158,7 +158,7 @@ export default function SupportConstellation({
                                         transform: `translateY(${offset})`,
                                     }}
                                 >
-                                    <p className="text-[11px] uppercase tracking-[0.12em] text-white/70">{TYPE_LABELS[anchor.type]}</p>
+                                    <p className="text-xs uppercase tracking-[0.12em] text-white/70">{TYPE_LABELS[anchor.type]}</p>
                                     <p className="mt-1 text-sm font-semibold text-white">{anchor.label}</p>
                                     <p className="mt-1 text-xs text-white/70">{anchor.supportCount} steady notes</p>
                                 </button>

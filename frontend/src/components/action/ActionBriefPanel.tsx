@@ -91,7 +91,7 @@ export default function ActionBriefPanel({
                     )}
                     {brief.reachOut.draftStarter && (
                         <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
-                            <p className="text-[11px] uppercase tracking-[0.12em] text-ink-muted">What to say first</p>
+                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">What to say first</p>
                             <p className="mt-2 text-sm leading-7 text-white/90">{brief.reachOut.draftStarter}</p>
                         </div>
                     )}

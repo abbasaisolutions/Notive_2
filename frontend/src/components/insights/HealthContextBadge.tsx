@@ -69,7 +69,7 @@ export default function HealthContextBadge({ context, healthInsight, minimal = f
             className="rounded-xl bg-white/[0.03] border border-white/5 p-4 space-y-3"
         >
             <div className="flex items-center justify-between">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">
+                <span className="health-kicker">
                     Yesterday's Health
                 </span>
             </div>
@@ -84,7 +84,7 @@ export default function HealthContextBadge({ context, healthInsight, minimal = f
                         <div>
                             <p className="text-sm font-medium text-white">{context.sleepHours}h</p>
                             {context.sleepQuality && (
-                                <p className={`text-[10px] ${sleepConfig[context.sleepQuality as keyof typeof sleepConfig]?.color || 'text-slate-500'}`}>
+                                <p className={`text-xs ${sleepConfig[context.sleepQuality as keyof typeof sleepConfig]?.color || 'text-ink-muted'}`}>
                                     {sleepConfig[context.sleepQuality as keyof typeof sleepConfig]?.label || context.sleepQuality}
                                 </p>
                             )}
@@ -102,7 +102,7 @@ export default function HealthContextBadge({ context, healthInsight, minimal = f
                             <p className="text-sm font-medium text-white">
                                 {context.steps ? context.steps.toLocaleString() : '—'}
                             </p>
-                            <p className={`text-[10px] capitalize ${activityConfig[context.activityLevel || 'moderate'].color}`}>
+                            <p className={`text-xs capitalize ${activityConfig[context.activityLevel || 'moderate'].color}`}>
                                 {context.activityLevel || 'Activity'}
                             </p>
                         </div>
@@ -118,7 +118,7 @@ export default function HealthContextBadge({ context, healthInsight, minimal = f
                     transition={{ delay: 0.2 }}
                     className="pt-2 border-t border-white/5"
                 >
-                    <p className="text-xs text-slate-400 italic">
+                    <p className="text-xs italic text-ink-secondary">
                         💡 {healthInsight}
                     </p>
                 </motion.div>
@@ -138,7 +138,7 @@ export function HealthTrendIndicator({
     const config = {
         improving: { icon: FiTrendingUp, color: 'text-green-400', bg: 'bg-green-500/10' },
         declining: { icon: FiTrendingDown, color: 'text-orange-400', bg: 'bg-orange-500/10' },
-        stable: { icon: FiMinus, color: 'text-slate-400', bg: 'bg-white/5' },
+        stable: { icon: FiMinus, color: 'text-ink-muted', bg: 'bg-white/5' },
     };
 
     const { icon: Icon, color, bg } = config[trend];

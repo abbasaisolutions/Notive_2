@@ -13,7 +13,7 @@ import OnboardingGuard from "@/components/onboarding/OnboardingGuard";
 import { NOTIVE_VOICE } from "@/content/notive-voice";
 import { getCredentialSsoClientId } from "@/utils/sso";
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { ACCOUNT_DELETION_PATH, LEGAL_COPYRIGHT_NOTICE, LEGAL_ENTITY_NAME } from "@/config/legal";
+import { ACCOUNT_DELETION_PATH, LEGAL_COPYRIGHT_NOTICE, LEGAL_ENTITY_NAME, LEGAL_FOOTER_NOTICE } from "@/config/legal";
 import { PUBLIC_APP_ORIGIN, PUBLIC_APP_URL, PUBLIC_OG_IMAGE_URL } from "@/config/site";
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: '--font-sans' });
@@ -146,7 +146,7 @@ export default function RootLayout({
                                             </Suspense>
                                             {children}
                                             <footer className="px-6 pb-8 pt-10 text-center text-xs text-ink-muted">
-                                                <p>Notive is developed by {LEGAL_ENTITY_NAME}. {LEGAL_COPYRIGHT_NOTICE}</p>
+                                                <p>{LEGAL_FOOTER_NOTICE}</p>
                                                 <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-[0.76rem]">
                                                     <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
                                                     <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>

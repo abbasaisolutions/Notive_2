@@ -9,6 +9,7 @@ import useEntryAnalysis from '@/hooks/use-entry-analysis';
 import useContextNavigation from '@/hooks/use-context-navigation';
 import useSpeechRecognition from '@/hooks/use-speech-recognition';
 import useUploadQueue from '@/hooks/use-upload-queue';
+import useTelemetry from '@/hooks/use-telemetry';
 import { API_URL } from '@/constants/config';
 import { useGamification } from '@/context/gamification-context';
 import { useAuth } from '@/context/auth-context';
@@ -83,10 +84,11 @@ function NewEntryPageContent() {
     const { logout } = useAuth();
     const { awardXP, refreshStats } = useGamification();
     const { apiFetch } = useApi();
+    const { trackEvent } = useTelemetry();
     const { enqueueUpload, processQueue, queueCount, recentUploads, clearUploadResult } = useUploadQueue();
     const { loadDraft, saveDraft, clearDraft } = useEntryDraft(user?.id ?? null);
     const { backHref, backLabel, navigateBack } = useContextNavigation('/dashboard', 'dashboard');
-    const isQuickMode = searchParams.get('mode') === 'quick';
+    const isQuickMode = searchParams.get('mode') !== 'full';
 
     const [content, setContent] = useState('');
     const [contentHtml, setContentHtml] = useState('');
@@ -445,7 +447,7 @@ function NewEntryPageContent() {
         if (mode === 'quick') {
             params.set('mode', 'quick');
         } else {
-            params.delete('mode');
+            params.set('mode', 'full');
         }
 
         const nextQuery = params.toString();
@@ -453,8 +455,15 @@ function NewEntryPageContent() {
     }, [searchParams]);
 
     const handleOpenFullStudio = useCallback(() => {
+        void trackEvent({
+            eventType: 'entry_full_studio_opened',
+            value: 'from_quick_note',
+            metadata: {
+                hasDraftContent: Boolean(content.trim() || titleOverride.trim() || tagsOverride.length > 0 || audioUrl),
+            },
+        });
         router.replace(buildCaptureModeHref('full'), { scroll: false });
-    }, [buildCaptureModeHref, router]);
+    }, [audioUrl, buildCaptureModeHref, content, router, tagsOverride.length, titleOverride, trackEvent]);
 
     const handleFinishLater = useCallback(() => {
         const hasDraftableContent = Boolean(
@@ -469,8 +478,15 @@ function NewEntryPageContent() {
             persistDraftSnapshot(pendingSync || offline);
         }
 
+        void trackEvent({
+            eventType: 'entry_finish_later',
+            value: isQuickMode ? 'quick' : 'full',
+            metadata: {
+                hasDraftableContent,
+            },
+        });
         navigateBack();
-    }, [audioUrl, content, navigateBack, pendingSync, persistDraftSnapshot, tagsOverride.length, titleOverride]);
+    }, [audioUrl, content, isQuickMode, navigateBack, pendingSync, persistDraftSnapshot, tagsOverride.length, titleOverride, trackEvent]);
 
     const handleSave = useCallback(async (isAutoSave = false) => {
         if (!content.trim()) {
@@ -525,6 +541,16 @@ function NewEntryPageContent() {
             setPendingSync(false);
 
             if (!isAutoSave) {
+                void trackEvent({
+                    eventType: 'entry_saved',
+                    value: isQuickMode ? 'quick' : 'full',
+                    metadata: {
+                        entryId: data.entry?.id || entryId || null,
+                        wordCount: content.trim().split(/\s+/).length,
+                        hasMood: Boolean(finalMood),
+                        hasTags: finalTags.length > 0,
+                    },
+                });
                 localStorage.setItem('lastEntryTime', Date.now().toString());
                 if (!entryId) {
                     awardXP(50, 'Entry created');
@@ -561,6 +587,8 @@ function NewEntryPageContent() {
         backHref,
         router,
         persistDraftSnapshot,
+        isQuickMode,
+        trackEvent,
     ]);
 
     useEffect(() => {
@@ -754,27 +782,6 @@ function NewEntryPageContent() {
                     onFinishLater={handleFinishLater}
                     onOpenFullStudio={handleOpenFullStudio}
                 />
-
-                {isQuickMode && (
-                    <section className="mb-5 rounded-2xl border border-white/10 bg-surface-2/45 p-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Fast Path</p>
-                                <h2 className="mt-1 text-lg font-semibold text-white">Capture now. Shape later.</h2>
-                                <p className="mt-1 text-sm text-ink-secondary">
-                                    Type or dictate one thought, save it fast, and come back later for tags, polish, or AI insight.
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={handleOpenFullStudio}
-                                className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white hover:bg-white/[0.08] transition-colors"
-                            >
-                                Open Full Studio
-                            </button>
-                        </div>
-                    </section>
-                )}
 
                 <EntryEditorCard
                     isRecording={isRecording}
@@ -992,7 +999,7 @@ function NewEntryPageContent() {
                         disabled={isSaving || !content.trim()}
                         className="px-5 py-3 rounded-xl primary-cta text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
-                        {isSaving ? 'Saving...' : (entryId ? 'Update Entry' : isQuickMode ? 'Save Quick Entry' : 'Save Entry')}
+                        {isSaving ? 'Saving...' : (entryId ? 'Update Note' : 'Save Note')}
                     </button>
                 </div>
             </div>

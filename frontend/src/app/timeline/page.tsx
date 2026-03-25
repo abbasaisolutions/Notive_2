@@ -102,7 +102,6 @@ const DAY_PART_FILTER_ALIASES: Record<string, string> = {
     'late night': 'Late night',
     'late-night': 'Late night',
 };
-const getSourceFilterTabId = (filter: SourceFilter): string => `timeline-source-filter-${filter}`;
 
 const normalizeSourceFilter = (value: string | null): SourceFilter => {
     if (value === 'notive' || value === 'instagram' || value === 'facebook') return value;
@@ -294,11 +293,11 @@ function StoryArcMomentCard({
             href={appendReturnTo(`/entry/view?id=${moment.id}`, currentReturnTo)}
             className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
         >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">{label}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">{label}</p>
             <div className="mt-2 flex items-center gap-2 text-xs text-ink-secondary">
                 <span>{formatTimelineDate(moment.createdAt)}</span>
                 {moment.mood && (
-                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-white">
+                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-white">
                         {getMoodEmoji(moment.mood)} {moment.mood}
                     </span>
                 )}
@@ -392,7 +391,6 @@ function TimelinePageContent() {
             || searchParams.get('view') === 'constellation'
         );
     });
-    const [isQuickJumpOpen, setIsQuickJumpOpen] = useState(false);
     const [quickJumpMode, setQuickJumpMode] = useState<QuickJumpMode>('chapters');
     const restoreInitRef = useRef(false);
     const entriesRef = useRef<Entry[]>([]);
@@ -415,21 +413,22 @@ function TimelinePageContent() {
         weekdayFilter,
         dayPartFilter,
     }), [dateFilter, dayPartFilter, endDateFilter, lifeAreaFilter, moodFilter, query, sourceFilter, startDateFilter, themeFilter, weekdayFilter]);
+    const hasTimelineFilters = query.trim().length > 0
+        || sourceFilter !== 'all'
+        || lifeAreaFilter !== 'all'
+        || themeFilter.trim().length > 0
+        || moodFilter.trim().length > 0
+        || Boolean(dateFilter)
+        || Boolean(startDateFilter)
+        || Boolean(endDateFilter)
+        || weekdayFilter.trim().length > 0
+        || dayPartFilter.trim().length > 0;
     const visibleEntries = entries;
     const timelineMonthGroups = useMemo(() => buildTimelineMonthGroups(visibleEntries), [visibleEntries]);
     const activeMonth = useMemo(
         () => timelineMonthGroups.find((group) => group.label === activeMonthLabel) ?? timelineMonthGroups[0] ?? null,
         [activeMonthLabel, timelineMonthGroups]
     );
-    const timelineYearGroups = useMemo(() => {
-        const years = new Map<string, { year: string; anchorId: string }>();
-        timelineMonthGroups.forEach((group) => {
-            if (!years.has(group.year)) {
-                years.set(group.year, { year: group.year, anchorId: group.anchorId });
-            }
-        });
-        return Array.from(years.values());
-    }, [timelineMonthGroups]);
     const lifeSeasons = timelineSummary.seasons;
     const seasonAnchorsByMonthKey = useMemo(() => buildSeasonAnchorMap(lifeSeasons), [lifeSeasons]);
     const lifeSeasonCards = useMemo(() => (
@@ -1088,30 +1087,40 @@ function TimelinePageContent() {
 
     const collapsedFilterChips = isFilterStudioOpen ? activeFilterChips : activeFilterChips.slice(0, 3);
     const hiddenFilterChipCount = Math.max(0, activeFilterChips.length - collapsedFilterChips.length);
-    const openControlDeck = useCallback((options?: { focusSearch?: boolean }) => {
-        setIsQuickJumpOpen(false);
+    const openControlDeck = useCallback((options?: { focusSearch?: boolean; source?: 'search' | 'tools' }) => {
         setIsControlDeckOpen(true);
+        void trackEvent({
+            eventType: 'timeline_controls_opened',
+            value: options?.source || 'tools',
+            metadata: {
+                hasActiveFilters: hasTimelineFilters,
+                surface,
+                quickJumpMode,
+            },
+        });
 
         if (options?.focusSearch) {
             window.requestAnimationFrame(() => {
                 searchInputRef.current?.focus();
             });
         }
-    }, []);
+    }, [hasTimelineFilters, quickJumpMode, surface, trackEvent]);
     const closeControlDeck = useCallback(() => {
         setIsControlDeckOpen(false);
         setIsFilterStudioOpen(false);
     }, []);
     const openFilterStudio = useCallback(() => {
-        setIsQuickJumpOpen(false);
         setIsControlDeckOpen(true);
         setIsFilterStudioOpen(true);
-    }, []);
-    const toggleQuickJump = useCallback(() => {
-        setIsControlDeckOpen(false);
-        setIsFilterStudioOpen(false);
-        setIsQuickJumpOpen((prev) => !prev);
-    }, []);
+        void trackEvent({
+            eventType: 'timeline_controls_opened',
+            value: 'filters',
+            metadata: {
+                hasActiveFilters: hasTimelineFilters,
+                surface,
+            },
+        });
+    }, [hasTimelineFilters, surface, trackEvent]);
 
     const applyRecentPreset = (preset: TimelineFilterPreset) => {
         applyTimelineFilters({
@@ -1211,26 +1220,6 @@ function TimelinePageContent() {
         }
     }, [ensureTimelineMonthLoaded, jumpToTimelineMonth, trackEvent]);
 
-    const handleSourceFilterKeyDown = (
-        event: React.KeyboardEvent<HTMLButtonElement>,
-        currentIndex: number
-    ) => {
-        let nextIndex: number | null = null;
-        if (event.key === 'ArrowRight') {
-            nextIndex = (currentIndex + 1) % SOURCE_FILTER_OPTIONS.length;
-        } else if (event.key === 'ArrowLeft') {
-            nextIndex = (currentIndex - 1 + SOURCE_FILTER_OPTIONS.length) % SOURCE_FILTER_OPTIONS.length;
-        } else if (event.key === 'Home') {
-            nextIndex = 0;
-        } else if (event.key === 'End') {
-            nextIndex = SOURCE_FILTER_OPTIONS.length - 1;
-        }
-
-        if (nextIndex === null) return;
-        event.preventDefault();
-        updateSourceFilter(SOURCE_FILTER_OPTIONS[nextIndex].key);
-    };
-
     const loadMoreEntries = async () => {
         if (isLoadingMore || !hasMore) return;
         setIsLoadingMore(true);
@@ -1272,16 +1261,6 @@ function TimelinePageContent() {
     }, [fetchEntriesPage, hasMore, isLoading, isLoadingMore, nextPage, pendingRestore, visibleEntries.length]);
 
     const timelineStats = useMemo(() => {
-        const hasActiveFilters = query.trim().length > 0
-            || sourceFilter !== 'all'
-            || lifeAreaFilter !== 'all'
-            || themeFilter.trim().length > 0
-            || moodFilter.trim().length > 0
-            || Boolean(dateFilter)
-            || Boolean(startDateFilter)
-            || Boolean(endDateFilter)
-            || weekdayFilter.trim().length > 0
-            || dayPartFilter.trim().length > 0;
         const visibleCount = visibleEntries.length;
         const total = timelineSummary.totalEntries || totalEntries || visibleCount;
         const first = timelineSummary.startDate ? new Date(timelineSummary.startDate) : (visibleCount > 0 ? new Date(visibleEntries[visibleCount - 1].createdAt) : null);
@@ -1294,7 +1273,7 @@ function TimelinePageContent() {
 
         return {
             total,
-            hasActiveFilters,
+            hasActiveFilters: hasTimelineFilters,
             activeDays,
             importedCount,
             dateRange:
@@ -1302,7 +1281,7 @@ function TimelinePageContent() {
                     ? `${first.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })} - ${latest.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`
                     : 'No entries yet',
         };
-    }, [dateFilter, dayPartFilter, endDateFilter, lifeAreaFilter, moodFilter, query, sourceFilter, startDateFilter, themeFilter, timelineSummary.activeDays, timelineSummary.endDate, timelineSummary.importedCount, timelineSummary.startDate, timelineSummary.totalEntries, totalEntries, visibleEntries, weekdayFilter]);
+    }, [hasTimelineFilters, timelineSummary.activeDays, timelineSummary.endDate, timelineSummary.importedCount, timelineSummary.startDate, timelineSummary.totalEntries, totalEntries, visibleEntries]);
     const activeFilterSummary = useMemo(() => {
         const summary: string[] = [];
         const normalizedQuery = query.trim();
@@ -1387,27 +1366,6 @@ function TimelinePageContent() {
     const activeQuickJumpMode = availableQuickJumpModes.includes(quickJumpMode)
         ? quickJumpMode
         : availableQuickJumpModes[0] ?? null;
-    const quickJumpSummary = useMemo(() => {
-        if (activeQuickJumpMode === 'chapters') {
-            return lifeSeasonCards.length === 1
-                ? '1 chapter ready'
-                : `${lifeSeasonCards.length} chapters ready`;
-        }
-
-        if (activeQuickJumpMode === 'recent') {
-            return recentFilterPresets.length === 1
-                ? '1 recent search saved'
-                : `${recentFilterPresets.length} recent searches saved`;
-        }
-
-        if (activeQuickJumpMode === 'dates') {
-            return activeMonth?.label
-                ? `Jump by month from ${activeMonth.label}`
-                : `${timelineMonthGroups.length} loaded months`;
-        }
-
-        return '';
-    }, [activeMonth?.label, activeQuickJumpMode, lifeSeasonCards.length, recentFilterPresets.length, timelineMonthGroups.length]);
     const archiveMetaSummary = useMemo(() => {
         const parts = [
             `${timelineStats.total} notes`,
@@ -1430,6 +1388,17 @@ function TimelinePageContent() {
             ? appendReturnTo(`/entry/new?mode=quick&prompt=${encodeURIComponent(activeStoryArc.prompt)}`, currentReturnTo)
             : null
     ), [activeStoryArc, currentReturnTo]);
+    const timelineSearchLead = timelineStats.hasActiveFilters ? 'Refine this memory slice' : 'Find memories fast';
+    const timelineSearchHint = timelineStats.hasActiveFilters
+        ? activeFilterSummary
+        : 'Start with search. Filters, map view, and jumps stay tucked away until you want them.';
+    const quickJumpDescription = activeQuickJumpMode === 'chapters'
+        ? 'Jump straight into the strongest season instead of scanning the full timeline.'
+        : activeQuickJumpMode === 'recent'
+            ? 'Bring back a search pattern you just used without rebuilding it.'
+            : activeQuickJumpMode === 'dates'
+                ? 'Drop into a loaded month instantly and keep the current search intact.'
+                : '';
 
     const scrollToTop = () => {
         if (typeof window === 'undefined') return;
@@ -1462,14 +1431,14 @@ function TimelinePageContent() {
                         <div className="glass-card rounded-[1.6rem] border-white/15 px-4 py-3 shadow-2xl shadow-black/25">
                             <div className="flex items-start gap-3">
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-muted">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-muted">
                                         {mobileScrollDirection === 'up' ? 'Timeline Focus' : 'Keep Exploring'}
                                     </p>
                                     <div className="mt-1 flex items-center gap-2">
                                         <span className="truncate text-sm font-semibold text-white">
                                             {activeMonth?.label || timelineStats.dateRange}
                                         </span>
-                                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-secondary">
+                                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-ink-secondary">
                                             {visibleEntries.length}
                                         </span>
                                     </div>
@@ -1493,28 +1462,16 @@ function TimelinePageContent() {
                                     type="button"
                                     onClick={() => {
                                         scrollToTop();
-                                        openControlDeck({ focusSearch: true });
+                                        openControlDeck({ focusSearch: true, source: 'search' });
                                     }}
-                                    className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white"
+                                    className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white"
                                 >
                                     Search
                                 </button>
-                                {activeQuickJumpMode && (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            scrollToTop();
-                                            toggleQuickJump();
-                                        }}
-                                        className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white"
-                                    >
-                                        Jump
-                                    </button>
-                                )}
                                 <button
                                     type="button"
                                     onClick={scrollToTop}
-                                    className="rounded-full border border-primary/30 bg-primary/15 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary"
+                                    className="rounded-full border border-primary/30 bg-primary/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
                                 >
                                     Top
                                 </button>
@@ -1531,7 +1488,7 @@ function TimelinePageContent() {
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className="section-kicker !mb-0">{NOTIVE_VOICE.surfaces.memoryAtlas}</span>
                                 {featuredSeason && (
-                                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-secondary">
+                                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-ink-secondary">
                                         {featuredSeason.title}
                                     </span>
                                 )}
@@ -1559,7 +1516,7 @@ function TimelinePageContent() {
                             <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                                 <button
                                     type="button"
-                                    onClick={() => openControlDeck({ focusSearch: true })}
+                                    onClick={() => openControlDeck({ focusSearch: true, source: 'search' })}
                                     className="group flex w-full flex-1 items-center gap-3 rounded-[1.2rem] border border-white/12 bg-black/15 px-4 py-3 text-left transition hover:border-white/20 hover:bg-white/[0.04]"
                                 >
                                     <div className="rounded-full border border-white/10 bg-white/[0.04] p-2 text-ink-muted transition group-hover:text-white">
@@ -1567,71 +1524,37 @@ function TimelinePageContent() {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <p className="text-sm font-semibold text-white">
-                                            {timelineStats.hasActiveFilters ? 'Refine this memory slice' : 'Search memories'}
+                                            {timelineSearchLead}
                                         </p>
                                         <p className="mt-0.5 truncate text-xs text-ink-secondary">
-                                            {timelineStats.hasActiveFilters
-                                                ? activeFilterSummary
-                                                : 'Search notes, topics, tags, or moods'}
+                                            {timelineSearchHint}
                                         </p>
                                     </div>
                                 </button>
 
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <ActionBar className="border-white/10 bg-black/20 p-1.5">
+                                    {surface !== 'timeline' && (
                                         <button
                                             type="button"
                                             onClick={() => switchSurface('timeline')}
-                                            aria-pressed={surface === 'timeline'}
-                                            className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors ${
-                                                surface === 'timeline'
-                                                    ? 'bg-primary/15 text-primary'
-                                                    : 'text-ink-secondary hover:text-white'
-                                            }`}
+                                            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-white/[0.08]"
                                         >
-                                            List
+                                            Back to list
                                         </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => switchSurface('constellation')}
-                                            aria-pressed={surface === 'constellation'}
-                                            className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors ${
-                                                surface === 'constellation'
-                                                    ? 'bg-primary/15 text-primary'
-                                                    : 'text-ink-secondary hover:text-white'
-                                            }`}
-                                        >
-                                            Map
-                                        </button>
-                                    </ActionBar>
+                                    )}
                                     <button
                                         type="button"
                                         onClick={openFilterStudio}
                                         className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-white/[0.08]"
                                     >
                                         <FiSliders size={14} aria-hidden="true" />
-                                        Filters
+                                        Filters and jumps
                                         {activeFilterChips.length > 0 && (
-                                            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] text-primary">
+                                            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">
                                                 {activeFilterChips.length}
                                             </span>
                                         )}
                                     </button>
-                                    {activeQuickJumpMode && (
-                                        <button
-                                            type="button"
-                                            onClick={toggleQuickJump}
-                                            aria-expanded={isQuickJumpOpen}
-                                            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-white/[0.08]"
-                                        >
-                                            Jump
-                                            <FiChevronDown
-                                                size={14}
-                                                aria-hidden="true"
-                                                className={`transition-transform ${isQuickJumpOpen ? 'rotate-180' : ''}`}
-                                            />
-                                        </button>
-                                    )}
                                     {timelineStats.hasActiveFilters && (
                                         <button
                                             type="button"
@@ -1703,9 +1626,9 @@ function TimelinePageContent() {
                                             className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-white/[0.08]"
                                         >
                                             <FiSliders size={14} aria-hidden="true" />
-                                            Filters
+                                            Filters and jumps
                                             {activeFilterChips.length > 0 && (
-                                                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] text-primary">
+                                                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">
                                                     {activeFilterChips.length}
                                                 </span>
                                             )}
@@ -1715,21 +1638,6 @@ function TimelinePageContent() {
                                                 className={`transition-transform ${isFilterStudioOpen ? 'rotate-180' : ''}`}
                                             />
                                         </button>
-                                        {activeQuickJumpMode && (
-                                            <button
-                                                type="button"
-                                                onClick={toggleQuickJump}
-                                                aria-expanded={isQuickJumpOpen}
-                                                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-white/[0.08]"
-                                            >
-                                                Jump
-                                                <FiChevronDown
-                                                    size={14}
-                                                    aria-hidden="true"
-                                                    className={`transition-transform ${isQuickJumpOpen ? 'rotate-180' : ''}`}
-                                                />
-                                            </button>
-                                        )}
                                         <button
                                             type="button"
                                             onClick={closeControlDeck}
@@ -1749,56 +1657,17 @@ function TimelinePageContent() {
                                     </div>
                                 </div>
 
-                                <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                                    <div className="min-w-0 flex-1">
-                                        <div
-                                            className="-mx-1 overflow-x-auto px-1 [scrollbar-width:none]"
-                                            style={{ msOverflowStyle: 'none' }}
-                                        >
-                                            <div
-                                                className="flex min-w-max items-center gap-2 pb-1 pr-3"
-                                                role="tablist"
-                                                aria-label="Filter timeline by source"
-                                            >
-                                                {SOURCE_FILTER_OPTIONS.map((item, index) => {
-                                                    const active = sourceFilter === item.key;
-                                                    return (
-                                                        <button
-                                                            key={item.key}
-                                                            id={getSourceFilterTabId(item.key)}
-                                                            type="button"
-                                                            role="tab"
-                                                            aria-selected={active}
-                                                            aria-controls="timeline-results-panel"
-                                                            tabIndex={active ? 0 : -1}
-                                                            onClick={() => updateSourceFilter(item.key)}
-                                                            onKeyDown={(event) => handleSourceFilterKeyDown(event, index)}
-                                                            className={`rounded-full border px-3 py-1.5 text-xs uppercase tracking-[0.1em] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/55 ${
-                                                                active
-                                                                    ? 'border-primary/45 bg-primary/15 text-primary'
-                                                                    : 'border-white/15 bg-white/[0.03] text-ink-secondary hover:text-white'
-                                                            }`}
-                                                        >
-                                                            {item.label}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                                        <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-muted">
-                                            {timelineStats.hasActiveFilters ? 'Focused Slice' : 'Open Canvas'}
-                                        </span>
-                                        <span className="text-ink-secondary">
-                                            {timelineStats.hasActiveFilters
-                                                ? activeFilterSummary
-                                                : surface === 'timeline'
-                                                    ? 'Read your notes in time order.'
-                                                    : 'See related notes grouped together.'}
-                                        </span>
-                                    </div>
+                                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                                    <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-ink-muted">
+                                        {timelineStats.hasActiveFilters ? 'Focused Slice' : 'Open Canvas'}
+                                    </span>
+                                    <span className="text-ink-secondary">
+                                        {timelineStats.hasActiveFilters
+                                            ? activeFilterSummary
+                                            : surface === 'timeline'
+                                                ? 'Read your notes in time order.'
+                                                : 'See related notes grouped together.'}
+                                    </span>
                                 </div>
 
                                 {activeFilterChips.length > 0 && (
@@ -1835,9 +1704,24 @@ function TimelinePageContent() {
                                             transition={{ duration: 0.22, ease: 'easeOut' }}
                                             className="overflow-hidden"
                                         >
-                                            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                                            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
                                                 <label className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                                                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">Life Area</span>
+                                                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Source</span>
+                                                    <select
+                                                        value={sourceFilter}
+                                                        onChange={(event) => updateSourceFilter(event.target.value as SourceFilter)}
+                                                        className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                                    >
+                                                        {SOURCE_FILTER_OPTIONS.map((item) => (
+                                                            <option key={item.key} value={item.key} className="bg-surface-1">
+                                                                {item.label}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </label>
+
+                                                <label className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                                                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Life Area</span>
                                                     <select
                                                         value={lifeAreaFilter}
                                                         onChange={(event) => updateLifeAreaFilter(event.target.value)}
@@ -1853,7 +1737,7 @@ function TimelinePageContent() {
                                                 </label>
 
                                                 <label className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                                                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">From</span>
+                                                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">From</span>
                                                     <input
                                                         type="date"
                                                         value={startDateFilter}
@@ -1863,7 +1747,7 @@ function TimelinePageContent() {
                                                 </label>
 
                                                 <label className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                                                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">To</span>
+                                                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">To</span>
                                                     <input
                                                         type="date"
                                                         value={endDateFilter}
@@ -1873,7 +1757,7 @@ function TimelinePageContent() {
                                                 </label>
 
                                                 <label className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                                                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">Weekday</span>
+                                                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Weekday</span>
                                                     <select
                                                         value={weekdayFilter}
                                                         onChange={(event) => updateWeekdayFilter(event.target.value)}
@@ -1889,7 +1773,7 @@ function TimelinePageContent() {
                                                 </label>
 
                                                 <label className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                                                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">Time of Day</span>
+                                                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Time of Day</span>
                                                     <select
                                                         value={dayPartFilter}
                                                         onChange={(event) => updateDayPartFilter(event.target.value)}
@@ -1911,145 +1795,92 @@ function TimelinePageContent() {
                         )}
                     </div>
 
-                    {activeQuickJumpMode && isQuickJumpOpen && (
+                    {isFilterStudioOpen && activeQuickJumpMode && (
                         <div className="mt-2 rounded-[1.2rem] border border-white/8 bg-black/10 p-3">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-muted">
-                                                Quick Jump
-                                            </span>
-                                            {availableQuickJumpModes.map((mode) => {
-                                                const isActive = activeQuickJumpMode === mode;
-                                                const label = mode === 'chapters' ? 'Chapters' : mode === 'recent' ? 'Recent' : 'Dates';
-
-                                                return (
-                                                    <button
-                                                        key={mode}
-                                                        type="button"
-                                                        onClick={() => setQuickJumpMode(mode)}
-                                                        aria-pressed={isActive}
-                                                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] transition ${
-                                                            isActive
-                                                                ? 'border-primary/35 bg-primary/15 text-primary'
-                                                                : 'border-white/10 bg-black/20 text-ink-secondary hover:text-white'
-                                                        }`}
-                                                    >
-                                                        {label}
-                                                    </button>
-                                                    );
-                                                })}
-                                        </div>
-                                        <p className="text-xs text-ink-secondary">
-                                            {activeQuickJumpMode === 'chapters' && 'Jump straight into the strongest season instead of scanning the full timeline.'}
-                                            {activeQuickJumpMode === 'recent' && 'Bring back a search pattern you just used without rebuilding it.'}
-                                            {activeQuickJumpMode === 'dates' && 'Drop into a loaded month instantly and keep the current search intact.'}
-                                        </p>
+                                <div>
+                                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-muted">
+                                        Quick Jump
+                                    </span>
+                                    <p className="mt-2 text-xs text-ink-secondary">
+                                        {quickJumpDescription}
+                                    </p>
+                                </div>
+                                <label className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.1em] text-ink-muted">
+                                    Jump by
+                                    <select
+                                        value={activeQuickJumpMode}
+                                        onChange={(event) => setQuickJumpMode(event.target.value as QuickJumpMode)}
+                                        className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                    >
+                                        {availableQuickJumpModes.map((mode) => (
+                                            <option key={mode} value={mode} className="bg-surface-1">
+                                                {mode === 'chapters' ? 'Chapters' : mode === 'recent' ? 'Recent searches' : 'Dates'}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
                             </div>
 
                                     {activeQuickJumpMode === 'recent' && recentFilterPresets.length > 0 && (
-                                        <div className="-mx-1 mt-3 overflow-x-auto px-1 [scrollbar-width:none]" style={{ msOverflowStyle: 'none' }}>
-                                            <div className="flex min-w-max gap-2 pb-1 pr-3">
-                                                {recentFilterPresets.map((preset) => {
-                                                    const isActivePreset = preset.id === currentPresetId;
-                                                    return (
-                                                        <button
-                                                            key={preset.id}
-                                                            type="button"
-                                                            onClick={() => applyRecentPreset(preset)}
-                                                            className={`rounded-full border px-3 py-1.5 text-xs uppercase tracking-[0.08em] transition ${
-                                                                isActivePreset
-                                                                    ? 'border-primary/40 bg-primary/15 text-primary'
-                                                                    : 'border-white/15 bg-white/[0.03] text-ink-secondary hover:text-white'
-                                                            }`}
-                                                        >
-                                                            {preset.label}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
+                                        <label className="mt-3 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.1em] text-ink-muted">
+                                            Recent search
+                                            <select
+                                                value={recentFilterPresets.some((preset) => preset.id === currentPresetId) ? currentPresetId : ''}
+                                                onChange={(event) => {
+                                                    const preset = recentFilterPresets.find((item) => item.id === event.target.value);
+                                                    if (!preset) return;
+                                                    applyRecentPreset(preset);
+                                                }}
+                                                className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                            >
+                                                <option value="" disabled className="bg-surface-1">Choose a recent search</option>
+                                                {recentFilterPresets.map((preset) => (
+                                                    <option key={preset.id} value={preset.id} className="bg-surface-1">
+                                                        {preset.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
                                     )}
 
                                     {activeQuickJumpMode === 'chapters' && lifeSeasonCards.length > 0 && (
-                                        <div className="-mx-1 mt-3 overflow-x-auto px-1 [scrollbar-width:none]" style={{ msOverflowStyle: 'none' }}>
-                                            <div className="flex min-w-max gap-3 pb-1 pr-3">
-                                                {lifeSeasonCards.map((season) => {
-                                                    const isActiveSeason = season.anchorMonthKey === activeMonth?.key;
-                                                    return (
-                                                        <button
-                                                            key={season.id}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                void openSeason(season);
-                                                            }}
-                                                            className={`min-w-[210px] rounded-[1.2rem] border px-4 py-3 text-left transition ${
-                                                                isActiveSeason
-                                                                    ? 'border-primary/35 bg-primary/12'
-                                                                    : 'border-white/10 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]'
-                                                            }`}
-                                                        >
-                                                            <div className="flex items-center justify-between gap-3">
-                                                                <p className="truncate text-sm font-semibold text-white">{season.title}</p>
-                                                                <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-secondary">
-                                                                    {season.entryCount}
-                                                                </span>
-                                                            </div>
-                                                            <div className="mt-2 flex flex-wrap gap-2">
-                                                                {season.dominantMood && (
-                                                                    <TagPill>{getMoodEmoji(season.dominantMood)} {season.dominantMood}</TagPill>
-                                                                )}
-                                                                {season.topThemes.slice(0, 1).map((theme) => (
-                                                                    <TagPill key={theme}>#{theme}</TagPill>
-                                                                ))}
-                                                            </div>
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
+                                        <label className="mt-3 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.1em] text-ink-muted">
+                                            Chapter
+                                            <select
+                                                value={lifeSeasonCards.some((season) => season.anchorMonthKey === activeMonth?.key) ? activeMonth?.key || '' : ''}
+                                                onChange={(event) => {
+                                                    const season = lifeSeasonCards.find((item) => item.anchorMonthKey === event.target.value);
+                                                    if (!season) return;
+                                                    void openSeason(season);
+                                                }}
+                                                className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                            >
+                                                <option value="" disabled className="bg-surface-1">Choose a chapter</option>
+                                                {lifeSeasonCards.map((season) => (
+                                                    <option key={season.id} value={season.anchorMonthKey} className="bg-surface-1">
+                                                        {season.title} ({season.entryCount})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
                                     )}
 
                                     {activeQuickJumpMode === 'dates' && timelineMonthGroups.length > 0 && (
-                                        <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                                            <label className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.1em] text-ink-muted">
-                                                Jump to
-                                                <select
-                                                    value={activeMonth?.anchorId || ''}
-                                                    onChange={(event) => jumpToTimelineMonth(event.target.value)}
-                                                    className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
-                                                >
-                                                    {timelineMonthGroups.map((group) => (
-                                                        <option key={group.key} value={group.anchorId} className="bg-surface-1">
-                                                            {group.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </label>
-
-                                            {timelineYearGroups.length > 1 && (
-                                                <div className="-mx-1 overflow-x-auto px-1 [scrollbar-width:none]" style={{ msOverflowStyle: 'none' }}>
-                                                    <div className="flex min-w-max gap-2 pb-1 pr-3">
-                                                        {timelineYearGroups.map((group) => {
-                                                            const isActiveYear = group.year === activeMonth?.year;
-                                                            return (
-                                                                <button
-                                                                    key={group.year}
-                                                                    type="button"
-                                                                    onClick={() => jumpToTimelineMonth(group.anchorId)}
-                                                                    className={`rounded-full border px-3 py-1.5 text-xs uppercase tracking-[0.08em] transition ${
-                                                                        isActiveYear
-                                                                            ? 'border-primary/40 bg-primary/15 text-primary'
-                                                                            : 'border-white/15 bg-white/[0.03] text-ink-secondary hover:text-white'
-                                                                    }`}
-                                                                >
-                                                                    {group.year}
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
+                                        <label className="mt-3 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.1em] text-ink-muted">
+                                            Jump to month
+                                            <select
+                                                value={activeMonth?.anchorId || ''}
+                                                onChange={(event) => jumpToTimelineMonth(event.target.value)}
+                                                className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                            >
+                                                {timelineMonthGroups.map((group) => (
+                                                    <option key={group.key} value={group.anchorId} className="bg-surface-1">
+                                                        {group.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
                                     )}
                         </div>
                     )}

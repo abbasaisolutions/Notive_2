@@ -162,6 +162,12 @@ const statementVariantLabels: Record<StatementVariant, string> = {
     entry_job: 'Entry Job',
 };
 
+const statementVariantDescriptions: Record<StatementVariant, string> = {
+    standard: 'Balanced voice for a general statement that can flex across uses.',
+    college: 'Leans toward growth, direction, and why the next academic step fits.',
+    entry_job: 'Leans toward readiness, initiative, and what you can contribute early.',
+};
+
 const exportTypeLabels: Record<ExportType, string> = {
     resume: 'Resume',
     statement: 'Statement',
@@ -422,6 +428,14 @@ export default function PortfolioWorkspace() {
     const [statementVariant, setStatementVariant] = useState<StatementVariant>('standard');
     const [selectedExportType, setSelectedExportType] = useState<DocumentExportType>('resume');
     const [activeView, setActiveView] = useState<PortfolioView>('export');
+    const [showWorkspacePicker, setShowWorkspacePicker] = useState(false);
+    const [showExportOptions, setShowExportOptions] = useState(false);
+    const [showExportDeliveryOptions, setShowExportDeliveryOptions] = useState(false);
+    const [showEvidenceTools, setShowEvidenceTools] = useState(false);
+    const [showInterviewStoryPicker, setShowInterviewStoryPicker] = useState(false);
+    const [showInterviewControls, setShowInterviewControls] = useState(false);
+    const [showGrowthDetails, setShowGrowthDetails] = useState(false);
+    const [showEditingDetails, setShowEditingDetails] = useState(false);
     const [activeStoryEntryId, setActiveStoryEntryId] = useState<string | null>(null);
     const [practiceMode, setPracticeMode] = useState(false);
     const [practiceReveal, setPracticeReveal] = useState(false);
@@ -812,6 +826,10 @@ export default function PortfolioWorkspace() {
     }, [activeStoryEntryId, overview]);
 
     useEffect(() => {
+        setShowExportDeliveryOptions(false);
+    }, [selectedExportType]);
+
+    useEffect(() => {
         setPracticeReveal(false);
     }, [activeStoryEntryId, practiceMode]);
 
@@ -891,6 +909,7 @@ export default function PortfolioWorkspace() {
                 actionLabel: 'Start Quick Capture',
                 actionHref: captureHref,
                 targetView: null as PortfolioView | null,
+                targetExportType: null as DocumentExportType | null,
             };
         }
 
@@ -901,6 +920,7 @@ export default function PortfolioWorkspace() {
                 actionLabel: 'Review Evidence Queue',
                 actionHref: null as string | null,
                 targetView: 'evidence' as PortfolioView,
+                targetExportType: null as DocumentExportType | null,
             };
         }
 
@@ -911,6 +931,7 @@ export default function PortfolioWorkspace() {
                 actionLabel: 'Verify Stories',
                 actionHref: null as string | null,
                 targetView: 'evidence' as PortfolioView,
+                targetExportType: null as DocumentExportType | null,
             };
         }
 
@@ -921,6 +942,7 @@ export default function PortfolioWorkspace() {
                 actionLabel: 'Open Interview',
                 actionHref: null as string | null,
                 targetView: 'interview' as PortfolioView,
+                targetExportType: null as DocumentExportType | null,
             };
         }
 
@@ -931,6 +953,7 @@ export default function PortfolioWorkspace() {
                 actionLabel: 'Open Growth',
                 actionHref: null as string | null,
                 targetView: 'growth' as PortfolioView,
+                targetExportType: null as DocumentExportType | null,
             };
         }
 
@@ -940,6 +963,7 @@ export default function PortfolioWorkspace() {
             actionLabel: `Open ${exportTypeLabels[recommendedExportType]}`,
             actionHref: null as string | null,
             targetView: 'export' as PortfolioView,
+            targetExportType: recommendedExportType,
         };
     }, [captureHref, filterCounts.needs_attention, filterCounts.ready_to_verify, overview, recommendedExportType, recommendedView]);
 
@@ -979,9 +1003,223 @@ export default function PortfolioWorkspace() {
         () => pathwayCards.find((card) => card.type === selectedExportType) || pathwayCards[0] || null,
         [pathwayCards, selectedExportType]
     );
+    const recommendedEvidenceFilter = useMemo<EvidenceFilter>(() => {
+        if (filterCounts.needs_attention > 0) return 'needs_attention';
+        if (filterCounts.ready_to_verify > 0) return 'ready_to_verify';
+        if (filterCounts.ready_to_export > 0) return 'ready_to_export';
+        if (filterCounts.verified > 0) return 'verified';
+        return 'all';
+    }, [filterCounts]);
+    const evidenceFocusTitle = useMemo(() => {
+        switch (recommendedEvidenceFilter) {
+            case 'needs_attention':
+                return 'Fill the missing pieces first';
+            case 'ready_to_verify':
+                return 'Check the strongest unfinished stories';
+            case 'ready_to_export':
+                return 'Your strongest draft stories are ready';
+            case 'verified':
+                return 'Your safest proof is already waiting';
+            default:
+                return 'Work the full evidence queue';
+        }
+    }, [recommendedEvidenceFilter]);
+    const evidenceFocusDescription = useMemo(() => {
+        switch (recommendedEvidenceFilter) {
+            case 'needs_attention':
+                return `${filterCounts.needs_attention} stor${filterCounts.needs_attention === 1 ? 'y is' : 'ies are'} missing core detail. Tighten situation, action, lesson, or outcome before you export anything.`;
+            case 'ready_to_verify':
+                return `${filterCounts.ready_to_verify} stor${filterCounts.ready_to_verify === 1 ? 'y has' : 'ies have'} enough structure to verify and strengthen.`;
+            case 'ready_to_export':
+                return `${filterCounts.ready_to_export} stor${filterCounts.ready_to_export === 1 ? 'y is' : 'ies are'} complete enough to reuse in a pack right now.`;
+            case 'verified':
+                return `${filterCounts.verified} verified stor${filterCounts.verified === 1 ? 'y is' : 'ies are'} ready to reuse or rehearse without much extra work.`;
+            default:
+                return 'Use the full queue when you want the complete picture of what is weak, ready, or already strong.';
+        }
+    }, [filterCounts, recommendedEvidenceFilter]);
+    const currentEvidenceLaneDescription = useMemo(() => {
+        if (evidenceFilter === 'all') {
+            return 'Showing every story from weakest evidence to strongest proof so the next fix is easy to spot.';
+        }
+
+        const count = filterCounts[evidenceFilter];
+        return `Showing ${count} ${evidenceFilterLabels[evidenceFilter].toLowerCase()} stor${count === 1 ? 'y' : 'ies'}.`;
+    }, [evidenceFilter, filterCounts]);
+    const evidenceSnapshotTitle = useMemo(() => {
+        if (filterCounts.needs_attention > 0) {
+            return `${filterCounts.needs_attention} stor${filterCounts.needs_attention === 1 ? 'y still needs' : 'ies still need'} shaping`;
+        }
+        if (filterCounts.ready_to_verify > 0) {
+            return `${filterCounts.ready_to_verify} stor${filterCounts.ready_to_verify === 1 ? 'y is' : 'ies are'} close to verification`;
+        }
+        if (filterCounts.verified > 0) {
+            return `${filterCounts.verified} stor${filterCounts.verified === 1 ? 'y is' : 'ies are'} already strong source material`;
+        }
+        return `${evidenceSummary.total} stor${evidenceSummary.total === 1 ? 'y is' : 'ies are'} in the queue`;
+    }, [evidenceSummary.total, filterCounts.needs_attention, filterCounts.ready_to_verify, filterCounts.verified]);
+    const evidenceSnapshotDescription = useMemo(() => {
+        if (filterCounts.needs_attention > 0) {
+            return 'Start with the weakest stories first. A single missing block or clearer proof detail usually unlocks the rest of the queue.';
+        }
+        if (filterCounts.ready_to_verify > 0) {
+            return 'These stories already have structure. The next step is checking proof instead of reopening everything.';
+        }
+        if (filterCounts.verified > 0) {
+            return 'Your strongest stories are ready to support exports and interview practice, so you can stay focused on reuse.';
+        }
+        return 'Capture another note when you want more material. The current queue does not need much attention right now.';
+    }, [filterCounts.needs_attention, filterCounts.ready_to_verify, filterCounts.verified]);
+    const currentWorkspaceDescription = useMemo(() => {
+        if (activeView === 'export') {
+            return selectedExportType === 'resume'
+                ? 'Preview your strongest bullets, then export the pack you want to reuse.'
+                : 'Shape the right narrative angle, then export it when the voice feels right.';
+        }
+
+        if (activeView === 'evidence') {
+            return `${filterCounts[evidenceFilter]} stor${filterCounts[evidenceFilter] === 1 ? 'y is' : 'ies are'} in ${evidenceFilterLabels[evidenceFilter].toLowerCase()} right now.`;
+        }
+
+        if (activeView === 'interview') {
+            return `${overview?.interviewStories.length || 0} stor${overview?.interviewStories.length === 1 ? 'y is' : 'ies are'} ready to rehearse one at a time.`;
+        }
+
+        return 'Review momentum, repeated strengths, and what still needs more proof.';
+    }, [activeView, evidenceFilter, filterCounts, overview?.interviewStories.length, selectedExportType]);
+    const workspacePickerLabel = showWorkspacePicker ? 'Hide workspace picker' : 'Explore workspaces';
+    const workspacePickerDescription = showWorkspacePicker
+        ? 'Go back to one recommended move and one current workspace anchor.'
+        : 'Resume, statement, evidence, interview, and growth stay here until you want a different path.';
+    const recentWorkspaceSummary = recentViewLinks.length > 0
+        ? recentViewLinks.map((view) => portfolioViewLabels[view]).join(' • ')
+        : null;
+    const exportOptionsLabel = showExportOptions ? 'Hide export options' : 'Show export options';
+    const exportOptionsDescription = selectedExportType === 'statement'
+        ? 'Statement angles and quick jumps stay tucked away until you need them.'
+        : 'Quick jumps stay tucked away until you need them.';
+    const exportDeliveryLabel = showExportDeliveryOptions ? 'Hide extra export options' : 'Show extra export options';
+    const exportDeliveryDescription = showExportDeliveryOptions
+        ? 'Go back to one primary export action.'
+        : 'Markdown and print or PDF stay here until you want another format.';
+    const evidenceToolsLabel = showEvidenceTools ? 'Hide lane filters' : 'Show lane filters';
+    const evidenceToolsDescription = showEvidenceTools
+        ? 'Go back to one best lane and one current lane summary.'
+        : 'Lane filters stay here until you want a different evidence slice.';
+    const interviewStoryPickerLabel = showInterviewStoryPicker ? 'Hide story list' : 'Browse other stories';
+    const interviewStoryPickerDescription = showInterviewStoryPicker
+        ? 'Go back to one focused story at a time.'
+        : 'Keep the current story in view and only open the rest when you want to switch.';
+    const interviewControlsLabel = showInterviewControls ? 'Hide practice controls' : 'Show practice controls';
+    const interviewControlsDescription = showInterviewControls
+        ? 'Go back to one primary practice move.'
+        : 'Story switching and mode controls stay here until you need them.';
+    const growthDetailsLabel = showGrowthDetails ? 'Hide deeper growth details' : 'Show deeper growth details';
+    const growthDetailsDescription = showGrowthDetails
+        ? 'Go back to one headline read and the main trendline.'
+        : 'Lens settings, repeated material, and return points stay here until you want them.';
+    const editingDetailsLabel = showEditingDetails ? 'Hide full draft' : 'Show full draft';
+    const editingDetailsDescription = showEditingDetails
+        ? 'Go back to one best next block and the shortest editing path.'
+        : 'Secondary story blocks, skills, and verification notes stay here until you want them.';
+    const toggleWorkspacePicker = () => {
+        const nextValue = !showWorkspacePicker;
+        setShowWorkspacePicker(nextValue);
+        void trackEvent({
+            eventType: 'portfolio_workspace_picker_toggled',
+            value: nextValue ? 'opened' : 'closed',
+            metadata: {
+                activeView,
+                recommendedView,
+            },
+        });
+    };
+    const toggleExportOptions = () => {
+        const nextValue = !showExportOptions;
+        setShowExportOptions(nextValue);
+        void trackEvent({
+            eventType: 'portfolio_export_options_toggled',
+            value: nextValue ? 'opened' : 'closed',
+            metadata: {
+                selectedExportType,
+                statementVariant,
+            },
+        });
+    };
+    const toggleExportDeliveryOptions = () => {
+        const nextValue = !showExportDeliveryOptions;
+        setShowExportDeliveryOptions(nextValue);
+        void trackEvent({
+            eventType: 'portfolio_export_delivery_toggled',
+            value: nextValue ? 'opened' : 'closed',
+            metadata: {
+                selectedExportType,
+                hasPreview: Boolean(exportPreview),
+            },
+        });
+    };
+    const toggleEvidenceTools = () => {
+        const nextValue = !showEvidenceTools;
+        setShowEvidenceTools(nextValue);
+        void trackEvent({
+            eventType: 'portfolio_evidence_tools_toggled',
+            value: nextValue ? 'opened' : 'closed',
+            metadata: {
+                evidenceFilter,
+                recommendedEvidenceFilter,
+            },
+        });
+    };
+    const toggleInterviewStoryPicker = () => {
+        const nextValue = !showInterviewStoryPicker;
+        setShowInterviewStoryPicker(nextValue);
+        void trackEvent({
+            eventType: 'portfolio_interview_story_picker_toggled',
+            value: nextValue ? 'opened' : 'closed',
+            metadata: {
+                activeStoryEntryId,
+            },
+        });
+    };
+    const toggleInterviewControls = () => {
+        const nextValue = !showInterviewControls;
+        setShowInterviewControls(nextValue);
+        void trackEvent({
+            eventType: 'portfolio_interview_controls_toggled',
+            value: nextValue ? 'opened' : 'closed',
+            metadata: {
+                activeStoryEntryId,
+                practiceMode,
+                practiceReveal,
+            },
+        });
+    };
+    const toggleGrowthDetails = () => {
+        const nextValue = !showGrowthDetails;
+        setShowGrowthDetails(nextValue);
+        void trackEvent({
+            eventType: 'portfolio_growth_details_toggled',
+            value: nextValue ? 'opened' : 'closed',
+            metadata: {
+                trendPeriod,
+            },
+        });
+    };
+    const toggleEditingDetails = () => {
+        const nextValue = !showEditingDetails;
+        setShowEditingDetails(nextValue);
+        void trackEvent({
+            eventType: 'portfolio_editor_details_toggled',
+            value: nextValue ? 'opened' : 'closed',
+            metadata: {
+                editingEntryId,
+            },
+        });
+    };
 
     const startEdit = (experience: Experience) => {
         setEditingEntryId(experience.entryId);
+        setShowEditingDetails(false);
         setDrafts((prev) => ({
             ...prev,
             [experience.entryId]: {
@@ -1088,26 +1326,9 @@ export default function PortfolioWorkspace() {
                 <AppPanel className="space-y-4" id="portfolio-export-controls">
                     <SectionHeader
                         kicker="Documents"
-                        title={selectedExportType === 'resume' ? 'Resume workspace' : 'Statement workspace'}
-                        description="Open the document you need, preview it, and export it without losing your place."
+                        title={selectedExportType === 'resume' ? 'Choose your resume pack' : 'Choose your statement pack'}
+                        description="Pick the pack you want first. Preview and export controls stay on the right when you are ready."
                     />
-
-                    <div className="flex flex-wrap gap-2">
-                        <a
-                            href="#portfolio-export-preview-panel"
-                            className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.07]"
-                        >
-                            <FiEye size={13} aria-hidden="true" />
-                            Jump to preview
-                        </a>
-                        <a
-                            href="#portfolio-export-downloads"
-                            className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.07]"
-                        >
-                            <FiDownload size={13} aria-hidden="true" />
-                            Jump to downloads
-                        </a>
-                    </div>
 
                     <div
                         role="tablist"
@@ -1154,118 +1375,118 @@ export default function PortfolioWorkspace() {
 
                     {selectedPathwayCard && (
                         <div className="rounded-[30px] border border-white/10 bg-black/20 p-5">
-                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                <div className="min-w-0">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Focused pack</p>
-                                        {selectedPathwayCard.isRecommended && <TagPill tone="primary">Recommended next</TagPill>}
-                                    </div>
-                                    <h3 className="mt-2 text-2xl font-semibold text-white">{selectedPathwayCard.title}</h3>
-                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">{selectedPathwayCard.description}</p>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Chosen pack</p>
+                                    {selectedPathwayCard.isRecommended && <TagPill tone="primary">Recommended next</TagPill>}
+                                    {selectedExportType === 'statement' && <TagPill>{statementVariantLabels[statementVariant]} angle</TagPill>}
                                 </div>
-                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">Ready now</p>
-                                    <p className="mt-2 text-sm font-semibold text-white">{selectedPathwayCard.readiness}</p>
-                                </div>
+                                <h3 className="mt-2 text-2xl font-semibold text-white">{selectedPathwayCard.title}</h3>
+                                <p className="mt-2 text-sm leading-7 text-ink-secondary">{selectedPathwayCard.description}</p>
                             </div>
 
                             <div className="mt-4 grid gap-3 sm:grid-cols-2">
                                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">Best fit</p>
-                                    <p className="mt-2 text-sm leading-6 text-white">{selectedPathwayCard.secondary}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Ready now</p>
+                                    <p className="mt-2 text-sm font-semibold text-white">{selectedPathwayCard.readiness}</p>
                                 </div>
                                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">Next move</p>
-                                    <p className="mt-2 text-sm leading-6 text-white">
-                                        {selectedExportType === 'resume' && 'Scan the preview for the strongest bullets, then export the pack you want to reuse.'}
-                                        {selectedExportType === 'statement' && 'Pick the angle that matches your audience, then read the draft aloud before exporting.'}
-                                    </p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Best fit</p>
+                                    <p className="mt-2 text-sm leading-6 text-white">{selectedPathwayCard.secondary}</p>
                                 </div>
                             </div>
 
-                            {selectedExportType === 'statement' && (
-                                <div className="mt-4 rounded-[26px] border border-primary/20 bg-primary/[0.08] p-4">
-                                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                                        <div className="max-w-xl">
-                                            <p className="text-xs uppercase tracking-[0.12em] text-primary/85">Statement angle</p>
-                                            <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                                Switch the tone for school, early-career work, or a general statement without leaving the preview.
-                                            </p>
-                                        </div>
-                                        <div
-                                            role="tablist"
-                                            aria-label="Choose the statement angle"
-                                            className="flex flex-wrap gap-2"
+                            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Next move</p>
+                                <p className="mt-2 text-sm leading-6 text-white">
+                                    {selectedExportType === 'resume' && 'Scan the preview on the right, then export the bullets you want to reuse.'}
+                                    {selectedExportType === 'statement' && 'Check the preview on the right, then refine the angle only if the voice needs to shift.'}
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={toggleExportOptions}
+                                aria-expanded={showExportOptions}
+                                aria-controls="portfolio-export-options"
+                                className="mt-4 flex w-full items-start justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                            >
+                                <span className="min-w-0">
+                                    <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More controls</span>
+                                    <span className="mt-2 block text-base font-semibold text-white">{exportOptionsLabel}</span>
+                                    <span className="mt-2 block text-sm leading-7 text-ink-secondary">{exportOptionsDescription}</span>
+                                </span>
+                                <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                                    {showExportOptions ? <FiX size={16} aria-hidden="true" /> : <FiTool size={16} aria-hidden="true" />}
+                                </span>
+                            </button>
+
+                            {showExportOptions && (
+                                <div id="portfolio-export-options" className="mt-4 space-y-4">
+                                    <div className="flex flex-wrap gap-2">
+                                        <a
+                                            href="#portfolio-export-preview-panel"
+                                            className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.07]"
                                         >
-                                            {(['standard', 'college', 'entry_job'] as StatementVariant[]).map((variant) => (
-                                                <button
-                                                    key={variant}
-                                                    id={`portfolio-statement-tab-${variant}`}
-                                                    type="button"
-                                                    role="tab"
-                                                    aria-selected={statementVariant === variant}
-                                                    aria-controls="portfolio-statement-draft"
-                                                    tabIndex={statementVariant === variant ? 0 : -1}
-                                                    onClick={() => setStatementVariant(variant)}
-                                                    className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] whitespace-nowrap transition-colors ${
-                                                        statementVariant === variant
-                                                            ? 'bg-primary text-white'
-                                                            : 'border border-white/10 bg-black/20 text-ink-secondary hover:text-white'
-                                                    }`}
-                                                >
-                                                    {statementVariantLabels[variant]}
-                                                </button>
-                                            ))}
-                                        </div>
+                                            <FiEye size={13} aria-hidden="true" />
+                                            Jump to preview
+                                        </a>
+                                        <a
+                                            href="#portfolio-export-actions"
+                                            className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.07]"
+                                        >
+                                            <FiDownload size={13} aria-hidden="true" />
+                                            Jump to export action
+                                        </a>
                                     </div>
 
-                                    <div
-                                        id="portfolio-statement-draft"
-                                        aria-live="polite"
-                                        className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4"
-                                    >
-                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current draft angle</p>
-                                        <p className="mt-3 text-sm leading-7 text-foreground">
-                                            {statement || 'Build a little more evidence and profile direction to generate a stronger statement draft.'}
-                                        </p>
-                                    </div>
+                                    {selectedExportType === 'statement' && (
+                                        <div className="rounded-[26px] border border-primary/20 bg-primary/[0.08] p-4">
+                                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                                <div className="max-w-xl">
+                                                    <p className="text-xs uppercase tracking-[0.12em] text-primary/85">Statement angle</p>
+                                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                                                        Keep one angle selected at a time. The preview on the right refreshes as soon as you switch.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <label className="mt-4 block">
+                                                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                                                    Choose angle
+                                                </span>
+                                                <select
+                                                    aria-label="Choose the statement angle"
+                                                    value={statementVariant}
+                                                    onChange={(event) => setStatementVariant(event.target.value as StatementVariant)}
+                                                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-primary/35"
+                                                >
+                                                    {(['standard', 'college', 'entry_job'] as StatementVariant[]).map((variant) => (
+                                                        <option key={variant} value={variant}>
+                                                            {statementVariantLabels[variant]}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </label>
+
+                                            <div aria-live="polite" className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current angle</p>
+                                                    <TagPill>{statementVariantLabels[statementVariant]}</TagPill>
+                                                </div>
+                                                <p className="mt-3 text-sm leading-7 text-ink-secondary">
+                                                    {statementVariantDescriptions[statementVariant]}
+                                                </p>
+                                                <p className="mt-3 text-sm leading-7 text-foreground">
+                                                    {hasValue(statement)
+                                                        ? `${statement.trim().slice(0, 220)}${statement.trim().length > 220 ? '...' : ''}`
+                                                        : 'Build a little more evidence and profile direction to generate a stronger statement draft.'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
-
-                            <div className="mt-4 flex flex-wrap gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        void loadExportPreview(selectedPathwayCard.type);
-                                    }}
-                                    className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
-                                >
-                                    <FiEye size={13} aria-hidden="true" />
-                                    Preview
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        void downloadExport(selectedPathwayCard.type, 'html');
-                                    }}
-                                    disabled={downloadingKey === `${selectedPathwayCard.type}:html`}
-                                    className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/10 disabled:opacity-60"
-                                >
-                                    <FiDownload size={13} aria-hidden="true" />
-                                    {downloadingKey === `${selectedPathwayCard.type}:html` ? 'Preparing...' : 'HTML'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        void downloadExport(selectedPathwayCard.type, 'markdown');
-                                    }}
-                                    disabled={downloadingKey === `${selectedPathwayCard.type}:markdown`}
-                                    className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/10 disabled:opacity-60"
-                                >
-                                    <FiFileText size={13} aria-hidden="true" />
-                                    {downloadingKey === `${selectedPathwayCard.type}:markdown` ? 'Preparing...' : 'Markdown'}
-                                </button>
-                            </div>
                         </div>
                     )}
                 </AppPanel>
@@ -1276,7 +1497,7 @@ export default function PortfolioWorkspace() {
                 className="space-y-4 xl:sticky xl:top-28"
                 aria-labelledby="portfolio-export-preview-heading"
             >
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Preview</p>
                         <h2 id="portfolio-export-preview-heading" className="mt-1 text-2xl font-semibold text-white">
@@ -1284,17 +1505,9 @@ export default function PortfolioWorkspace() {
                         </h2>
                         <p className="mt-1 text-sm text-ink-secondary">{exportTypeDescriptions[selectedExportType]}</p>
                     </div>
-                    <ActionBar className="bg-black/20 border-white/10">
-                        <button
-                            type="button"
-                            onClick={printSelectedExport}
-                            disabled={downloadingKey === `${selectedExportType}:print`}
-                            className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary hover:text-white"
-                        >
-                            <FiPrinter size={13} aria-hidden="true" />
-                            {downloadingKey === `${selectedExportType}:print` ? 'Preparing...' : 'Print / PDF'}
-                        </button>
-                    </ActionBar>
+                    <div className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-xs uppercase tracking-[0.12em] text-ink-muted">
+                        Read first, export next
+                    </div>
                 </div>
 
                 <div
@@ -1304,27 +1517,27 @@ export default function PortfolioWorkspace() {
                     {isPreviewLoading
                         ? `Loading ${exportTypeLabels[selectedExportType]} preview...`
                         : previewError
-                            ? previewError
+                            ? `Preview issue: ${previewError}`
                             : `Viewing ${exportPreview?.fileName || `${exportTypeLabels[selectedExportType]} preview`} in the print-ready reader.`}
                 </div>
 
-                <div className="rounded-[32px] overflow-hidden border border-white/10 bg-[#f3efe6] text-slate-900 shadow-2xl shadow-black/20">
-                    <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 bg-white/80 px-4 py-3">
+                <div className="paper-preview-shell overflow-hidden rounded-[32px] border border-white/10 shadow-2xl shadow-black/20">
+                    <div className="paper-preview-topbar flex items-center justify-between gap-3 px-4 py-3">
                         <div>
-                            <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Quick View</p>
-                            <h3 className="mt-1 text-sm font-semibold text-slate-900">
+                            <p className="paper-preview-kicker">Quick View</p>
+                            <h3 className="paper-preview-title mt-1 text-sm font-semibold">
                                 {exportPreview?.fileName || `${exportTypeLabels[selectedExportType]} Preview`}
                             </h3>
                         </div>
-                        <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] uppercase tracking-[0.12em] text-slate-600">
+                        <div className="paper-preview-badge rounded-full px-3 py-1 text-xs uppercase tracking-[0.12em]">
                             Print-ready HTML
                         </div>
                     </div>
 
-                    <div id="portfolio-export-preview" className="relative min-h-[30rem] bg-[#f8f6f1]">
+                    <div id="portfolio-export-preview" className="paper-preview-canvas relative min-h-[30rem]">
                         {isPreviewLoading && (
-                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#f8f6f1]/80">
-                                <div className="h-7 w-7 animate-spin rounded-full border-4 border-slate-400 border-t-transparent" />
+                            <div className="paper-preview-overlay absolute inset-0 z-10 flex items-center justify-center">
+                                <div className="paper-preview-spinner h-7 w-7 animate-spin rounded-full" />
                             </div>
                         )}
 
@@ -1337,11 +1550,11 @@ export default function PortfolioWorkspace() {
                             />
                         ) : (
                             <div className="flex h-[32rem] flex-col items-center justify-center px-6 text-center">
-                                <div className="rounded-2xl border border-slate-200 bg-white p-4 text-slate-700 shadow-sm">
+                                <div className="paper-preview-empty-card rounded-2xl p-4 shadow-sm">
                                     <FiUploadCloud size={20} aria-hidden="true" />
                                 </div>
-                                <h3 className="mt-4 text-lg font-semibold text-slate-900">Open a pack to preview it</h3>
-                                <p className="mt-2 max-w-sm text-sm text-slate-600">
+                                <h3 className="paper-preview-title mt-4 text-lg font-semibold">Open a pack to preview it</h3>
+                                <p className="paper-preview-copy mt-2 max-w-sm text-sm">
                                     Choose a pack on the left to load a document-style preview before you download anything.
                                 </p>
                             </div>
@@ -1349,35 +1562,75 @@ export default function PortfolioWorkspace() {
                     </div>
                 </div>
 
-                {previewError && (
-                    <div className="rounded-xl border border-white/12 bg-white/[0.05] px-3 py-2 text-sm text-foreground">
-                        {previewError}
+                <div id="portfolio-export-actions" className="space-y-3 rounded-[28px] border border-white/10 bg-black/20 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Take this pack</p>
+                            <h3 className="mt-2 text-lg font-semibold text-white">
+                                {selectedExportType === 'resume' ? 'Download the resume pack' : 'Download the statement pack'}
+                            </h3>
+                            <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                                {selectedExportType === 'resume'
+                                    ? 'Use the print-ready download first if you want the cleanest version to reuse or share.'
+                                    : 'Use the print-ready download first if the current angle feels close and you want a polished draft.'}
+                            </p>
+                        </div>
+                        <TagPill tone="primary">Primary action</TagPill>
                     </div>
-                )}
 
-                <div id="portfolio-export-downloads" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <button
                         type="button"
                         onClick={() => {
                             void downloadExport(selectedExportType, 'html');
                         }}
                         disabled={downloadingKey === `${selectedExportType}:html`}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/35 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/25 disabled:opacity-60"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-primary/35 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/25 disabled:opacity-60"
                     >
                         <FiDownload size={15} aria-hidden="true" />
-                        {downloadingKey === `${selectedExportType}:html` ? 'Preparing HTML...' : 'Download HTML'}
+                        {downloadingKey === `${selectedExportType}:html` ? 'Preparing print-ready pack...' : 'Download Print-Ready Pack'}
                     </button>
+
                     <button
                         type="button"
-                        onClick={() => {
-                            void downloadExport(selectedExportType, 'markdown');
-                        }}
-                        disabled={downloadingKey === `${selectedExportType}:markdown`}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-ink-secondary transition-colors hover:text-white hover:bg-white/10 disabled:opacity-60"
+                        onClick={toggleExportDeliveryOptions}
+                        aria-expanded={showExportDeliveryOptions}
+                        aria-controls="portfolio-export-delivery-options"
+                        className="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
                     >
-                        <FiFileText size={15} aria-hidden="true" />
-                        {downloadingKey === `${selectedExportType}:markdown` ? 'Preparing Markdown...' : 'Download Markdown'}
+                        <span className="min-w-0">
+                            <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More export formats</span>
+                            <span className="mt-2 block text-base font-semibold text-white">{exportDeliveryLabel}</span>
+                            <span className="mt-2 block text-sm leading-7 text-ink-secondary">{exportDeliveryDescription}</span>
+                        </span>
+                        <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                            {showExportDeliveryOptions ? <FiX size={16} aria-hidden="true" /> : <FiTool size={16} aria-hidden="true" />}
+                        </span>
                     </button>
+
+                    {showExportDeliveryOptions && (
+                        <div id="portfolio-export-delivery-options" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void downloadExport(selectedExportType, 'markdown');
+                                }}
+                                disabled={downloadingKey === `${selectedExportType}:markdown`}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-ink-secondary transition-colors hover:text-white hover:bg-white/10 disabled:opacity-60"
+                            >
+                                <FiFileText size={15} aria-hidden="true" />
+                                {downloadingKey === `${selectedExportType}:markdown` ? 'Preparing Markdown...' : 'Download Markdown'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={printSelectedExport}
+                                disabled={downloadingKey === `${selectedExportType}:print`}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-ink-secondary transition-colors hover:text-white hover:bg-white/10 disabled:opacity-60"
+                            >
+                                <FiPrinter size={15} aria-hidden="true" />
+                                {downloadingKey === `${selectedExportType}:print` ? 'Preparing PDF...' : 'Print / Save PDF'}
+                            </button>
+                        </div>
+                    )}
                 </div>
             </AppPanel>
         </div>
@@ -1394,59 +1647,86 @@ export default function PortfolioWorkspace() {
             <AppPanel className="space-y-5">
                 <SectionHeader
                     kicker="Evidence"
-                    title="Evidence Queue"
-                    description="Fix weak stories, verify strong ones, and jump straight into the right export path."
+                    title="Work one evidence lane at a time"
+                    description="Start with the clearest lane. The rest of the filters and shortcuts stay tucked away until you need them."
                     actionLabel="Quick Capture"
                     actionHref={captureHref}
                 />
 
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                    <StatTile label="Entries Scored" value={evidenceSummary.total} hint="Experiences mapped from entries" />
-                    <StatTile label="Needs Attention" value={filterCounts.needs_attention} hint="Missing core detail" />
-                    <StatTile label="Ready To Verify" value={filterCounts.ready_to_verify} hint="Structured but not verified" />
-                    <StatTile label="Verified" value={filterCounts.verified} hint="Strongest source material" tone="primary" />
+                <div className="rounded-[28px] border border-white/10 bg-black/20 p-4">
+                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Queue snapshot</p>
+                    <h3 className="mt-2 text-lg font-semibold text-white">{evidenceSnapshotTitle}</h3>
+                    <p className="mt-2 max-w-3xl text-sm leading-7 text-ink-secondary">{evidenceSnapshotDescription}</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        <TagPill>{evidenceSummary.total} scored</TagPill>
+                        <TagPill tone={filterCounts.needs_attention > 0 ? 'muted' : 'default'}>
+                            {filterCounts.needs_attention} need work
+                        </TagPill>
+                        <TagPill>{filterCounts.ready_to_verify} close to verify</TagPill>
+                        <TagPill tone="primary">{filterCounts.verified} verified</TagPill>
+                        <TagPill>{evidenceSummary.avgScore}% average story quality</TagPill>
+                    </div>
                 </div>
 
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                    <ActionBar className="gap-2 overflow-x-auto bg-black/20 border-white/10">
-                        {evidenceFilters.map((filter) => (
-                            <button
-                                key={filter}
-                                type="button"
-                                onClick={() => setEvidenceFilter(filter)}
-                                aria-pressed={evidenceFilter === filter}
-                                className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] whitespace-nowrap transition-colors ${
-                                    evidenceFilter === filter
-                                        ? 'bg-primary/15 text-primary'
-                                        : 'text-ink-secondary hover:text-white'
-                                }`}
-                            >
-                                {evidenceFilterLabels[filter]} ({filterCounts[filter]})
-                            </button>
-                        ))}
-                    </ActionBar>
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
+                    <div className="rounded-[28px] border border-primary/25 bg-primary/12 p-4">
+                        <div className="flex items-start gap-3">
+                            <div className="rounded-2xl border border-primary/30 bg-primary/15 p-3 text-primary">
+                                <FiFlag size={18} aria-hidden="true" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best lane now</p>
+                                <h3 className="mt-2 text-lg font-semibold text-white">{evidenceFocusTitle}</h3>
+                                <p className="mt-2 text-sm leading-7 text-ink-secondary">{evidenceFocusDescription}</p>
+                            </div>
+                        </div>
+                    </div>
 
-                    <ActionBar className="gap-2 overflow-x-auto bg-black/20 border-white/10">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                void openStudio('resume');
-                            }}
-                            className="rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary whitespace-nowrap hover:text-white"
-                        >
-                            Open Resume
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                switchView('interview');
-                            }}
-                            className="rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary whitespace-nowrap hover:text-white"
-                        >
-                            Open Interview
-                        </button>
-                    </ActionBar>
+                    <div className="rounded-[28px] border border-white/10 bg-black/20 p-4">
+                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current lane</p>
+                        <h3 className="mt-2 text-lg font-semibold text-white">{evidenceFilterLabels[evidenceFilter]}</h3>
+                        <p className="mt-2 text-sm leading-7 text-ink-secondary">{currentEvidenceLaneDescription}</p>
+                    </div>
                 </div>
+
+                <button
+                    type="button"
+                    onClick={toggleEvidenceTools}
+                    aria-expanded={showEvidenceTools}
+                    aria-controls="portfolio-evidence-tools"
+                    className="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                >
+                    <span className="min-w-0">
+                        <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More controls</span>
+                        <span className="mt-2 block text-base font-semibold text-white">{evidenceToolsLabel}</span>
+                        <span className="mt-2 block text-sm leading-7 text-ink-secondary">{evidenceToolsDescription}</span>
+                    </span>
+                    <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                        {showEvidenceTools ? <FiX size={16} aria-hidden="true" /> : <FiTool size={16} aria-hidden="true" />}
+                    </span>
+                </button>
+
+                {showEvidenceTools && (
+                    <div id="portfolio-evidence-tools" className="space-y-3">
+                        <ActionBar className="gap-2 overflow-x-auto bg-black/20 border-white/10">
+                            {evidenceFilters.map((filter) => (
+                                <button
+                                    key={filter}
+                                    type="button"
+                                    onClick={() => setEvidenceFilter(filter)}
+                                    aria-pressed={evidenceFilter === filter}
+                                    className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] whitespace-nowrap transition-colors ${
+                                        evidenceFilter === filter
+                                            ? 'bg-primary/15 text-primary'
+                                            : 'text-ink-secondary hover:text-white'
+                                    }`}
+                                >
+                                    {evidenceFilterLabels[filter]} ({filterCounts[filter]})
+                                </button>
+                            ))}
+                        </ActionBar>
+                    </div>
+                )}
             </AppPanel>
 
             {filteredExperiences.length === 0 ? (
@@ -1464,6 +1744,29 @@ export default function PortfolioWorkspace() {
                         const sourceHref = appendReturnTo(`/entry/view?id=${experience.entryId}`, currentReturnTo);
                         const primarySnippet = experience.outcome || experience.action || experience.lesson || experience.situation;
                         const stateTone = state === 'verified' ? 'primary' : state === 'needs_attention' ? 'muted' : 'default';
+                        const nextMissingField = completeness.missingFields[0] || null;
+                        const readinessLabel = completeness.readyForExport
+                            ? 'Ready to use'
+                            : completeness.readyForVerification
+                                ? 'Almost ready'
+                                : `${completeness.missingFields.length} block${completeness.missingFields.length === 1 ? '' : 's'} still open`;
+                        const focusTitle = nextMissingField
+                            ? `Best next block: ${EVIDENCE_FIELD_LABELS[nextMissingField]}`
+                            : !experience.verified
+                                ? 'Best next move: verify this story'
+                                : 'Best next move: keep this story reusable';
+                        const focusDescription = (() => {
+                            if (nextMissingField === 'situation') return 'Add the setup first so the rest of the story makes sense right away.';
+                            if (nextMissingField === 'action') return 'Name what you actually did so the story sounds owned and concrete.';
+                            if (nextMissingField === 'lesson') return 'Write the takeaway so this moment becomes reusable in future prompts.';
+                            if (nextMissingField === 'outcome') return 'Capture what changed or improved so the story has a clean finish.';
+                            if (nextMissingField === 'skills') return 'Add one to three skills so this story can travel into resume and statement drafts.';
+                            if (!experience.verified) return 'The core blocks are filled. Add any last proof details, then verify it when it feels solid.';
+                            return 'This one is already strong. Only tighten the label or details if you want a cleaner version later.';
+                        })();
+                        const primaryActionLabel = nextMissingField
+                            ? `Refine ${EVIDENCE_FIELD_LABELS[nextMissingField]}`
+                            : 'Continue story';
 
                         return (
                             <article
@@ -1485,52 +1788,76 @@ export default function PortfolioWorkspace() {
                                         </div>
                                         <div className="flex flex-wrap gap-2">
                                             <TagPill tone={stateTone}>{evidenceFilterLabels[state]}</TagPill>
-                                            <TagPill>{completeness.score}% complete</TagPill>
-                                            <TagPill>{formatRatioPercent(experience.confidence || 0)} confidence</TagPill>
-                                            {experience.verified && <TagPill tone="primary">Verified story</TagPill>}
+                                            <TagPill>{readinessLabel}</TagPill>
                                         </div>
-                                        {completeness.missingFields.length > 0 && (
-                                            <div className="flex flex-wrap gap-2">
-                                                {completeness.missingFields.map((field) => (
-                                                    <TagPill key={field} tone="muted">
-                                                        Missing {EVIDENCE_FIELD_LABELS[field]}
-                                                    </TagPill>
-                                                ))}
-                                            </div>
-                                        )}
+                                        <div className="rounded-[22px] border border-white/10 bg-black/20 p-3">
+                                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Next move</p>
+                                            <p className="mt-2 text-sm font-semibold text-white">{focusTitle}</p>
+                                            <p className="mt-2 text-sm leading-7 text-ink-secondary">{focusDescription}</p>
+                                        </div>
                                     </div>
 
-                                    <div className="grid min-w-[15rem] gap-2 sm:grid-cols-2 lg:w-[18rem] lg:grid-cols-1">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                void toggleVerified(experience);
-                                            }}
-                                            disabled={updatingEntryId === experience.entryId}
-                                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20 disabled:opacity-60"
-                                        >
-                                            <FiCheckCircle size={14} aria-hidden="true" />
-                                            {updatingEntryId === experience.entryId
-                                                ? 'Updating...'
-                                                : experience.verified
-                                                    ? 'Mark Unverified'
-                                                    : 'Verify'}
-                                        </button>
+                                    <div className="grid min-w-[15rem] gap-2 lg:w-[18rem]">
                                         <button
                                             type="button"
                                             onClick={() => startEdit(experience)}
-                                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
                                         >
                                             <FiEdit2 size={14} aria-hidden="true" />
-                                            Edit in Drawer
+                                            {primaryActionLabel}
                                         </button>
-                                        <Link
-                                            href={sourceHref}
-                                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
-                                        >
-                                            <FiArrowRight size={14} aria-hidden="true" />
-                                            Open Source Entry
-                                        </Link>
+
+                                        <details className="rounded-2xl border border-white/10 bg-black/20">
+                                            <summary className="list-none cursor-pointer px-4 py-3 [&::-webkit-details-marker]:hidden">
+                                                <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">Proof details</span>
+                                                <span className="mt-2 block text-sm font-semibold text-white">Show missing blocks, confidence, and source</span>
+                                            </summary>
+                                            <div className="space-y-3 border-t border-white/10 px-4 py-4">
+                                                <div className="flex flex-wrap gap-2">
+                                                    <TagPill>{completeness.score}% complete</TagPill>
+                                                    <TagPill>{formatRatioPercent(experience.confidence || 0)} confidence</TagPill>
+                                                    {experience.verified && <TagPill tone="primary">Verified story</TagPill>}
+                                                    {completeness.missingFields.length === 0 && !experience.verified && (
+                                                        <TagPill tone="primary">Core blocks filled</TagPill>
+                                                    )}
+                                                </div>
+
+                                                {completeness.missingFields.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {completeness.missingFields.map((field) => (
+                                                            <TagPill key={field} tone="muted">
+                                                                Missing {EVIDENCE_FIELD_LABELS[field]}
+                                                            </TagPill>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            void toggleVerified(experience);
+                                                        }}
+                                                        disabled={updatingEntryId === experience.entryId}
+                                                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white disabled:opacity-60"
+                                                    >
+                                                        <FiCheckCircle size={14} aria-hidden="true" />
+                                                        {updatingEntryId === experience.entryId
+                                                            ? 'Updating...'
+                                                            : experience.verified
+                                                                ? 'Mark Unverified'
+                                                                : 'Verify Story'}
+                                                    </button>
+                                                    <Link
+                                                        href={sourceHref}
+                                                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                                    >
+                                                        <FiArrowRight size={14} aria-hidden="true" />
+                                                        Open Source Entry
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        </details>
                                     </div>
                                 </div>
                             </article>
@@ -1557,42 +1884,103 @@ export default function PortfolioWorkspace() {
         const story = activeInterviewStory || stories[0];
         const activeIndex = Math.max(stories.findIndex((item) => item.entryId === story.entryId), 0);
         const experience = activeInterviewExperience;
+        const storyMeta = experienceMetaByEntryId.get(story.entryId) || null;
         const sourceHref = appendReturnTo(`/entry/view?id=${story.entryId}`, currentReturnTo);
         const canGoPrevious = activeIndex > 0;
         const canGoNext = activeIndex < stories.length - 1;
+        const storyCountLabel = `Story ${activeIndex + 1} of ${stories.length}`;
+        const currentInterviewModeLabel = practiceMode
+            ? practiceReveal
+                ? 'Compare mode'
+                : 'Recall mode'
+            : 'Guided mode';
+        const interviewPrimaryAction = practiceMode
+            ? practiceReveal
+                ? {
+                    label: 'Hide scaffold',
+                    description: 'Go back to recall mode and try the same story from memory again.',
+                    onClick: () => setPracticeReveal(false),
+                }
+                : {
+                    label: 'Reveal scaffold',
+                    description: 'Try the answer out loud first, then compare it with the structured STAR version.',
+                    onClick: () => setPracticeReveal(true),
+                }
+            : {
+                label: 'Practice from memory',
+                description: 'Start in recall mode so you can rehearse the story before checking the scaffold.',
+                onClick: () => setPracticeMode(true),
+            };
 
         return (
             <div className="grid gap-6 xl:grid-cols-[290px_minmax(0,1fr)]">
                 <AppPanel className="space-y-4">
                     <SectionHeader
                         kicker="Interview"
-                        title="Interview workspace"
-                        description="Preview one story at a time, then switch into practice mode without losing the source context."
+                        title="Stay with one story at a time"
+                        description="Keep one story in focus. Open the rest only when you want to switch."
                     />
-                    <div className="space-y-2">
-                        {stories.map((item, index) => (
-                            <button
-                                key={item.entryId}
-                                type="button"
-                                onClick={() => setActiveStoryEntryId(item.entryId)}
-                                className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${
-                                    item.entryId === story.entryId
-                                        ? 'border-primary/30 bg-primary/12'
-                                        : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.05]'
-                                }`}
-                            >
-                                <div className="flex items-center justify-between gap-3">
-                                    <div className="min-w-0">
-                                        <p className="truncate text-sm font-semibold text-white">{item.title}</p>
-                                        <p className="mt-1 text-xs uppercase tracking-[0.12em] text-ink-muted">
-                                            Story {index + 1}
-                                        </p>
-                                    </div>
-                                    {experienceMetaByEntryId.get(item.entryId)?.state === 'verified' && <TagPill tone="primary">Verified</TagPill>}
-                                </div>
-                            </button>
-                        ))}
+
+                    <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4">
+                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">{storyCountLabel}</p>
+                        <h3 className="mt-2 text-lg font-semibold text-white">{story.title}</h3>
+                        <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                            {story.result || story.action || story.situation || 'Use this story as your current interview anchor.'}
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                            <TagPill tone={experience?.verified ? 'primary' : 'default'}>
+                                {experience?.verified ? 'Verified source' : 'Needs verification'}
+                            </TagPill>
+                            {storyMeta && <TagPill>{evidenceFilterLabels[storyMeta.state]}</TagPill>}
+                        </div>
                     </div>
+
+                    <button
+                        type="button"
+                        onClick={toggleInterviewStoryPicker}
+                        aria-expanded={showInterviewStoryPicker}
+                        aria-controls="portfolio-interview-story-picker"
+                        className="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                    >
+                        <span className="min-w-0">
+                            <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More stories</span>
+                            <span className="mt-2 block text-base font-semibold text-white">{interviewStoryPickerLabel}</span>
+                            <span className="mt-2 block text-sm leading-7 text-ink-secondary">{interviewStoryPickerDescription}</span>
+                        </span>
+                        <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                            {showInterviewStoryPicker ? <FiX size={16} aria-hidden="true" /> : <FiGrid size={16} aria-hidden="true" />}
+                        </span>
+                    </button>
+
+                    {showInterviewStoryPicker && (
+                        <div id="portfolio-interview-story-picker" className="space-y-2">
+                            {stories.map((item, index) => (
+                                <button
+                                    key={item.entryId}
+                                    type="button"
+                                    onClick={() => {
+                                        setActiveStoryEntryId(item.entryId);
+                                        setShowInterviewStoryPicker(false);
+                                    }}
+                                    className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${
+                                        item.entryId === story.entryId
+                                            ? 'border-primary/30 bg-primary/12'
+                                            : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.05]'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold text-white">{item.title}</p>
+                                            <p className="mt-1 text-xs uppercase tracking-[0.12em] text-ink-muted">
+                                                Story {index + 1}
+                                            </p>
+                                        </div>
+                                        {experienceMetaByEntryId.get(item.entryId)?.state === 'verified' && <TagPill tone="primary">Verified</TagPill>}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </AppPanel>
 
                 <div className="space-y-4">
@@ -1601,51 +1989,88 @@ export default function PortfolioWorkspace() {
                             <div>
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Focused Story</p>
                                 <h2 className="mt-1 text-2xl font-semibold text-white">{story.title}</h2>
-                                <p className="mt-2 text-sm text-ink-secondary">
-                                    Stay with one story at a time, switch into recall mode, then reveal the scaffold when you want to compare.
+                                <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                                    Practice one answer at a time. Compare against the scaffold only when you want a check, not before.
                                 </p>
                             </div>
-                            <ActionBar className="bg-black/20 border-white/10">
-                                <button
-                                    type="button"
-                                    onClick={() => setPracticeMode((value) => !value)}
-                                    aria-pressed={practiceMode}
-                                    className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors ${
-                                        practiceMode ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-white'
-                                    }`}
-                                >
-                                    {practiceMode ? 'Recall First' : 'Guided View'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => canGoPrevious && setActiveStoryEntryId(stories[activeIndex - 1]?.entryId || story.entryId)}
-                                    disabled={!canGoPrevious}
-                                    className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white disabled:opacity-40"
-                                >
-                                    <FiChevronLeft size={14} aria-hidden="true" />
-                                    Prev
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => canGoNext && setActiveStoryEntryId(stories[activeIndex + 1]?.entryId || story.entryId)}
-                                    disabled={!canGoNext}
-                                    className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white disabled:opacity-40"
-                                >
-                                    Next
-                                    <FiChevronRight size={14} aria-hidden="true" />
-                                </button>
-                            </ActionBar>
+                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Current mode</p>
+                                <p className="mt-2 text-sm font-semibold text-white">{currentInterviewModeLabel}</p>
+                            </div>
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                            <TagPill tone={experience?.verified ? 'primary' : 'default'}>
-                                {experience?.verified ? 'Verified source' : 'Needs verification'}
-                            </TagPill>
                             {(experience?.skills || []).slice(0, 4).map((skill) => (
                                 <TagPill key={skill}>{skill}</TagPill>
                             ))}
                             {hasValue(experience?.lesson) && <TagPill tone="muted">{experience?.lesson}</TagPill>}
                         </div>
+
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Best next move</p>
+                            <p className="mt-2 text-sm leading-6 text-white">{interviewPrimaryAction.description}</p>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={interviewPrimaryAction.onClick}
+                            className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-primary/90"
+                        >
+                            {interviewPrimaryAction.label}
+                            <FiArrowRight size={14} aria-hidden="true" />
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={toggleInterviewControls}
+                            aria-expanded={showInterviewControls}
+                            aria-controls="portfolio-interview-controls"
+                            className="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                        >
+                            <span className="min-w-0">
+                                <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More controls</span>
+                                <span className="mt-2 block text-base font-semibold text-white">{interviewControlsLabel}</span>
+                                <span className="mt-2 block text-sm leading-7 text-ink-secondary">{interviewControlsDescription}</span>
+                            </span>
+                            <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                                {showInterviewControls ? <FiX size={16} aria-hidden="true" /> : <FiTool size={16} aria-hidden="true" />}
+                            </span>
+                        </button>
+
+                        {showInterviewControls && (
+                            <div id="portfolio-interview-controls">
+                                <ActionBar className="bg-black/20 border-white/10">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPracticeMode((value) => !value)}
+                                        aria-pressed={practiceMode}
+                                        className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors ${
+                                            practiceMode ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-white'
+                                        }`}
+                                    >
+                                        {practiceMode ? 'Switch to guided' : 'Switch to recall'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => canGoPrevious && setActiveStoryEntryId(stories[activeIndex - 1]?.entryId || story.entryId)}
+                                        disabled={!canGoPrevious}
+                                        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white disabled:opacity-40"
+                                    >
+                                        <FiChevronLeft size={14} aria-hidden="true" />
+                                        Prev
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => canGoNext && setActiveStoryEntryId(stories[activeIndex + 1]?.entryId || story.entryId)}
+                                        disabled={!canGoNext}
+                                        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white disabled:opacity-40"
+                                    >
+                                        Next
+                                        <FiChevronRight size={14} aria-hidden="true" />
+                                    </button>
+                                </ActionBar>
+                            </div>
+                        )}
                     </AppPanel>
 
                     <AppPanel className="space-y-4">
@@ -1713,6 +2138,46 @@ export default function PortfolioWorkspace() {
             ? overview.stats.verifiedCount / overview.stats.experienceCount
             : 0;
         const outputGoals = overview?.profileContext?.outputGoals || [];
+        const lensReadiness = overview?.profileContext?.completionScore || 0;
+        const growthFocus = lensReadiness < 60
+            ? {
+                title: 'Tune your story lens',
+                description: 'Your direction settings are still light. Tightening them will make the rest of the progress view more useful.',
+                actionLabel: 'Tune story lens',
+                actionHref: profileHref,
+                actionView: null as PortfolioView | null,
+            }
+            : evidenceSummary.avgScore < 70
+                ? {
+                    title: 'Strengthen story quality next',
+                    description: `Average story quality is ${evidenceSummary.avgScore}%. Sharpening a few core stories will improve every export and interview answer.`,
+                    actionLabel: 'Open Evidence Queue',
+                    actionHref: null as string | null,
+                    actionView: 'evidence' as PortfolioView,
+                }
+                : verifiedRate < 0.5
+                    ? {
+                        title: 'Verify more proof',
+                        description: `${formatRatioPercent(verifiedRate)} of stories are verified. Moving a few stronger stories into verified proof will make this system steadier.`,
+                        actionLabel: 'Open Evidence Queue',
+                        actionHref: null as string | null,
+                        actionView: 'evidence' as PortfolioView,
+                    }
+                    : (overview?.topSkills?.[0]
+                        ? {
+                            title: `${overview.topSkills[0]} is surfacing most`,
+                            description: 'Your strongest repeated skill is getting clearer. Rehearse or reuse the stories that prove it best.',
+                            actionLabel: 'Open Interview',
+                            actionHref: null as string | null,
+                            actionView: 'interview' as PortfolioView,
+                        }
+                        : {
+                            title: 'Your story system is getting steadier',
+                            description: 'Keep the momentum small and consistent. The main trendline is already giving you a useful read.',
+                            actionLabel: 'Open Stories',
+                            actionHref: null as string | null,
+                            actionView: 'export' as PortfolioView,
+                        });
 
         return (
             <div className="space-y-6">
@@ -1720,8 +2185,8 @@ export default function PortfolioWorkspace() {
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                         <SectionHeader
                             kicker="Progress"
-                            title="Read progress, proof, and direction"
-                            description="Review momentum over time, repeated strengths, and the next place to strengthen your outcome story system."
+                            title="Keep growth readable"
+                            description="Start with one headline read and one main trendline. The deeper panels stay tucked away until you want them."
                         />
                         <ActionBar className="bg-black/20 border-white/10">
                             {(['week', 'month'] as const).map((period) => (
@@ -1742,24 +2207,102 @@ export default function PortfolioWorkspace() {
                         </ActionBar>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                        <StatTile label="Verified Rate" value={formatRatioPercent(verifiedRate)} hint="Share of stories moved into verified proof" tone="primary" />
-                        <StatTile label="Story Quality" value={`${evidenceSummary.avgScore}%`} hint="Average completeness across story parts" />
-                        <StatTile label="Top Skills" value={overview?.topSkills.length || 0} hint="Repeated strengths across stories" />
-                        <StatTile
-                            label="Lens Readiness"
-                            value={`${overview?.profileContext?.completionScore || 0}%`}
-                            hint={overview?.profileContext ? `${formatLabel(overview.profileContext.track)} track` : 'Set your direction'}
-                        />
+                    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)]">
+                        <div className="rounded-[28px] border border-primary/25 bg-primary/12 p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="rounded-2xl border border-primary/30 bg-primary/15 p-3 text-primary">
+                                    <FiTrendingUp size={18} aria-hidden="true" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best next move</p>
+                                    <h3 className="mt-2 text-lg font-semibold text-white">{growthFocus.title}</h3>
+                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">{growthFocus.description}</p>
+                                </div>
+                            </div>
+                            <div className="mt-4">
+                                {growthFocus.actionView ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const targetView = growthFocus.actionView;
+                                            if (!targetView) return;
+                                            switchView(targetView);
+                                        }}
+                                        className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-primary/90"
+                                    >
+                                        {growthFocus.actionLabel}
+                                        <FiArrowRight size={14} aria-hidden="true" />
+                                    </button>
+                                ) : (
+                                    <Link
+                                        href={growthFocus.actionHref || captureHref}
+                                        className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-primary/90"
+                                    >
+                                        {growthFocus.actionLabel}
+                                        <FiArrowRight size={14} aria-hidden="true" />
+                                    </Link>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="rounded-[28px] border border-white/10 bg-black/20 p-4">
+                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current read</p>
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Verified rate</p>
+                                    <p className="mt-2 text-lg font-semibold text-white">{formatRatioPercent(verifiedRate)}</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Story quality</p>
+                                    <p className="mt-2 text-lg font-semibold text-white">{evidenceSummary.avgScore}%</p>
+                                </div>
+                            </div>
+                            <p className="mt-4 text-sm leading-7 text-ink-secondary">
+                                Lens readiness is {lensReadiness}%, and {overview?.topSkills.length || 0} repeated skill{(overview?.topSkills.length || 0) === 1 ? '' : 's'} are surfacing so far.
+                            </p>
+                        </div>
                     </div>
+
+                    <button
+                        type="button"
+                        onClick={toggleGrowthDetails}
+                        aria-expanded={showGrowthDetails}
+                        aria-controls="portfolio-growth-details"
+                        className="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                    >
+                        <span className="min-w-0">
+                            <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More details</span>
+                            <span className="mt-2 block text-base font-semibold text-white">{growthDetailsLabel}</span>
+                            <span className="mt-2 block text-sm leading-7 text-ink-secondary">{growthDetailsDescription}</span>
+                        </span>
+                        <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                            {showGrowthDetails ? <FiX size={16} aria-hidden="true" /> : <FiTool size={16} aria-hidden="true" />}
+                        </span>
+                    </button>
+
+                    {showGrowthDetails && (
+                        <div id="portfolio-growth-details" className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                            <StatTile label="Verified Rate" value={formatRatioPercent(verifiedRate)} hint="Share of stories moved into verified proof" tone="primary" />
+                            <StatTile label="Story Quality" value={`${evidenceSummary.avgScore}%`} hint="Average completeness across story parts" />
+                            <StatTile label="Top Skills" value={overview?.topSkills.length || 0} hint="Repeated strengths across stories" />
+                            <StatTile
+                                label="Lens Readiness"
+                                value={`${overview?.profileContext?.completionScore || 0}%`}
+                                hint={overview?.profileContext ? `${formatLabel(overview.profileContext.track)} track` : 'Set your direction'}
+                            />
+                        </div>
+                    )}
                 </AppPanel>
 
-                <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                <div className={`grid gap-6 ${showGrowthDetails ? 'xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]' : 'xl:grid-cols-1'}`}>
                     <AppPanel className="space-y-5">
                         <div className="flex items-start justify-between gap-3">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Trendline</p>
                                 <h3 className="mt-1 text-xl font-semibold text-white">Momentum across the last six windows</h3>
+                                <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                                    This is the main growth read. Use it first before opening the deeper profile and material panels.
+                                </p>
                             </div>
                             <TagPill tone="primary">
                                 Updated {trends ? formatRelativeTime(trends.points[trends.points.length - 1]?.periodStart || overview?.generatedAt || new Date().toISOString()) : 'recently'}
@@ -1784,7 +2327,7 @@ export default function PortfolioWorkspace() {
                                             </div>
                                             <div className="mt-4 space-y-2">
                                                 <div>
-                                                    <div className="mb-1 flex items-center justify-between text-[11px] uppercase tracking-[0.12em] text-ink-muted">
+                                                    <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-[0.12em] text-ink-muted">
                                                         <span>Entries</span>
                                                         <span>{point.entries}</span>
                                                     </div>
@@ -1793,7 +2336,7 @@ export default function PortfolioWorkspace() {
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <div className="mb-1 flex items-center justify-between text-[11px] uppercase tracking-[0.12em] text-ink-muted">
+                                                    <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-[0.12em] text-ink-muted">
                                                         <span>Verified</span>
                                                         <span>{point.verified}</span>
                                                     </div>
@@ -1816,6 +2359,7 @@ export default function PortfolioWorkspace() {
                         )}
                     </AppPanel>
 
+                    {showGrowthDetails && (
                     <div className="space-y-4">
                         <AppPanel className="space-y-4">
                             <div className="flex items-center gap-2 text-primary">
@@ -1901,6 +2445,7 @@ export default function PortfolioWorkspace() {
                             )}
                         </AppPanel>
                     </div>
+                    )}
                 </div>
             </div>
         );
@@ -1911,13 +2456,127 @@ export default function PortfolioWorkspace() {
 
         const draftCompleteness = getDraftCompleteness(editingDraft);
         const sourceHref = appendReturnTo(`/entry/view?id=${editingExperience.entryId}`, currentReturnTo);
-        const fields: Array<{ field: keyof Draft; label: string; placeholder: string; rows?: number }> = [
-            { field: 'title', label: 'Title', placeholder: 'Give this story a clear label' },
-            { field: 'situation', label: 'Situation', placeholder: 'What context should a reader know first?', rows: 4 },
-            { field: 'action', label: 'Action', placeholder: 'What did you actually do?', rows: 4 },
-            { field: 'outcome', label: 'Outcome', placeholder: 'What changed or improved?', rows: 4 },
-            { field: 'lesson', label: 'Lesson', placeholder: 'What should this story teach or prove?', rows: 4 },
+        const fields: Array<{ field: keyof Draft; label: string; placeholder: string; rows?: number; helper: string }> = [
+            {
+                field: 'title',
+                label: 'Title',
+                placeholder: 'Give this story a clear label',
+                helper: 'Use a short label you will recognize later.',
+            },
+            {
+                field: 'situation',
+                label: 'Situation',
+                placeholder: 'What context should a reader know first?',
+                rows: 4,
+                helper: 'Start with the context so the rest of the story lands faster.',
+            },
+            {
+                field: 'action',
+                label: 'Action',
+                placeholder: 'What did you actually do?',
+                rows: 4,
+                helper: 'Name what you chose or changed so the story sounds owned.',
+            },
+            {
+                field: 'outcome',
+                label: 'Outcome',
+                placeholder: 'What changed or improved?',
+                rows: 4,
+                helper: 'Capture what happened next so the story has a finish.',
+            },
+            {
+                field: 'lesson',
+                label: 'Lesson',
+                placeholder: 'What should this story teach or prove?',
+                rows: 4,
+                helper: 'Write the takeaway that makes this reusable later.',
+            },
+            {
+                field: 'skillsText',
+                label: 'Skills',
+                placeholder: 'communication, leadership, analysis',
+                helper: 'Add one to three skills so this story can travel into exports.',
+            },
+            {
+                field: 'notes',
+                label: 'Verification Notes',
+                placeholder: 'Add evidence notes, metrics, or follow-up proof to verify later.',
+                rows: 4,
+                helper: 'Drop in proof, metrics, or follow-up details before verifying.',
+            },
         ];
+        const fieldConfigByKey = new Map(fields.map((fieldConfig) => [fieldConfig.field, fieldConfig]));
+        const storyFieldOrder: Array<Extract<keyof Draft, 'situation' | 'action' | 'outcome' | 'lesson'>> = ['situation', 'action', 'outcome', 'lesson'];
+        const missingStoryFields = storyFieldOrder.filter((field) => draftCompleteness.missingFields.includes(field as EvidenceField));
+        const recommendedEditorField: keyof Draft = missingStoryFields[0]
+            || (draftCompleteness.missingFields.includes('skills') ? 'skillsText' : !editingExperience.verified ? 'notes' : 'title');
+        const primaryFieldKeySet = new Set<keyof Draft>(['title']);
+
+        primaryFieldKeySet.add(recommendedEditorField);
+        if (missingStoryFields.length > 0) {
+            missingStoryFields.slice(0, 2).forEach((field) => primaryFieldKeySet.add(field));
+        } else if (!draftCompleteness.missingFields.includes('skills') && editingExperience.verified) {
+            primaryFieldKeySet.add('lesson');
+        }
+
+        const primaryFields = fields.filter(({ field }) => primaryFieldKeySet.has(field));
+        const secondaryFields = fields.filter(({ field }) => !primaryFieldKeySet.has(field));
+        const focusFieldLabel = fieldConfigByKey.get(recommendedEditorField)?.label || 'Title';
+        const focusCardTitle = draftCompleteness.missingFields.length > 0
+            ? `Best next block: ${focusFieldLabel}`
+            : !editingExperience.verified
+                ? 'Best next move: add proof or verify'
+                : 'Best next move: polish the story label';
+        const focusCardBody = (() => {
+            if (recommendedEditorField === 'situation') return 'Start with the context so the story has a clear anchor before you polish anything else.';
+            if (recommendedEditorField === 'action') return 'Name the action you actually took so this reads like your story, not just something that happened to you.';
+            if (recommendedEditorField === 'outcome') return 'Capture what changed, improved, or happened next so the story has a clean finish.';
+            if (recommendedEditorField === 'lesson') return 'Write the takeaway this moment proves so it becomes reusable in interviews and exports.';
+            if (recommendedEditorField === 'skillsText') return 'Add one to three skills next so this story can travel into resume and statement drafts.';
+            if (recommendedEditorField === 'notes') return 'Drop in any proof, metric, or follow-up note you would want before marking this story verified.';
+            return 'Give this story a cleaner label so it is easier to find and reuse later.';
+        })();
+        const statusTitle = draftCompleteness.readyForExport
+            ? 'Ready to use'
+            : draftCompleteness.readyForVerification
+                ? 'Almost ready'
+                : `${draftCompleteness.missingFields.length} block${draftCompleteness.missingFields.length === 1 ? '' : 's'} still open`;
+        const renderField = ({
+            field,
+            label,
+            placeholder,
+            rows,
+            helper,
+        }: {
+            field: keyof Draft;
+            label: string;
+            placeholder: string;
+            rows?: number;
+            helper: string;
+        }) => (
+            <label key={field} className="block">
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                    {label}
+                </span>
+                <span className="mb-3 block text-sm leading-6 text-ink-secondary">{helper}</span>
+                {rows ? (
+                    <textarea
+                        value={editingDraft[field]}
+                        rows={rows}
+                        onChange={(event) => updateDraft(editingExperience.entryId, field, event.target.value)}
+                        placeholder={placeholder}
+                        className="min-h-[7rem] w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-ink-muted outline-none transition-colors focus:border-primary/35 focus:bg-white/[0.06]"
+                    />
+                ) : (
+                    <input
+                        value={editingDraft[field]}
+                        onChange={(event) => updateDraft(editingExperience.entryId, field, event.target.value)}
+                        placeholder={placeholder}
+                        className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-ink-muted outline-none transition-colors focus:border-primary/35 focus:bg-white/[0.06]"
+                    />
+                )}
+            </label>
+        );
 
         return (
             <AnimatePresence>
@@ -1980,51 +2639,66 @@ export default function PortfolioWorkspace() {
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
-                                {fields.map(({ field, label, placeholder, rows }) => (
-                                    <label key={field} className="block">
-                                        <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">
-                                            {label}
-                                        </span>
-                                        {rows ? (
-                                            <textarea
-                                                value={editingDraft[field]}
-                                                rows={rows}
-                                                onChange={(event) => updateDraft(editingExperience.entryId, field, event.target.value)}
-                                                placeholder={placeholder}
-                                                className="min-h-[7rem] w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-ink-muted outline-none transition-colors focus:border-primary/35 focus:bg-white/[0.06]"
-                                            />
-                                        ) : (
-                                            <input
-                                                value={editingDraft[field]}
-                                                onChange={(event) => updateDraft(editingExperience.entryId, field, event.target.value)}
-                                                placeholder={placeholder}
-                                                className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-ink-muted outline-none transition-colors focus:border-primary/35 focus:bg-white/[0.06]"
-                                            />
+                            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_240px]">
+                                <div className="rounded-[24px] border border-primary/25 bg-primary/12 p-4">
+                                    <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best next block</p>
+                                    <h3 className="mt-2 text-lg font-semibold text-white">{focusCardTitle}</h3>
+                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">{focusCardBody}</p>
+                                </div>
+
+                                <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
+                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current status</p>
+                                    <p className="mt-2 text-lg font-semibold text-white">{statusTitle}</p>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {draftCompleteness.missingFields.length > 0 ? draftCompleteness.missingFields.map((field) => (
+                                            <TagPill key={field} tone="muted">{EVIDENCE_FIELD_LABELS[field]}</TagPill>
+                                        )) : (
+                                            <TagPill tone="primary">All core blocks filled</TagPill>
                                         )}
-                                    </label>
-                                ))}
+                                    </div>
+                                    <p className="mt-3 text-sm leading-7 text-ink-secondary">
+                                        {editingExperience.verified
+                                            ? 'This story is already verified, so any change here is refinement.'
+                                            : 'Keep this pass short. You can verify after the story and proof feel solid.'}
+                                    </p>
+                                </div>
+                            </div>
 
-                                <label className="block">
-                                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">Skills</span>
-                                    <input
-                                        value={editingDraft.skillsText}
-                                        onChange={(event) => updateDraft(editingExperience.entryId, 'skillsText', event.target.value)}
-                                        placeholder="communication, leadership, analysis"
-                                        className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-ink-muted outline-none transition-colors focus:border-primary/35 focus:bg-white/[0.06]"
-                                    />
-                                </label>
+                            <div className="space-y-4 rounded-[24px] border border-white/10 bg-black/20 p-4">
+                                <div>
+                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Start here</p>
+                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                                        Keep this edit pass short. The highest-value fields stay open first, and the rest of the draft stays tucked away.
+                                    </p>
+                                </div>
+                                <div className="space-y-4">
+                                    {primaryFields.map(renderField)}
+                                </div>
+                            </div>
 
-                                <label className="block">
-                                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">Verification Notes</span>
-                                    <textarea
-                                        value={editingDraft.notes}
-                                        rows={4}
-                                        onChange={(event) => updateDraft(editingExperience.entryId, 'notes', event.target.value)}
-                                        placeholder="Add evidence notes, metrics, or follow-up proof to verify later."
-                                        className="min-h-[7rem] w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-ink-muted outline-none transition-colors focus:border-primary/35 focus:bg-white/[0.06]"
-                                    />
-                                </label>
+                            <div className="space-y-3 rounded-[22px] border border-white/10 bg-black/20 p-3">
+                                <button
+                                    type="button"
+                                    onClick={toggleEditingDetails}
+                                    aria-expanded={showEditingDetails}
+                                    aria-controls="portfolio-evidence-editor-details"
+                                    className="flex w-full items-start justify-between gap-3 rounded-2xl bg-white/[0.02] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                                >
+                                    <span className="min-w-0">
+                                        <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More refinements</span>
+                                        <span className="mt-2 block text-base font-semibold text-white">{editingDetailsLabel}</span>
+                                        <span className="mt-2 block text-sm leading-7 text-ink-secondary">{editingDetailsDescription}</span>
+                                    </span>
+                                    <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                                        {showEditingDetails ? <FiX size={16} aria-hidden="true" /> : <FiTool size={16} aria-hidden="true" />}
+                                    </span>
+                                </button>
+
+                                {showEditingDetails && (
+                                    <div id="portfolio-evidence-editor-details" className="space-y-4 px-1 pb-1">
+                                        {secondaryFields.map(renderField)}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -2067,7 +2741,7 @@ export default function PortfolioWorkspace() {
                                         className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
                                     >
                                         <FiEdit2 size={14} aria-hidden="true" />
-                                        {savingEntryId === editingExperience.entryId ? 'Saving...' : 'Save Changes'}
+                                        {savingEntryId === editingExperience.entryId ? 'Saving...' : 'Save Story'}
                                     </button>
                                 </div>
                             </div>
@@ -2128,6 +2802,20 @@ export default function PortfolioWorkspace() {
 
     const ActiveViewIcon = portfolioViewIcons[activeView];
     const currentWorkspaceLabel = activeView === 'export' ? exportTypeLabels[selectedExportType] : portfolioViewLabels[activeView];
+    const storySnapshotTitle = filterCounts.ready_to_export > 0
+        ? `${filterCounts.ready_to_export} stor${filterCounts.ready_to_export === 1 ? 'y is' : 'ies are'} ready to use`
+        : filterCounts.needs_attention > 0
+            ? `${filterCounts.needs_attention} stor${filterCounts.needs_attention === 1 ? 'y still needs' : 'ies still need'} shaping`
+            : overview.interviewStories.length > 0
+                ? `${overview.interviewStories.length} stor${overview.interviewStories.length === 1 ? 'y is' : 'ies are'} ready to rehearse`
+                : 'The studio is ready for the next note';
+    const storySnapshotDescription = filterCounts.needs_attention > 0
+        ? 'Start with the stories that still need one missing block or one clearer proof detail. The stronger stories can wait.'
+        : filterCounts.ready_to_export > 0
+            ? 'You already have reusable material here. Keep the focus on exporting or lightly polishing instead of reopening everything.'
+            : overview.interviewStories.length > 0
+                ? 'The strongest stories are already taking shape, so this is a good moment to rehearse or export instead of digging for more.'
+                : 'Capture one more note when you want new material. The rest of the studio can stay quiet for now.';
 
     return (
         <div className="space-y-6 px-1 pb-32 pt-2">
@@ -2137,21 +2825,28 @@ export default function PortfolioWorkspace() {
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Stories</p>
-                                <h1 className="mt-1 text-3xl font-semibold text-white">Choose the story job you want to do now</h1>
+                                <h1 className="mt-1 text-3xl font-semibold text-white">Use one story move today</h1>
                                 <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">
-                                    Use one mode at a time: shape a pack, fix missing evidence, rehearse one story, or review growth.
+                                    Start with the clearest next workspace. The rest of the studio stays tucked away until you want it.
                                 </p>
                             </div>
                             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-2 text-xs uppercase tracking-[0.12em] text-ink-muted">
                                 <ActiveViewIcon size={14} aria-hidden="true" />
-                                Current destination: {currentWorkspaceLabel}
+                                Current workspace: {currentWorkspaceLabel}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                            <StatTile label="Ready To Use" value={filterCounts.ready_to_export} hint="Stories you can export now" tone="primary" />
-                            <StatTile label="Need Work" value={filterCounts.needs_attention} hint="Stories missing detail" />
-                            <StatTile label="Practice Deck" value={overview.interviewStories.length} hint="Stories ready to rehearse" />
+                        <div className="rounded-[28px] border border-white/10 bg-black/20 p-4">
+                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Studio snapshot</p>
+                            <h2 className="mt-2 text-lg font-semibold text-white">{storySnapshotTitle}</h2>
+                            <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{storySnapshotDescription}</p>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                <TagPill tone="primary">{filterCounts.ready_to_export} ready to use</TagPill>
+                                <TagPill tone={filterCounts.needs_attention > 0 ? 'muted' : 'default'}>
+                                    {filterCounts.needs_attention} need work
+                                </TagPill>
+                                <TagPill>{overview.interviewStories.length} ready to rehearse</TagPill>
+                            </div>
                         </div>
                     </div>
 
@@ -2162,7 +2857,7 @@ export default function PortfolioWorkspace() {
                                     <FiZap size={18} aria-hidden="true" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Today</p>
+                                    <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best next move</p>
                                     <h2 className="mt-2 text-lg font-semibold text-white">{nextAction.title}</h2>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">{nextAction.description}</p>
                                 </div>
@@ -2171,7 +2866,15 @@ export default function PortfolioWorkspace() {
                                 {nextAction.targetView ? (
                                     <button
                                         type="button"
-                                        onClick={() => switchView(nextAction.targetView!)}
+                                        onClick={() => {
+                                            const targetView = nextAction.targetView;
+                                            if (!targetView) return;
+                                            if (targetView === 'export' && nextAction.targetExportType) {
+                                                void openStudio(nextAction.targetExportType);
+                                                return;
+                                            }
+                                            switchView(targetView);
+                                        }}
                                         className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-primary/90"
                                     >
                                         {nextAction.actionLabel}
@@ -2189,45 +2892,52 @@ export default function PortfolioWorkspace() {
                             </div>
                         </div>
 
-                        <div className="rounded-[28px] border border-white/10 bg-black/20 p-4">
-                            <div className="flex items-start gap-3">
-                                <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-3 text-ink-secondary">
-                                    <FiClock size={18} aria-hidden="true" />
+                        <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                                    <ActiveViewIcon size={16} aria-hidden="true" />
                                 </div>
-                                <div className="min-w-0">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Resume</p>
-                                    {resumeSession ? (
-                                        <>
-                                            <h2 className="mt-2 text-lg font-semibold text-white">{buildResumeLabel(resumeSession)}</h2>
-                                            <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                                Last active {formatRelativeTime(resumeSession.updatedAt)}. Go back to the same mode without setting it up again.
-                                            </p>
-                                        </>
-                                    ) : (
-                                        <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                            As you move through stories, Notive will remember your last view and bring it back here.
-                                        </p>
-                                    )}
-                                </div>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current workspace</p>
+                                <TagPill>{currentWorkspaceLabel}</TagPill>
                             </div>
+                            <p className="mt-3 text-sm leading-7 text-ink-secondary">{currentWorkspaceDescription}</p>
                             {resumeSession && (
-                                <button
-                                    type="button"
-                                    onClick={resumePreviousSession}
-                                    className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
-                                >
-                                    Resume last view
-                                    <FiArrowRight size={14} aria-hidden="true" />
-                                </button>
+                                <div className="mt-4">
+                                    <button
+                                        type="button"
+                                        onClick={resumePreviousSession}
+                                        className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                    >
+                                        Resume last place
+                                        <FiClock size={14} aria-hidden="true" />
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <div className="space-y-3 rounded-[22px] border border-white/10 bg-black/20 p-3">
-                        <p className="px-1 text-xs uppercase tracking-[0.12em] text-ink-muted">Open a destination directly</p>
-                        <div className="grid gap-2 md:grid-cols-4">
+                <div className="space-y-3 rounded-[22px] border border-white/10 bg-black/20 p-3">
+                    <button
+                        type="button"
+                        onClick={toggleWorkspacePicker}
+                        aria-expanded={showWorkspacePicker}
+                        aria-controls="portfolio-workspace-picker"
+                        className="flex w-full items-start justify-between gap-3 rounded-2xl bg-white/[0.02] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                    >
+                        <span className="min-w-0">
+                            <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More destinations</span>
+                            <span className="mt-2 block text-base font-semibold text-white">{workspacePickerLabel}</span>
+                            <span className="mt-2 block text-sm leading-7 text-ink-secondary">{workspacePickerDescription}</span>
+                        </span>
+                        <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                            {showWorkspacePicker ? <FiX size={16} aria-hidden="true" /> : <FiGrid size={16} aria-hidden="true" />}
+                        </span>
+                    </button>
+
+                    {showWorkspacePicker && (
+                        <>
+                        <div id="portfolio-workspace-picker" className="grid gap-2 md:grid-cols-3 xl:grid-cols-5">
                             {[
                                 {
                                     id: 'resume',
@@ -2236,7 +2946,10 @@ export default function PortfolioWorkspace() {
                                     icon: FiFileText,
                                     active: activeView === 'export' && selectedExportType === 'resume',
                                     recommended: recommendedView === 'export' && recommendedExportType === 'resume',
-                                    onClick: () => { void openStudio('resume'); },
+                                    onClick: () => {
+                                        setShowWorkspacePicker(false);
+                                        void openStudio('resume');
+                                    },
                                 },
                                 {
                                     id: 'statement',
@@ -2245,7 +2958,22 @@ export default function PortfolioWorkspace() {
                                     icon: FiBookOpen,
                                     active: activeView === 'export' && selectedExportType === 'statement',
                                     recommended: recommendedView === 'export' && recommendedExportType === 'statement',
-                                    onClick: () => { void openStudio('statement'); },
+                                    onClick: () => {
+                                        setShowWorkspacePicker(false);
+                                        void openStudio('statement');
+                                    },
+                                },
+                                {
+                                    id: 'evidence',
+                                    label: 'Evidence',
+                                    detail: 'Refine and verify',
+                                    icon: FiCheckCircle,
+                                    active: activeView === 'evidence',
+                                    recommended: recommendedView === 'evidence',
+                                    onClick: () => {
+                                        setShowWorkspacePicker(false);
+                                        switchView('evidence');
+                                    },
                                 },
                                 {
                                     id: 'interview',
@@ -2254,7 +2982,10 @@ export default function PortfolioWorkspace() {
                                     icon: FiMessageSquare,
                                     active: activeView === 'interview',
                                     recommended: recommendedView === 'interview',
-                                    onClick: () => switchView('interview'),
+                                    onClick: () => {
+                                        setShowWorkspacePicker(false);
+                                        switchView('interview');
+                                    },
                                 },
                                 {
                                     id: 'growth',
@@ -2263,7 +2994,10 @@ export default function PortfolioWorkspace() {
                                     icon: FiTrendingUp,
                                     active: activeView === 'growth',
                                     recommended: recommendedView === 'growth',
-                                    onClick: () => switchView('growth'),
+                                    onClick: () => {
+                                        setShowWorkspacePicker(false);
+                                        switchView('growth');
+                                    },
                                 },
                             ].map(({ id, label, detail, icon: Icon, active, recommended, onClick }) => (
                                 <button
@@ -2275,47 +3009,39 @@ export default function PortfolioWorkspace() {
                                             ? 'bg-primary text-white shadow-lg shadow-primary/20'
                                             : 'bg-white/[0.02] text-ink-secondary hover:bg-white/[0.05] hover:text-white'
                                     }`}
-                                >
-                                    <span className="inline-flex items-center gap-3">
-                                        <span className={`rounded-xl border p-2 ${active ? 'border-white/20 bg-white/10' : 'border-white/10 bg-white/[0.03]'}`}>
-                                            <Icon size={15} aria-hidden="true" />
-                                        </span>
+                                    >
+                                        <span className="inline-flex items-center gap-3">
+                                            <span className={`rounded-xl border p-2 ${active ? 'border-white/20 bg-white/10' : 'border-white/10 bg-white/[0.03]'}`}>
+                                                <Icon size={15} aria-hidden="true" />
+                                            </span>
                                         <span>
                                             <span className="block text-sm font-semibold">{label}</span>
-                                            <span className="block text-[11px] uppercase tracking-[0.12em] opacity-80">{detail}</span>
+                                            <span className="block text-xs uppercase tracking-[0.12em] opacity-80">{detail}</span>
                                         </span>
                                     </span>
                                     {recommended && (
-                                        <span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${active ? 'bg-white/15' : 'bg-primary/15 text-primary'}`}>
-                                            Next
+                                        <span className={`rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${active ? 'bg-white/15' : 'bg-primary/15 text-primary'}`}>
+                                            Recommended
                                         </span>
                                     )}
                                 </button>
                             ))}
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                            <button
-                                type="button"
-                                onClick={() => switchView('evidence')}
-                                className={`rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors ${
-                                    activeView === 'evidence'
-                                        ? 'border-primary/30 bg-primary/12 text-primary'
-                                        : 'border-white/12 bg-white/[0.03] text-ink-secondary hover:text-white hover:bg-white/[0.06]'
-                                }`}
-                            >
-                                Evidence queue
-                            </button>
-                            {resumeSession && (
-                                <button
-                                    type="button"
-                                    onClick={resumePreviousSession}
-                                    className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.06]"
-                                >
-                                    Resume last place
-                                </button>
-                            )}
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Keep the rest quiet</p>
+                            <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                                {resumeSession
+                                    ? 'Resume last place stays in the card above so this picker can stay focused on destination choices.'
+                                    : 'This picker stays focused on destination choices instead of stacking more actions underneath.'}
+                            </p>
+                            <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                                {recentWorkspaceSummary
+                                    ? `Recent routes: ${recentWorkspaceSummary}.`
+                                    : 'Recent routes will show up here after you move through a few story paths.'}
+                            </p>
                         </div>
-                    </div>
+                        </>
+                    )}
                 </div>
             </AppPanel>
 
@@ -2332,6 +3058,7 @@ export default function PortfolioWorkspace() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -10 }}
                     transition={{ duration: reduceMotion ? 0 : 0.22 }}
+                    id="portfolio-active-mode"
                     className="space-y-6"
                 >
                     {renderActiveMode()}

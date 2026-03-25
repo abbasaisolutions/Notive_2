@@ -55,7 +55,7 @@ export default function FallbackSupportCallout({
             </div>
             {fallback.supportMemory && (
                 <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
-                    <p className="text-[11px] uppercase tracking-[0.12em] text-ink-muted">Why this backup is visible</p>
+                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Why this backup is visible</p>
                     <p className="mt-2 text-sm leading-7 text-white/90">{fallback.supportMemory.summary}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                         {fallback.supportMemory.helpedCount > 0 && (
@@ -73,7 +73,7 @@ export default function FallbackSupportCallout({
             )}
             {fallback.draftStarter && (
                 <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
-                    <p className="text-[11px] uppercase tracking-[0.12em] text-ink-muted">What to say next</p>
+                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">What to say next</p>
                     <p className="mt-2 text-sm leading-7 text-white/90">{fallback.draftStarter}</p>
                     {fallback.mode === 'alternate_contact' && (
                         <button

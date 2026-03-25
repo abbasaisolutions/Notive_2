@@ -234,7 +234,7 @@ export default function SmartPromptNotification() {
 
                     {/* Content */}
                     <div className="flex-1">
-                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/80">
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary/80">
                             {promptPresentation?.eyebrow || 'Good time to write'}
                         </p>
                         <h3 className="text-sm font-medium text-white mb-1">
@@ -243,7 +243,7 @@ export default function SmartPromptNotification() {
                         <p className="text-sm text-ink-secondary mb-2">
                             {promptPresentation?.body || activePrompt.text}
                         </p>
-                        <p className="mb-3 text-[11px] leading-5 text-ink-muted">
+                        <p className="mb-3 text-xs leading-5 text-ink-muted">
                             {promptPresentation?.reason}
                         </p>
 

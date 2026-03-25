@@ -279,7 +279,7 @@ export default function ProgressivePersonalizationPrompt() {
                                 <p className="text-xs uppercase tracking-[0.18em] text-primary/80">{promptPresentation?.eyebrow || 'Help Notive know you'}</p>
                                 <h3 className="text-sm font-semibold text-white mt-1">{promptPresentation?.title || question.prompt}</h3>
                                 <p className="text-xs text-ink-secondary mt-1">{promptPresentation?.helper || question.prompt}</p>
-                                <p className="text-[11px] leading-5 text-ink-muted mt-2">{promptPresentation?.benefit || question.helper}</p>
+                                <p className="text-xs leading-5 text-ink-muted mt-2">{promptPresentation?.benefit || question.helper}</p>
                             </div>
                             <button
                                 type="button"

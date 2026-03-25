@@ -5,16 +5,18 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '@/context/auth-context';
+import { useGamification } from '@/context/gamification-context';
 import { buildProfileContextSummary } from '@/services/profile-context.service';
 import { FiMoreHorizontal } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import {
     filterNavItemsByRole,
     filterNavSectionsByRole,
+    getMobileMainNavItems,
+    getMobileMoreNavSections,
     getProfileReadinessAction,
+    getWorkspaceMaturity,
     isNavItemActive,
-    mobileMainNavItems,
-    mobileMoreNavSections,
     shouldHideGlobalNav,
 } from './nav-config';
 
@@ -22,12 +24,18 @@ export default function MobileNav() {
     const pathname = usePathname();
     const router = useRouter();
     const { user, logout } = useAuth();
+    const { stats } = useGamification();
     const navRef = useRef<HTMLElement | null>(null);
     const [isMoreOpen, setIsMoreOpen] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const mainNavItems = filterNavItemsByRole(mobileMainNavItems, user?.role ?? null);
-    const moreNavSections = filterNavSectionsByRole(mobileMoreNavSections, user?.role ?? null);
     const profileSummary = buildProfileContextSummary(user?.profile ?? null);
+    const workspaceMaturity = getWorkspaceMaturity({
+        role: user?.role ?? null,
+        profile: user?.profile ?? null,
+        totalEntries: stats?.totalEntries ?? 0,
+    });
+    const mainNavItems = filterNavItemsByRole(getMobileMainNavItems(workspaceMaturity), user?.role ?? null);
+    const moreNavSections = filterNavSectionsByRole(getMobileMoreNavSections(workspaceMaturity), user?.role ?? null);
     const readinessAction = getProfileReadinessAction(profileSummary.completionScore);
     const moreSectionItems = useMemo(
         () => moreNavSections.flatMap((section) => section.items),
@@ -154,7 +162,7 @@ export default function MobileNav() {
                         aria-label="More navigation"
                         className="fixed bottom-28 right-6 z-50 w-[260px] rounded-2xl border border-white/15 bg-surface-1/95 p-3 shadow-xl backdrop-blur-xl md:hidden"
                     >
-                        {user && (
+                        {user && workspaceMaturity !== 'new' && (
                             <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-xs uppercase tracking-[0.16em] text-ink-muted">Profile Readiness</p>

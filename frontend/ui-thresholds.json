@@ -1,5 +1,67 @@
 {
   "rawSlateUtilities": 0,
   "tinyTextUtilities": 0,
-  "rawGlassClass": 0
+  "rawGlassClass": 0,
+  "focusRoutes": {
+    "src/app/dashboard/page.tsx": {
+      "linkElements": 16,
+      "buttonElements": 5,
+      "sectionElements": 6,
+      "tinyTextUtilities": 0
+    },
+    "src/app/entry/new/page.tsx": {
+      "linkElements": 0,
+      "buttonElements": 8,
+      "sectionElements": 1,
+      "tinyTextUtilities": 0
+    },
+    "src/app/chat/page.tsx": {
+      "linkElements": 1,
+      "buttonElements": 9,
+      "sectionElements": 0,
+      "tinyTextUtilities": 0
+    },
+    "src/app/import/page.tsx": {
+      "linkElements": 7,
+      "buttonElements": 1,
+      "sectionElements": 0,
+      "tinyTextUtilities": 0
+    },
+    "src/app/insights/page.tsx": {
+      "linkElements": 14,
+      "buttonElements": 13,
+      "sectionElements": 3,
+      "tinyTextUtilities": 0
+    },
+    "src/app/timeline/page.tsx": {
+      "linkElements": 3,
+      "buttonElements": 15,
+      "sectionElements": 1,
+      "tinyTextUtilities": 0
+    },
+    "src/components/import/SocialImportPanel.tsx": {
+      "linkElements": 2,
+      "buttonElements": 6,
+      "sectionElements": 4,
+      "tinyTextUtilities": 0
+    },
+    "src/components/portfolio/PortfolioWorkspace.tsx": {
+      "linkElements": 6,
+      "buttonElements": 34,
+      "sectionElements": 0,
+      "tinyTextUtilities": 0
+    },
+    "src/components/profile/ProfileClient.tsx": {
+      "linkElements": 17,
+      "buttonElements": 3,
+      "sectionElements": 11,
+      "tinyTextUtilities": 0
+    },
+    "src/components/profile/edit/ProfileSettingsEditor.tsx": {
+      "linkElements": 1,
+      "buttonElements": 6,
+      "sectionElements": 0,
+      "tinyTextUtilities": 0
+    }
+  }
 }

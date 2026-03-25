@@ -44,7 +44,7 @@ interface HealthStats {
 const TrendIcon = ({ trend }: { trend: 'improving' | 'declining' | 'stable' }) => {
     if (trend === 'improving') return <FiTrendingUp className="w-3 h-3 text-emerald-400" />;
     if (trend === 'declining') return <FiTrendingDown className="w-3 h-3 text-amber-400" />;
-    return <FiMinus className="w-3 h-3 text-slate-500" />;
+    return <FiMinus className="w-3 h-3 text-ink-muted" />;
 };
 
 export default function GoogleFitConnection() {
@@ -212,17 +212,17 @@ export default function GoogleFitConnection() {
             className="bento-box p-6 relative overflow-hidden h-full flex flex-col"
         >
             {/* Subtle neutral gradient background */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/5 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="health-glow absolute right-0 top-0 h-32 w-32 -translate-y-1/2 translate-x-1/2 rounded-full blur-[60px]" />
 
             {/* Header */}
             <div className="flex items-center justify-between mb-5 relative z-10">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-500/10 flex items-center justify-center">
-                        <FiActivity className="w-5 h-5 text-slate-300" />
+                    <div className="health-icon-well flex h-10 w-10 items-center justify-center rounded-xl">
+                        <FiActivity className="w-5 h-5 text-ink-secondary" />
                     </div>
                     <div>
                         <h3 className="text-lg font-semibold text-white">Google Fit</h3>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">
+                        <p className="health-kicker">
                             {status?.connected ? 'Connected' : 'Health tracking'}
                         </p>
                     </div>
@@ -237,7 +237,7 @@ export default function GoogleFitConnection() {
                         className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-50"
                         title="Sync now"
                     >
-                        <FiRefreshCw className={`w-4 h-4 text-slate-400 ${isSyncing ? 'animate-spin' : ''}`} />
+                        <FiRefreshCw className={`w-4 h-4 text-ink-secondary ${isSyncing ? 'animate-spin' : ''}`} />
                     </motion.button>
                 )}
             </div>
@@ -276,38 +276,38 @@ export default function GoogleFitConnection() {
                         {/* Health Stats - Neutral color scheme */}
                         {healthStats && healthStats.daysWithData > 0 && (
                             <div className="grid grid-cols-3 gap-2">
-                                <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/50 text-center">
-                                    <FiMoon className="w-4 h-4 text-slate-400 mx-auto mb-1" />
+                                <div className="health-stat-card rounded-xl p-3 text-center">
+                                    <FiMoon className="mx-auto mb-1 h-4 w-4 text-ink-secondary" />
                                     <p className="text-base font-semibold text-white">
                                         {healthStats.avgSleepHours?.toFixed(1) || '—'}
                                     </p>
-                                    <p className="text-[9px] text-slate-500 uppercase tracking-wider">Sleep</p>
+                                    <p className="health-kicker">Sleep</p>
                                     <div className="mt-1 flex justify-center">
                                         <TrendIcon trend={healthStats.sleepTrend} />
                                     </div>
                                 </div>
-                                <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/50 text-center">
-                                    <FiActivity className="w-4 h-4 text-slate-400 mx-auto mb-1" />
+                                <div className="health-stat-card rounded-xl p-3 text-center">
+                                    <FiActivity className="mx-auto mb-1 h-4 w-4 text-ink-secondary" />
                                     <p className="text-base font-semibold text-white">
                                         {healthStats.avgSteps ? (healthStats.avgSteps / 1000).toFixed(1) + 'k' : '—'}
                                     </p>
-                                    <p className="text-[9px] text-slate-500 uppercase tracking-wider">Steps</p>
+                                    <p className="health-kicker">Steps</p>
                                     <div className="mt-1 flex justify-center">
                                         <TrendIcon trend={healthStats.activityTrend} />
                                     </div>
                                 </div>
-                                <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/50 text-center">
-                                    <FiHeart className="w-4 h-4 text-slate-400 mx-auto mb-1" />
+                                <div className="health-stat-card rounded-xl p-3 text-center">
+                                    <FiHeart className="mx-auto mb-1 h-4 w-4 text-ink-secondary" />
                                     <p className="text-base font-semibold text-white">
                                         {healthStats.avgHeartRate || '—'}
                                     </p>
-                                    <p className="text-[9px] text-slate-500 uppercase tracking-wider">HR</p>
+                                    <p className="health-kicker">HR</p>
                                 </div>
                             </div>
                         )}
 
                         {/* Connection info */}
-                        <div className="text-[10px] text-slate-500 space-y-0.5 flex-1">
+                        <div className="health-quiet flex-1 space-y-0.5 text-xs">
                             {status.connectedAt && (
                                 <p>Connected: {new Date(status.connectedAt).toLocaleDateString()}</p>
                             )}
@@ -322,7 +322,7 @@ export default function GoogleFitConnection() {
                             whileTap={{ scale: 0.98 }}
                             onClick={handleDisconnect}
                             disabled={isDisconnecting}
-                            className="w-full py-2.5 rounded-xl bg-slate-800/50 hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm border border-slate-700/50 hover:border-red-500/20 mt-auto"
+                            className="health-disconnect-button mt-auto flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-sm transition-all disabled:opacity-50"
                         >
                             <FiSlash className="w-4 h-4" />
                             {isDisconnecting ? 'Disconnecting...' : 'Disconnect Google Fit'}
@@ -332,28 +332,28 @@ export default function GoogleFitConnection() {
                     <div className="space-y-4 flex-1 flex flex-col">
                         {/* Features list - compact */}
                         <div className="space-y-2">
-                            <div className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/30 border border-slate-700/30">
-                                <FiMoon className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                                <span className="text-xs text-slate-300">Sleep duration & quality</span>
+                            <div className="health-note-card flex items-center gap-3 rounded-lg p-2.5">
+                                <FiMoon className="h-4 w-4 flex-shrink-0 text-ink-secondary" />
+                                <span className="text-xs text-ink-secondary">Sleep duration & quality</span>
                             </div>
-                            <div className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/30 border border-slate-700/30">
-                                <FiActivity className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                                <span className="text-xs text-slate-300">Daily steps & activity</span>
+                            <div className="health-note-card flex items-center gap-3 rounded-lg p-2.5">
+                                <FiActivity className="h-4 w-4 flex-shrink-0 text-ink-secondary" />
+                                <span className="text-xs text-ink-secondary">Daily steps & activity</span>
                             </div>
-                            <div className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/30 border border-slate-700/30">
-                                <FiHeart className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                                <span className="text-xs text-slate-300">Heart rate (optional)</span>
+                            <div className="health-note-card flex items-center gap-3 rounded-lg p-2.5">
+                                <FiHeart className="h-4 w-4 flex-shrink-0 text-ink-secondary" />
+                                <span className="text-xs text-ink-secondary">Heart rate (optional)</span>
                             </div>
                         </div>
 
                         {/* Privacy notice */}
-                        <div className="flex items-center gap-2 text-[10px] text-slate-500 px-1">
+                        <div className="health-quiet flex items-center gap-2 px-1 text-xs">
                             <FiShield className="w-3 h-3" />
                             <span>Read-only access • Never shared • Disconnect anytime</span>
                         </div>
 
                         {status?.message && (
-                            <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-300">
+                            <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-ink-secondary">
                                 {status.message}
                             </div>
                         )}
@@ -364,7 +364,7 @@ export default function GoogleFitConnection() {
                             whileTap={{ scale: 0.98 }}
                             onClick={handleConnect}
                             disabled={isConnecting || status?.connectAvailable === false}
-                            className="w-full py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-slate-900/50 mt-auto"
+                            className="health-muted-button mt-auto flex w-full items-center justify-center gap-2 rounded-xl py-3 font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             <FiLink className="w-4 h-4" />
                             {status?.connectAvailable === false ? 'Unavailable Here' : isConnecting ? 'Connecting...' : 'Connect Google Fit'}

@@ -142,7 +142,7 @@ export default function SupportOutcomeStrip({
 
     return (
         <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-ink-muted">Support Loop</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Support Loop</p>
             <p className="mt-2 text-sm font-semibold text-white">{headline}</p>
 
             {status === 'saved' && savedOutcome ? (

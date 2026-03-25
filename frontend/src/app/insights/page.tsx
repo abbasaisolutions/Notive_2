@@ -119,6 +119,9 @@ function InsightsPageContent() {
     const [selectedDrilldownId, setSelectedDrilldownId] = useState<string | null>(
         () => normalizeDrilldown(searchParams.get('drilldown'))
     );
+    const [showDeepInsights, setShowDeepInsights] = useState<boolean>(
+        () => Boolean(normalizeDrilldown(searchParams.get('drilldown')))
+    );
     const [supportMap, setSupportMap] = useState<SupportMapResponse | null>(null);
     const [isSupportLoading, setIsSupportLoading] = useState(true);
     const { analytics, signature, isLoading, error } = useAnalytics(selectedPeriod);
@@ -137,6 +140,9 @@ function InsightsPageContent() {
         const nextDrilldown = normalizeDrilldown(searchParams.get('drilldown'));
         setSelectedPeriod((current) => (current === nextPeriod ? current : nextPeriod));
         setSelectedDrilldownId((current) => (current === nextDrilldown ? current : nextDrilldown));
+        if (nextDrilldown) {
+            setShowDeepInsights(true);
+        }
     }, [searchParams]);
 
     useEffect(() => {
@@ -280,6 +286,32 @@ function InsightsPageContent() {
         `/entry/new?mode=quick&prompt=${encodeURIComponent(activeDrilldownPrompt)}`,
         currentReturnTo
     );
+    const revealDeepInsights = (source: string) => {
+        if (showDeepInsights) return;
+        setShowDeepInsights(true);
+        void trackEvent({
+            eventType: 'insights_deeper_toggled',
+            value: 'opened',
+            metadata: {
+                source,
+                period: selectedPeriod,
+                activeDrilldownId: selectedDrilldownId,
+            },
+        });
+    };
+    const toggleDeepInsights = () => {
+        const nextValue = !showDeepInsights;
+        setShowDeepInsights(nextValue);
+        void trackEvent({
+            eventType: 'insights_deeper_toggled',
+            value: nextValue ? 'opened' : 'closed',
+            metadata: {
+                source: 'toggle',
+                period: selectedPeriod,
+                activeDrilldownId: selectedDrilldownId,
+            },
+        });
+    };
 
     useEffect(() => {
         if (allDrilldowns.length === 0) {
@@ -302,6 +334,7 @@ function InsightsPageContent() {
     }, [allDrilldowns, chartDrilldowns.items, patternDrilldowns.defaultId, patternDrilldowns.items, selectedDrilldownId]);
 
     const selectDrilldown = (drilldown: PatternDrilldown, source: string) => {
+        revealDeepInsights(source);
         setSelectedDrilldownId(drilldown.id);
         void trackEvent({
             eventType: 'pattern_drilldown_selected',
@@ -332,6 +365,33 @@ function InsightsPageContent() {
             actionLabel: `Resume ${NOTIVE_VOICE.surfaces.signalStudio.toLowerCase()}`,
         });
     }, [analytics.totalEntries, currentReturnTo, error, isLoading, selectedPeriod]);
+
+    const hasDeepInsights = patternDigest.supporting.length > 0
+        || allDrilldowns.length > 0
+        || analytics.topThemes.length > 0
+        || heatmapData.length > 0
+        || analytics.moodTrend.length > 0
+        || Boolean(thenNow)
+        || Boolean(supportMap);
+    const insightsOverviewTitle = patternDigest.emotion.direction === 'down'
+        ? 'Recent notes feel heavier'
+        : patternDigest.emotion.direction === 'up'
+            ? 'Recent notes are lifting'
+            : 'Recent notes are staying steady';
+    const insightsOverviewDescription = patternDigest.focus.theme
+        ? `${patternDigest.focus.theme} is the clearest topic in this ${selectedPeriod} view.`
+        : 'A few more notes will make the topic layer easier to read.';
+    const insightsOverviewFootnote = patternDigest.rhythm.bestTime
+        ? `${patternDigest.rhythm.bestTime} is your easiest time to write right now.`
+        : patternDigest.rhythm.bestDay
+            ? `${patternDigest.rhythm.bestDay} is the day your notes show up most often.`
+            : 'Your writing rhythm is still forming, which is normal early on.';
+    const deepInsightsTitle = showDeepInsights
+        ? 'Hide deeper analysis for now'
+        : 'Open deeper analysis when you want more';
+    const deepInsightsDescription = showDeepInsights
+        ? 'Go back to the headline pattern, one chart, and one next prompt.'
+        : 'Topic maps, note evidence, support signals, heatmaps, and change-over-time stay here until you want them.';
 
     if (isLoading) {
         return (
@@ -585,7 +645,66 @@ function InsightsPageContent() {
                     </div>
                 </AppPanel>
 
-                {patternDigest.supporting.length > 0 && (
+                <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
+                    <MoodRiver
+                        data={analytics.moodTrend}
+                        selectedDate={activeChartDate}
+                        onPointSelect={(point) => selectChartDate(point.date, 'mood_river_overview')}
+                    />
+
+                    <AppPanel className="space-y-4">
+                        <SectionHeader
+                            kicker="Quick read"
+                            title={insightsOverviewTitle}
+                            description={insightsOverviewDescription}
+                        />
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Main topic</p>
+                                <p className="mt-2 text-xl font-semibold text-white">
+                                    {patternDigest.focus.theme || 'Still forming'}
+                                </p>
+                                <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                                    {patternDigest.focus.theme
+                                        ? `${patternDigest.focus.noteCount} notes came back to this topic.`
+                                        : 'A few more notes will make the topic layer clearer.'}
+                                </p>
+                            </div>
+                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Main feeling</p>
+                                <p className="mt-2 inline-flex items-center gap-2 text-xl font-semibold text-white">
+                                    <span>{getMoodEmoji(analytics.topMood)}</span>
+                                    <span className="capitalize">{analytics.topMood}</span>
+                                </p>
+                                <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                                    {patternDigest.emotion.averageScore !== null
+                                        ? `Average mood was ${patternDigest.emotion.averageScore}/10 in this ${selectedPeriod} view.`
+                                        : 'Mood details are still forming as you add more notes.'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Keep in mind</p>
+                            <p className="mt-2 text-sm leading-7 text-white">{insightsOverviewFootnote}</p>
+                        </div>
+
+                        {hasDeepInsights && (
+                            <button
+                                type="button"
+                                onClick={toggleDeepInsights}
+                                className="w-full rounded-2xl border border-white/12 bg-white/[0.03] p-4 text-left transition-colors hover:bg-white/[0.05]"
+                            >
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Explore more</p>
+                                <p className="mt-2 text-base font-semibold text-white">{deepInsightsTitle}</p>
+                                <p className="mt-2 text-sm leading-7 text-ink-secondary">{deepInsightsDescription}</p>
+                            </button>
+                        )}
+                    </AppPanel>
+                </section>
+
+                {showDeepInsights && patternDigest.supporting.length > 0 && (
                     <AppPanel className="space-y-4">
                         <SectionHeader
                             kicker="Also worth noticing"
@@ -648,7 +767,7 @@ function InsightsPageContent() {
                     </AppPanel>
                 )}
 
-                {allDrilldowns.length > 0 && activeDrilldown && (
+                {showDeepInsights && allDrilldowns.length > 0 && activeDrilldown && (
                     <AppPanel className="space-y-5">
                         <SectionHeader
                             kicker="Notes behind this pattern"
@@ -718,7 +837,7 @@ function InsightsPageContent() {
                                                 {entry.themes.map((theme) => (
                                                     <span
                                                         key={`${entry.id}-${theme}`}
-                                                        className="rounded-full border border-white/15 bg-black/20 px-2.5 py-1 text-[11px] uppercase tracking-[0.08em] text-ink-secondary"
+                                                        className="rounded-full border border-white/15 bg-black/20 px-2.5 py-1 text-xs uppercase tracking-[0.08em] text-ink-secondary"
                                                     >
                                                         {theme}
                                                     </span>
@@ -751,6 +870,7 @@ function InsightsPageContent() {
                         </div>
                     </AppPanel>
                 )}
+                {showDeepInsights && (
                 <section className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
                     <AppPanel className="space-y-5">
                         <SectionHeader
@@ -866,7 +986,9 @@ function InsightsPageContent() {
                         onDaySelect={(day) => selectChartDate(day.date, 'activity_heatmap')}
                     />
                 </section>
+                )}
 
+                {showDeepInsights && (
                 <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.95fr)]">
                     <MoodRiver
                         data={analytics.moodTrend}
@@ -965,8 +1087,9 @@ function InsightsPageContent() {
                         )}
                     </AppPanel>
                 </section>
+                )}
 
-                {isSupportLoading ? (
+                {showDeepInsights && (isSupportLoading ? (
                     <AppPanel className="space-y-4">
                         <SectionHeader
                             kicker="Support"
@@ -1006,7 +1129,7 @@ function InsightsPageContent() {
                             });
                         }}
                     />
-                )}
+                ))}
 
                 <AppPanel tone="accent" className="space-y-4">
                     <div className="flex items-center gap-3">
@@ -1037,6 +1160,7 @@ function InsightsPageContent() {
                     </div>
                 </AppPanel>
 
+                {showDeepInsights && (
                 <AppPanel className="space-y-4">
                     <SectionHeader
                         kicker="Quick facts"
@@ -1086,6 +1210,7 @@ function InsightsPageContent() {
                         </div>
                     </div>
                 </AppPanel>
+                )}
             </div>
         </div>
     );

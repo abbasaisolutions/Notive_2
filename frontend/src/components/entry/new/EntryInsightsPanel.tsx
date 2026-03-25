@@ -184,7 +184,7 @@ export default function EntryInsightsPanel({
                                         </p>
                                     </div>
                                     {isCheckingDuplicates && (
-                                        <span className="rounded-full border border-white/15 bg-white/[0.04] px-2 py-1 text-[11px] uppercase tracking-[0.08em] text-ink-secondary">
+                                        <span className="rounded-full border border-white/15 bg-white/[0.04] px-2 py-1 text-xs uppercase tracking-[0.08em] text-ink-secondary">
                                             Checking...
                                         </span>
                                     )}
@@ -201,17 +201,17 @@ export default function EntryInsightsPanel({
                                         {duplicateCandidates.map((candidate) => (
                                             <div key={candidate.id} className="rounded-lg border border-white/10 bg-black/25 px-3 py-3">
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                                                    <span className={`rounded-full border px-2 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${
                                                         candidate.duplicateKind === 'near_duplicate'
                                                             ? 'border-primary/35 bg-primary/12 text-primary'
                                                             : 'border-white/15 bg-white/[0.04] text-white'
                                                     }`}>
                                                         {candidate.duplicateKind === 'near_duplicate' ? 'Near duplicate' : 'Written before'}
                                                     </span>
-                                                    <span className="rounded-full border border-white/15 bg-white/[0.04] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-ink-secondary">
+                                                    <span className="rounded-full border border-white/15 bg-white/[0.04] px-2 py-1 text-xs uppercase tracking-[0.12em] text-ink-secondary">
                                                         {Math.round(candidate.relevance * 100)}% match
                                                     </span>
-                                                    <span className="text-[11px] uppercase tracking-[0.12em] text-ink-muted">
+                                                    <span className="text-xs uppercase tracking-[0.12em] text-ink-muted">
                                                         {new Date(candidate.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                                     </span>
                                                 </div>
@@ -219,7 +219,7 @@ export default function EntryInsightsPanel({
                                                 <p className="mt-1 text-xs leading-6 text-ink-secondary">{candidate.contentPreview}</p>
                                                 <div className="mt-2 flex flex-wrap gap-2">
                                                     {candidate.matchReasons.slice(0, 2).map((reason) => (
-                                                        <span key={`${candidate.id}-${reason}`} className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] uppercase tracking-[0.08em] text-ink-secondary">
+                                                        <span key={`${candidate.id}-${reason}`} className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-xs uppercase tracking-[0.08em] text-ink-secondary">
                                                             {reason}
                                                         </span>
                                                     ))}

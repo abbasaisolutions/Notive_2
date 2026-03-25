@@ -20,7 +20,7 @@ export default function RouteHeader() {
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div className="min-w-0 flex-1">
                         <nav aria-label="Breadcrumb" className="min-w-0">
-                        <ol className="flex items-center gap-1.5 text-[11px] text-ink-muted">
+                        <ol className="flex items-center gap-1.5 text-xs text-ink-muted">
                             {routeMeta.breadcrumbs.map((crumb, index) => {
                                 const isLast = index === routeMeta.breadcrumbs.length - 1;
                                 return (

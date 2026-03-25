@@ -8,7 +8,7 @@ import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
 import useContextNavigation from '@/hooks/use-context-navigation';
 import { ActionBar, AppPanel, EmptyState, SectionHeader, TagPill } from '@/components/ui/surface';
-import { FiArrowLeft, FiArrowRight, FiCpu, FiSend } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiChevronDown, FiCpu, FiSend } from 'react-icons/fi';
 import ActionBriefPanel from '@/components/action/ActionBriefPanel';
 import BridgeCard from '@/components/action/BridgeCard';
 import SafetyBanner from '@/components/safety/SafetyBanner';
@@ -68,12 +68,29 @@ export default function ChatPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [coachStatus, setCoachStatus] = useState<CoachStatus | null>(null);
     const [selectedLens, setSelectedLens] = useState<GuidedLens>('clarity');
+    const [requestedLens, setRequestedLens] = useState<GuidedLens | null>(null);
+    const [showLensOptions, setShowLensOptions] = useState(false);
+    const [showStarterOptions, setShowStarterOptions] = useState(false);
     const [isStatusLoading, setIsStatusLoading] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const lens = new URLSearchParams(window.location.search).get('lens');
+        if (
+            lens === 'clarity'
+            || lens === 'memory'
+            || lens === 'growth'
+            || lens === 'patterns'
+            || lens === 'bridge'
+        ) {
+            setRequestedLens(lens);
+        }
+    }, []);
 
     useEffect(() => {
         let mounted = true;
@@ -84,8 +101,12 @@ export default function ChatPage() {
                 const data = await response.json().catch(() => null);
                 if (!mounted || !data) return;
                 setCoachStatus(data);
-                if (data.provider === 'guided_reflection' && typeof data.defaultLens === 'string') {
-                    setSelectedLens(data.defaultLens);
+                if (data.provider === 'guided_reflection') {
+                    if (requestedLens) {
+                        setSelectedLens(requestedLens);
+                    } else if (typeof data.defaultLens === 'string') {
+                        setSelectedLens(data.defaultLens);
+                    }
                 }
             } catch (error) {
                 console.error('Failed to fetch AI Coach status:', error);
@@ -109,7 +130,13 @@ export default function ChatPage() {
         return () => {
             mounted = false;
         };
-    }, [apiFetch]);
+    }, [apiFetch, requestedLens]);
+
+    useEffect(() => {
+        if (requestedLens) {
+            setSelectedLens(requestedLens);
+        }
+    }, [requestedLens]);
 
     const handleSend = async () => {
         if (!input.trim() || isLoading || coachStatus?.available === false) return;
@@ -201,6 +228,10 @@ export default function ChatPage() {
     const guidedLenses = coachStatus?.lenses || [];
     const lensLabelMap = new Map(guidedLenses.map((lens) => [lens.id, lens.label]));
     const selectedLensLabel = lensLabelMap.get(selectedLens) || selectedLens;
+    const selectedLensDefinition = guidedLenses.find((lens) => lens.id === selectedLens);
+    const hasMoreSuggestions = suggestions.length > 2;
+    const starterDeckSuggestions = showStarterOptions ? suggestions.slice(0, 4) : suggestions.slice(0, 2);
+    const quickSuggestionChips = showStarterOptions ? suggestions : suggestions.slice(0, 2);
     const headerDescription = coachMode === 'guided'
         ? selectedLens === 'bridge'
             ? 'Turn a hard conversation into a grounded draft, a smaller talk track, and one human next step.'
@@ -321,7 +352,7 @@ export default function ChatPage() {
                             >
                                 <div className="flex items-start justify-between gap-2">
                                     <div>
-                                        <p className="text-[11px] uppercase tracking-[0.12em] text-ink-muted">{highlight.createdAt}</p>
+                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">{highlight.createdAt}</p>
                                         <p className="mt-1 text-sm font-semibold text-white">{highlight.title || 'Untitled note'}</p>
                                     </div>
                                     <FiArrowRight size={14} className="text-ink-muted" aria-hidden="true" />
@@ -384,11 +415,27 @@ export default function ChatPage() {
                 <AppPanel className="min-h-[60vh]">
                     <div className="space-y-4">
                         {coachMode === 'guided' && (
-                            <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-4 text-sm text-white/85">
-                                <p className="font-medium text-white">This space is running in guided reflection mode.</p>
-                                <p>{coachMessage}</p>
-                                <p>It stays grounded in your own notes, related entries, and fixed reflection prompts instead of open-ended generation.</p>
-                                {guidedLenses.length > 0 && (
+                            <div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-4 text-sm text-white/85">
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                    <div className="max-w-2xl">
+                                        <p className="font-medium text-white">Guided reflection mode</p>
+                                        <h2 className="mt-2 text-xl font-semibold text-white">Current lens: {selectedLensLabel}</h2>
+                                        <p className="mt-2">{selectedLensDefinition?.description || coachMessage}</p>
+                                        <p className="mt-2 text-white/80">It stays grounded in your own notes, related entries, and fixed reflection prompts instead of open-ended generation.</p>
+                                    </div>
+                                    {guidedLenses.length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowLensOptions((current) => !current)}
+                                            className="inline-flex items-center gap-2 self-start rounded-xl border border-white/12 bg-white/[0.05] px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-white/[0.1]"
+                                            aria-expanded={showLensOptions}
+                                        >
+                                            {showLensOptions ? 'Keep this lens' : 'Change lens'}
+                                            <FiChevronDown size={14} className={`transition-transform ${showLensOptions ? 'rotate-180' : ''}`} aria-hidden="true" />
+                                        </button>
+                                    )}
+                                </div>
+                                {showLensOptions && guidedLenses.length > 0 && (
                                     <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-5">
                                         {guidedLenses.map((lens) => {
                                             const active = selectedLens === lens.id;
@@ -396,7 +443,10 @@ export default function ChatPage() {
                                                 <button
                                                     key={lens.id}
                                                     type="button"
-                                                    onClick={() => setSelectedLens(lens.id)}
+                                                    onClick={() => {
+                                                        setSelectedLens(lens.id);
+                                                        setShowLensOptions(false);
+                                                    }}
                                                     className={`rounded-2xl border px-3 py-3 text-left transition-colors ${
                                                         active
                                                             ? 'border-primary/35 bg-primary/15 text-white'
@@ -439,7 +489,7 @@ export default function ChatPage() {
 
                                 {coachAvailable && (
                                     <div className="grid gap-3 md:grid-cols-2">
-                                        {suggestions.slice(0, 4).map((suggestion) => (
+                                        {starterDeckSuggestions.map((suggestion) => (
                                             <button
                                                 key={suggestion}
                                                 type="button"
@@ -457,6 +507,18 @@ export default function ChatPage() {
                                             </button>
                                         ))}
                                     </div>
+                                )}
+
+                                {coachAvailable && hasMoreSuggestions && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowStarterOptions((current) => !current)}
+                                        className="inline-flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-ink-secondary transition-colors hover:bg-white/[0.06] hover:text-white"
+                                        aria-expanded={showStarterOptions}
+                                    >
+                                        {showStarterOptions ? 'Show fewer starters' : 'See more starters'}
+                                        <FiChevronDown size={14} className={`transition-transform ${showStarterOptions ? 'rotate-180' : ''}`} aria-hidden="true" />
+                                    </button>
                                 )}
                             </div>
                         ) : (
@@ -496,29 +558,42 @@ export default function ChatPage() {
                     </div>
                 </AppPanel>
 
-                <ActionBar className="justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
-                            {coachMode === 'guided' ? 'Reflection starters' : 'Suggestions'}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                        {coachAvailable && suggestions.map((suggestion) => (
-                            <button
-                                key={suggestion}
-                                type="button"
-                                onClick={() => handleStarterSelection(suggestion, 'suggestion_chip')}
-                                className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                                    coachMode === 'guided'
-                                        ? 'border-primary/20 bg-primary/10 text-white hover:bg-primary/16'
-                                        : 'border-white/15 bg-white/[0.03] text-ink-secondary hover:text-white hover:bg-white/10'
-                                }`}
-                            >
-                                {suggestion}
-                            </button>
-                        ))}
+                {coachAvailable && messages.length > 0 && (
+                    <ActionBar className="items-start justify-between gap-4">
+                        <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
+                                {coachMode === 'guided' ? 'Try another prompt' : 'Quick starters'}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {quickSuggestionChips.map((suggestion) => (
+                                    <button
+                                        key={suggestion}
+                                        type="button"
+                                        onClick={() => handleStarterSelection(suggestion, 'suggestion_chip')}
+                                        className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                                            coachMode === 'guided'
+                                                ? 'border-primary/20 bg-primary/10 text-white hover:bg-primary/16'
+                                                : 'border-white/15 bg-white/[0.03] text-ink-secondary hover:text-white hover:bg-white/10'
+                                        }`}
+                                    >
+                                        {suggestion}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                </ActionBar>
+                        {hasMoreSuggestions && (
+                            <button
+                                type="button"
+                                onClick={() => setShowStarterOptions((current) => !current)}
+                                className="inline-flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-ink-secondary transition-colors hover:bg-white/[0.06] hover:text-white"
+                                aria-expanded={showStarterOptions}
+                            >
+                                {showStarterOptions ? 'Show fewer' : 'More starters'}
+                                <FiChevronDown size={14} className={`transition-transform ${showStarterOptions ? 'rotate-180' : ''}`} aria-hidden="true" />
+                            </button>
+                        )}
+                    </ActionBar>
+                )}
 
                 <AppPanel className="p-3">
                     <div className="flex gap-3">

@@ -98,6 +98,8 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
     const [modalOpen, setModalOpen] = useState(false);
     const [modalProvider, setModalProvider] = useState<ProviderKey>('instagram');
     const [providerSetupIssues, setProviderSetupIssues] = useState<Partial<Record<ProviderKey, string>>>({});
+    const [showWorkflowDetails, setShowWorkflowDetails] = useState(false);
+    const [showArchiveImport, setShowArchiveImport] = useState(false);
 
     const clearImportQueryParams = useCallback(() => {
         const url = new URL(window.location.href);
@@ -376,6 +378,12 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
         [connections]
     );
     const hasAnyConnected = connectedCount > 0;
+    const workflowSummary = useMemo(() => {
+        if (hasAnyConnected) {
+            return `${connectedCount}/2 connected and ${status?.total || 0} notes currently available in your timeline.`;
+        }
+        return 'Start by connecting Instagram or Facebook so outside memories can move into Notive.';
+    }, [connectedCount, hasAnyConnected, status?.total]);
     const timelineHref = useMemo(() => {
         const source = importResult?.source?.toLowerCase();
         if (source === 'instagram' || source === 'facebook') {
@@ -460,18 +468,28 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                 <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Import Workflow</p>
-                        <h3 className="text-xl font-semibold text-white">Social Memory Connector</h3>
-                        <p className="text-sm text-ink-secondary">Connect accounts, select posts, import to timeline.</p>
+                        <h3 className="text-xl font-semibold text-white">Connect a source</h3>
+                        <p className="text-sm text-ink-secondary">Connect an account, choose memories, and bring them into your timeline.</p>
                     </div>
-                    <button
-                        onClick={() => {
-                            fetchStatus();
-                            fetchProviderReadiness();
-                        }}
-                        className="text-xs px-3 py-2 rounded-lg border border-white/10 text-ink-secondary hover:text-white hover:bg-white/10 transition-colors"
-                    >
-                        Refresh
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowWorkflowDetails((current) => !current)}
+                            className="rounded-lg border border-white/10 px-3 py-2 text-xs text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                            aria-expanded={showWorkflowDetails}
+                        >
+                            {showWorkflowDetails ? 'Hide details' : 'Show details'}
+                        </button>
+                        <button
+                            onClick={() => {
+                                fetchStatus();
+                                fetchProviderReadiness();
+                            }}
+                            className="rounded-lg border border-white/10 px-3 py-2 text-xs text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                        >
+                            Refresh
+                        </button>
+                    </div>
                 </div>
 
                 {importResult && (
@@ -486,33 +504,27 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                     </div>
                 )}
 
-                {status && (
-                    <section className="mb-5">
-                        <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">Current Totals</p>
-                        <div className="grid grid-cols-[repeat(auto-fit,minmax(105px,1fr))] gap-2">
-                            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                                <p className="text-xs text-ink-muted uppercase tracking-[0.06em]">Notive</p>
-                                <p className="text-lg text-white font-semibold">{status.notive}</p>
-                            </div>
-                            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                                <p className="text-xs text-ink-muted uppercase tracking-[0.06em]">Instagram</p>
-                                <p className="text-lg text-white font-semibold">{status.instagram}</p>
-                            </div>
-                            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                                <p className="text-xs text-ink-muted uppercase tracking-[0.06em]">Facebook</p>
-                                <p className="text-lg text-white font-semibold">{status.facebook}</p>
-                            </div>
-                            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                                <p className="text-xs text-ink-muted uppercase tracking-[0.06em]">Total</p>
-                                <p className="text-lg text-white font-semibold">{status.total}</p>
-                            </div>
-                        </div>
-                    </section>
-                )}
+                <section className="mb-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current snapshot</p>
+                    <p className="mt-2 text-sm leading-7 text-white">{workflowSummary}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs text-primary">
+                            {connectedCount}/2 connected
+                        </span>
+                        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-white">
+                            {status?.total || 0} total notes
+                        </span>
+                        {hasAnyConnected && (
+                            <Link href={timelineHref} className="rounded-full border border-white/12 bg-black/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary transition-colors hover:bg-black/30 hover:text-white">
+                                Open {NOTIVE_VOICE.surfaces.memoryAtlas}
+                            </Link>
+                        )}
+                    </div>
+                </section>
 
                 <section className="space-y-5">
                     <div>
-                        <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">Step 1: Connect or Switch Account</p>
+                        <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">Step 1: Connect or switch account</p>
                         <p className="mb-3 text-xs text-ink-secondary">
                             Instagram requires a Professional (Business/Creator) account linked to a Facebook Page.
                         </p>
@@ -522,56 +534,101 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-2">Step 2: Field Mapping</p>
-                        <p className="text-xs text-ink-secondary leading-relaxed">
-                            Imported posts map to entry fields as follows:
-                            <span className="text-white"> title</span> from caption/message,
-                            <span className="text-white"> content</span> from post text,
-                            <span className="text-white"> createdAt</span> from post timestamp,
-                            <span className="text-white"> coverImage</span> from media,
-                            <span className="text-white"> source/externalId</span> for duplicate prevention.
-                        </p>
-                    </div>
+                    {showWorkflowDetails && (
+                        <>
+                            {status && (
+                                <section>
+                                    <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">Current totals</p>
+                                    <div className="grid grid-cols-[repeat(auto-fit,minmax(105px,1fr))] gap-2">
+                                        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                                            <p className="text-xs text-ink-muted uppercase tracking-[0.06em]">Notive</p>
+                                            <p className="text-lg text-white font-semibold">{status.notive}</p>
+                                        </div>
+                                        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                                            <p className="text-xs text-ink-muted uppercase tracking-[0.06em]">Instagram</p>
+                                            <p className="text-lg text-white font-semibold">{status.instagram}</p>
+                                        </div>
+                                        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                                            <p className="text-xs text-ink-muted uppercase tracking-[0.06em]">Facebook</p>
+                                            <p className="text-lg text-white font-semibold">{status.facebook}</p>
+                                        </div>
+                                        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                                            <p className="text-xs text-ink-muted uppercase tracking-[0.06em]">Total</p>
+                                            <p className="text-lg text-white font-semibold">{status.total}</p>
+                                        </div>
+                                    </div>
+                                </section>
+                            )}
 
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-2">Step 3: Verify in {NOTIVE_VOICE.surfaces.memoryAtlas}</p>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs text-ink-secondary">
-                                After import, open {NOTIVE_VOICE.surfaces.memoryAtlas.toLowerCase()} and filter or search imported memories.
-                            </span>
-                            <Link href={timelineHref} className="rounded-lg border border-primary/30 bg-primary/15 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-primary">
-                                Open {NOTIVE_VOICE.surfaces.memoryAtlas}
-                            </Link>
-                        </div>
-                    </div>
+                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">Step 2: Field mapping</p>
+                                <p className="text-xs leading-relaxed text-ink-secondary">
+                                    Imported posts map to entry fields as follows:
+                                    <span className="text-white"> title</span> from caption or message,
+                                    <span className="text-white"> content</span> from post text,
+                                    <span className="text-white"> createdAt</span> from the post timestamp,
+                                    <span className="text-white"> coverImage</span> from media, and
+                                    <span className="text-white"> source/externalId</span> for duplicate prevention.
+                                </p>
+                            </div>
+
+                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">Step 3: Review in {NOTIVE_VOICE.surfaces.memoryAtlas}</p>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-xs text-ink-secondary">
+                                        After import, open {NOTIVE_VOICE.surfaces.memoryAtlas.toLowerCase()} and filter or search imported memories.
+                                    </span>
+                                    <Link href={timelineHref} className="rounded-lg border border-primary/30 bg-primary/15 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-primary">
+                                        Open {NOTIVE_VOICE.surfaces.memoryAtlas}
+                                    </Link>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </section>
 
                 <section className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-2">Archive Import (Optional)</p>
-                    {archiveError && <p className="mb-2 text-xs text-ink-secondary">{archiveError}</p>}
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-2">
-                        <label className="cursor-pointer rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.08em] text-white">
-                            {isArchiveImporting ? 'Importing...' : 'Instagram ZIP/JSON'}
-                            <input
-                                type="file"
-                                accept=".zip,.json,application/zip,application/json"
-                                onChange={onArchiveFileChange('instagram')}
-                                disabled={isArchiveImporting}
-                                className="hidden"
-                            />
-                        </label>
-                        <label className="cursor-pointer rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.08em] text-white">
-                            {isArchiveImporting ? 'Importing...' : 'Facebook ZIP/JSON'}
-                            <input
-                                type="file"
-                                accept=".zip,.json,application/zip,application/json"
-                                onChange={onArchiveFileChange('facebook')}
-                                disabled={isArchiveImporting}
-                                className="hidden"
-                            />
-                        </label>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Archive import</p>
+                            <p className="mt-1 text-sm text-ink-secondary">Upload a ZIP or JSON export only if direct connection is not the easiest route.</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowArchiveImport((current) => !current)}
+                            className="rounded-lg border border-white/10 px-3 py-2 text-xs text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                            aria-expanded={showArchiveImport}
+                        >
+                            {showArchiveImport ? 'Hide upload tools' : 'Show upload tools'}
+                        </button>
                     </div>
+                    {showArchiveImport && (
+                        <div className="mt-4">
+                            {archiveError && <p className="mb-2 text-xs text-ink-secondary">{archiveError}</p>}
+                            <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-2">
+                                <label className="cursor-pointer rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.08em] text-white">
+                                    {isArchiveImporting ? 'Importing...' : 'Instagram ZIP/JSON'}
+                                    <input
+                                        type="file"
+                                        accept=".zip,.json,application/zip,application/json"
+                                        onChange={onArchiveFileChange('instagram')}
+                                        disabled={isArchiveImporting}
+                                        className="hidden"
+                                    />
+                                </label>
+                                <label className="cursor-pointer rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.08em] text-white">
+                                    {isArchiveImporting ? 'Importing...' : 'Facebook ZIP/JSON'}
+                                    <input
+                                        type="file"
+                                        accept=".zip,.json,application/zip,application/json"
+                                        onChange={onArchiveFileChange('facebook')}
+                                        disabled={isArchiveImporting}
+                                        className="hidden"
+                                    />
+                                </label>
+                            </div>
+                        </div>
+                    )}
                 </section>
 
                 <div className="mt-4 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-ink-secondary">

@@ -86,14 +86,14 @@ export default function TimelineView({ entries, seasonAnchorsByMonthKey = {} }: 
                             className="sticky top-4 z-20 mb-5 pl-11 md:top-6 md:mb-6 md:flex md:justify-center md:pl-0"
                         >
                             <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-white/15 bg-surface-1/85 px-3 py-2 shadow-lg shadow-black/20 backdrop-blur-xl">
-                                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
+                                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-white">
                                     {group.label}
                                 </span>
-                                <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-secondary">
+                                <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-ink-secondary">
                                     {group.count}
                                 </span>
                                 {season && (
-                                    <span className="rounded-full border border-primary/30 bg-primary/12 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
+                                    <span className="rounded-full border border-primary/30 bg-primary/12 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-primary">
                                         {season.title}
                                     </span>
                                 )}

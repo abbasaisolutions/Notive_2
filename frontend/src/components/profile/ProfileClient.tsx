@@ -76,6 +76,8 @@ export default function ProfileClient() {
     const { logout } = useAuth();
     const { stats, refreshStats } = useGamification();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [showMeDetails, setShowMeDetails] = useState(false);
+    const [showSettingsDetails, setShowSettingsDetails] = useState(false);
     const socialImportSectionRef = useRef<HTMLElement | null>(null);
     const panelQuery = searchParams.get('panel');
     const activeView: 'me' | 'settings' = searchParams.get('view') === 'settings' || panelQuery === 'social-import' ? 'settings' : 'me';
@@ -87,6 +89,7 @@ export default function ProfileClient() {
 
     useEffect(() => {
         if (panelQuery === 'social-import') {
+            setShowSettingsDetails(true);
             socialImportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }, [panelQuery]);
@@ -123,6 +126,24 @@ export default function ProfileClient() {
     const meViewHref = '/profile';
     const continueSetupHref = hasCompletedSetup ? '/profile/edit?tab=preferences' : '/onboarding?returnTo=%2Fprofile%3Fview%3Dsettings';
     const supportPreferences = getPinnedSupportPreferences(safeUser.profile?.personalizationSignals);
+    const supportAnchorCount = supportPreferences.pinnedPeople.length + supportPreferences.groundingRoutines.length + supportPreferences.trustedContacts.length;
+    const leadSupportContact = supportPreferences.trustedContacts[0]?.name || supportPreferences.pinnedPeople[0] || null;
+    const supportSummary = leadSupportContact
+        ? `${leadSupportContact} is ready to help when a note gets heavier than expected.`
+        : supportPreferences.groundingRoutines[0]
+            ? `Grounding routine saved: ${supportPreferences.groundingRoutines[0]}.`
+            : 'Add a trusted contact or one steady routine so Bridge Builder has a safer fallback.';
+    const settingsNextAction = hasCompletedSetup
+        ? {
+            href: '/profile/edit?tab=preferences',
+            label: 'Tune prompts',
+            description: 'Adjust goals, writing style, and starter prompts without opening every settings panel.',
+        }
+        : {
+            href: continueSetupHref,
+            label: 'Finish setup',
+            description: 'Complete the basics that shape prompts, imports, and support across the app.',
+        };
     const highlights = [
         safeUser.profile?.primaryGoal,
         safeUser.profile?.focusArea,
@@ -182,10 +203,7 @@ export default function ProfileClient() {
                                     Completion {profileSummary.completionScore}%
                                 </span>
                                 <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white">
-                                    Personal {profileSummary.personalGrowthScore}%
-                                </span>
-                                <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white">
-                                    Professional {profileSummary.professionalReadinessScore}%
+                                    {hasCompletedSetup ? 'Setup complete' : 'Setup in progress'}
                                 </span>
                                 {isAdminUser && (
                                     <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white">
@@ -249,7 +267,7 @@ export default function ProfileClient() {
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <p className="text-sm font-semibold text-white">{card.label}</p>
                                                     {!hasCompletedSetup && card.label === 'Finish Setup' && (
-                                                        <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
+                                                        <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-primary">
                                                             Required
                                                         </span>
                                                     )}
@@ -264,6 +282,25 @@ export default function ProfileClient() {
 
                         <div className="space-y-6">
                             <section className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6">
+                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Recommended next move</p>
+                                <h2 className="mt-2 text-2xl font-serif text-white">{settingsNextAction.label}</h2>
+                                <p className="mt-2 text-sm leading-7 text-ink-secondary">{settingsNextAction.description}</p>
+                                <div className="mt-5 flex flex-wrap gap-3">
+                                    <Link href={settingsNextAction.href} className="rounded-[1.1rem] border border-primary/25 bg-primary/12 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/20">
+                                        {settingsNextAction.label}
+                                    </Link>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowSettingsDetails((current) => !current)}
+                                        className="rounded-[1.1rem] border border-white/12 bg-black/20 px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:bg-black/30 hover:text-white"
+                                        aria-expanded={showSettingsDetails}
+                                    >
+                                        {showSettingsDetails ? 'Hide more settings' : 'Show more settings'}
+                                    </button>
+                                </div>
+                            </section>
+
+                            <section className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6">
                                 <div className="flex items-center gap-4">
                                     <div className="h-16 w-16 rounded-[1.25rem] bg-gradient-to-br from-primary via-accent to-secondary p-1">
                                         <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[1.1rem] bg-surface-1 text-xl font-serif text-white">
@@ -277,44 +314,48 @@ export default function ProfileClient() {
                                 </div>
                             </section>
 
-                            <section ref={socialImportSectionRef} id="social-import" className="scroll-mt-28">
-                                <SocialImportPanel returnToPath="/profile?view=settings&panel=social-import" />
-                            </section>
+                            {showSettingsDetails && (
+                                <>
+                                    <section ref={socialImportSectionRef} id="social-import" className="scroll-mt-28">
+                                        <SocialImportPanel returnToPath="/profile?view=settings&panel=social-import" />
+                                    </section>
 
-                            {isAdminUser && (
-                                <section className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div>
-                                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Admin Access</p>
-                                            <h2 className="mt-2 text-2xl font-serif text-white">{adminRoleLabel} Workspace</h2>
-                                            <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                                Review user health, troubleshoot onboarding and import blockers, and support moderation from one workspace.
-                                            </p>
+                                    {isAdminUser && (
+                                        <section className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div>
+                                                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Admin Access</p>
+                                                    <h2 className="mt-2 text-2xl font-serif text-white">{adminRoleLabel} Workspace</h2>
+                                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                                                        Review user health, troubleshoot onboarding and import blockers, and support moderation from one workspace.
+                                                    </p>
+                                                </div>
+                                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+                                                    <FiShield size={18} aria-hidden="true" />
+                                                </div>
+                                            </div>
+                                            <Link href="/admin" className="mt-5 inline-flex items-center gap-2 rounded-[1.1rem] border border-primary/25 bg-primary/12 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/20">
+                                                <FiShield size={16} aria-hidden="true" />
+                                                Open Admin Workspace
+                                            </Link>
+                                        </section>
+                                    )}
+
+                                    <section className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6">
+                                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Session</p>
+                                        <h2 className="mt-2 text-2xl font-serif text-white">Sign out or switch tasks</h2>
+                                        <div className="mt-5 flex flex-wrap gap-3">
+                                            <Link href={meViewHref} className="rounded-[1.1rem] border border-white/12 bg-black/20 px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:bg-black/30 hover:text-white">
+                                                Back to Me
+                                            </Link>
+                                            <button type="button" onClick={handleLogout} disabled={isLoggingOut} className="inline-flex items-center gap-2 rounded-[1.1rem] border border-white/12 bg-black/20 px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:bg-black/30 hover:text-white disabled:opacity-60">
+                                                <FiLogOut size={16} aria-hidden="true" />
+                                                {isLoggingOut ? 'Logging out...' : 'Log Out'}
+                                            </button>
                                         </div>
-                                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
-                                            <FiShield size={18} aria-hidden="true" />
-                                        </div>
-                                    </div>
-                                    <Link href="/admin" className="mt-5 inline-flex items-center gap-2 rounded-[1.1rem] border border-primary/25 bg-primary/12 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/20">
-                                        <FiShield size={16} aria-hidden="true" />
-                                        Open Admin Workspace
-                                    </Link>
-                                </section>
+                                    </section>
+                                </>
                             )}
-
-                            <section className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6">
-                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Session</p>
-                                <h2 className="mt-2 text-2xl font-serif text-white">Sign out or switch tasks</h2>
-                                <div className="mt-5 flex flex-wrap gap-3">
-                                    <Link href={meViewHref} className="rounded-[1.1rem] border border-white/12 bg-black/20 px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:bg-black/30 hover:text-white">
-                                        Back to Me
-                                    </Link>
-                                    <button type="button" onClick={handleLogout} disabled={isLoggingOut} className="inline-flex items-center gap-2 rounded-[1.1rem] border border-white/12 bg-black/20 px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:bg-black/30 hover:text-white disabled:opacity-60">
-                                        <FiLogOut size={16} aria-hidden="true" />
-                                        {isLoggingOut ? 'Logging out...' : 'Log Out'}
-                                    </button>
-                                </div>
-                            </section>
                         </div>
                     </div>
                 ) : (
@@ -354,7 +395,7 @@ export default function ProfileClient() {
                                 </div>
                             </div>
 
-                            {earnedBadges.length > 0 && (
+                            {earnedBadges.length > 0 && showMeDetails && (
                                 <div className="mt-8 border-t border-white/10 pt-6">
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-xl font-serif text-white">Achievements</h3>
@@ -413,94 +454,111 @@ export default function ProfileClient() {
                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Support</p>
                                 <h2 className="mt-2 text-2xl font-serif text-white">Anchors you chose</h2>
                                 <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                    Keep trusted contacts, steady routines, and safety preferences visible so Notive can lean on them when a note does not clearly name what helps.
+                                    {supportSummary}
                                 </p>
-                                {supportPreferences.pinnedPeople.length === 0 && supportPreferences.groundingRoutines.length === 0 && supportPreferences.trustedContacts.length === 0 ? (
-                                    <div className="mt-5 rounded-2xl border border-dashed border-white/12 bg-black/20 p-4 text-sm leading-7 text-ink-secondary">
-                                        Nothing pinned yet. Add a trusted contact, one steadying routine, or a safety preference in Data settings to give Bridge Builder a safer fallback.
-                                    </div>
-                                ) : (
-                                    <div className="mt-5 space-y-4">
-                                        {supportPreferences.trustedContacts.length > 0 && (
-                                            <div>
-                                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Trusted Contacts</p>
-                                                <div className="mt-3 grid gap-3">
-                                                    {supportPreferences.trustedContacts.map((contact) => (
-                                                        <div key={contact.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                                            <div className="flex flex-wrap items-center gap-2">
-                                                                {contact.isPrimary && (
-                                                                    <span className="rounded-full border border-amber-300/25 bg-amber-200/[0.08] px-3 py-1 text-xs text-white">
-                                                                        Primary
-                                                                    </span>
-                                                                )}
-                                                                <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-ink-secondary">
-                                                                    {contact.channel === 'in_person' ? 'In person' : contact.channel === 'call' ? 'Call' : 'Text'}
-                                                                </span>
-                                                                {contact.relationship && (
-                                                                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-ink-secondary">
-                                                                        {contact.relationship}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <p className="mt-3 text-sm font-semibold text-white">{contact.name}</p>
-                                                            {contact.note && (
-                                                                <p className="mt-1 text-sm leading-6 text-ink-secondary">{contact.note}</p>
-                                                            )}
-                                                            {(contact.phoneNumber || contact.emailAddress) && (
-                                                                <div className="mt-2 flex flex-wrap gap-2">
-                                                                    {contact.phoneNumber && (
-                                                                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-ink-secondary">
-                                                                            Text / call ready
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white">
+                                        {supportPreferences.trustedContacts.length} contact{supportPreferences.trustedContacts.length === 1 ? '' : 's'}
+                                    </span>
+                                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white">
+                                        {supportPreferences.groundingRoutines.length} routine{supportPreferences.groundingRoutines.length === 1 ? '' : 's'}
+                                    </span>
+                                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white">
+                                        {supportAnchorCount} anchor{supportAnchorCount === 1 ? '' : 's'}
+                                    </span>
+                                </div>
+                                {showMeDetails ? (
+                                    supportPreferences.pinnedPeople.length === 0 && supportPreferences.groundingRoutines.length === 0 && supportPreferences.trustedContacts.length === 0 ? (
+                                        <div className="mt-5 rounded-2xl border border-dashed border-white/12 bg-black/20 p-4 text-sm leading-7 text-ink-secondary">
+                                            Nothing pinned yet. Add a trusted contact, one steadying routine, or a safety preference in Data settings to give Bridge Builder a safer fallback.
+                                        </div>
+                                    ) : (
+                                        <div className="mt-5 space-y-4">
+                                            {supportPreferences.trustedContacts.length > 0 && (
+                                                <div>
+                                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Trusted Contacts</p>
+                                                    <div className="mt-3 grid gap-3">
+                                                        {supportPreferences.trustedContacts.map((contact) => (
+                                                            <div key={contact.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                    {contact.isPrimary && (
+                                                                        <span className="rounded-full border border-amber-300/25 bg-amber-200/[0.08] px-3 py-1 text-xs text-white">
+                                                                            Primary
                                                                         </span>
                                                                     )}
-                                                                    {contact.emailAddress && (
+                                                                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-ink-secondary">
+                                                                        {contact.channel === 'in_person' ? 'In person' : contact.channel === 'call' ? 'Call' : 'Text'}
+                                                                    </span>
+                                                                    {contact.relationship && (
                                                                         <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-ink-secondary">
-                                                                            Email ready
+                                                                            {contact.relationship}
                                                                         </span>
                                                                     )}
                                                                 </div>
-                                                            )}
-                                                        </div>
-                                                    ))}
+                                                                <p className="mt-3 text-sm font-semibold text-white">{contact.name}</p>
+                                                                {contact.note && (
+                                                                    <p className="mt-1 text-sm leading-6 text-ink-secondary">{contact.note}</p>
+                                                                )}
+                                                                {(contact.phoneNumber || contact.emailAddress) && (
+                                                                    <div className="mt-2 flex flex-wrap gap-2">
+                                                                        {contact.phoneNumber && (
+                                                                            <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-ink-secondary">
+                                                                                Text / call ready
+                                                                            </span>
+                                                                        )}
+                                                                        {contact.emailAddress && (
+                                                                            <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-ink-secondary">
+                                                                                Email ready
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
-                                        {supportPreferences.pinnedPeople.length > 0 && (
+                                            )}
+                                            {supportPreferences.pinnedPeople.length > 0 && (
+                                                <div>
+                                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Trusted People</p>
+                                                    <div className="mt-2 flex flex-wrap gap-2">
+                                                        {supportPreferences.pinnedPeople.map((item) => (
+                                                            <span key={item} className="rounded-full border border-amber-300/25 bg-amber-200/[0.08] px-3 py-1.5 text-xs text-white">
+                                                                {item}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {supportPreferences.groundingRoutines.length > 0 && (
+                                                <div>
+                                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Grounding Routines</p>
+                                                    <div className="mt-2 flex flex-wrap gap-2">
+                                                        {supportPreferences.groundingRoutines.map((item) => (
+                                                            <span key={item} className="rounded-full border border-emerald-300/25 bg-emerald-300/[0.08] px-3 py-1.5 text-xs text-white">
+                                                                {item}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                             <div>
-                                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Trusted People</p>
-                                                <div className="mt-2 flex flex-wrap gap-2">
-                                                    {supportPreferences.pinnedPeople.map((item) => (
-                                                        <span key={item} className="rounded-full border border-amber-300/25 bg-amber-200/[0.08] px-3 py-1.5 text-xs text-white">
-                                                            {item}
-                                                        </span>
-                                                    ))}
+                                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Safety Region</p>
+                                                <div className="mt-2">
+                                                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white">
+                                                        {supportPreferences.safetyRegion === 'us'
+                                                            ? 'United States resources'
+                                                            : supportPreferences.safetyRegion === 'intl'
+                                                                ? 'Local / international resources'
+                                                                : 'Auto detect from profile location'}
+                                                    </span>
                                                 </div>
-                                            </div>
-                                        )}
-                                        {supportPreferences.groundingRoutines.length > 0 && (
-                                            <div>
-                                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Grounding Routines</p>
-                                                <div className="mt-2 flex flex-wrap gap-2">
-                                                    {supportPreferences.groundingRoutines.map((item) => (
-                                                        <span key={item} className="rounded-full border border-emerald-300/25 bg-emerald-300/[0.08] px-3 py-1.5 text-xs text-white">
-                                                            {item}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                        <div>
-                                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Safety Region</p>
-                                            <div className="mt-2">
-                                                <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white">
-                                                    {supportPreferences.safetyRegion === 'us'
-                                                        ? 'United States resources'
-                                                        : supportPreferences.safetyRegion === 'intl'
-                                                            ? 'Local / international resources'
-                                                            : 'Auto detect from profile location'}
-                                                </span>
                                             </div>
                                         </div>
+                                    )
+                                ) : (
+                                    <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-7 text-ink-secondary">
+                                        Keep this section tucked away until you need contact details, routines, or safety region settings.
                                     </div>
                                 )}
                                 <div className="mt-5 flex flex-wrap gap-3">
@@ -510,6 +568,14 @@ export default function ProfileClient() {
                                     <Link href="/chat?lens=bridge" className="rounded-[1.1rem] border border-white/12 bg-black/20 px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:bg-black/30 hover:text-white">
                                         Open Bridge Builder
                                     </Link>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowMeDetails((current) => !current)}
+                                        className="rounded-[1.1rem] border border-white/12 bg-black/20 px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:bg-black/30 hover:text-white"
+                                        aria-expanded={showMeDetails}
+                                    >
+                                        {showMeDetails ? 'Hide profile details' : 'Show profile details'}
+                                    </button>
                                 </div>
                             </section>
 

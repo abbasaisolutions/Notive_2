@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { buildProfileContextSummary, type ProfileContextSource } from '@/services/profile-context.service';
 import {
     FiBookOpen,
     FiBriefcase,
@@ -30,6 +31,7 @@ export type NavSection = {
 };
 
 export type JourneyStageId = 'capture' | 'organize' | 'reflect' | 'apply' | 'account';
+export type WorkspaceMaturity = 'new' | 'growing' | 'power';
 
 export type BreadcrumbItem = {
     label: string;
@@ -74,19 +76,29 @@ const icons = {
     admin: <FiShield aria-hidden="true" />,
 };
 
+const homeNavItem: NavItem = { href: '/dashboard', label: 'Home', shortLabel: 'Home', icon: icons.home, matchPrefixes: ['/dashboard'] };
+const writeNavItem: NavItem = { href: '/entry/new', label: 'Write', shortLabel: 'Write', icon: icons.write, isMain: true, matchPrefixes: ['/entry/new', '/entry/edit'] };
+const memoriesNavItem: NavItem = { href: '/timeline', label: 'Memories', shortLabel: 'Memories', icon: icons.memories, matchPrefixes: ['/timeline'] };
+const patternsNavItem: NavItem = { href: '/insights', label: 'Patterns', shortLabel: 'Patterns', icon: icons.insights, matchPrefixes: ['/insights'] };
+const groupsNavItem: NavItem = { href: '/chapters', label: 'Groups', shortLabel: 'Groups', icon: icons.chapters, matchPrefixes: ['/chapters'] };
+const importsNavItem: NavItem = { href: '/import', label: 'Imports', shortLabel: 'Imports', icon: icons.imports, matchPrefixes: ['/import'] };
+const storiesNavItem: NavItem = { href: '/portfolio', label: 'Stories', shortLabel: 'Stories', icon: icons.stories, matchPrefixes: ['/portfolio', '/legacy'] };
+const profileNavItem: NavItem = { href: '/profile', label: 'Me', shortLabel: 'Me', icon: icons.profile, matchPrefixes: ['/profile'] };
+const adminNavItem: NavItem = { href: '/admin', label: 'Admin', shortLabel: 'Admin', icon: icons.admin, matchPrefixes: ['/admin'], allowedRoles: ['ADMIN', 'SUPERADMIN'] };
+
 export const primaryNavItems: NavItem[] = [
-    { href: '/dashboard', label: 'Home', shortLabel: 'Home', icon: icons.home, matchPrefixes: ['/dashboard'] },
-    { href: '/entry/new', label: 'Write', shortLabel: 'Write', icon: icons.write, isMain: true, matchPrefixes: ['/entry/new', '/entry/edit'] },
-    { href: '/timeline', label: 'Memories', shortLabel: 'Memories', icon: icons.memories, matchPrefixes: ['/timeline'] },
-    { href: '/insights', label: 'Patterns', shortLabel: 'Patterns', icon: icons.insights, matchPrefixes: ['/insights'] },
+    homeNavItem,
+    writeNavItem,
+    memoriesNavItem,
+    patternsNavItem,
 ];
 
 export const secondaryNavItems: NavItem[] = [
-    { href: '/chapters', label: 'Groups', shortLabel: 'Groups', icon: icons.chapters, matchPrefixes: ['/chapters'] },
-    { href: '/import', label: 'Imports', shortLabel: 'Imports', icon: icons.imports, matchPrefixes: ['/import'] },
-    { href: '/portfolio', label: 'Stories', shortLabel: 'Stories', icon: icons.stories, matchPrefixes: ['/portfolio', '/legacy'] },
-    { href: '/profile', label: 'Me', shortLabel: 'Me', icon: icons.profile, matchPrefixes: ['/profile'] },
-    { href: '/admin', label: 'Admin', shortLabel: 'Admin', icon: icons.admin, matchPrefixes: ['/admin'], allowedRoles: ['ADMIN', 'SUPERADMIN'] },
+    groupsNavItem,
+    importsNavItem,
+    storiesNavItem,
+    profileNavItem,
+    adminNavItem,
 ];
 
 export const desktopNavSections: NavSection[] = [
@@ -113,6 +125,94 @@ export const mobileMoreNavSections: NavSection[] = [
         items: secondaryNavItems.filter((item) => item.href === '/profile' || item.href === '/admin'),
     },
 ];
+
+export const getWorkspaceMaturity = ({
+    role,
+    profile,
+    totalEntries,
+}: {
+    role?: string | null;
+    profile?: ProfileContextSource | null;
+    totalEntries?: number | null;
+}): WorkspaceMaturity => {
+    if (role === 'ADMIN' || role === 'SUPERADMIN') return 'power';
+
+    const entryCount = Math.max(totalEntries || 0, 0);
+    const profileSummary = buildProfileContextSummary(profile ?? null);
+
+    if (entryCount >= 15) return 'power';
+    if (entryCount >= 5 || (entryCount >= 3 && profileSummary.stage === 'completed')) return 'growing';
+    return 'new';
+};
+
+export const getDesktopNavSections = (maturity: WorkspaceMaturity): NavSection[] => {
+    if (maturity === 'new') {
+        return [
+            { id: 'main', label: 'Main', items: [homeNavItem, writeNavItem, memoriesNavItem] },
+            { id: 'account', label: 'Account', items: [profileNavItem, adminNavItem] },
+        ];
+    }
+
+    if (maturity === 'growing') {
+        return [
+            { id: 'main', label: 'Main', items: [homeNavItem, writeNavItem, memoriesNavItem, patternsNavItem] },
+            { id: 'more', label: 'More', items: [storiesNavItem, profileNavItem, adminNavItem] },
+        ];
+    }
+
+    return [
+        { id: 'main', label: 'Main', items: [homeNavItem, writeNavItem, memoriesNavItem, patternsNavItem] },
+        { id: 'more', label: 'More', items: [groupsNavItem, importsNavItem, storiesNavItem, profileNavItem, adminNavItem] },
+    ];
+};
+
+export const getMobileMainNavItems = (maturity: WorkspaceMaturity): NavItem[] => {
+    if (maturity === 'new') {
+        return [homeNavItem, memoriesNavItem, writeNavItem, profileNavItem];
+    }
+
+    return [homeNavItem, memoriesNavItem, writeNavItem, patternsNavItem];
+};
+
+export const getMobileMoreNavSections = (maturity: WorkspaceMaturity): NavSection[] => {
+    if (maturity === 'new') {
+        return [
+            {
+                id: 'account',
+                label: 'Account',
+                items: [adminNavItem],
+            },
+        ];
+    }
+
+    if (maturity === 'growing') {
+        return [
+            {
+                id: 'reflect',
+                label: 'More',
+                items: [storiesNavItem],
+            },
+            {
+                id: 'account',
+                label: 'Account',
+                items: [profileNavItem, adminNavItem],
+            },
+        ];
+    }
+
+    return [
+        {
+            id: 'organize',
+            label: 'More',
+            items: [groupsNavItem, importsNavItem, storiesNavItem],
+        },
+        {
+            id: 'account',
+            label: 'Account',
+            items: [profileNavItem, adminNavItem],
+        },
+    ];
+};
 
 export const getProfileReadinessAction = (completionScore: number): RouteAction => {
     if (completionScore < 100) {

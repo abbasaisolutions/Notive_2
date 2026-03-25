@@ -50,7 +50,7 @@ export default function SafetyBanner({
 
     return (
         <div className={cn('rounded-2xl border px-4 py-4', toneClass)}>
-            <p className="text-[11px] uppercase tracking-[0.14em] text-ink-muted">
+            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">
                 {risk.level === 'red' ? 'Safety Mode' : risk.level === 'orange' ? 'Support Needed' : 'Support Aware'}
             </p>
             <p className="mt-2 text-sm font-semibold text-white">

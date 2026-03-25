@@ -102,7 +102,7 @@ export default function ConstellationView({ model, totalEntries, currentReturnTo
                                 aria-pressed={isSelected}
                                 aria-label={`${node.label}, ${kindLabels[node.kind]}, ${node.count} linked entries`}
                             >
-                                <span className={`mx-auto flex h-full w-full items-center justify-center px-2 text-center ${isCenter ? 'text-sm font-semibold' : 'text-[11px] font-semibold uppercase tracking-[0.08em]'}`}>
+                                <span className={`mx-auto flex h-full w-full items-center justify-center px-2 text-center ${isCenter ? 'text-sm font-semibold' : 'text-xs font-semibold uppercase tracking-[0.08em]'}`}>
                                     {node.label}
                                 </span>
                             </motion.button>

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import SocialImportPanel from '@/components/import/SocialImportPanel';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
-import { ActionBar, AppPanel, SectionHeader, StatTile, TagPill } from '@/components/ui/surface';
+import { ActionBar, AppPanel, SectionHeader, TagPill } from '@/components/ui/surface';
 import { API_URL } from '@/constants/config';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
@@ -13,7 +13,7 @@ import useTelemetry from '@/hooks/use-telemetry';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import { storyStatusClassName, storyStatusLabel, type StoryEngineStatus } from '@/utils/story-engine';
 import { writeWorkspaceResume } from '@/utils/workspace-resume';
-import { FiArrowRight, FiCheckCircle, FiGrid, FiLayers } from 'react-icons/fi';
+import { FiArrowRight, FiCheckCircle, FiChevronDown, FiGrid, FiLayers } from 'react-icons/fi';
 
 type ImportStatus = {
     instagram: number;
@@ -64,6 +64,7 @@ export default function ImportPage() {
         facebook: { connected: false },
     });
     const [overview, setOverview] = useState<OverviewPayload | null>(null);
+    const [showImportDetails, setShowImportDetails] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const currentReturnTo = useMemo(() => buildCurrentReturnTo(pathname, ''), [pathname]);
@@ -181,6 +182,27 @@ export default function ImportPage() {
         };
     }, [currentReturnTo, queueCounts.needs_attention, queueCounts.ready_to_verify, status?.facebook, status?.instagram]);
 
+    const importSnapshot = useMemo(() => {
+        if (queueCounts.needs_attention > 0) {
+            return `${queueCounts.needs_attention} stories still need more detail before they become reusable evidence.`;
+        }
+        if (queueCounts.ready_to_verify > 0) {
+            return `${queueCounts.ready_to_verify} stories are ready for verification next.`;
+        }
+        if (queueCounts.ready_to_export > 0) {
+            return `${queueCounts.ready_to_export} imported stories are already strong enough to move into output packs.`;
+        }
+        if ((status?.instagram || 0) + (status?.facebook || 0) > 0) {
+            return `${(status?.instagram || 0) + (status?.facebook || 0)} imported notes are waiting in your timeline.`;
+        }
+        return 'Start by connecting a provider so imported memories can move into your evidence queue.';
+    }, [queueCounts.needs_attention, queueCounts.ready_to_export, queueCounts.ready_to_verify, status?.facebook, status?.instagram]);
+
+    const leadTopic = useMemo(
+        () => overview?.topSkills?.[0] || overview?.topLessons?.[0] || null,
+        [overview?.topLessons, overview?.topSkills]
+    );
+
     useEffect(() => {
         if (authLoading || !isAuthenticated) return;
 
@@ -225,13 +247,6 @@ export default function ImportPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                        <StatTile label="Connected" value={connectedCount} hint="Active import providers" tone="primary" />
-                        <StatTile label="Imported Notes" value={(status?.instagram || 0) + (status?.facebook || 0)} hint={`Instagram and Facebook notes in ${NOTIVE_VOICE.surfaces.memoryAtlas.toLowerCase()}`} />
-                        <StatTile label="Needs More Detail" value={queueCounts.needs_attention} hint="Stories that still need structure" />
-                        <StatTile label="Ready To Check" value={queueCounts.ready_to_verify} hint="Imported stories close to ready" />
-                    </div>
-
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
                         <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                             <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Recommended next step</p>
@@ -246,30 +261,26 @@ export default function ImportPage() {
                             </Link>
                         </div>
 
-                        <div className="grid gap-2">
+                        <div className="space-y-3">
                             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Pipeline</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Import snapshot</p>
+                                <p className="mt-2 text-sm leading-7 text-white">{importSnapshot}</p>
                                 <div className="mt-3 flex flex-wrap gap-2">
-                                    <TagPill>Connect</TagPill>
-                                    <TagPill>Review</TagPill>
-                                    <TagPill>Verify</TagPill>
-                                    <TagPill tone="primary">Use</TagPill>
+                                    <TagPill tone="primary">{connectedCount}/2 connected</TagPill>
+                                    <TagPill>{(status?.instagram || 0) + (status?.facebook || 0)} imported entries</TagPill>
+                                    <TagPill>{queueCounts.ready_to_export} ready to use</TagPill>
+                                    {leadTopic && <TagPill tone="primary">{leadTopic}</TagPill>}
                                 </div>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Top topics</p>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    {overview?.topSkills?.slice(0, 4).map((skill) => (
-                                        <TagPill key={skill}>{skill}</TagPill>
-                                    ))}
-                                    {overview?.topLessons?.slice(0, 2).map((lesson) => (
-                                        <TagPill key={lesson} tone="primary">{lesson}</TagPill>
-                                    ))}
-                                    {(!overview?.topSkills?.length && !overview?.topLessons?.length) && (
-                                        <p className="text-sm text-ink-secondary">Import a few stronger memories to surface themes here.</p>
-                                    )}
-                                </div>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowImportDetails((current) => !current)}
+                                className="inline-flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-ink-secondary transition-colors hover:bg-white/[0.06] hover:text-white"
+                                aria-expanded={showImportDetails}
+                            >
+                                {showImportDetails ? 'Hide extra import paths' : 'Show more import paths'}
+                                <FiChevronDown size={14} className={`transition-transform ${showImportDetails ? 'rotate-180' : ''}`} aria-hidden="true" />
+                            </button>
                         </div>
                     </div>
                 </AppPanel>
@@ -280,119 +291,123 @@ export default function ImportPage() {
                     </AppPanel>
                 )}
 
-                <AppPanel className="space-y-4">
-                    <SectionHeader
-                        kicker="Next Step"
-                        title="Choose the next pipeline move"
-                        description="Jump straight into the view that matches how ready each imported memory is."
-                    />
-                    <div className="grid gap-3 lg:grid-cols-3">
-                        <Link
-                            href={appendReturnTo('/timeline?source=instagram', currentReturnTo)}
-                            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
-                        >
-                            <FiLayers size={18} className="text-primary" aria-hidden="true" />
-                            <h3 className="mt-3 text-lg font-semibold text-white">Review imported notes</h3>
-                            <p className="mt-2 text-sm leading-7 text-ink-secondary">Open imported memories in time order and read them before editing.</p>
-                        </Link>
-                        <Link
-                            href={appendReturnTo('/portfolio?view=evidence&filter=needs_attention', currentReturnTo)}
-                            onClick={() => {
-                                void trackEvent({
-                                    eventType: 'import_to_evidence',
-                                    value: 'needs_attention',
-                                    metadata: {
-                                        source: 'import_inbox',
-                                    },
-                                });
-                            }}
-                            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
-                        >
-                            <FiGrid size={18} className="text-primary" aria-hidden="true" />
-                            <h3 className="mt-3 text-lg font-semibold text-white">Fix weak stories</h3>
-                            <p className="mt-2 text-sm leading-7 text-ink-secondary">Send low-detail notes into the story queue and fill in the missing parts.</p>
-                        </Link>
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                            <FiCheckCircle size={18} className="text-primary" aria-hidden="true" />
-                            <h3 className="mt-3 text-lg font-semibold text-white">Open an output directly</h3>
-                            <p className="mt-2 text-sm leading-7 text-ink-secondary">Once strong stories are checked, jump straight into the output you need.</p>
-                            <div className="mt-4 flex flex-wrap gap-2">
+                {showImportDetails && (
+                    <>
+                        <AppPanel className="space-y-4">
+                            <SectionHeader
+                                kicker="More Paths"
+                                title="Choose a different import move"
+                                description="Jump straight into the part of the pipeline that matches what these imported memories need next."
+                            />
+                            <div className="grid gap-3 lg:grid-cols-3">
                                 <Link
-                                    href={appendReturnTo('/portfolio?view=export&pack=resume', currentReturnTo)}
+                                    href={appendReturnTo('/timeline?source=instagram', currentReturnTo)}
+                                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
+                                >
+                                    <FiLayers size={18} className="text-primary" aria-hidden="true" />
+                                    <h3 className="mt-3 text-lg font-semibold text-white">Review imported notes</h3>
+                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">Open imported memories in time order and read them before editing.</p>
+                                </Link>
+                                <Link
+                                    href={appendReturnTo('/portfolio?view=evidence&filter=needs_attention', currentReturnTo)}
                                     onClick={() => {
                                         void trackEvent({
                                             eventType: 'import_to_evidence',
-                                            value: 'resume',
+                                            value: 'needs_attention',
                                             metadata: {
                                                 source: 'import_inbox',
                                             },
                                         });
                                     }}
-                                    className="rounded-full border border-primary/25 bg-primary/12 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
+                                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
                                 >
-                                    Resume
+                                    <FiGrid size={18} className="text-primary" aria-hidden="true" />
+                                    <h3 className="mt-3 text-lg font-semibold text-white">Fix weak stories</h3>
+                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">Send low-detail notes into the story queue and fill in the missing parts.</p>
                                 </Link>
-                                <Link
-                                    href={appendReturnTo('/portfolio?view=export&pack=statement', currentReturnTo)}
-                                    onClick={() => {
-                                        void trackEvent({
-                                            eventType: 'import_to_evidence',
-                                            value: 'statement',
-                                            metadata: {
-                                                source: 'import_inbox',
-                                            },
-                                        });
-                                    }}
-                                    className="rounded-full border border-white/12 bg-black/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-black/30 hover:text-white"
-                                >
-                                    Statement
-                                </Link>
-                                <Link
-                                    href={appendReturnTo('/portfolio?view=interview', currentReturnTo)}
-                                    onClick={() => {
-                                        void trackEvent({
-                                            eventType: 'import_to_evidence',
-                                            value: 'interview',
-                                            metadata: {
-                                                source: 'import_inbox',
-                                            },
-                                        });
-                                    }}
-                                    className="rounded-full border border-white/12 bg-black/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-black/30 hover:text-white"
-                                >
-                                    Interview
-                                </Link>
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                    <FiCheckCircle size={18} className="text-primary" aria-hidden="true" />
+                                    <h3 className="mt-3 text-lg font-semibold text-white">Open an output directly</h3>
+                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">Once strong stories are checked, jump straight into the output you need.</p>
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                        <Link
+                                            href={appendReturnTo('/portfolio?view=export&pack=resume', currentReturnTo)}
+                                            onClick={() => {
+                                                void trackEvent({
+                                                    eventType: 'import_to_evidence',
+                                                    value: 'resume',
+                                                    metadata: {
+                                                        source: 'import_inbox',
+                                                    },
+                                                });
+                                            }}
+                                            className="rounded-full border border-primary/25 bg-primary/12 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
+                                        >
+                                            Resume
+                                        </Link>
+                                        <Link
+                                            href={appendReturnTo('/portfolio?view=export&pack=statement', currentReturnTo)}
+                                            onClick={() => {
+                                                void trackEvent({
+                                                    eventType: 'import_to_evidence',
+                                                    value: 'statement',
+                                                    metadata: {
+                                                        source: 'import_inbox',
+                                                    },
+                                                });
+                                            }}
+                                            className="rounded-full border border-white/12 bg-black/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-black/30 hover:text-white"
+                                        >
+                                            Statement
+                                        </Link>
+                                        <Link
+                                            href={appendReturnTo('/portfolio?view=interview', currentReturnTo)}
+                                            onClick={() => {
+                                                void trackEvent({
+                                                    eventType: 'import_to_evidence',
+                                                    value: 'interview',
+                                                    metadata: {
+                                                        source: 'import_inbox',
+                                                    },
+                                                });
+                                            }}
+                                            className="rounded-full border border-white/12 bg-black/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-black/30 hover:text-white"
+                                        >
+                                            Interview
+                                        </Link>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                </AppPanel>
+                        </AppPanel>
 
-                <AppPanel className="space-y-4">
-                    <SectionHeader
-                        kicker="Queue Status"
-                        title="See what each imported story needs next"
-                        description="Use status to decide whether imports need more detail, checking, or are ready to use."
-                    />
-                    <ActionBar className="gap-2 overflow-x-auto bg-black/20 border-white/10">
-                        {(['needs_attention', 'ready_to_verify', 'ready_to_export', 'verified'] as StoryEngineStatus[]).map((statusKey) => (
-                            <Link
-                                key={statusKey}
-                                href={appendReturnTo(
-                                    statusKey === 'verified' || statusKey === 'ready_to_export'
-                                        ? `/portfolio?view=${statusKey === 'verified' ? 'evidence' : 'export'}${statusKey === 'ready_to_export' ? '&pack=resume' : '&filter=verified'}`
-                                        : `/portfolio?view=evidence&filter=${statusKey}`,
-                                    currentReturnTo
-                                )}
-                                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] whitespace-nowrap ${storyStatusClassName[statusKey]}`}
-                            >
-                                {storyStatusLabel[statusKey]}
-                                <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[11px] text-white">
-                                    {queueCounts[statusKey]}
-                                </span>
-                            </Link>
-                        ))}
-                    </ActionBar>
-                </AppPanel>
+                        <AppPanel className="space-y-4">
+                            <SectionHeader
+                                kicker="Queue Status"
+                                title="See what each imported story needs next"
+                                description="Use status to decide whether imports need more detail, checking, or are ready to use."
+                            />
+                            <ActionBar className="gap-2 overflow-x-auto bg-black/20 border-white/10">
+                                {(['needs_attention', 'ready_to_verify', 'ready_to_export', 'verified'] as StoryEngineStatus[]).map((statusKey) => (
+                                    <Link
+                                        key={statusKey}
+                                        href={appendReturnTo(
+                                            statusKey === 'verified' || statusKey === 'ready_to_export'
+                                                ? `/portfolio?view=${statusKey === 'verified' ? 'evidence' : 'export'}${statusKey === 'ready_to_export' ? '&pack=resume' : '&filter=verified'}`
+                                                : `/portfolio?view=evidence&filter=${statusKey}`,
+                                            currentReturnTo
+                                        )}
+                                        className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] whitespace-nowrap ${storyStatusClassName[statusKey]}`}
+                                    >
+                                        {storyStatusLabel[statusKey]}
+                                        <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-xs text-white">
+                                            {queueCounts[statusKey]}
+                                        </span>
+                                    </Link>
+                                ))}
+                            </ActionBar>
+                        </AppPanel>
+                    </>
+                )}
 
                 <div id="social-import-panel">
                     <SocialImportPanel returnToPath="/import" compact />

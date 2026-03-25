@@ -198,7 +198,7 @@ const getAuditMetadataText = (metadata?: Record<string, unknown> | null, key?: '
 function MetricBar({ label, value, gradient }: { label: string; value: number; gradient: string }) {
     return (
         <div>
-            <div className="mb-1 flex items-center justify-between text-[11px] uppercase tracking-[0.12em] text-ink-muted">
+            <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-[0.12em] text-ink-muted">
                 <span>{label}</span>
                 <span className="text-white">{value}%</span>
             </div>

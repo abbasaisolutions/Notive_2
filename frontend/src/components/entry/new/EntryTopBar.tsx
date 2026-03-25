@@ -135,7 +135,7 @@ export default function EntryTopBar({
                         ) : (
                             <>
                                 <FiSave size={20} aria-hidden="true" />
-                                {isQuickMode ? 'Save Quick Note' : 'Save Note'}
+                                Save Note
                             </>
                         )}
                     </button>
@@ -161,7 +161,7 @@ export default function EntryTopBar({
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Quick Note</p>
-                            <p className="mt-1 text-sm text-white">Save the thought now. You can organize and polish it later.</p>
+                            <p className="mt-1 text-sm text-white">Save the thought now. Add mood, tags, or polish only if you want them.</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {onOpenFullStudio && (
@@ -170,7 +170,7 @@ export default function EntryTopBar({
                                     onClick={onOpenFullStudio}
                                     className="rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/[0.08] transition-colors"
                                 >
-                                    Full Editor
+                                    Add Details
                                 </button>
                             )}
                             {onFinishLater && (
@@ -179,7 +179,7 @@ export default function EntryTopBar({
                                     onClick={onFinishLater}
                                     className="rounded-xl border border-primary/30 bg-primary/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-primary hover:bg-primary/25 transition-colors"
                                 >
-                                    Finish Later
+                                    Leave For Later
                                 </button>
                             )}
                         </div>
@@ -187,22 +187,22 @@ export default function EntryTopBar({
                 </div>
             )}
 
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="px-3 py-1.5 rounded-full bg-surface-2/60 border border-white/12 text-xs text-ink-secondary uppercase tracking-[0.08em]">
-                    {wordCount} words
-                </span>
-                <span className="px-3 py-1.5 rounded-full bg-surface-2/60 border border-white/12 text-xs text-ink-secondary uppercase tracking-[0.08em]">
-                    {readingTimeMinutes} min read
-                </span>
-                {!isQuickMode && (
+            {!isQuickMode && (
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                    <span className="px-3 py-1.5 rounded-full bg-surface-2/60 border border-white/12 text-xs text-ink-secondary uppercase tracking-[0.08em]">
+                        {wordCount} words
+                    </span>
+                    <span className="px-3 py-1.5 rounded-full bg-surface-2/60 border border-white/12 text-xs text-ink-secondary uppercase tracking-[0.08em]">
+                        {readingTimeMinutes} min read
+                    </span>
                     <button
                         onClick={onToggleAdvancedTools}
                         className="px-3 py-1.5 rounded-full bg-primary/15 border border-primary/30 text-xs text-primary uppercase tracking-[0.08em] hover:bg-primary/25 transition-colors"
                     >
                         {showAdvancedTools ? 'Hide Options' : 'More Options'}
                     </button>
-                )}
-            </div>
+                </div>
+            )}
         </>
     );
 }

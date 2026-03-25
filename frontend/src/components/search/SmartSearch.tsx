@@ -207,7 +207,7 @@ export function SmartSearch() {
                                         {((result.matchReasons && result.matchReasons.length > 0) || result.strategy) && (
                                             <div className="mt-2 flex flex-wrap gap-2">
                                                 {result.strategy && (
-                                                    <span className="rounded-full border border-white/12 bg-white/[0.04] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-ink-muted">
+                                                    <span className="rounded-full border border-white/12 bg-white/[0.04] px-2 py-0.5 text-xs uppercase tracking-[0.12em] text-ink-muted">
                                                         {result.strategy === 'hybrid'
                                                             ? 'Hybrid'
                                                             : result.strategy === 'semantic'
@@ -220,7 +220,7 @@ export function SmartSearch() {
                                                 {(result.matchReasons || []).slice(0, 2).map((reason) => (
                                                     <span
                                                         key={`${result.id}-${reason}`}
-                                                        className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-primary"
+                                                        className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs uppercase tracking-[0.1em] text-primary"
                                                     >
                                                         {reason}
                                                     </span>

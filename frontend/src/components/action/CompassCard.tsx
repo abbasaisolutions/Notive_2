@@ -30,14 +30,14 @@ export default function CompassCard({
     return (
         <div className={cn('signal-lines rounded-[1.6rem] border p-5 md:p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]', accentClass)}>
             <div className="flex items-center justify-between gap-3">
-                <p className="text-[11px] uppercase tracking-[0.14em] text-ink-muted">{kicker}</p>
+                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">{kicker}</p>
                 <span className={cn('h-2.5 w-2.5 rounded-full', accentDotClass)} aria-hidden="true" />
             </div>
             <h3 className="mt-2 text-lg font-semibold text-white">{title}</h3>
             <p className="mt-3 text-sm leading-7 text-ink-secondary">{body}</p>
             {grounding && (
                 <div className="mt-4 inline-flex max-w-full rounded-full border border-white/10 bg-black/20 px-3 py-1.5">
-                    <p className="truncate text-[11px] uppercase tracking-[0.12em] text-ink-muted">{grounding}</p>
+                    <p className="truncate text-xs uppercase tracking-[0.12em] text-ink-muted">{grounding}</p>
                 </div>
             )}
         </div>
