@@ -6,11 +6,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Input, Button } from '@/components/ui/form-elements';
 import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
-import { GoogleLogin } from '@react-oauth/google';
+import { GoogleSsoPanel } from '@/components/auth/GoogleSsoPanel';
 import { motion } from 'framer-motion';
 import { sanitizeReturnTo } from '@/utils/redirect';
 import { resolvePostAuthDestination } from '@/utils/auth-routing';
-import { isCredentialSsoEnabled } from '@/utils/sso';
 
 type LoginFieldErrors = {
     email?: string;
@@ -38,7 +37,6 @@ export default function LoginPage() {
     const [notice, setNotice] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
     const [isLoading, setIsLoading] = useState(false);
-    const isGoogleEnabled = isCredentialSsoEnabled('google');
     const [safeReturnTo, setSafeReturnTo] = useState<string | null>(null);
 
     useEffect(() => {
@@ -292,23 +290,14 @@ export default function LoginPage() {
                             </div>
                         </SlideUp>
 
-                        {isGoogleEnabled && (
-                            <SlideUp delay={0.6} className="flex justify-center">
-                                <GoogleLogin
-                                    onSuccess={handleGoogleSuccess}
-                                    onError={handleGoogleError}
-                                    theme="filled_black"
-                                    width="300"
-                                />
-                            </SlideUp>
-                        )}
-                        {!isGoogleEnabled && (
-                            <SlideUp delay={0.6}>
-                                <p className="text-center text-xs text-ink-muted">
-                                    Google sign-in is unavailable in this environment.
-                                </p>
-                            </SlideUp>
-                        )}
+                        <SlideUp delay={0.6}>
+                            <GoogleSsoPanel
+                                mode="login"
+                                isLoading={isLoading}
+                                onSuccess={handleGoogleSuccess}
+                                onError={handleGoogleError}
+                            />
+                        </SlideUp>
 
                         <SlideUp delay={0.7}>
                             <p className="text-center mt-6 text-ink-secondary">

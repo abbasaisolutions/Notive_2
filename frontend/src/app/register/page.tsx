@@ -7,11 +7,10 @@ import { useAuth } from '@/context/auth-context';
 import { Input, Button } from '@/components/ui/form-elements';
 import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
 import { motion } from 'framer-motion';
-import { GoogleLogin } from '@react-oauth/google';
+import { GoogleSsoPanel } from '@/components/auth/GoogleSsoPanel';
 import { clearOnboardingState } from '@/utils/onboarding';
 import { sanitizeReturnTo } from '@/utils/redirect';
 import { resolvePostAuthDestination } from '@/utils/auth-routing';
-import { isCredentialSsoEnabled } from '@/utils/sso';
 
 type RegisterFieldErrors = {
     name?: string;
@@ -48,7 +47,6 @@ export default function RegisterPage() {
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
     const [isLoading, setIsLoading] = useState(false);
-    const isGoogleEnabled = isCredentialSsoEnabled('google');
     const [safeReturnTo, setSafeReturnTo] = useState<string | null>(null);
 
     const passwordChecks = useMemo(() => ({
@@ -386,23 +384,16 @@ export default function RegisterPage() {
                             </div>
                         </SlideUp>
 
-                        {isGoogleEnabled && (
-                            <SlideUp delay={0.8} className="flex justify-center">
-                                <GoogleLogin
-                                    onSuccess={handleGoogleSuccess}
-                                    onError={handleGoogleError}
-                                    theme="filled_black"
-                                    width="300"
-                                />
-                            </SlideUp>
-                        )}
-                        {!isGoogleEnabled && (
-                            <SlideUp delay={0.8}>
-                                <p className="text-center text-xs text-ink-muted">
-                                    Google sign-up is unavailable in this environment.
-                                </p>
-                            </SlideUp>
-                        )}
+                        <SlideUp delay={0.8}>
+                            <GoogleSsoPanel
+                                mode="register"
+                                isLoading={isLoading}
+                                isBlocked={!acceptedPolicies}
+                                blockedMessage="Accept the Terms of Service and Privacy Policy first to enable Google sign-up."
+                                onSuccess={handleGoogleSuccess}
+                                onError={handleGoogleError}
+                            />
+                        </SlideUp>
 
                         <SlideUp delay={0.9}>
                             <p className="text-center mt-6 text-ink-muted">

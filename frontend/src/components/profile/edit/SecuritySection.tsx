@@ -1,14 +1,13 @@
 'use client';
 
 import React from 'react';
-import { GoogleLogin } from '@react-oauth/google';
+import { GoogleSsoPanel } from '@/components/auth/GoogleSsoPanel';
 import { FiLock, FiMail, FiShield, FiTrash2 } from 'react-icons/fi';
 import { TextField } from './fields';
 
 type SecuritySectionProps = {
     currentEmail: string;
     hasPassword: boolean;
-    isGoogleEnabled: boolean;
     reauthPassword: string;
     signInEmail: string;
     confirmSignInEmail: string;
@@ -45,7 +44,6 @@ const formatExpiry = (value: string | null): string => {
 export function SecuritySection({
     currentEmail,
     hasPassword,
-    isGoogleEnabled,
     reauthPassword,
     signInEmail,
     confirmSignInEmail,
@@ -131,20 +129,13 @@ export function SecuritySection({
                                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-ink-secondary">
                                     This account signs in through Google. Re-verify with Google before changing the sign-in email, setting a password, or deleting the account.
                                 </div>
-                                {isGoogleEnabled ? (
-                                    <div className="flex justify-start">
-                                        <GoogleLogin
-                                            onSuccess={onUnlockWithGoogle}
-                                            onError={onUnlockWithGoogleError}
-                                            theme="filled_black"
-                                            width="280"
-                                        />
-                                    </div>
-                                ) : (
-                                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-ink-secondary">
-                                        Google re-verification is unavailable in this environment.
-                                    </div>
-                                )}
+                                <GoogleSsoPanel
+                                    mode="reauth"
+                                    align="start"
+                                    isLoading={isUnlockingSecurity}
+                                    onSuccess={onUnlockWithGoogle}
+                                    onError={onUnlockWithGoogleError}
+                                />
                             </div>
                         )}
                     </div>

@@ -9,7 +9,6 @@ import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { useAuth } from '@/context/auth-context';
 import { buildProfileContextSummary } from '@/services/profile-context.service';
 import { hasCompletedOnboardingRequirements } from '@/utils/onboarding';
-import { isCredentialSsoEnabled } from '@/utils/sso';
 import { FiArrowLeft, FiClock } from 'react-icons/fi';
 import { NoticeBanner } from './fields';
 import { PreferencesSection } from './PreferencesSection';
@@ -89,7 +88,6 @@ export function ProfileSettingsEditor() {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
-    const isGoogleEnabled = isCredentialSsoEnabled('google');
     const hasPassword = Boolean(user?.hasPassword);
 
     const resetNoticeState = () => {
@@ -1089,7 +1087,6 @@ export function ProfileSettingsEditor() {
                         <SecuritySection
                             currentEmail={savedProfileDraft.email || user?.email || ''}
                             hasPassword={hasPassword}
-                            isGoogleEnabled={isGoogleEnabled}
                             reauthPassword={reauthPassword}
                             signInEmail={signInEmailDraft}
                             confirmSignInEmail={confirmSignInEmailDraft}
