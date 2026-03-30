@@ -158,7 +158,7 @@ export class TaggingService {
                 messages: [
                     {
                         role: 'system',
-                        content: `You are an AI tagging assistant for a personal journal. 
+                        content: `You are an AI tagging assistant for a student personal journal (ages 15-22).
                         Analyze the following journal entry and generate 3-5 relevant tags.
                         Rules:
                         1. Tags should be short (1-2 words).

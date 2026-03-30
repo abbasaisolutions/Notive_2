@@ -33,7 +33,7 @@ class SimilarityService:
     
     # Model to use for embeddings
     # Defaulting to BGE gives stronger retrieval quality than the MiniLM baseline.
-    MODEL_NAME = os.getenv('MODEL_NAME', 'BAAI/bge-small-en-v1.5')
+    MODEL_NAME = os.getenv('MODEL_NAME', 'BAAI/bge-base-en-v1.5')
     RERANKER_MODEL_NAME = os.getenv('RERANKER_MODEL_NAME', 'cross-encoder/ms-marco-MiniLM-L6-v2')
     RERANK_TOP_K = int(os.getenv('RERANK_TOP_K', '10'))
     # Local CPU benchmarking showed the best quality/latency tradeoff with

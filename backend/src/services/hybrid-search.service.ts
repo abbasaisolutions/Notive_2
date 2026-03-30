@@ -90,7 +90,7 @@ const clipContent = (value: string, maxLength: number) => {
 const LEXICAL_TAIL_MIN_RELEVANCE = clamp01(
     Number.parseFloat(process.env.SEARCH_LEXICAL_TAIL_MIN_RELEVANCE || '0.05') || 0.05
 );
-const SEARCH_RERANK_POOL_LIMIT = parsePositiveInt(process.env.SEARCH_RERANK_POOL_LIMIT, 8);
+const SEARCH_RERANK_POOL_LIMIT = parsePositiveInt(process.env.SEARCH_RERANK_POOL_LIMIT, 12);
 const SEARCH_RERANK_SKIP_CONFIDENCE = clamp01(
     Number.parseFloat(process.env.SEARCH_RERANK_SKIP_CONFIDENCE || '0.86') || 0.86
 );

@@ -65,7 +65,7 @@ services:
       args:
         INSTALL_ONNX: ${SIMILARITY_INSTALL_ONNX:-1}
     environment:
-      MODEL_NAME: ${SIMILARITY_MODEL_NAME:-BAAI/bge-small-en-v1.5}
+      MODEL_NAME: ${SIMILARITY_MODEL_NAME:-BAAI/bge-base-en-v1.5}
       PAD_TO_DIMS: ${SIMILARITY_PAD_TO_DIMS:-0}
       RERANKER_MODEL_NAME: ${SIMILARITY_RERANKER_MODEL_NAME:-cross-encoder/ms-marco-MiniLM-L6-v2}
       EMBEDDING_BACKEND: ${SIMILARITY_EMBEDDING_BACKEND:-onnx}

@@ -60,7 +60,7 @@ const DENSE_LIMIT = parsePositiveInt(process.env.SEMANTIC_SEARCH_CANDIDATES, 24)
 const DENSE_MIN_SCORE = parseScore(process.env.SEMANTIC_SEARCH_MIN_SCORE, 0.16);
 const RELATED_MIN_SCORE = parseScore(process.env.RELATED_ENTRIES_MIN_SCORE, 0.18);
 const RERANK_LIMIT = parsePositiveInt(process.env.SEMANTIC_SEARCH_RERANK_LIMIT, 10);
-const SEMANTIC_RERANK_POOL_LIMIT = parsePositiveInt(process.env.SEMANTIC_RERANK_POOL_LIMIT, 6);
+const SEMANTIC_RERANK_POOL_LIMIT = parsePositiveInt(process.env.SEMANTIC_RERANK_POOL_LIMIT, 12);
 const SEMANTIC_RERANK_SKIP_CONFIDENCE = parseScore(process.env.SEMANTIC_RERANK_SKIP_CONFIDENCE, 0.88);
 const SEMANTIC_RERANK_SKIP_GAP = parseScore(process.env.SEMANTIC_RERANK_SKIP_GAP, 0.08);
 const RRF_K = parsePositiveInt(process.env.SEMANTIC_SEARCH_RRF_K, 60);
@@ -116,16 +116,18 @@ const boostDenseMatchScore = (input: {
     const preferredFacet = isPreferredFacetType(input.facetType, input.preferredFacetTypes);
 
     if (input.source === 'facet') {
+        // Pure multiplicative boosts — avoids the non-linear artifacts of mixing
+        // multiplicative and additive terms (which inflate weak matches disproportionately).
         const boosted = preferredFacet
-            ? (input.score * 1.12) + 0.04
+            ? input.score * 1.18
             : input.intent === 'general'
-                ? (input.score * 0.98)
-                : (input.score * 0.98);
+                ? input.score * 0.97
+                : input.score * 0.98;
         return clamp01(boosted);
     }
 
     if (input.source === 'chunk' && (input.intent === 'memory' || input.intent === 'action')) {
-        return clamp01(input.score * 1.04);
+        return clamp01(input.score * 1.05);
     }
 
     if (input.source === 'entry' && input.intent !== 'general') {
@@ -150,7 +152,12 @@ const choosePreferredDenseMatch = (current: DenseMatch | undefined, next: DenseM
 
 export class SemanticSearchService {
     isDenseSearchEnabled() {
-        return embeddingService.isEnabled();
+        if (!embeddingService.isEnabled()) return false;
+        // Hash-based embeddings have zero semantic meaning — cosine similarity
+        // against them produces random noise.  Disable dense search entirely
+        // when the active provider is local_hash.
+        const config = embeddingService.getActiveConfig();
+        return config.provider !== 'local_hash';
     }
 
     canUseReranker() {
@@ -411,9 +418,21 @@ export class SemanticSearchService {
                 );
             });
 
-        return [...combinedMatches.values()]
+        const results = [...combinedMatches.values()]
             .sort((left, right) => right.semanticScore - left.semanticScore || left.distance - right.distance)
             .slice(0, limit);
+
+        if (results.length === 0) {
+            // No matches found — common after an embedding model switch.
+            // If users have entries but searches return nothing, run the
+            // backfill-embeddings script to re-embed with the current model.
+            console.warn(
+                `[SemanticSearch] 0 dense matches for userId=${input.userId} model=${activeConfig.model} dims=${activeConfig.dimensions}. ` +
+                `If entries exist, run backfill-embeddings to refresh embeddings for the current model.`
+            );
+        }
+
+        return results;
     }
 
     async rerankCandidates(

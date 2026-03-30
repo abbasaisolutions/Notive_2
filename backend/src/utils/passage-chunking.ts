@@ -141,6 +141,14 @@ export const buildPassageChunks = (content: string): PassageChunk[] => {
     if (!normalized) return [];
 
     const totalTokens = estimateTokenCount(normalized);
+
+    // Short entries (under ~400 tokens) don't benefit from chunking — the whole-entry
+    // embedding already captures them well, and fragments would lose context.
+    // Return as a single passage to avoid generating noisy partial chunks.
+    if (totalTokens <= BASE_TARGET_TOKENS * 2) {
+        return [{ index: 0, text: collapseInlineWhitespace(normalized) }];
+    }
+
     const dynamicTargetTokens = Math.max(
         BASE_TARGET_TOKENS,
         Math.ceil(totalTokens / Math.max(1, MAX_CHUNK_COUNT))

@@ -87,7 +87,7 @@ const LOCAL_MODEL_DIMS: Record<string, number> = {
     'baai/bge-base-en-v1.5': 768,
 };
 
-const DEFAULT_LOCAL_EMBEDDING_DIMS = 384;
+const DEFAULT_LOCAL_EMBEDDING_DIMS = 768;
 const DEFAULT_LOCAL_HASH_DIMS = 384;
 
 const resolveEmbeddingDimensions = (): number => {
@@ -174,14 +174,17 @@ const buildChunkEmbeddingText = (
     const heading = chunkCount > 1
         ? `Passage ${chunkIndex + 1} of ${chunkCount}`
         : 'Passage';
-    const header = buildEmbeddingHeader({
-        title: context.title,
-        mood: context.mood,
-        tags: context.tags,
-        skills: context.skills,
-        category: context.category,
-        lifeArea: context.lifeArea,
-    });
+    // Lean chunk header — category/lifeArea/skills/lessons/reflection are already
+    // captured by facet embeddings.  Keeping them here wastes tokens inside the
+    // model's 512-token context window and dilutes the actual passage content.
+    const lines: string[] = [];
+    const safeTitle = typeof context.title === 'string' ? context.title.trim() : '';
+    const safeMood = typeof context.mood === 'string' ? context.mood.trim() : '';
+    const tags = normalizeContextList(context.tags, 6);
+    if (safeTitle) lines.push(`Title: ${safeTitle}`);
+    if (safeMood) lines.push(`Mood: ${safeMood}`);
+    if (tags.length > 0) lines.push(`Themes: ${tags.join(', ')}`);
+    const header = lines.join('\n');
 
     return [header, heading, safeChunkText].filter(Boolean).join('\n\n').trim();
 };

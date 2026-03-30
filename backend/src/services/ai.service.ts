@@ -14,14 +14,14 @@ export class AIService {
             messages: [
                 {
                     role: 'system',
-                    content: `You are a sentiment analysis assistant. Analyze the emotional tone of the text and respond with ONLY ONE of these moods: happy, calm, sad, anxious, frustrated, thoughtful, motivated, tired. Just the single word, nothing else.`,
+                    content: `You are a sentiment analysis assistant for a student journal (ages 15-22). Analyze the emotional tone of the text and respond with ONLY ONE of these moods: happy, calm, sad, anxious, frustrated, thoughtful, motivated, tired, grateful, hopeful, overwhelmed, nostalgic, proud, lonely, curious, relieved. Just the single word, nothing else.`,
                 },
                 {
                     role: 'user',
                     content: text,
                 },
             ],
-            max_tokens: 10,
+            max_tokens: 15,
             temperature: 0.3,
         });
 
@@ -32,7 +32,7 @@ export class AIService {
         const mood = response.choices[0]?.message?.content?.trim().toLowerCase() || 'thoughtful';
 
         // Validate the mood is in our allowed list
-        const validMoods = ['happy', 'calm', 'sad', 'anxious', 'frustrated', 'thoughtful', 'motivated', 'tired'];
+        const validMoods = ['happy', 'calm', 'sad', 'anxious', 'frustrated', 'thoughtful', 'motivated', 'tired', 'grateful', 'hopeful', 'overwhelmed', 'nostalgic', 'proud', 'lonely', 'curious', 'relieved'];
         return validMoods.includes(mood) ? mood : 'thoughtful';
     }
 
@@ -44,11 +44,11 @@ export class AIService {
             return 'AI features are not available. Please configure a supported LLM provider.';
         }
         // Format entries as context (truncate each to avoid token bloat)
-        const MAX_ENTRY_CHARS = 1500;
+        const MAX_ENTRY_CHARS = 3000;
         const context = entries.map((entry, i) => {
             const date = new Date(entry.createdAt).toLocaleDateString();
             const truncatedContent = entry.content.length > MAX_ENTRY_CHARS
-                ? entry.content.slice(0, MAX_ENTRY_CHARS) + '…'
+                ? entry.content.slice(0, MAX_ENTRY_CHARS) + '… [entry continues]'
                 : entry.content;
             return `[Entry ${i + 1} - ${date}]
 Title: ${entry.title || 'Untitled'}
@@ -60,7 +60,7 @@ ${truncatedContent}`;
             messages: [
                 {
                     role: 'system',
-                    content: `You are a helpful AI assistant that helps users reflect on their journal entries. You have access to the user's past journal entries. Answer questions about their entries thoughtfully and empathetically. If you don't find relevant information in the entries, say so kindly. Always be supportive and encouraging.
+                    content: `You are a helpful journal companion for a student aged 15-22. Help them reflect on their journal entries thoughtfully and empathetically. Use supportive, direct, age-appropriate language. If you don't find relevant information in the entries, say so kindly.
 
 Here are the user's recent journal entries:
 
@@ -94,7 +94,7 @@ ${context || 'No entries available yet.'}`,
             messages: [
                 {
                     role: 'system',
-                    content: `You are a creative writing prompt generator for a journaling app. Generate a short, thoughtful prompt (1-2 sentences) to inspire the user to write. Make it personal and reflective.${context ? ` Context: ${context}` : ''}`,
+                    content: `You are a creative writing prompt generator for a student journaling app (ages 15-22). Generate a short, thoughtful prompt (1-2 sentences) to inspire reflection. Make it personal, grounded, and age-appropriate — avoid clinical or generic phrasing.${context ? ` Context: ${context}` : ''}`,
                 },
                 {
                     role: 'user',

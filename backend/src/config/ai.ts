@@ -46,7 +46,7 @@ const embeddingVendor: EmbeddingVendor =
                     : 'local_hash';
 const defaultEmbeddingModel =
     embeddingVendor === 'local_service'
-        ? 'BAAI/bge-small-en-v1.5'
+        ? 'BAAI/bge-base-en-v1.5'
         : 'text-embedding-3-small';
 
 export const aiRuntime = Object.freeze({

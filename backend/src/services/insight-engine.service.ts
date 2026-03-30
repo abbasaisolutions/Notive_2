@@ -79,12 +79,13 @@ function buildContradictionPrompt(ctx: InsightContext): string | null {
         return `- Entry "${c.entryTitle || 'Untitled'}" (${c.entryDate.slice(0, 10)}): Said "${c.statedMood}" but writing tone was "${c.detectedSentiment}". Snippet: "${snippet}..."`;
     }).join('\n');
 
-    return `You are a thoughtful, non-judgmental journal companion for a student. Analyze this contradiction between what the student said they felt and what their writing actually conveyed.
+    return `You are a thoughtful, non-judgmental journal companion for a student (15-22). Analyze this contradiction between what the student said they felt and what their writing actually conveyed.
 
 DATA:
 ${contradictionData}
 
-Write a single insight that:
+First, in a "reasoning" field, briefly note 2-3 candidate contradictions you see and pick the most striking one.
+Then write a single insight that:
 1. Opens with a specific, intriguing observation (not generic)
 2. References their actual words or entry
 3. Frames the gap as curiosity, not criticism — "interesting" not "wrong"
@@ -92,8 +93,14 @@ Write a single insight that:
 5. Uses second person ("you")
 6. Is 2-3 sentences max
 
+EXAMPLE of a GOOD response:
+{"reasoning": "They said calm but used words like 'racing' and 'couldn't stop thinking'. The March 12 entry is the strongest case — labeled happy but described feeling stuck.", "title": "Happy on the label, stuck underneath", "body": "On March 12 you picked 'happy' as your mood, but your words told a different story — 'stuck in the same loop' and 'can't figure out what I want.' That gap is worth paying attention to. What were you trying to convince yourself of that day?", "evidence": "\"stuck in the same loop\" (Mar 12, mood: happy)"}
+
+EXAMPLE of a BAD response (too generic, no specifics):
+{"reasoning": "They seem inconsistent.", "title": "Mixed feelings", "body": "Sometimes your mood doesn't match your writing. This is normal and worth exploring.", "evidence": "multiple entries"}
+
 Respond in this exact JSON format:
-{"title": "short hook (8 words max)", "body": "the insight text", "evidence": "brief quote or detail from their entry"}`;
+{"reasoning": "your brief analysis", "title": "short hook (8 words max)", "body": "the insight text", "evidence": "brief quote or detail from their entry"}`;
 }
 
 function buildHiddenPatternPrompt(ctx: InsightContext): string | null {
@@ -137,14 +144,15 @@ function buildHiddenPatternPrompt(ctx: InsightContext): string | null {
         extraContext += `\n\nDevice/environment context:\n${ctx.deviceContext}`;
     }
 
-    return `You are a thoughtful journal companion for a student. You've found a hidden pattern in their writing that they probably haven't noticed.
+    return `You are a thoughtful journal companion for a student (15-22). You've found a hidden pattern in their writing that they probably haven't noticed.
 
 MOOD-TOPIC CORRELATIONS:
 ${patternData}
 ${triggerData}
 ${extraContext}
 
-Write a single insight that:
+First, in a "reasoning" field, note 2-3 candidate patterns and pick the most surprising one the student likely hasn't noticed.
+Then write a single insight that:
 1. Highlights the MOST surprising or non-obvious correlation
 2. Avoid obvious ones like "stressed about exams" — find something unexpected
 3. Uses specific topic/entity names from the data
@@ -152,8 +160,14 @@ Write a single insight that:
 5. Ends with a curious question
 6. Is 2-3 sentences max
 
+EXAMPLE of a GOOD response:
+{"reasoning": "Music mentions cluster with anxious moods but also highest word counts. Mom appears 4x always with declining mood. Music+anxiety is the non-obvious one — they write MORE when anxious about music.", "title": "Music brings your longest, heaviest entries", "body": "Every time you write about music, your entries triple in length — but your mood dips. In 6 entries mentioning guitar practice, your average mood dropped to 3.8 vs your baseline of 6.2. Something about music opens a deeper channel. Is it the pressure of performing, or does playing just make you more honest?", "evidence": "Topic 'music': avg mood 3.8 when present vs 6.2 absent, delta -2.4, 6 entries"}
+
+EXAMPLE of a BAD response (obvious, no data):
+{"reasoning": "They write about school and stress.", "title": "School causes stress", "body": "You tend to feel stressed when writing about school. This is common for students.", "evidence": "school-related entries"}
+
 Respond in this exact JSON format:
-{"title": "short hook (8 words max)", "body": "the insight text", "evidence": "the specific correlation data that backs this up"}`;
+{"reasoning": "your brief analysis", "title": "short hook (8 words max)", "body": "the insight text", "evidence": "the specific correlation data that backs this up"}`;
 }
 
 function buildGrowthSignalPrompt(ctx: InsightContext): string | null {
@@ -212,20 +226,27 @@ function buildGrowthSignalPrompt(ctx: InsightContext): string | null {
         signals.push(`\nDevice/environment context:\n${ctx.deviceContext}`);
     }
 
-    return `You are a thoughtful journal companion for a student. You've detected growth in their journaling practice.
+    return `You are a thoughtful journal companion for a student (15-22). You've detected growth in their journaling practice.
 
 GROWTH SIGNALS:
 ${signals.join('\n')}
 
-Write a single insight that:
+First, in a "reasoning" field, note 2-3 growth signals you see and pick the most concrete, visible one.
+Then write a single insight that:
 1. Points to ONE specific, concrete change you can see in the data
 2. Makes invisible emotional/reflective work visible
 3. Uses encouraging but not patronizing language — respect their intelligence
 4. Frames it as "you handled this differently" not "good job"
 5. Is 2-3 sentences max
 
+EXAMPLE of a GOOD response:
+{"reasoning": "Reflection depth went from Surface to Exploring (score 34→58). They started extracting lessons 3 weeks ago. Vocabulary added 'overwhelmed' and 'boundaries' — both new emotional words. The depth shift is the strongest signal.", "title": "Your reflections are getting sharper", "body": "Three weeks ago your entries were mostly event recaps — 'I did this, then that.' Your last 5 entries all pulled out a lesson or named a skill. That shift from describing to understanding is real growth, and the fact that you started using words like 'boundaries' and 'overwhelmed' means you're naming things you couldn't before.", "evidence": "Reflection depth: Level 1→2 (Surface→Exploring), score 34→58. New emotion words: 'overwhelmed', 'boundaries'"}
+
+EXAMPLE of a BAD response (generic cheerleading):
+{"reasoning": "They are growing.", "title": "You're doing great!", "body": "Your journaling shows real growth. Keep up the good work and continue reflecting!", "evidence": "general improvement"}
+
 Respond in this exact JSON format:
-{"title": "short hook (8 words max)", "body": "the insight text", "evidence": "the specific data point that shows growth"}`;
+{"reasoning": "your brief analysis", "title": "short hook (8 words max)", "body": "the insight text", "evidence": "the specific data point that shows growth"}`;
 }
 
 function buildBlindSpotPrompt(ctx: InsightContext): string | null {
@@ -295,7 +316,7 @@ function buildBlindSpotPrompt(ctx: InsightContext): string | null {
         }
     }
 
-    return `You are a thoughtful journal companion for a student. You're looking at their journal holistically to notice what's MISSING — topics, perspectives, or areas of life they consistently avoid writing about.
+    return `You are a thoughtful journal companion for a student (15-22). You're looking at their journal holistically to notice what's MISSING — topics, perspectives, or areas of life they consistently avoid writing about.
 
 JOURNAL PROFILE (${entries.length} total entries):
 Dominant topics: ${dominantTopics.join(', ') || 'none detected'}
@@ -305,15 +326,22 @@ Entries with reflection: ${hasReflection}/${entries.length}
 Entries with lessons extracted: ${hasLessons}/${entries.length}
 ${extraProfile}
 
-Write a single insight about a BLIND SPOT — something notably absent or underexplored. Rules:
+First, in a "reasoning" field, note 2-3 notable gaps or absences you see and pick the most meaningful one.
+Then write a single insight about a BLIND SPOT — something notably absent or underexplored. Rules:
 1. Be SPECIFIC — "in 47 entries, you mentioned friends 23 times but never described a conflict" is good. "You should write more about feelings" is terrible.
 2. Frame the gap as curiosity, not criticism
 3. Use actual numbers from the data
 4. End with an inviting question
 5. Is 2-3 sentences max
 
+EXAMPLE of a GOOD response:
+{"reasoning": "Friends appear in 23/47 entries but always positive — zero mentions of disagreements. Family appears 18 times but only in logistics ('picked me up', 'dinner'). Romance is never mentioned. The friends gap is most interesting because of the volume.", "title": "23 friend mentions, zero conflict", "body": "In 47 entries you've mentioned friends 23 times, and every single mention is positive — hangouts, laughs, support. That's a beautiful thing, but it also means conflict never makes it onto the page. When friction happens with someone close, where does that go?", "evidence": "Friends mentioned in 23/47 entries, 0 negative sentiment instances. Life area 'romance' never mentioned."}
+
+EXAMPLE of a BAD response (preachy, no numbers):
+{"reasoning": "They don't write about some things.", "title": "Write about more topics", "body": "You could benefit from writing about different areas of your life. Try to explore new topics in your journal.", "evidence": "limited topic range"}
+
 Respond in this exact JSON format:
-{"title": "short hook (8 words max)", "body": "the insight text", "evidence": "the specific gap or absence you noticed"}`;
+{"reasoning": "your brief analysis", "title": "short hook (8 words max)", "body": "the insight text", "evidence": "the specific gap or absence you noticed"}`;
 }
 
 function buildEvolutionPrompt(ctx: InsightContext): string | null {
@@ -344,7 +372,7 @@ function buildEvolutionPrompt(ctx: InsightContext): string | null {
     const currentProfile = `Current emotional fingerprint: ${fingerprint.summary}`;
     const topEmotions = fingerprint.axes.slice(0, 5).map((a) => `${a.emotion}: ${(a.score * 100).toFixed(0)}%`).join(', ');
 
-    return `You are a thoughtful journal companion for a student. You're tracking how their emotional landscape has evolved over time.
+    return `You are a thoughtful journal companion for a student (15-22). You're tracking how their emotional landscape has evolved over time.
 
 EMOTIONAL DATA:
 ${currentProfile}
@@ -353,20 +381,62 @@ Earlier entries mood profile: ${emotionProfile(olderEntries) || 'insufficient da
 Recent entries mood profile: ${emotionProfile(recentEntries) || 'insufficient data'}
 Total entries analyzed: ${entries.length}
 
-Write a single insight about how their emotional relationship or expression has EVOLVED. Rules:
+First, in a "reasoning" field, note 2-3 emotional shifts you see between earlier and recent entries, and pick the most meaningful one.
+Then write a single insight about how their emotional relationship or expression has EVOLVED. Rules:
 1. Name the specific emotion and how the relationship changed
 2. "Your relationship with anxiety is changing" is a good template
 3. Reference the shift with data — "earlier you... now you..."
 4. Frame evolution as natural, not prescriptive
 5. Is 2-3 sentences max
 
+EXAMPLE of a GOOD response:
+{"reasoning": "Earlier: frustrated(8), anxious(6), tired(4). Recent: thoughtful(7), calm(5), frustrated(3). Frustration dropped from dominant to third. Thoughtful replaced it as #1. Anxiety halved. The frustration→thoughtful shift is the strongest.", "title": "Frustration is giving way to thought", "body": "In your earlier entries, 'frustrated' was your most selected mood — 8 out of 15 entries. In your recent entries it's dropped to third place, and 'thoughtful' has taken over. You're not necessarily less annoyed, but you seem to be processing it differently now. What changed in how you sit with frustration?", "evidence": "Earlier: frustrated 8/15, anxious 6/15. Recent: thoughtful 7/15, frustrated 3/15"}
+
+EXAMPLE of a BAD response (vague, no data):
+{"reasoning": "Moods have shifted.", "title": "Your emotions are changing", "body": "Over time your emotional patterns have evolved. This is a natural part of growth.", "evidence": "mood changes over time"}
+
 Respond in this exact JSON format:
-{"title": "short hook (8 words max)", "body": "the insight text", "evidence": "the specific emotional shift you detected"}`;
+{"reasoning": "your brief analysis", "title": "short hook (8 words max)", "body": "the insight text", "evidence": "the specific emotional shift you detected"}`;
 }
 
 // ── Quality Scoring ──────────────────────────────────────────
 
+/**
+ * Fast deterministic pre-filter: reject clearly low-quality insights
+ * before burning an LLM scoring call.  Returns a failing score (≤ 4)
+ * if the insight is obviously generic, or null to continue to LLM scoring.
+ */
+function deterministicPreFilter(insight: GeneratedInsight): number | null {
+    const body = insight.body || '';
+    const evidence = insight.evidence || '';
+
+    // Too short to be specific
+    if (body.length < 40) return 2;
+
+    // No question mark — insights should invite reflection
+    if (!body.includes('?')) return 3;
+
+    // Evidence is missing or a stock placeholder
+    const genericEvidence = /^(multiple entries|general|various|n\/a|none|several|many|some entries)/i;
+    if (!evidence || genericEvidence.test(evidence.trim())) return 3;
+
+    // Body contains generic cheerleading phrases — sign of a vague insight
+    const genericPhrases = /\b(keep up the good work|keep going|you'?re doing great|this is normal|very common|perfectly normal|don'?t worry)\b/i;
+    if (genericPhrases.test(body)) return 3;
+
+    // No specific reference — a good insight should contain at least one
+    // number, date-like pattern, or quoted word
+    const hasSpecifics = /\d|"|"|\b\d{1,2}\/\d{1,2}\b|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i;
+    if (!hasSpecifics.test(body) && !hasSpecifics.test(evidence)) return 4;
+
+    return null; // passes pre-filter → proceed to LLM scoring
+}
+
 async function scoreInsight(insight: GeneratedInsight): Promise<number> {
+    // Fast deterministic gate — skip the LLM call for obviously bad insights
+    const preFilterScore = deterministicPreFilter(insight);
+    if (preFilterScore !== null) return preFilterScore;
+
     if (!hasLlmProvider()) {
         // Heuristic scoring if no LLM
         let score = 5;
@@ -444,7 +514,7 @@ async function generateInsightForCategory(
             { role: 'user', content: prompt },
         ],
         temperature: 0.7,
-        max_tokens: 400,
+        max_tokens: 550,
     });
 
     if (!result?.choices?.[0]?.message?.content) return null;
@@ -456,6 +526,9 @@ async function generateInsightForCategory(
         const parsed = JSON.parse(jsonMatch[0]);
 
         if (!parsed.title || !parsed.body) return null;
+
+        // Strip the chain-of-thought reasoning field — it's an internal scratchpad, not user-facing
+        delete parsed.reasoning;
 
         // Gather referenced entry IDs from contradictions/correlations
         const entryIds: string[] = [];

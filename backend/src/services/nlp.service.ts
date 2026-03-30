@@ -488,7 +488,7 @@ export class NLPService {
                 messages: [
                     {
                         role: 'system',
-                        content: `You are an NLP analysis assistant for a journal.
+                        content: `You are an NLP analysis assistant for a student journal (ages 15-22).
                         Analyze the given text and return a JSON object with the following structure:
                         {
                             "sentimentScore": number, // -1.0 to 1.0
@@ -496,7 +496,7 @@ export class NLPService {
                             "emotionalSummary": "string", // 1-sentence summary of the emotional state
                             "entities": [ { "text": "string", "type": "person" | "place" | "activity" | "thing" } ], // Max 5 entities
                             "topics": [ "string" ], // Max 5 main topics
-                            "suggestedMood": "string" // One word mood (e.g. happy, sad, calm, anxious, etc)
+                            "suggestedMood": "string" // One word: happy, calm, sad, anxious, frustrated, thoughtful, motivated, tired, grateful, hopeful, overwhelmed, nostalgic, proud, lonely, curious, or relieved
                         }`
                     },
                     { role: 'user', content },
@@ -921,7 +921,7 @@ export class NLPService {
                 messages: [
                     {
                         role: 'system',
-                        content: `You extract portfolio-ready evidence from a journal entry.
+                        content: `You extract portfolio-ready evidence from a student journal entry (author aged 15-22).
 Return strict JSON:
 {
   "situation": "string",
@@ -1006,9 +1006,9 @@ Rules:
             }
 
             // Truncate context to prevent token bloat with many entries
-            const MAX_CONTEXT_CHARS = 6000;
+            const MAX_CONTEXT_CHARS = 12000;
             const truncatedContext = context.length > MAX_CONTEXT_CHARS
-                ? context.slice(0, MAX_CONTEXT_CHARS) + '\n…(additional notes omitted for brevity)'
+                ? context.slice(0, MAX_CONTEXT_CHARS) + '\n…[additional notes omitted — showing most relevant]'
                 : context;
 
             if (availability.provider === 'llm') {
@@ -1047,7 +1047,7 @@ Response rules:
             const prompt = `<s>[INST] You are a personal journal guide for a student. Answer their question directly in 2-4 sentences. Reference specific dates or moods from the notes. No bullet lists or headers.
 
 Context:
-${context}
+${truncatedContext}
 
 Question: ${query} [/INST]`;
 

@@ -261,7 +261,7 @@ export class HealthInsightsService {
                 messages: [
                     {
                         role: 'system',
-                        content: `You are a gentle, supportive journaling assistant. Given health context and a mood, provide a brief, non-medical observation (1 sentence max) about potential connections.
+                        content: `You are a gentle, supportive journaling assistant for a student aged 15-22. Given health context and a mood, provide a brief, non-medical observation (1 sentence max) about potential connections. Use language that is calm, non-clinical, and age-appropriate.
 
 RULES:
 - Never give medical advice or diagnoses
