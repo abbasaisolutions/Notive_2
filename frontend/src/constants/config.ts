@@ -1,6 +1,6 @@
 // Centralized application configuration
 const LOCAL_API_URL = 'http://localhost:8000/api/v1';
-const PRODUCTION_API_URL = 'https://notive2-production.up.railway.app/api/v1';
+const PRODUCTION_API_URL = 'https://api.abbasaisolutions.com/api/v1';
 
 const normalizeUrl = (value: string) => value.replace(/\/$/, '');
 
@@ -43,6 +43,7 @@ export const resolveApiUrl = () => {
         return normalizeUrl(configuredUrl);
     }
 
+    // Auto-detect: use local backend when running on localhost, production otherwise
     if (typeof window !== 'undefined' && isLocalHostname(window.location.hostname)) {
         return LOCAL_API_URL;
     }
@@ -50,6 +51,15 @@ export const resolveApiUrl = () => {
     return PRODUCTION_API_URL;
 };
 
+// Lazy singleton: evaluated once on first access (client-side window is available)
+let _cachedApiUrl: string | null = null;
+export const getApiUrl = () => {
+    if (_cachedApiUrl) return _cachedApiUrl;
+    _cachedApiUrl = resolveApiUrl();
+    return _cachedApiUrl;
+};
+
+// For SSR / module-level code that needs a value immediately
 export const API_URL = resolveApiUrl();
 
 // Performance settings

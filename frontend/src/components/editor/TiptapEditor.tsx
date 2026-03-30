@@ -57,88 +57,88 @@ const MenuBar = ({
         : 'bg-primary text-white';
     const separatorClass = isPaper ? 'bg-[rgba(var(--paper-border),0.78)]' : 'bg-white/10';
     const menuClass = isPaper
-        ? 'flex flex-nowrap overflow-x-auto gap-1 p-1.5 border-b border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.56)] scrollbar-hide'
-        : 'flex flex-nowrap overflow-x-auto gap-1 p-1.5 border-b border-white/10 bg-surface-2/45 scrollbar-hide';
+        ? 'flex flex-nowrap overflow-x-auto gap-0.5 sm:gap-1 p-1 sm:p-1.5 border-b border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.56)] scrollbar-hide'
+        : 'flex flex-nowrap overflow-x-auto gap-0.5 sm:gap-1 p-1 sm:p-1.5 border-b border-white/10 bg-surface-2/45 scrollbar-hide';
 
     return (
         <div className={menuClass}>
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleBold().run()}
-                className={`p-3 rounded-lg transition-colors ${editor.isActive('bold') ? activeButtonClass : baseButtonClass
+                className={`p-2 sm:p-3 rounded-lg transition-colors ${editor.isActive('bold') ? activeButtonClass : baseButtonClass
                     }`}
                 title="Bold"
             >
-                <FiBold size={16} aria-hidden="true" />
+                <FiBold size={14} className="sm:w-4 sm:h-4" aria-hidden="true" />
             </button>
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleItalic().run()}
-                className={`p-3 rounded-lg transition-colors ${editor.isActive('italic') ? activeButtonClass : baseButtonClass
+                className={`p-2 sm:p-3 rounded-lg transition-colors ${editor.isActive('italic') ? activeButtonClass : baseButtonClass
                     }`}
                 title="Italic"
             >
-                <FiItalic size={16} aria-hidden="true" />
+                <FiItalic size={14} className="sm:w-4 sm:h-4" aria-hidden="true" />
             </button>
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleUnderline().run()}
-                className={`p-3 rounded-lg transition-colors ${editor.isActive('underline') ? activeButtonClass : baseButtonClass
+                className={`p-2 sm:p-3 rounded-lg transition-colors ${editor.isActive('underline') ? activeButtonClass : baseButtonClass
                     }`}
                 title="Underline"
             >
-                <FiUnderline size={16} aria-hidden="true" />
+                <FiUnderline size={14} className="sm:w-4 sm:h-4" aria-hidden="true" />
             </button>
 
-            <div className={`w-px mx-1 ${separatorClass}`} />
+            <div className={`w-px mx-0.5 sm:mx-1 ${separatorClass}`} />
 
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                className={`p-3 rounded-lg transition-colors ${editor.isActive('heading', { level: 1 }) ? activeButtonClass : baseButtonClass
+                className={`p-2 sm:p-3 rounded-lg transition-colors ${editor.isActive('heading', { level: 1 }) ? activeButtonClass : baseButtonClass
                     }`}
                 title="Heading 1"
             >
-                <span className="font-bold text-sm">H1</span>
+                <span className="font-bold text-xs sm:text-sm">H1</span>
             </button>
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                className={`p-3 rounded-lg transition-colors ${editor.isActive('heading', { level: 2 }) ? activeButtonClass : baseButtonClass
+                className={`p-2 sm:p-3 rounded-lg transition-colors ${editor.isActive('heading', { level: 2 }) ? activeButtonClass : baseButtonClass
                     }`}
                 title="Heading 2"
             >
-                <span className="font-bold text-sm">H2</span>
+                <span className="font-bold text-xs sm:text-sm">H2</span>
             </button>
 
-            <div className={`w-px mx-1 ${separatorClass}`} />
+            <div className={`w-px mx-0.5 sm:mx-1 ${separatorClass}`} />
 
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleBulletList().run()}
-                className={`p-3 rounded-lg transition-colors ${editor.isActive('bulletList') ? activeButtonClass : baseButtonClass
+                className={`p-2 sm:p-3 rounded-lg transition-colors ${editor.isActive('bulletList') ? activeButtonClass : baseButtonClass
                     }`}
                 title="Bullet List"
             >
-                <FiList size={16} aria-hidden="true" />
+                <FiList size={14} className="sm:w-4 sm:h-4" aria-hidden="true" />
             </button>
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                className={`p-3 rounded-lg transition-colors ${editor.isActive('orderedList') ? activeButtonClass : baseButtonClass
+                className={`p-2 sm:p-3 rounded-lg transition-colors ${editor.isActive('orderedList') ? activeButtonClass : baseButtonClass
                     }`}
                 title="Numbered List"
             >
-                <FiHash size={16} aria-hidden="true" />
+                <FiHash size={14} className="sm:w-4 sm:h-4" aria-hidden="true" />
             </button>
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleBlockquote().run()}
-                className={`p-3 rounded-lg transition-colors ${editor.isActive('blockquote') ? activeButtonClass : baseButtonClass
+                className={`p-2 sm:p-3 rounded-lg transition-colors ${editor.isActive('blockquote') ? activeButtonClass : baseButtonClass
                     }`}
                 title="Quote"
             >
-                <FiMessageSquare size={16} aria-hidden="true" />
+                <FiMessageSquare size={14} className="sm:w-4 sm:h-4" aria-hidden="true" />
             </button>
         </div>
     );

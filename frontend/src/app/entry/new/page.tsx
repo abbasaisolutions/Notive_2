@@ -16,6 +16,7 @@ import { useGamification } from '@/context/gamification-context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import EntryTopBar from '@/components/entry/new/EntryTopBar';
 import EntryEditorCard from '@/components/entry/new/EntryEditorCard';
+import FloatingRecordBar from '@/components/entry/new/FloatingRecordBar';
 import EntryInsightsPanel from '@/components/entry/new/EntryInsightsPanel';
 import {
     attachVoiceTranscriptionJob,
@@ -262,6 +263,9 @@ function NewEntryPageContent() {
     const [polishNotice, setPolishNotice] = useState<string | null>(null);
     const [draftConflict, setDraftConflict] = useState<DraftConflict | null>(null);
     const [entryLocation, setEntryLocation] = useState<EntryLocation | null>(null);
+    const [audioLevel, setAudioLevel] = useState(0);
+    const [recordingElapsed, setRecordingElapsed] = useState(0);
+    const [isBackgroundRefining, setIsBackgroundRefining] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
@@ -331,6 +335,8 @@ function NewEntryPageContent() {
         onFinal: (text: string) => {
             if (!text.trim()) return;
             browserTranscriptRef.current = appendVoiceText(browserTranscriptRef.current, text);
+            // Live insert finalized phrases into the editor as user speaks
+            setContent((current) => appendVoiceText(current, text));
         },
     });
 
@@ -378,6 +384,16 @@ function NewEntryPageContent() {
             cleanupVoiceCapture();
         };
     }, [cleanupVoiceCapture]);
+
+    // Navigation guard: warn before leaving during active recording
+    useEffect(() => {
+        if (!isRecording) return;
+        const handler = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+        };
+        window.addEventListener('beforeunload', handler);
+        return () => window.removeEventListener('beforeunload', handler);
+    }, [isRecording]);
 
     useEffect(() => {
         if (typeof navigator !== 'undefined' && navigator.onLine) {
@@ -545,6 +561,7 @@ function NewEntryPageContent() {
 
         pendingVoicePreviewRef.current = '';
         setIsVoiceProcessing(false);
+        setIsBackgroundRefining(false);
     }, [trackEvent]);
 
     useEffect(() => {
@@ -686,6 +703,7 @@ function NewEntryPageContent() {
 
         if (voiceJob.status === 'FAILED' || voiceJob.status === 'CANCELED') {
             setIsVoiceProcessing(false);
+            setIsBackgroundRefining(false);
 
             if (VOICE_ALLOW_BROWSER_FALLBACK && pendingVoicePreviewRef.current.trim()) {
                 const fallback = buildBrowserFallbackTranscription(
@@ -715,7 +733,10 @@ function NewEntryPageContent() {
             return;
         }
 
-        setIsVoiceProcessing(true);
+        // Only block UI if we don't have live text already in the editor
+        if (!isBackgroundRefining) {
+            setIsVoiceProcessing(true);
+        }
         let cancelled = false;
         let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -736,6 +757,7 @@ function NewEntryPageContent() {
 
                 if (nextJob.status === 'FAILED' || nextJob.status === 'CANCELED') {
                     setIsVoiceProcessing(false);
+                    setIsBackgroundRefining(false);
                     if (nextJob.lastError) {
                         setVoiceError(nextJob.lastError);
                     }
@@ -881,7 +903,13 @@ function NewEntryPageContent() {
             return;
         }
 
-        setIsVoiceProcessing(true);
+        // If we already have live text in the editor, use non-blocking background refinement
+        const hasLiveText = contentRef.current.trim().length > 0 && browserTranscript.length > 0;
+        if (hasLiveText) {
+            setIsBackgroundRefining(true);
+        } else {
+            setIsVoiceProcessing(true);
+        }
         setVoiceJob(null);
         pendingVoicePreviewRef.current = browserTranscript;
         let transcription: VoiceTranscriptionResponse | null = null;
@@ -969,6 +997,11 @@ function NewEntryPageContent() {
             return;
         }
 
+        // Haptic feedback on mobile
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+            navigator.vibrate(30);
+        }
+
         setVoiceError(null);
         setVoiceJob(null);
         browserTranscriptRef.current = '';
@@ -986,7 +1019,9 @@ function NewEntryPageContent() {
                     },
                 });
                 mediaStreamRef.current = stream;
-                captureMonitorRef.current = await createVoiceCaptureMonitor(stream);
+                captureMonitorRef.current = await createVoiceCaptureMonitor(stream, {
+                    onLevel: (level: number) => setAudioLevel(level),
+                });
 
                 const mediaRecorder = new MediaRecorder(stream);
                 mediaRecorder.ondataavailable = (event) => {
@@ -1043,6 +1078,10 @@ function NewEntryPageContent() {
     ]);
 
     const stopRecording = useCallback(() => {
+        // Haptic feedback on mobile
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+            navigator.vibrate([15, 30, 15]);
+        }
         shouldProcessVoiceStopRef.current = true;
         stopSpeechPreview();
 
@@ -1054,6 +1093,36 @@ function NewEntryPageContent() {
         cleanupVoiceCapture();
         void processVoiceCapture(null, null);
     }, [cleanupVoiceCapture, processVoiceCapture, stopSpeechPreview]);
+
+    // Auto-start recording when navigated with autoRecord=1 (e.g. from dashboard voice button)
+    const autoRecordTriggeredRef = useRef(false);
+    useEffect(() => {
+        if (autoRecordTriggeredRef.current) return;
+        if (!draftInitRef.current) return;
+        if (searchParams.get('autoRecord') !== '1') return;
+        if (!isVoiceSupported || isVoiceProcessing || isRecording) return;
+
+        autoRecordTriggeredRef.current = true;
+        // Small delay to let the page settle visually before starting mic
+        const timer = setTimeout(() => {
+            startRecording();
+        }, 350);
+        return () => clearTimeout(timer);
+    }, [searchParams, isVoiceSupported, isVoiceProcessing, isRecording, startRecording]);
+
+    // Elapsed recording timer
+    useEffect(() => {
+        if (!isRecording) {
+            setRecordingElapsed(0);
+            setAudioLevel(0);
+            return;
+        }
+        setRecordingElapsed(0);
+        const interval = setInterval(() => {
+            setRecordingElapsed((prev) => prev + 1);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [isRecording]);
 
     const handleOpenFullStudio = useCallback(() => {
         setShowAdvancedTools(true);
@@ -1457,7 +1526,7 @@ function NewEntryPageContent() {
                 </>
             )}
 
-            <div className={`max-w-3xl mx-auto px-4 pb-28 md:pb-8 relative z-10 ${isWhisperMode ? 'pt-12 md:pt-16' : 'pt-8'}`}>
+            <div className={`max-w-3xl mx-auto px-3 sm:px-4 pb-28 md:pb-8 relative z-10 ${isWhisperMode ? 'pt-12 md:pt-16' : 'pt-8'}`}>
                 {isWhisperMode && (
                     <p className="mb-8 text-center font-serif text-xs uppercase tracking-[0.2em] text-[rgba(255,255,255,0.24)]">whisper mode</p>
                 )}
@@ -1478,6 +1547,7 @@ function NewEntryPageContent() {
                     polishNotice={polishNotice}
                     isQuickMode={isQuickMode}
                     isWhisperMode={isWhisperMode}
+                    isBackgroundRefining={isBackgroundRefining}
                     onFinishLater={handleFinishLater}
                     onOpenFullStudio={handleOpenFullStudio}
                 />
@@ -1514,17 +1584,12 @@ function NewEntryPageContent() {
                         <button
                             type="button"
                             onClick={() => setShowAdvancedTools((prev) => !prev)}
-                            className="w-full flex items-start justify-between gap-3 text-left"
+                            className="w-full flex items-center justify-between gap-3 text-left"
                         >
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
-                                    {showAdvancedTools ? 'Hide details' : 'More details'}
-                                </p>
-                                <p className="mt-1 text-sm text-ink-secondary">
-                                    AI read, title, mood, tags, formatting, and organization only when they help.
-                                </p>
-                            </div>
-                            <span className="pt-1 text-xs text-ink-muted">{showAdvancedTools ? '−' : '+'}</span>
+                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
+                                {showAdvancedTools ? 'Hide details' : 'More details'}
+                            </p>
+                            <span className="text-xs text-ink-muted">{showAdvancedTools ? '−' : '+'}</span>
                         </button>
 
                         <div className={`transition-all duration-300 ease-in-out ${showAdvancedTools ? 'max-h-[2400px] opacity-100 mt-4' : 'max-h-0 opacity-0 overflow-hidden'}`}>
@@ -1555,13 +1620,8 @@ function NewEntryPageContent() {
                                 />
 
                                 <div className="workspace-soft-panel rounded-2xl p-4">
-                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                        <div>
-                                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Enhance writing</p>
-                                            <p className="text-sm text-ink-secondary">
-                                                Open formatting only when you want structure. Use polish after the first honest draft is down.
-                                            </p>
-                                        </div>
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Enhance writing</p>
                                         <button
                                             type="button"
                                             onClick={handlePolishWriting}
@@ -1571,11 +1631,6 @@ function NewEntryPageContent() {
                                             Polish Writing
                                         </button>
                                     </div>
-                                    {!content.trim() && (
-                                        <p className="mt-3 text-xs text-ink-muted">
-                                            Write a few lines first. The page works best when the draft exists before the cleanup tools do.
-                                        </p>
-                                    )}
                                 </div>
 
                                 {content.trim().length > 0 && writingSuggestions.length > 0 && (
@@ -1606,10 +1661,7 @@ function NewEntryPageContent() {
 
                                 <div className="workspace-soft-panel rounded-2xl p-4">
                                     <div className="mb-4">
-                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Organize note</p>
-                                        <p className="mt-1 text-sm text-ink-secondary">
-                                            Optional. Keep it blank if the note already says enough.
-                                        </p>
+                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Organize</p>
                                     </div>
                                     <div className="grid gap-4 md:grid-cols-3">
                                         <div>
@@ -1685,6 +1737,17 @@ function NewEntryPageContent() {
                 )}
             </div>
 
+            {/* Floating record bar — replaces mobile bottom bar during recording */}
+            {isRecording && (
+                <FloatingRecordBar
+                    audioLevel={audioLevel}
+                    elapsed={recordingElapsed}
+                    interimText={interimText}
+                    onStop={stopRecording}
+                />
+            )}
+
+            {!isRecording && (
             <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[rgba(var(--paper-border),0.92)] bg-[rgba(255,255,255,0.92)] p-3 backdrop-blur-xl md:hidden">
                 <div className="flex gap-2">
                     {isQuickMode && (
@@ -1704,6 +1767,7 @@ function NewEntryPageContent() {
                     </button>
                 </div>
             </div>
+            )}
 
             {draftConflict && (
                 <div

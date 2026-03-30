@@ -294,7 +294,7 @@ export default function EntryInsightsPanel({
                                 <input
                                     type="text"
                                     placeholder="Add"
-                                    className="workspace-input w-24 rounded-lg px-3 py-1.5 text-sm transition-colors focus:border-primary/50 focus:outline-none"
+                                    className="workspace-input min-w-[4rem] flex-1 rounded-lg px-3 py-1.5 text-sm transition-colors focus:border-primary/50 focus:outline-none"
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
                                             addTag((e.target as HTMLInputElement).value.trim());

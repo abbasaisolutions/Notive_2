@@ -1,7 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { FiAlertTriangle, FiArrowLeft, FiCloud, FiRefreshCw, FiSave, FiZap } from 'react-icons/fi';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { FiAlertTriangle, FiArrowLeft, FiCloud, FiEdit3, FiMic, FiRefreshCw, FiSave, FiZap } from 'react-icons/fi';
 
 type EntryTopBarProps = {
     onBack: () => void;
@@ -20,6 +20,7 @@ type EntryTopBarProps = {
     polishNotice: string | null;
     isQuickMode?: boolean;
     isWhisperMode?: boolean;
+    isBackgroundRefining?: boolean;
     onFinishLater?: () => void;
     onOpenFullStudio?: () => void;
 };
@@ -41,9 +42,32 @@ export default function EntryTopBar({
     polishNotice,
     isQuickMode = false,
     isWhisperMode = false,
+    isBackgroundRefining = false,
     onFinishLater,
     onOpenFullStudio,
 }: EntryTopBarProps) {
+    const [isMilestone, setIsMilestone] = useState(false);
+    const lastMilestoneRef = useRef(0);
+    const [toolPhase, setToolPhase] = useState(0); // 0=mic, 1=pen, 2=both
+
+    // Cycle through mic → pen → both for the creative studio pill
+    useEffect(() => {
+        const interval = setInterval(() => setToolPhase(p => (p + 1) % 3), 2400);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Detect word count milestones (50, 100, 200, 300, 500)
+    const MILESTONES = [50, 100, 200, 300, 500];
+    useEffect(() => {
+        const crossed = MILESTONES.find(m => wordCount >= m && lastMilestoneRef.current < m);
+        if (crossed) {
+            lastMilestoneRef.current = crossed;
+            setIsMilestone(true);
+            const timer = setTimeout(() => setIsMilestone(false), 500);
+            return () => clearTimeout(timer);
+        }
+    }, [wordCount]);
+
     const saveStatus = isSaving
         ? 'Saving'
             : lastSaved
@@ -89,6 +113,14 @@ export default function EntryTopBar({
                 className: 'workspace-soft-panel text-ink-secondary',
             }
             : null,
+        isBackgroundRefining
+            ? {
+                key: 'refining',
+                icon: <FiMic size={14} className="animate-pulse" aria-hidden="true" />,
+                message: 'Refining voice transcript…',
+                className: 'border-[rgba(138,154,111,0.3)] bg-[rgba(138,154,111,0.08)] text-[rgb(var(--paper-sage))]',
+            }
+            : null,
     ].filter(Boolean) as Array<{ key: string; icon: ReactNode; message: string; className: string }>;
 
     return (
@@ -106,8 +138,8 @@ export default function EntryTopBar({
                             <FiArrowLeft size={24} aria-hidden="true" />
                         </button>
                         <div className="min-w-0">
-                            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">{studioLabel}</p>
-                            <h1 className="mt-1 truncate text-sm font-semibold workspace-heading sm:text-base">
+                            <p className="text-[10px] uppercase tracking-[0.16em] text-ink-muted font-semibold">{studioLabel}</p>
+                            <h1 className="mt-0.5 text-xs font-medium text-ink-secondary leading-snug sm:text-sm">
                                 {studioPrompt}
                             </h1>
                         </div>
@@ -155,39 +187,36 @@ export default function EntryTopBar({
             )}
 
             {isQuickMode && (
-                <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.12em] text-primary/80">One calm draft</p>
-                            <p className="mt-1 text-sm text-[rgb(var(--text-primary))]">Start simple. Open more details only if they help this note go further.</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {onOpenFullStudio && (
-                                <button
-                                    type="button"
-                                    onClick={onOpenFullStudio}
-                                    className="workspace-button-outline rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary hover:text-[rgb(var(--text-primary))] transition-colors"
-                                >
-                                    More details
-                                </button>
-                            )}
-                            {onFinishLater && (
-                                <button
-                                    type="button"
-                                    onClick={onFinishLater}
-                                    className="rounded-xl border border-primary/30 bg-primary/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-primary hover:bg-primary/25 transition-colors"
-                                >
-                                    Save for later
-                                </button>
-                            )}
-                        </div>
-                    </div>
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                    <span className={`workspace-pill px-3 py-1.5 rounded-full text-xs text-ink-secondary uppercase tracking-[0.08em] ${isMilestone ? 'milestone-celebrate' : ''}`}>
+                        {wordCount} words
+                    </span>
+                    {onOpenFullStudio && (
+                        <button
+                            type="button"
+                            onClick={onOpenFullStudio}
+                            className="studio-tools-pill group relative flex items-center gap-1.5 overflow-hidden rounded-full border border-primary/25 bg-primary/8 px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-primary transition-all hover:border-primary/40 hover:bg-primary/15 hover:shadow-md hover:shadow-primary/10"
+                        >
+                            {/* Mic icon — visible in phase 0 and 2 */}
+                            <span className={`inline-flex transition-all duration-500 ${toolPhase === 1 ? 'w-0 scale-0 opacity-0' : 'w-4 scale-100 opacity-100'}`}>
+                                <FiMic size={14} className="studio-tool-mic" aria-hidden="true" />
+                            </span>
+                            {/* Pen icon — visible in phase 1 and 2 */}
+                            <span className={`inline-flex transition-all duration-500 ${toolPhase === 0 ? 'w-0 scale-0 opacity-0' : 'w-4 scale-100 opacity-100'}`}>
+                                <FiEdit3 size={14} className="studio-tool-pen" aria-hidden="true" />
+                            </span>
+                            <span className="relative">
+                                Studio
+                                <span className="absolute -bottom-px left-0 h-px w-0 bg-primary/50 transition-all duration-300 group-hover:w-full" />
+                            </span>
+                        </button>
+                    )}
                 </div>
             )}
 
             {!isQuickMode && (
                 <div className="mb-4 flex flex-wrap items-center gap-2">
-                    <span className="workspace-pill px-3 py-1.5 rounded-full text-xs text-ink-secondary uppercase tracking-[0.08em]">
+                    <span className={`workspace-pill px-3 py-1.5 rounded-full text-xs text-ink-secondary uppercase tracking-[0.08em] ${isMilestone ? 'milestone-celebrate' : ''}`}>
                         {wordCount} words
                     </span>
                     <span className="workspace-pill px-3 py-1.5 rounded-full text-xs text-ink-secondary uppercase tracking-[0.08em]">

@@ -1154,6 +1154,57 @@
     border-radius: 1.75rem;
   }
 
+  /* Ink-flow border — animated gradient border during active writing */
+  @keyframes ink-flow-border {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .entry-typing-glow::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(90deg, rgba(138,154,111,0.0), rgba(138,154,111,0.3), rgba(138,154,111,0.0));
+    background-size: 200% 100%;
+    animation: ink-flow-border 3s ease-in-out infinite;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Editor card entrance */
+  @keyframes editor-card-enter {
+    from { opacity: 0; transform: translateY(12px) scale(0.99); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .editor-card-enter {
+    animation: editor-card-enter 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Placeholder shimmer fade */
+  @keyframes placeholder-shimmer {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 0.65; }
+  }
+  .ProseMirror .is-empty::before {
+    animation: placeholder-shimmer 3s ease-in-out infinite;
+  }
+
+  /* Word count milestone — micro celebration pulse */
+  @keyframes milestone-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+  .milestone-celebrate {
+    animation: milestone-pulse 400ms ease-out;
+  }
+
   /* Recording button arc container */
   .recording-arc-container {
     position: relative;
@@ -1163,6 +1214,65 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  /* Entry studio overflow safety */
+  .entry-studio {
+    overflow-x: hidden;
+  }
+
+  /* Floating record bar entrance */
+  @keyframes voice-record-bar-enter {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .voice-record-bar-enter {
+    animation: voice-record-bar-enter 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Voice-active editor glow — sage breathing border during recording */
+  @keyframes voice-active-glow {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(138,154,111,0.15), 0 0 20px rgba(138,154,111,0.06); }
+    50% { box-shadow: 0 0 0 2px rgba(138,154,111,0.35), 0 0 28px rgba(138,154,111,0.12); }
+  }
+  .voice-active-glow {
+    animation: voice-active-glow 2s ease-in-out infinite;
+    border-radius: 1.75rem;
+  }
+
+  /* Voice capture complete — brief celebratory shimmer */
+  @keyframes voice-capture-complete {
+    0% { box-shadow: 0 0 0 0 rgba(138,154,111,0.4); }
+    40% { box-shadow: 0 0 0 6px rgba(138,154,111,0.15), 0 0 24px rgba(138,154,111,0.1); }
+    100% { box-shadow: 0 0 0 0 rgba(138,154,111,0); }
+  }
+  .voice-capture-complete {
+    animation: voice-capture-complete 600ms ease-out both;
+    border-radius: 1.75rem;
+  }
+
+  /* Word write-in — typewriter-inspired appearance for voice-to-text */
+  @keyframes word-write-in {
+    0% { opacity: 0; transform: translateY(3px) scale(0.95); filter: blur(2px); }
+    60% { opacity: 1; transform: translateY(-1px) scale(1.02); filter: blur(0); }
+    100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  }
+  .word-write-in {
+    display: inline-block;
+    animation: word-write-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Voice ripple — subtle ring emanating from editor during recording */
+  @keyframes voice-ripple {
+    0% { transform: scale(0.98); opacity: 0.3; }
+    50% { transform: scale(1.005); opacity: 0.08; }
+    100% { transform: scale(0.98); opacity: 0.3; }
+  }
+  .voice-ripple-ring {
+    animation: voice-ripple 3s ease-in-out infinite;
+    border-radius: 1.75rem;
+    box-shadow: inset 0 0 0 1px rgba(138,154,111,0.15);
   }
 
   /* Floating capture — pen breathing */
@@ -1200,6 +1310,83 @@
   }
   .sound-wave-1 { animation: sound-wave 2.8s ease-in-out infinite; }
   .sound-wave-2 { animation: sound-wave 2.8s ease-in-out 0.6s infinite; }
+
+  /* Voice button — idle state: sage gradient CTA with subtle breathing glow */
+  .voice-btn-idle {
+    background: linear-gradient(135deg, rgba(138,154,111,0.18), rgba(138,154,111,0.08));
+    border: 1.5px solid rgba(138,154,111,0.35);
+    color: rgb(var(--paper-sage));
+    box-shadow: 0 2px 12px rgba(138,154,111,0.12);
+    animation: voice-btn-breathe 3s ease-in-out infinite;
+  }
+  .voice-btn-idle:hover {
+    background: linear-gradient(135deg, rgba(138,154,111,0.28), rgba(138,154,111,0.14));
+    border-color: rgba(138,154,111,0.5);
+    box-shadow: 0 4px 20px rgba(138,154,111,0.22);
+    transform: translateY(-1px);
+  }
+  @keyframes voice-btn-breathe {
+    0%, 100% { box-shadow: 0 2px 12px rgba(138,154,111,0.12); }
+    50% { box-shadow: 0 2px 18px rgba(138,154,111,0.22); }
+  }
+
+  /* Voice button — recording state: pulsing sage ring */
+  .voice-btn-recording {
+    background: rgba(138,154,111,0.12);
+    border: 1.5px solid rgba(138,154,111,0.5);
+    color: rgb(var(--paper-sage));
+    animation: voice-btn-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes voice-btn-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(138,154,111,0.3), 0 2px 12px rgba(138,154,111,0.15); }
+    50% { box-shadow: 0 0 0 6px rgba(138,154,111,0.08), 0 2px 20px rgba(138,154,111,0.25); }
+  }
+
+  /* Studio tools pill — animated icon pair */
+  .studio-tools-pill {
+    backdrop-filter: blur(8px);
+  }
+  .studio-tools-pill::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(138,154,111,0.0), rgba(138,154,111,0.35), rgba(138,154,111,0.0));
+    background-size: 200% 200%;
+    animation: studio-pill-shimmer 4s ease-in-out infinite;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    pointer-events: none;
+  }
+  @keyframes studio-pill-shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  .studio-tool-mic {
+    animation: studio-icon-glow 2.4s ease-in-out infinite;
+  }
+  .studio-tool-pen {
+    animation: studio-icon-glow 2.4s ease-in-out 1.2s infinite;
+  }
+  @keyframes studio-icon-glow {
+    0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 0 transparent); }
+    50% { opacity: 1; filter: drop-shadow(0 0 4px rgba(138,154,111,0.5)); }
+  }
+
+  /* Capture FAB — elevated floating action button */
+  .capture-fab {
+    transform: translateY(-6px);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .capture-fab:hover {
+    transform: translateY(-9px);
+  }
+  .capture-fab:active {
+    transform: translateY(-4px);
+  }
 
   @keyframes float {
 

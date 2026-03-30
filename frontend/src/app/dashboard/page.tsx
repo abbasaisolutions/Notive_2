@@ -774,7 +774,7 @@ export default function DashboardPage() {
     const fallbackRecommendedPrompt = onboarding?.starterPrompt?.trim() || profileRecommendedPrompt || getRecommendedPrompt(onboarding);
     const dashboardReturnTo = buildCurrentReturnTo('/dashboard', '');
     const newEntryHref = appendReturnTo('/entry/new?mode=quick', dashboardReturnTo);
-    const voiceEntryHref = appendReturnTo('/entry/new?mode=quick&source=dashboard_voice', dashboardReturnTo);
+    const voiceEntryHref = appendReturnTo('/entry/new?mode=quick&source=dashboard_voice&autoRecord=1', dashboardReturnTo);
     const guideHref = appendReturnTo('/chat', dashboardReturnTo);
     const portfolioHref = appendReturnTo('/portfolio?view=growth', dashboardReturnTo);
     const timelineHref = appendReturnTo('/timeline', dashboardReturnTo);

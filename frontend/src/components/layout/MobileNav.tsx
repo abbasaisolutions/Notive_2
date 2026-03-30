@@ -30,6 +30,7 @@ export default function MobileNav() {
     const [isMoreOpen, setIsMoreOpen] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isCaptureOpen, setIsCaptureOpen] = useState(false);
+    const [capturePhase, setCapturePhase] = useState(0); // 0=pen, 1=mic
     const isPaper = theme === 'paper';
     const workspaceMaturity = getWorkspaceMaturity({
         role: user?.role ?? null,
@@ -52,7 +53,7 @@ export default function MobileNav() {
         [currentReturnTo]
     );
     const voiceEntryHref = useMemo(
-        () => appendReturnTo('/entry/new?mode=quick&voiceSession=1', currentReturnTo),
+        () => appendReturnTo('/entry/new?mode=quick&voiceSession=1&autoRecord=1', currentReturnTo),
         [currentReturnTo]
     );
 
@@ -60,6 +61,13 @@ export default function MobileNav() {
         setIsMoreOpen(false);
         setIsCaptureOpen(false);
     }, [pathname]);
+
+    // Alternate pen/mic on the capture button when not open
+    useEffect(() => {
+        if (isCaptureOpen) return;
+        const interval = setInterval(() => setCapturePhase(p => (p + 1) % 2), 2800);
+        return () => clearInterval(interval);
+    }, [isCaptureOpen]);
 
     useEffect(() => {
         if (!isCaptureOpen) return;
@@ -347,22 +355,60 @@ export default function MobileNav() {
                                         aria-label={isCaptureOpen ? 'Close capture menu' : 'Quick Capture'}
                                         aria-expanded={isCaptureOpen}
                                         aria-haspopup="menu"
-                                        className="app-paper relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-[1.6rem] shadow-[0_6px_20px_rgba(138,154,111,0.25)]"
-                                        style={{ backgroundColor: '#8A9A6F' }}
+                                        className="capture-fab relative flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-[1.7rem]"
                                     >
+                                        {/* Multi-layer background for depth */}
+                                        <div className="absolute inset-0 rounded-[inherit] bg-gradient-to-br from-[#A3B87F] via-[#8A9A6F] to-[#6B7D52] shadow-[0_8px_28px_rgba(107,125,82,0.45),inset_0_1px_1px_rgba(255,255,255,0.25)]" />
+                                        {/* Glass highlight on top-left */}
+                                        <div className="absolute inset-0 rounded-[inherit] bg-gradient-to-br from-white/30 via-transparent to-transparent opacity-80" />
+                                        {/* Subtle inner ring */}
+                                        <div className="absolute inset-[3px] rounded-[1.4rem] border border-white/15" />
+                                        {/* Breathing glow ring */}
+                                        <motion.div
+                                            className="absolute -inset-1 rounded-[2rem] border-2 border-[#A3B87F]/40"
+                                            animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0.15, 0.5] }}
+                                            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                                        />
+
                                         <motion.div
                                             animate={{ rotate: isCaptureOpen ? 90 : 0 }}
                                             transition={{ duration: 0.28, ease: 'easeOut' }}
-                                            className="relative flex h-8 w-8 items-center justify-center"
+                                            className="relative z-10 flex h-8 w-8 items-center justify-center"
                                         >
-                                            {!isCaptureOpen && (
-                                                <span className="select-none text-4xl leading-none text-white">+</span>
-                                            )}
-                                            {isCaptureOpen && (
+                                            {isCaptureOpen ? (
                                                 <div className="flex items-center gap-2">
-                                                    <NotebookDoodle name="pen" accent="sage" size={18} color="#F8F4ED" />
-                                                    <div className="h-5 w-px bg-white/60" style={{ transform: 'rotate(12deg)' }} />
-                                                    <NotebookDoodle name="mic" accent="sage" size={18} color="#F8F4ED" />
+                                                    <NotebookDoodle name="pen" accent="sage" size={18} color="#FFFFFF" />
+                                                    <div className="h-5 w-px bg-white/50" style={{ transform: 'rotate(12deg)' }} />
+                                                    <NotebookDoodle name="mic" accent="sage" size={18} color="#FFFFFF" />
+                                                </div>
+                                            ) : (
+                                                <div className="relative flex items-center justify-center w-8 h-8">
+                                                    {/* Pen icon */}
+                                                    <motion.div
+                                                        className="absolute inset-0 flex items-center justify-center drop-shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+                                                        initial={false}
+                                                        animate={{
+                                                            opacity: capturePhase === 0 ? 1 : 0,
+                                                            scale: capturePhase === 0 ? 1 : 0.4,
+                                                            rotate: capturePhase === 0 ? 0 : -30,
+                                                        }}
+                                                        transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                                                    >
+                                                        <NotebookDoodle name="pen" accent="sage" size={26} color="#FFFFFF" />
+                                                    </motion.div>
+                                                    {/* Mic icon */}
+                                                    <motion.div
+                                                        className="absolute inset-0 flex items-center justify-center drop-shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+                                                        initial={false}
+                                                        animate={{
+                                                            opacity: capturePhase === 1 ? 1 : 0,
+                                                            scale: capturePhase === 1 ? 1 : 0.4,
+                                                            rotate: capturePhase === 1 ? 0 : 30,
+                                                        }}
+                                                        transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                                                    >
+                                                        <NotebookDoodle name="mic" accent="sage" size={26} color="#FFFFFF" />
+                                                    </motion.div>
                                                 </div>
                                             )}
                                         </motion.div>

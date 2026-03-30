@@ -70,7 +70,9 @@ export default function EntryEditorCard({
     showFormattingToolbar = false,
 }: EntryEditorCardProps) {
     const [isTypingActive, setIsTypingActive] = useState(false);
+    const [justCaptured, setJustCaptured] = useState(false);
     const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const wasRecordingRef = useRef(false);
 
     const handleEditorChangeInternal = (text: string, html: string) => {
         setIsTypingActive(true);
@@ -78,6 +80,18 @@ export default function EntryEditorCard({
         typingTimerRef.current = setTimeout(() => setIsTypingActive(false), 1600);
         onEditorChange(text, html);
     };
+
+    // Detect recording stop for capture-complete animation
+    useEffect(() => {
+        if (isRecording) {
+            wasRecordingRef.current = true;
+        } else if (wasRecordingRef.current) {
+            wasRecordingRef.current = false;
+            setJustCaptured(true);
+            const timer = setTimeout(() => setJustCaptured(false), 700);
+            return () => clearTimeout(timer);
+        }
+    }, [isRecording]);
 
     useEffect(() => {
         return () => {
@@ -92,23 +106,9 @@ export default function EntryEditorCard({
     const bodyTextClass = 'text-default';
 
     return (
-        <div className="mb-6">
-            {!minimalEditor && (
-                <div className="mb-3 flex flex-wrap items-end justify-between gap-3 px-1">
-                    <div>
-                        <p className="type-overline text-muted">Draft space</p>
-                        <p className="type-body-sm mt-1 text-default">
-                            Start with the messy version. Details and polish can come after the thought is down.
-                        </p>
-                    </div>
-                    <p className="type-overline text-muted">
-                        Autosaves while you write
-                    </p>
-                </div>
-            )}
-
+        <div className="mb-6 editor-card-enter">
             {/* Editor — with quill watermark + typing glow */}
-            <div className={`relative transition-all duration-700 ${isTypingActive && !minimalEditor ? 'entry-typing-glow' : ''}`}>
+            <div className={`relative transition-all duration-700 ${justCaptured ? 'voice-capture-complete' : isRecording ? 'voice-active-glow voice-ripple-ring' : isTypingActive && !minimalEditor ? 'entry-typing-glow' : ''}`}>
                 {/* Quill watermark — faint ghost doodle, appears once user has written something */}
                 {hasContent && !minimalEditor && (
                     <div
@@ -213,7 +213,7 @@ export default function EntryEditorCard({
             )}
 
             {/* Bottom toolbar: image + voice */}
-            <div className={`mt-4 flex items-center justify-between rounded-2xl border px-3 py-3 ${utilityPanelClass}`}>
+            <div className={`mt-3 flex items-center justify-between rounded-2xl border px-3 py-2 ${utilityPanelClass}`}>
                 <div className="flex items-center gap-2">
                     {showImageUpload && (
                         <>
@@ -227,45 +227,44 @@ export default function EntryEditorCard({
                             <button
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={isUploading}
-                                className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-muted transition-all hover:bg-white/10 hover:text-strong"
+                                className="flex items-center gap-1.5 rounded-xl px-2 py-1.5 text-ink-muted/60 transition-all hover:bg-white/10 hover:text-ink-secondary"
                                 title="Add image"
                             >
                                 {isUploading ? (
-                                    <div className="w-5 h-5 border-2 border-ink-muted/50 border-t-transparent rounded-full animate-spin" />
+                                    <div className="w-4 h-4 border-2 border-ink-muted/50 border-t-transparent rounded-full animate-spin" />
                                 ) : (
-                                    <FiImage size={18} aria-hidden="true" />
+                                    <FiImage size={16} aria-hidden="true" />
                                 )}
-                                <span className="type-label-sm">Image</span>
+                                <span className="type-label-sm text-[11px]">Image</span>
                             </button>
                         </>
                     )}
                 </div>
 
-                {/* Voice button — mic arc rings when recording, otherwise standard */}
+                {/* Voice button — hero-sized, glowing CTA */}
                 <button
                     onClick={isRecording ? onStopRecording : onStartRecording}
                     disabled={!isVoiceSupported || isVoiceProcessing}
                     title={isRecording ? 'Stop recording' : isVoiceProcessing ? 'Processing...' : 'Record voice'}
-                    className={`flex items-center gap-2.5 rounded-full px-3 py-2 transition-all duration-300 ${!isVoiceSupported
-                        ? 'text-muted cursor-not-allowed opacity-50'
+                    className={`flex items-center gap-2 rounded-full transition-all duration-300 min-h-[44px] min-w-[44px] justify-center ${!isVoiceSupported
+                        ? 'text-muted cursor-not-allowed opacity-50 px-3 py-2'
                         : isRecording
-                            ? 'border border-[rgba(138,154,111,0.35)] bg-[rgba(138,154,111,0.08)] text-[rgb(var(--paper-sage))]'
+                            ? 'voice-btn-recording px-4 py-2.5'
                             : isVoiceProcessing
-                                ? 'text-muted cursor-wait'
-                                : 'text-muted hover:bg-white/10 hover:text-strong'
+                                ? 'text-muted cursor-wait px-3 py-2'
+                                : 'voice-btn-idle px-4 py-2.5'
                     }`}
                 >
                     {isRecording ? (
                         <>
-                            {/* Animated arc rings replace the plain red ping */}
                             <div className="recording-arc-container">
                                 <span className="mic-arc-ring mic-arc-ring-1" />
                                 <span className="mic-arc-ring mic-arc-ring-2" />
                                 <span className="mic-arc-ring mic-arc-ring-3" />
-                                <FiMic size={11} className="relative z-10" aria-hidden="true" />
+                                <FiMic size={12} className="relative z-10" aria-hidden="true" />
                             </div>
                             <FiSquare size={14} aria-hidden="true" />
-                            <span className="type-label-sm">Stop</span>
+                            <span className="type-label-sm font-semibold">Stop</span>
                         </>
                     ) : isVoiceProcessing ? (
                         <>
@@ -275,7 +274,7 @@ export default function EntryEditorCard({
                     ) : (
                         <>
                             <FiMic size={18} aria-hidden="true" />
-                            <span className="type-label-sm">Voice</span>
+                            <span className="type-label-sm font-semibold">Speak</span>
                         </>
                     )}
                 </button>
