@@ -564,6 +564,159 @@ export const getPlatformStats = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * Get high-level app readiness and coverage metrics for admin operations.
+ */
+export const getPerformanceOverview = async (req: Request, res: Response) => {
+    try {
+        const now = new Date();
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+        const [
+            totalUsers,
+            totalEntries,
+            entryCountsByUser,
+            recent90EntryCountsByUser,
+            activeUsers7d,
+            activeUsers30d,
+            deviceSignalUsers30d,
+            recentHeroInsightUsers,
+            analyzedEntries,
+            entriesWithMood,
+            entriesWithReflection,
+            entriesWithAudio,
+            voiceJobs30d,
+            newUsers30d,
+        ] = await Promise.all([
+            prisma.user.count(),
+            prisma.entry.count({ where: { deletedAt: null } }),
+            prisma.entry.groupBy({
+                by: ['userId'],
+                where: { deletedAt: null },
+                _count: { _all: true },
+            }),
+            prisma.entry.groupBy({
+                by: ['userId'],
+                where: {
+                    deletedAt: null,
+                    createdAt: { gte: ninetyDaysAgo },
+                },
+                _count: { _all: true },
+            }),
+            prisma.entry.groupBy({
+                by: ['userId'],
+                where: {
+                    deletedAt: null,
+                    createdAt: { gte: sevenDaysAgo },
+                },
+            }),
+            prisma.entry.groupBy({
+                by: ['userId'],
+                where: {
+                    deletedAt: null,
+                    createdAt: { gte: thirtyDaysAgo },
+                },
+            }),
+            prisma.deviceSignal.groupBy({
+                by: ['userId'],
+                where: { date: { gte: thirtyDaysAgo } },
+            }),
+            prisma.dashboardInsight.groupBy({
+                by: ['userId'],
+                where: { generatedAt: { gte: sevenDaysAgo } },
+            }),
+            prisma.entryAnalysis.count(),
+            prisma.entry.count({
+                where: {
+                    deletedAt: null,
+                    mood: { not: null },
+                },
+            }),
+            prisma.entry.count({
+                where: {
+                    deletedAt: null,
+                    reflection: { not: null },
+                },
+            }),
+            prisma.entry.count({
+                where: {
+                    deletedAt: null,
+                    audioUrl: { not: null },
+                },
+            }),
+            prisma.voiceTranscriptionJob.groupBy({
+                by: ['status'],
+                where: {
+                    createdAt: { gte: thirtyDaysAgo },
+                },
+                _count: { _all: true },
+            }),
+            prisma.user.count({
+                where: {
+                    createdAt: { gte: thirtyDaysAgo },
+                },
+            }),
+        ]);
+
+        const percent = (value: number, total: number) =>
+            total > 0 ? Math.round((value / total) * 100) : 0;
+
+        const usersWithNotes = entryCountsByUser.length;
+        const readyAt = (minimumEntries: number) =>
+            entryCountsByUser.filter((item) => item._count._all >= minimumEntries).length;
+
+        const voiceStatusMap = voiceJobs30d.reduce<Record<string, number>>((acc, row) => {
+            acc[row.status] = row._count._all;
+            return acc;
+        }, {});
+
+        const completedVoiceJobs = voiceStatusMap.COMPLETED ?? 0;
+        const totalVoiceJobs = voiceJobs30d.reduce((sum, row) => sum + row._count._all, 0);
+
+        return res.json({
+            generatedAt: now.toISOString(),
+            population: {
+                totalUsers,
+                usersWithNotes,
+                activeUsers7d: activeUsers7d.length,
+                activeUsers30d: activeUsers30d.length,
+                newUsers30d,
+            },
+            dashboard: {
+                writerDnaReady: readyAt(3),
+                emotionalFingerprintReady: readyAt(5),
+                primeTimeReady: readyAt(10),
+                fullInsightsReady: readyAt(20),
+                recentJournalIntelReady: recent90EntryCountsByUser.filter((item) => item._count._all >= 3).length,
+                deviceContextReady: deviceSignalUsers30d.length,
+                freshHeroInsightUsers: recentHeroInsightUsers.length,
+            },
+            content: {
+                totalEntries,
+                analyzedEntries,
+                analysisCoverage: percent(analyzedEntries, totalEntries),
+                moodCoverage: percent(entriesWithMood, totalEntries),
+                reflectionCoverage: percent(entriesWithReflection, totalEntries),
+                voiceEntryCoverage: percent(entriesWithAudio, totalEntries),
+            },
+            voice: {
+                totalJobs30d: totalVoiceJobs,
+                pending: voiceStatusMap.PENDING ?? 0,
+                processing: voiceStatusMap.PROCESSING ?? 0,
+                completed: completedVoiceJobs,
+                failed: voiceStatusMap.FAILED ?? 0,
+                canceled: voiceStatusMap.CANCELED ?? 0,
+                completionRate: percent(completedVoiceJobs, totalVoiceJobs),
+            },
+        });
+    } catch (error) {
+        console.error('Get performance overview error:', error);
+        return res.status(500).json({ message: 'Failed to fetch performance overview' });
+    }
+};
+
 export const getRetrievalDebug = async (req: Request, res: Response) => {
     try {
         const requesterId = req.userId;

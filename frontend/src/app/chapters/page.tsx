@@ -11,6 +11,7 @@ import { ActionBar, AppPanel, SectionHeader, StatTile, TagPill } from '@/compone
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import { writeWorkspaceResume } from '@/utils/workspace-resume';
 import { FiArrowLeft, FiArrowRight, FiBook, FiEdit3, FiPlus } from 'react-icons/fi';
+import { Spinner } from '@/components/ui';
 import { CHAPTER_ICON_OPTIONS, CHAPTER_ICON_MAP, ChapterIconKey, getChapterIconComponent, normalizeChapterIcon } from '@/constants/chapter-icons';
 
 interface Chapter {
@@ -139,7 +140,7 @@ export default function ChaptersPage() {
     if (authLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin h-8 w-8 rounded-full border-4 border-primary border-t-transparent" />
+                <Spinner size="md" />
             </div>
         );
     }
@@ -159,7 +160,7 @@ export default function ChaptersPage() {
                                 onClick={navigateBack}
                                 aria-label={backLabel}
                                 title={backLabel}
-                                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.03] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-xl workspace-button-outline text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))]"
                             >
                                 <FiArrowLeft size={20} aria-hidden="true" />
                             </button>
@@ -167,13 +168,14 @@ export default function ChaptersPage() {
                                 kicker={NOTIVE_VOICE.surfaces.storyCollections}
                                 title="Group related notes"
                                 description="Put notes together by project, season, or part of life so they are easier to find and use later."
+                                as="h1"
                             />
                         </div>
 
-                        <ActionBar className="overflow-x-auto bg-black/20 border-white/10">
+                        <ActionBar className="overflow-x-auto">
                             <Link
                                 href={captureHref}
-                                className="rounded-xl px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:text-white"
+                                className="rounded-xl px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))]"
                             >
                                 Quick Capture
                             </Link>
@@ -197,7 +199,7 @@ export default function ChaptersPage() {
 
                 {isLoading ? (
                     <AppPanel className="flex justify-center py-16">
-                        <div className="animate-spin h-8 w-8 rounded-full border-4 border-primary border-t-transparent" />
+                        <Spinner size="md" />
                     </AppPanel>
                 ) : chapters.length === 0 ? (
                     <AppPanel className="space-y-6 text-center">
@@ -220,7 +222,7 @@ export default function ChaptersPage() {
                             </button>
                             <Link
                                 href={captureHref}
-                                className="rounded-xl border border-white/15 bg-white/[0.05] px-5 py-3 text-sm font-semibold text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                className="workspace-button-outline rounded-xl px-5 py-3 text-sm font-semibold text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))]"
                             >
                                 Quick Capture
                             </Link>
@@ -235,12 +237,12 @@ export default function ChaptersPage() {
                             return (
                                 <article
                                     key={chapter.id}
-                                    className="overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] transition-colors hover:border-white/15 hover:bg-white/[0.05]"
+                                    className="overflow-hidden rounded-[28px] workspace-soft-panel transition-colors hover:border-white/20"
                                 >
                                     <div className="relative h-32 overflow-hidden bg-surface-1">
                                         <div className="absolute inset-0 opacity-20" style={{ backgroundColor: chapter.color }} />
                                         <div className="absolute inset-0 flex items-center justify-center">
-                                            <ChapterIcon className="text-white transition-transform duration-500 group-hover:scale-110" size={60} aria-hidden="true" />
+                                            <ChapterIcon className="text-[rgb(var(--text-primary))] transition-transform duration-500 group-hover:scale-110" size={60} aria-hidden="true" />
                                         </div>
                                         <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: chapter.color }} />
                                     </div>
@@ -250,7 +252,7 @@ export default function ChaptersPage() {
                                             <TagPill>Started {new Date(chapter.createdAt).getFullYear()}</TagPill>
                                         </div>
                                         <div>
-                                            <h3 className="text-xl font-semibold text-white">{chapter.name}</h3>
+                                            <h3 className="text-xl font-semibold workspace-heading">{chapter.name}</h3>
                                             <p className="mt-2 text-sm leading-7 text-ink-secondary">
                                                 {chapter.description || 'A simple group for related notes, scenes, and turning points.'}
                                             </p>
@@ -259,7 +261,7 @@ export default function ChaptersPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => openEditModal(chapter)}
-                                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2.5 text-sm font-semibold text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                                className="inline-flex items-center justify-center gap-2 rounded-xl workspace-button-outline px-4 py-2.5 text-sm font-semibold text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))]"
                                             >
                                                 <FiEdit3 size={15} aria-hidden="true" />
                                                 Edit
@@ -281,8 +283,18 @@ export default function ChaptersPage() {
             </div>
 
             {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-                    <AppPanel className="w-full max-w-xl space-y-5">
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+                    onClick={() => { setShowModal(false); setEditingChapter(null); }}
+                    onKeyDown={(e) => { if (e.key === 'Escape') { setShowModal(false); setEditingChapter(null); } }}
+                >
+                    <AppPanel
+                        className="w-full max-w-xl space-y-5"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label={editingChapter ? 'Edit group' : 'New group'}
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    >
                         <SectionHeader
                             kicker={NOTIVE_VOICE.surfaces.storyCollections}
                             title={editingChapter ? 'Edit group' : 'New group'}
@@ -296,7 +308,7 @@ export default function ChaptersPage() {
                                     value={formData.name}
                                     onChange={(event) => setFormData({ ...formData, name: event.target.value })}
                                     placeholder="My group"
-                                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                    className="w-full workspace-input rounded-xl px-4 py-3 text-[rgb(var(--text-primary))] focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 />
                             </div>
                             <div>
@@ -306,7 +318,7 @@ export default function ChaptersPage() {
                                     onChange={(event) => setFormData({ ...formData, description: event.target.value })}
                                     placeholder="What belongs in this group?"
                                     rows={3}
-                                    className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                    className="w-full workspace-input resize-none rounded-xl px-4 py-3 text-[rgb(var(--text-primary))] focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 />
                             </div>
                             <div>
@@ -320,10 +332,11 @@ export default function ChaptersPage() {
                                                 type="button"
                                                 onClick={() => setFormData({ ...formData, icon: key })}
                                                 title={label}
+                                                aria-label={`Select ${label} icon`}
                                                 className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
                                                     formData.icon === key
                                                         ? 'bg-primary text-white'
-                                                        : 'bg-white/5 text-ink-secondary hover:bg-white/10 hover:text-white'
+                                                        : 'workspace-pill text-ink-secondary hover:text-[rgb(var(--text-primary))]'
                                                 }`}
                                             >
                                                 <Icon size={18} aria-hidden="true" />
@@ -340,6 +353,7 @@ export default function ChaptersPage() {
                                             key={color}
                                             type="button"
                                             onClick={() => setFormData({ ...formData, color })}
+                                            aria-label={`Select color ${color}`}
                                             className={`h-8 w-8 rounded-full transition-all ${formData.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-surface-1' : ''}`}
                                             style={{ backgroundColor: color }}
                                         />
@@ -353,7 +367,7 @@ export default function ChaptersPage() {
                                         setShowModal(false);
                                         resetForm();
                                     }}
-                                    className="flex-1 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                    className="flex-1 workspace-button-outline rounded-xl px-4 py-3 text-sm font-semibold text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))]"
                                 >
                                     Cancel
                                 </button>

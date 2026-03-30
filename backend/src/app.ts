@@ -16,6 +16,8 @@ import importRoutes from './routes/import.routes';
 import fileRoutes from './routes/file.routes';
 import healthRoutes from './routes/health.routes';
 import legalRoutes from './routes/legal.routes';
+import voiceRoutes from './routes/voice.routes';
+import deviceRoutes from './routes/device.routes';
 import { securityConfig } from './config/security';
 import { securityHeadersMiddleware } from './middleware/security.middleware';
 import { requestLoggingMiddleware } from './middleware/request-logging.middleware';
@@ -107,6 +109,8 @@ app.use('/api/v1/import', importRoutes);
 app.use('/api/v1/files', fileRoutes);
 app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/legal', legalRoutes);
+app.use('/api/v1/voice', voiceRoutes);
+app.use('/api/v1/device', deviceRoutes);
 
 app.use((err: any, req: Request, res: Response, _next: any) => {
     serverLogger.error('http.request.failed', {

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.middleware';
 import {
     getActivity,
+    getDashboardInsights,
     getMoodTrends,
     getPersonalizationTelemetry,
     getPromptExperimentReport,
@@ -14,6 +15,7 @@ import {
     postTelemetryEvent,
 } from '../controllers/analytics.controller';
 import insightsController from '../controllers/insights.controller';
+import { getJournalIntelligence } from '../controllers/journal-intelligence.controller';
 
 const router = Router();
 
@@ -31,6 +33,10 @@ router.get('/prompt-learning', getPromptLearningProfile);
 router.get('/prompt-learning/evaluation', getPromptLearningEvaluation);
 router.get('/prompt-learning/performance', getPromptLearningPolicyPerformance);
 router.post('/events', postTelemetryEvent);
+router.get('/dashboard-insights', getDashboardInsights);
+
+// Journal intelligence (deterministic KPIs)
+router.get('/journal-intelligence', getJournalIntelligence);
 
 // AI-powered insights
 router.get('/insights', insightsController.getInsights);

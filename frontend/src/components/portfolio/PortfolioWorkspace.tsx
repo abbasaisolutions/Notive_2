@@ -27,6 +27,7 @@ import {
     FiZap,
 } from 'react-icons/fi';
 import { ActionBar, AppPanel, EmptyState, SectionHeader, StatTile, TagPill } from '@/components/ui/surface';
+import { ErrorState, Spinner } from '@/components/ui';
 import { API_URL } from '@/constants/config';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
@@ -1353,19 +1354,19 @@ export default function PortfolioWorkspace() {
                                     className={`rounded-[26px] border p-4 text-left transition-colors ${
                                         isActive
                                             ? 'border-primary/35 bg-primary/12'
-                                            : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.05]'
+                                            : 'workspace-soft-panel'
                                     }`}
                                 >
                                     <div className="flex items-start justify-between gap-3">
-                                        <div className={`rounded-2xl border p-3 ${isActive || isRecommended ? 'border-primary/30 bg-primary/10 text-primary' : 'border-white/10 bg-white/5 text-white'}`}>
+                                        <div className={`rounded-2xl border p-3 ${isActive || isRecommended ? 'border-primary/30 bg-primary/10 text-primary' : 'workspace-icon-badge'}`}>
                                             <Icon size={18} aria-hidden="true" />
                                         </div>
                                         {isRecommended && <TagPill tone="primary">Recommended</TagPill>}
                                     </div>
-                                    <h3 className="mt-4 text-lg font-semibold text-white">{title}</h3>
+                                    <h3 className="workspace-heading mt-4 text-lg font-semibold">{title}</h3>
                                     <p className="mt-2 text-sm leading-6 text-ink-secondary">{description}</p>
                                     <div className="mt-4 space-y-1">
-                                        <p className="text-sm text-white">{readiness}</p>
+                                        <p className="text-sm text-[rgb(var(--text-primary))]">{readiness}</p>
                                         <p className="text-xs text-ink-muted">{secondary}</p>
                                     </div>
                                 </button>
@@ -1374,31 +1375,31 @@ export default function PortfolioWorkspace() {
                     </div>
 
                     {selectedPathwayCard && (
-                        <div className="rounded-[30px] border border-white/10 bg-black/20 p-5">
+                        <div className="workspace-panel rounded-[30px] p-5">
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Chosen pack</p>
                                     {selectedPathwayCard.isRecommended && <TagPill tone="primary">Recommended next</TagPill>}
                                     {selectedExportType === 'statement' && <TagPill>{statementVariantLabels[statementVariant]} angle</TagPill>}
                                 </div>
-                                <h3 className="mt-2 text-2xl font-semibold text-white">{selectedPathwayCard.title}</h3>
+                                <h3 className="workspace-heading mt-2 text-2xl font-semibold">{selectedPathwayCard.title}</h3>
                                 <p className="mt-2 text-sm leading-7 text-ink-secondary">{selectedPathwayCard.description}</p>
                             </div>
 
                             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                <div className="workspace-soft-panel rounded-2xl p-4">
                                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Ready now</p>
-                                    <p className="mt-2 text-sm font-semibold text-white">{selectedPathwayCard.readiness}</p>
+                                    <p className="workspace-heading mt-2 text-sm font-semibold">{selectedPathwayCard.readiness}</p>
                                 </div>
-                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                <div className="workspace-soft-panel rounded-2xl p-4">
                                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Best fit</p>
-                                    <p className="mt-2 text-sm leading-6 text-white">{selectedPathwayCard.secondary}</p>
+                                    <p className="mt-2 text-sm leading-6 text-[rgb(var(--text-primary))]">{selectedPathwayCard.secondary}</p>
                                 </div>
                             </div>
 
-                            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                            <div className="workspace-soft-panel mt-4 rounded-2xl p-4">
                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Next move</p>
-                                <p className="mt-2 text-sm leading-6 text-white">
+                                <p className="mt-2 text-sm leading-6 text-[rgb(var(--text-primary))]">
                                     {selectedExportType === 'resume' && 'Scan the preview on the right, then export the bullets you want to reuse.'}
                                     {selectedExportType === 'statement' && 'Check the preview on the right, then refine the angle only if the voice needs to shift.'}
                                 </p>
@@ -1409,14 +1410,14 @@ export default function PortfolioWorkspace() {
                                 onClick={toggleExportOptions}
                                 aria-expanded={showExportOptions}
                                 aria-controls="portfolio-export-options"
-                                className="mt-4 flex w-full items-start justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                                className="workspace-soft-panel mt-4 flex w-full items-start justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors"
                             >
                                 <span className="min-w-0">
                                     <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More controls</span>
-                                    <span className="mt-2 block text-base font-semibold text-white">{exportOptionsLabel}</span>
+                                    <span className="workspace-heading mt-2 block text-base font-semibold">{exportOptionsLabel}</span>
                                     <span className="mt-2 block text-sm leading-7 text-ink-secondary">{exportOptionsDescription}</span>
                                 </span>
-                                <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                                <span className="workspace-icon-badge rounded-xl p-2 text-ink-secondary">
                                     {showExportOptions ? <FiX size={16} aria-hidden="true" /> : <FiTool size={16} aria-hidden="true" />}
                                 </span>
                             </button>
@@ -1426,14 +1427,14 @@ export default function PortfolioWorkspace() {
                                     <div className="flex flex-wrap gap-2">
                                         <a
                                             href="#portfolio-export-preview-panel"
-                                            className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.07]"
+                                            className="workspace-pill-muted inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] transition-colors"
                                         >
                                             <FiEye size={13} aria-hidden="true" />
                                             Jump to preview
                                         </a>
                                         <a
                                             href="#portfolio-export-actions"
-                                            className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.07]"
+                                            className="workspace-pill-muted inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] transition-colors"
                                         >
                                             <FiDownload size={13} aria-hidden="true" />
                                             Jump to export action
@@ -1459,7 +1460,7 @@ export default function PortfolioWorkspace() {
                                                     aria-label="Choose the statement angle"
                                                     value={statementVariant}
                                                     onChange={(event) => setStatementVariant(event.target.value as StatementVariant)}
-                                                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-primary/35"
+                                                    className="workspace-input w-full rounded-2xl px-4 py-3 text-sm outline-none transition-colors focus:border-primary/35"
                                                 >
                                                     {(['standard', 'college', 'entry_job'] as StatementVariant[]).map((variant) => (
                                                         <option key={variant} value={variant}>
@@ -1469,7 +1470,7 @@ export default function PortfolioWorkspace() {
                                                 </select>
                                             </label>
 
-                                            <div aria-live="polite" className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                                            <div aria-live="polite" className="workspace-panel mt-4 rounded-2xl p-4">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current angle</p>
                                                     <TagPill>{statementVariantLabels[statementVariant]}</TagPill>
@@ -1477,7 +1478,7 @@ export default function PortfolioWorkspace() {
                                                 <p className="mt-3 text-sm leading-7 text-ink-secondary">
                                                     {statementVariantDescriptions[statementVariant]}
                                                 </p>
-                                                <p className="mt-3 text-sm leading-7 text-foreground">
+                                                <p className="mt-3 text-sm leading-7 text-ink-secondary">
                                                     {hasValue(statement)
                                                         ? `${statement.trim().slice(0, 220)}${statement.trim().length > 220 ? '...' : ''}`
                                                         : 'Build a little more evidence and profile direction to generate a stronger statement draft.'}
@@ -1500,18 +1501,18 @@ export default function PortfolioWorkspace() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Preview</p>
-                        <h2 id="portfolio-export-preview-heading" className="mt-1 text-2xl font-semibold text-white">
+                        <h2 id="portfolio-export-preview-heading" className="workspace-heading mt-1 text-2xl font-semibold">
                             {exportTypeLabels[selectedExportType]}
                         </h2>
                         <p className="mt-1 text-sm text-ink-secondary">{exportTypeDescriptions[selectedExportType]}</p>
                     </div>
-                    <div className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-xs uppercase tracking-[0.12em] text-ink-muted">
+                    <div className="workspace-pill-muted rounded-full px-3 py-2 text-xs uppercase tracking-[0.12em]">
                         Read first, export next
                     </div>
                 </div>
 
                 <div
-                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-ink-secondary"
+                    className="workspace-muted-panel rounded-2xl px-4 py-3 text-sm text-ink-secondary"
                     aria-live="polite"
                 >
                     {isPreviewLoading
@@ -1521,7 +1522,7 @@ export default function PortfolioWorkspace() {
                             : `Viewing ${exportPreview?.fileName || `${exportTypeLabels[selectedExportType]} preview`} in the print-ready reader.`}
                 </div>
 
-                <div className="paper-preview-shell overflow-hidden rounded-[32px] border border-white/10 shadow-2xl shadow-black/20">
+                <div className="paper-preview-shell overflow-hidden rounded-[32px] border border-[rgba(var(--paper-border),0.92)] shadow-xl">
                     <div className="paper-preview-topbar flex items-center justify-between gap-3 px-4 py-3">
                         <div>
                             <p className="paper-preview-kicker">Quick View</p>
@@ -1562,11 +1563,11 @@ export default function PortfolioWorkspace() {
                     </div>
                 </div>
 
-                <div id="portfolio-export-actions" className="space-y-3 rounded-[28px] border border-white/10 bg-black/20 p-4">
+                <div id="portfolio-export-actions" className="workspace-panel space-y-3 rounded-[28px] p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Take this pack</p>
-                            <h3 className="mt-2 text-lg font-semibold text-white">
+                            <h3 className="workspace-heading mt-2 text-lg font-semibold">
                                 {selectedExportType === 'resume' ? 'Download the resume pack' : 'Download the statement pack'}
                             </h3>
                             <p className="mt-2 text-sm leading-7 text-ink-secondary">
@@ -1584,7 +1585,7 @@ export default function PortfolioWorkspace() {
                             void downloadExport(selectedExportType, 'html');
                         }}
                         disabled={downloadingKey === `${selectedExportType}:html`}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-primary/35 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/25 disabled:opacity-60"
+                        className="workspace-button-primary inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-60"
                     >
                         <FiDownload size={15} aria-hidden="true" />
                         {downloadingKey === `${selectedExportType}:html` ? 'Preparing print-ready pack...' : 'Download Print-Ready Pack'}
@@ -1595,14 +1596,14 @@ export default function PortfolioWorkspace() {
                         onClick={toggleExportDeliveryOptions}
                         aria-expanded={showExportDeliveryOptions}
                         aria-controls="portfolio-export-delivery-options"
-                        className="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                        className="workspace-soft-panel flex w-full items-start justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors"
                     >
                         <span className="min-w-0">
                             <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More export formats</span>
-                            <span className="mt-2 block text-base font-semibold text-white">{exportDeliveryLabel}</span>
+                            <span className="workspace-heading mt-2 block text-base font-semibold">{exportDeliveryLabel}</span>
                             <span className="mt-2 block text-sm leading-7 text-ink-secondary">{exportDeliveryDescription}</span>
                         </span>
-                        <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                        <span className="workspace-icon-badge rounded-xl p-2 text-ink-secondary">
                             {showExportDeliveryOptions ? <FiX size={16} aria-hidden="true" /> : <FiTool size={16} aria-hidden="true" />}
                         </span>
                     </button>
@@ -1615,7 +1616,7 @@ export default function PortfolioWorkspace() {
                                     void downloadExport(selectedExportType, 'markdown');
                                 }}
                                 disabled={downloadingKey === `${selectedExportType}:markdown`}
-                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-ink-secondary transition-colors hover:text-white hover:bg-white/10 disabled:opacity-60"
+                                className="workspace-button-outline inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-60"
                             >
                                 <FiFileText size={15} aria-hidden="true" />
                                 {downloadingKey === `${selectedExportType}:markdown` ? 'Preparing Markdown...' : 'Download Markdown'}
@@ -1624,7 +1625,7 @@ export default function PortfolioWorkspace() {
                                 type="button"
                                 onClick={printSelectedExport}
                                 disabled={downloadingKey === `${selectedExportType}:print`}
-                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-ink-secondary transition-colors hover:text-white hover:bg-white/10 disabled:opacity-60"
+                                className="workspace-button-outline inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-60"
                             >
                                 <FiPrinter size={15} aria-hidden="true" />
                                 {downloadingKey === `${selectedExportType}:print` ? 'Preparing PDF...' : 'Print / Save PDF'}
@@ -1653,9 +1654,9 @@ export default function PortfolioWorkspace() {
                     actionHref={captureHref}
                 />
 
-                <div className="rounded-[28px] border border-white/10 bg-black/20 p-4">
+                <div className="workspace-soft-panel rounded-[28px] p-4">
                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Queue snapshot</p>
-                    <h3 className="mt-2 text-lg font-semibold text-white">{evidenceSnapshotTitle}</h3>
+                    <h3 className="workspace-heading mt-2 text-lg font-semibold">{evidenceSnapshotTitle}</h3>
                     <p className="mt-2 max-w-3xl text-sm leading-7 text-ink-secondary">{evidenceSnapshotDescription}</p>
                     <div className="mt-4 flex flex-wrap gap-2">
                         <TagPill>{evidenceSummary.total} scored</TagPill>
@@ -1676,15 +1677,15 @@ export default function PortfolioWorkspace() {
                             </div>
                             <div className="min-w-0">
                                 <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best lane now</p>
-                                <h3 className="mt-2 text-lg font-semibold text-white">{evidenceFocusTitle}</h3>
+                                <h3 className="workspace-heading mt-2 text-lg font-semibold">{evidenceFocusTitle}</h3>
                                 <p className="mt-2 text-sm leading-7 text-ink-secondary">{evidenceFocusDescription}</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="rounded-[28px] border border-white/10 bg-black/20 p-4">
+                    <div className="workspace-panel rounded-[28px] p-4">
                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current lane</p>
-                        <h3 className="mt-2 text-lg font-semibold text-white">{evidenceFilterLabels[evidenceFilter]}</h3>
+                        <h3 className="workspace-heading mt-2 text-lg font-semibold">{evidenceFilterLabels[evidenceFilter]}</h3>
                         <p className="mt-2 text-sm leading-7 text-ink-secondary">{currentEvidenceLaneDescription}</p>
                     </div>
                 </div>
@@ -1694,21 +1695,21 @@ export default function PortfolioWorkspace() {
                     onClick={toggleEvidenceTools}
                     aria-expanded={showEvidenceTools}
                     aria-controls="portfolio-evidence-tools"
-                    className="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                    className="workspace-soft-panel flex w-full items-start justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors"
                 >
                     <span className="min-w-0">
                         <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More controls</span>
-                        <span className="mt-2 block text-base font-semibold text-white">{evidenceToolsLabel}</span>
+                        <span className="workspace-heading mt-2 block text-base font-semibold">{evidenceToolsLabel}</span>
                         <span className="mt-2 block text-sm leading-7 text-ink-secondary">{evidenceToolsDescription}</span>
                     </span>
-                    <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                    <span className="workspace-icon-badge rounded-xl p-2 text-ink-secondary">
                         {showEvidenceTools ? <FiX size={16} aria-hidden="true" /> : <FiTool size={16} aria-hidden="true" />}
                     </span>
                 </button>
 
                 {showEvidenceTools && (
                     <div id="portfolio-evidence-tools" className="space-y-3">
-                        <ActionBar className="gap-2 overflow-x-auto bg-black/20 border-white/10">
+                        <ActionBar className="gap-2 overflow-x-auto">
                             {evidenceFilters.map((filter) => (
                                 <button
                                     key={filter}
@@ -1718,7 +1719,7 @@ export default function PortfolioWorkspace() {
                                     className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] whitespace-nowrap transition-colors ${
                                         evidenceFilter === filter
                                             ? 'bg-primary/15 text-primary'
-                                            : 'text-ink-secondary hover:text-white'
+                                            : 'workspace-button-ghost text-ink-secondary'
                                     }`}
                                 >
                                     {evidenceFilterLabels[filter]} ({filterCounts[filter]})
@@ -1771,17 +1772,17 @@ export default function PortfolioWorkspace() {
                         return (
                             <article
                                 key={experience.entryId}
-                                className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
+                                className="workspace-soft-panel rounded-[28px] p-4 transition-colors"
                             >
                                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                     <div className="min-w-0 space-y-3">
                                         <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.12em] text-ink-muted">
                                             <span>{formatShortDate(experience.createdAt)}</span>
-                                            <span className="text-white/20">/</span>
+                                            <span className="text-ink-muted/40">/</span>
                                             <span>{formatRelativeTime(experience.createdAt)}</span>
                                         </div>
                                         <div>
-                                            <h3 className="text-lg font-semibold text-white">{experience.title || 'Untitled experience'}</h3>
+                                            <h3 className="workspace-heading text-lg font-semibold">{experience.title || 'Untitled experience'}</h3>
                                             <p className="mt-2 max-w-3xl text-sm leading-7 text-ink-secondary">
                                                 {primarySnippet || 'Add outcome, lesson, and skill detail so this story is ready for export.'}
                                             </p>
@@ -1790,9 +1791,9 @@ export default function PortfolioWorkspace() {
                                             <TagPill tone={stateTone}>{evidenceFilterLabels[state]}</TagPill>
                                             <TagPill>{readinessLabel}</TagPill>
                                         </div>
-                                        <div className="rounded-[22px] border border-white/10 bg-black/20 p-3">
+                                        <div className="workspace-panel rounded-[22px] p-3">
                                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Next move</p>
-                                            <p className="mt-2 text-sm font-semibold text-white">{focusTitle}</p>
+                                            <p className="workspace-heading mt-2 text-sm font-semibold">{focusTitle}</p>
                                             <p className="mt-2 text-sm leading-7 text-ink-secondary">{focusDescription}</p>
                                         </div>
                                     </div>
@@ -1807,12 +1808,12 @@ export default function PortfolioWorkspace() {
                                             {primaryActionLabel}
                                         </button>
 
-                                        <details className="rounded-2xl border border-white/10 bg-black/20">
+                                        <details className="workspace-panel rounded-2xl">
                                             <summary className="list-none cursor-pointer px-4 py-3 [&::-webkit-details-marker]:hidden">
                                                 <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">Proof details</span>
-                                                <span className="mt-2 block text-sm font-semibold text-white">Show missing blocks, confidence, and source</span>
+                                                <span className="workspace-heading mt-2 block text-sm font-semibold">Show missing blocks, confidence, and source</span>
                                             </summary>
-                                            <div className="space-y-3 border-t border-white/10 px-4 py-4">
+                                            <div className="space-y-3 border-t border-[rgba(var(--paper-border),0.92)] px-4 py-4">
                                                 <div className="flex flex-wrap gap-2">
                                                     <TagPill>{completeness.score}% complete</TagPill>
                                                     <TagPill>{formatRatioPercent(experience.confidence || 0)} confidence</TagPill>
@@ -1839,7 +1840,7 @@ export default function PortfolioWorkspace() {
                                                             void toggleVerified(experience);
                                                         }}
                                                         disabled={updatingEntryId === experience.entryId}
-                                                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white disabled:opacity-60"
+                                                        className="workspace-button-outline inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] disabled:opacity-60"
                                                     >
                                                         <FiCheckCircle size={14} aria-hidden="true" />
                                                         {updatingEntryId === experience.entryId
@@ -1850,7 +1851,7 @@ export default function PortfolioWorkspace() {
                                                     </button>
                                                     <Link
                                                         href={sourceHref}
-                                                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                                        className="workspace-button-outline inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                                                     >
                                                         <FiArrowRight size={14} aria-hidden="true" />
                                                         Open Source Entry
@@ -1921,9 +1922,9 @@ export default function PortfolioWorkspace() {
                         description="Keep one story in focus. Open the rest only when you want to switch."
                     />
 
-                    <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4">
+                    <div className="workspace-soft-panel rounded-[28px] p-4">
                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">{storyCountLabel}</p>
-                        <h3 className="mt-2 text-lg font-semibold text-white">{story.title}</h3>
+                        <h3 className="workspace-heading mt-2 text-lg font-semibold">{story.title}</h3>
                         <p className="mt-2 text-sm leading-7 text-ink-secondary">
                             {story.result || story.action || story.situation || 'Use this story as your current interview anchor.'}
                         </p>
@@ -1940,14 +1941,14 @@ export default function PortfolioWorkspace() {
                         onClick={toggleInterviewStoryPicker}
                         aria-expanded={showInterviewStoryPicker}
                         aria-controls="portfolio-interview-story-picker"
-                        className="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                        className="workspace-soft-panel flex w-full items-start justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors"
                     >
                         <span className="min-w-0">
                             <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More stories</span>
-                            <span className="mt-2 block text-base font-semibold text-white">{interviewStoryPickerLabel}</span>
+                            <span className="workspace-heading mt-2 block text-base font-semibold">{interviewStoryPickerLabel}</span>
                             <span className="mt-2 block text-sm leading-7 text-ink-secondary">{interviewStoryPickerDescription}</span>
                         </span>
-                        <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                        <span className="workspace-icon-badge rounded-xl p-2 text-ink-secondary">
                             {showInterviewStoryPicker ? <FiX size={16} aria-hidden="true" /> : <FiGrid size={16} aria-hidden="true" />}
                         </span>
                     </button>
@@ -1965,12 +1966,12 @@ export default function PortfolioWorkspace() {
                                     className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${
                                         item.entryId === story.entryId
                                             ? 'border-primary/30 bg-primary/12'
-                                            : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.05]'
+                                            : 'workspace-soft-panel'
                                     }`}
                                 >
                                     <div className="flex items-center justify-between gap-3">
                                         <div className="min-w-0">
-                                            <p className="truncate text-sm font-semibold text-white">{item.title}</p>
+                                            <p className="workspace-heading truncate text-sm font-semibold">{item.title}</p>
                                             <p className="mt-1 text-xs uppercase tracking-[0.12em] text-ink-muted">
                                                 Story {index + 1}
                                             </p>
@@ -1988,14 +1989,14 @@ export default function PortfolioWorkspace() {
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Focused Story</p>
-                                <h2 className="mt-1 text-2xl font-semibold text-white">{story.title}</h2>
+                                <h2 className="workspace-heading mt-1 text-2xl font-semibold">{story.title}</h2>
                                 <p className="mt-2 text-sm leading-7 text-ink-secondary">
                                     Practice one answer at a time. Compare against the scaffold only when you want a check, not before.
                                 </p>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                            <div className="workspace-soft-panel rounded-2xl px-4 py-3">
                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Current mode</p>
-                                <p className="mt-2 text-sm font-semibold text-white">{currentInterviewModeLabel}</p>
+                                <p className="workspace-heading mt-2 text-sm font-semibold">{currentInterviewModeLabel}</p>
                             </div>
                         </div>
 
@@ -2006,15 +2007,15 @@ export default function PortfolioWorkspace() {
                             {hasValue(experience?.lesson) && <TagPill tone="muted">{experience?.lesson}</TagPill>}
                         </div>
 
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                        <div className="workspace-soft-panel rounded-2xl p-4">
                             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Best next move</p>
-                            <p className="mt-2 text-sm leading-6 text-white">{interviewPrimaryAction.description}</p>
+                            <p className="mt-2 text-sm leading-6 text-[rgb(var(--text-primary))]">{interviewPrimaryAction.description}</p>
                         </div>
 
                         <button
                             type="button"
                             onClick={interviewPrimaryAction.onClick}
-                            className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-primary/90"
+                            className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                         >
                             {interviewPrimaryAction.label}
                             <FiArrowRight size={14} aria-hidden="true" />
@@ -2025,27 +2026,27 @@ export default function PortfolioWorkspace() {
                             onClick={toggleInterviewControls}
                             aria-expanded={showInterviewControls}
                             aria-controls="portfolio-interview-controls"
-                            className="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                            className="workspace-soft-panel flex w-full items-start justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors"
                         >
                             <span className="min-w-0">
                                 <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More controls</span>
-                                <span className="mt-2 block text-base font-semibold text-white">{interviewControlsLabel}</span>
+                                <span className="workspace-heading mt-2 block text-base font-semibold">{interviewControlsLabel}</span>
                                 <span className="mt-2 block text-sm leading-7 text-ink-secondary">{interviewControlsDescription}</span>
                             </span>
-                            <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                            <span className="workspace-icon-badge rounded-xl p-2 text-ink-secondary">
                                 {showInterviewControls ? <FiX size={16} aria-hidden="true" /> : <FiTool size={16} aria-hidden="true" />}
                             </span>
                         </button>
 
                         {showInterviewControls && (
                             <div id="portfolio-interview-controls">
-                                <ActionBar className="bg-black/20 border-white/10">
+                                <ActionBar>
                                     <button
                                         type="button"
                                         onClick={() => setPracticeMode((value) => !value)}
                                         aria-pressed={practiceMode}
                                         className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors ${
-                                            practiceMode ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-white'
+                                            practiceMode ? 'bg-primary/15 text-primary' : 'workspace-button-ghost text-ink-secondary'
                                         }`}
                                     >
                                         {practiceMode ? 'Switch to guided' : 'Switch to recall'}
@@ -2054,7 +2055,7 @@ export default function PortfolioWorkspace() {
                                         type="button"
                                         onClick={() => canGoPrevious && setActiveStoryEntryId(stories[activeIndex - 1]?.entryId || story.entryId)}
                                         disabled={!canGoPrevious}
-                                        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white disabled:opacity-40"
+                                        className="workspace-button-ghost inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary disabled:opacity-40"
                                     >
                                         <FiChevronLeft size={14} aria-hidden="true" />
                                         Prev
@@ -2063,7 +2064,7 @@ export default function PortfolioWorkspace() {
                                         type="button"
                                         onClick={() => canGoNext && setActiveStoryEntryId(stories[activeIndex + 1]?.entryId || story.entryId)}
                                         disabled={!canGoNext}
-                                        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white disabled:opacity-40"
+                                        className="workspace-button-ghost inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary disabled:opacity-40"
                                     >
                                         Next
                                         <FiChevronRight size={14} aria-hidden="true" />
@@ -2075,11 +2076,11 @@ export default function PortfolioWorkspace() {
 
                     <AppPanel className="space-y-4">
                         {practiceMode && !practiceReveal ? (
-                            <div className="rounded-[28px] border border-white/10 bg-black/20 p-6 text-center">
+                            <div className="workspace-panel rounded-[28px] p-6 text-center">
                                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/30 bg-primary/12 text-primary">
                                     <FiMessageSquare size={20} aria-hidden="true" />
                                 </div>
-                                <h3 className="mt-4 text-xl font-semibold text-white">Try the story from memory first</h3>
+                                <h3 className="workspace-heading mt-4 text-xl font-semibold">Try the story from memory first</h3>
                                 <p className="mt-2 text-sm leading-7 text-ink-secondary">
                                     Say it out loud before reading. Reveal the scaffold only when you want to compare your version with the structured story.
                                 </p>
@@ -2100,9 +2101,9 @@ export default function PortfolioWorkspace() {
                                     { label: 'Action', value: story.action },
                                     { label: 'Result', value: story.result },
                                 ].map((section) => (
-                                    <div key={section.label} className="rounded-[26px] border border-white/10 bg-white/[0.03] p-4">
+                                    <div key={section.label} className="workspace-soft-panel rounded-[26px] p-4">
                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">{section.label}</p>
-                                        <p className="mt-3 text-sm leading-7 text-foreground">{section.value || 'Add more evidence detail to strengthen this section.'}</p>
+                                        <p className="mt-3 text-sm leading-7 text-ink-secondary">{section.value || 'Add more evidence detail to strengthen this section.'}</p>
                                     </div>
                                 ))}
                             </div>
@@ -2111,7 +2112,7 @@ export default function PortfolioWorkspace() {
                         <div className="flex flex-wrap gap-2">
                             <Link
                                 href={sourceHref}
-                                className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                             >
                                 <FiArrowRight size={14} aria-hidden="true" />
                                 Open Source Entry
@@ -2120,7 +2121,7 @@ export default function PortfolioWorkspace() {
                                 <button
                                     type="button"
                                     onClick={() => startEdit(experience)}
-                                    className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                    className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                                 >
                                     <FiEdit2 size={14} aria-hidden="true" />
                                     Refine Story
@@ -2188,7 +2189,7 @@ export default function PortfolioWorkspace() {
                             title="Keep growth readable"
                             description="Start with one headline read and one main trendline. The deeper panels stay tucked away until you want them."
                         />
-                        <ActionBar className="bg-black/20 border-white/10">
+                        <ActionBar>
                             {(['week', 'month'] as const).map((period) => (
                                 <button
                                     key={period}
@@ -2198,7 +2199,7 @@ export default function PortfolioWorkspace() {
                                     className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors ${
                                         trendPeriod === period
                                             ? 'bg-primary/15 text-primary'
-                                            : 'text-ink-secondary hover:text-white'
+                                            : 'workspace-button-ghost text-ink-secondary'
                                     }`}
                                 >
                                     {period}
@@ -2215,7 +2216,7 @@ export default function PortfolioWorkspace() {
                                 </div>
                                 <div className="min-w-0">
                                     <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best next move</p>
-                                    <h3 className="mt-2 text-lg font-semibold text-white">{growthFocus.title}</h3>
+                                    <h3 className="workspace-heading mt-2 text-lg font-semibold">{growthFocus.title}</h3>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">{growthFocus.description}</p>
                                 </div>
                             </div>
@@ -2228,7 +2229,7 @@ export default function PortfolioWorkspace() {
                                             if (!targetView) return;
                                             switchView(targetView);
                                         }}
-                                        className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-primary/90"
+                                        className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                                     >
                                         {growthFocus.actionLabel}
                                         <FiArrowRight size={14} aria-hidden="true" />
@@ -2236,7 +2237,7 @@ export default function PortfolioWorkspace() {
                                 ) : (
                                     <Link
                                         href={growthFocus.actionHref || captureHref}
-                                        className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-primary/90"
+                                        className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                                     >
                                         {growthFocus.actionLabel}
                                         <FiArrowRight size={14} aria-hidden="true" />
@@ -2245,16 +2246,16 @@ export default function PortfolioWorkspace() {
                             </div>
                         </div>
 
-                        <div className="rounded-[28px] border border-white/10 bg-black/20 p-4">
+                        <div className="workspace-panel rounded-[28px] p-4">
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current read</p>
                             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                <div className="workspace-soft-panel rounded-2xl p-4">
                                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Verified rate</p>
-                                    <p className="mt-2 text-lg font-semibold text-white">{formatRatioPercent(verifiedRate)}</p>
+                                    <p className="workspace-heading mt-2 text-lg font-semibold">{formatRatioPercent(verifiedRate)}</p>
                                 </div>
-                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                <div className="workspace-soft-panel rounded-2xl p-4">
                                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Story quality</p>
-                                    <p className="mt-2 text-lg font-semibold text-white">{evidenceSummary.avgScore}%</p>
+                                    <p className="workspace-heading mt-2 text-lg font-semibold">{evidenceSummary.avgScore}%</p>
                                 </div>
                             </div>
                             <p className="mt-4 text-sm leading-7 text-ink-secondary">
@@ -2268,14 +2269,14 @@ export default function PortfolioWorkspace() {
                         onClick={toggleGrowthDetails}
                         aria-expanded={showGrowthDetails}
                         aria-controls="portfolio-growth-details"
-                        className="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                        className="workspace-soft-panel flex w-full items-start justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors"
                     >
                         <span className="min-w-0">
                             <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More details</span>
-                            <span className="mt-2 block text-base font-semibold text-white">{growthDetailsLabel}</span>
+                            <span className="workspace-heading mt-2 block text-base font-semibold">{growthDetailsLabel}</span>
                             <span className="mt-2 block text-sm leading-7 text-ink-secondary">{growthDetailsDescription}</span>
                         </span>
-                        <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                        <span className="workspace-icon-badge rounded-xl p-2 text-ink-secondary">
                             {showGrowthDetails ? <FiX size={16} aria-hidden="true" /> : <FiTool size={16} aria-hidden="true" />}
                         </span>
                     </button>
@@ -2299,7 +2300,7 @@ export default function PortfolioWorkspace() {
                         <div className="flex items-start justify-between gap-3">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Trendline</p>
-                                <h3 className="mt-1 text-xl font-semibold text-white">Momentum across the last six windows</h3>
+                                <h3 className="workspace-heading mt-1 text-xl font-semibold">Momentum across the last six windows</h3>
                                 <p className="mt-2 text-sm leading-7 text-ink-secondary">
                                     This is the main growth read. Use it first before opening the deeper profile and material panels.
                                 </p>
@@ -2316,9 +2317,9 @@ export default function PortfolioWorkspace() {
                                     const verifiedWidth = `${Math.max((point.verified / maxTrendValue) * 100, point.verified > 0 ? 12 : 0)}%`;
 
                                     return (
-                                        <div key={point.periodStart} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                        <div key={point.periodStart} className="workspace-panel rounded-2xl p-4">
                                             <div className="flex flex-wrap items-center justify-between gap-3">
-                                                <p className="text-sm font-semibold text-white">{point.periodLabel}</p>
+                                                <p className="workspace-heading text-sm font-semibold">{point.periodLabel}</p>
                                                 <div className="flex flex-wrap gap-2 text-xs text-ink-muted">
                                                     <span>{point.entries} entries</span>
                                                     <span>{point.verified} verified</span>
@@ -2369,15 +2370,15 @@ export default function PortfolioWorkspace() {
                             <div className="space-y-3 text-sm text-ink-secondary">
                                 <p>
                                     <span className="text-ink-muted">Primary goal:</span>{' '}
-                                    <span className="text-white">{overview?.profileContext?.primaryGoal || 'Not set yet'}</span>
+                                    <span className="workspace-heading">{overview?.profileContext?.primaryGoal || 'Not set yet'}</span>
                                 </p>
                                 <p>
                                     <span className="text-ink-muted">Focus area:</span>{' '}
-                                    <span className="text-white">{overview?.profileContext?.focusArea || 'Not set yet'}</span>
+                                    <span className="workspace-heading">{overview?.profileContext?.focusArea || 'Not set yet'}</span>
                                 </p>
                                 <p>
                                     <span className="text-ink-muted">Capture style:</span>{' '}
-                                    <span className="text-white">{formatLabel(overview?.profileContext?.writingPreference)}</span>
+                                    <span className="workspace-heading">{formatLabel(overview?.profileContext?.writingPreference)}</span>
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
@@ -2385,7 +2386,7 @@ export default function PortfolioWorkspace() {
                             </div>
                             <Link
                                 href={profileHref}
-                                className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                             >
                                 <FiTool size={14} aria-hidden="true" />
                                 Tune story lens
@@ -2396,7 +2397,7 @@ export default function PortfolioWorkspace() {
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Repeated material</p>
                             <div className="space-y-3">
                                 <div>
-                                    <p className="text-sm font-semibold text-white">Skills surfacing most</p>
+                                    <p className="workspace-heading text-sm font-semibold">Skills surfacing most</p>
                                     <div className="mt-3 flex flex-wrap gap-2">
                                         {(overview?.topSkills || []).slice(0, 8).map((skill) => (
                                             <TagPill key={skill} tone="primary">{skill}</TagPill>
@@ -2404,7 +2405,7 @@ export default function PortfolioWorkspace() {
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-sm font-semibold text-white">Lessons worth carrying forward</p>
+                                    <p className="workspace-heading text-sm font-semibold">Lessons worth carrying forward</p>
                                     <div className="mt-3 flex flex-wrap gap-2">
                                         {(overview?.topLessons || []).slice(0, 8).map((lesson) => (
                                             <TagPill key={lesson}>{lesson}</TagPill>
@@ -2425,7 +2426,7 @@ export default function PortfolioWorkspace() {
                                         key={view}
                                         type="button"
                                         onClick={() => switchView(view)}
-                                        className="rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                        className="workspace-button-outline rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                                     >
                                         {portfolioViewLabels[view]}
                                     </button>
@@ -2565,14 +2566,14 @@ export default function PortfolioWorkspace() {
                         rows={rows}
                         onChange={(event) => updateDraft(editingExperience.entryId, field, event.target.value)}
                         placeholder={placeholder}
-                        className="min-h-[7rem] w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-ink-muted outline-none transition-colors focus:border-primary/35 focus:bg-white/[0.06]"
+                        className="workspace-input min-h-[7rem] w-full rounded-2xl px-4 py-3 text-sm outline-none transition-colors focus:border-primary/35"
                     />
                 ) : (
                     <input
                         value={editingDraft[field]}
                         onChange={(event) => updateDraft(editingExperience.entryId, field, event.target.value)}
                         placeholder={placeholder}
-                        className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-ink-muted outline-none transition-colors focus:border-primary/35 focus:bg-white/[0.06]"
+                        className="workspace-input w-full rounded-2xl px-4 py-3 text-sm outline-none transition-colors focus:border-primary/35"
                     />
                 )}
             </label>
@@ -2588,22 +2589,23 @@ export default function PortfolioWorkspace() {
                     exit={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
                     transition={{ duration: reduceMotion ? 0 : 0.18 }}
                     onClick={() => setEditingEntryId(null)}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setEditingEntryId(null); }}
                 >
                     <motion.div
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="portfolio-evidence-editor-title"
-                        className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[32px] border border-white/10 bg-[#07111f] shadow-2xl shadow-black/50 md:ml-auto md:h-[calc(100vh-2rem)] md:max-w-2xl md:rounded-[32px]"
+                        className="workspace-panel flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[32px] shadow-2xl md:ml-auto md:h-[calc(100vh-2rem)] md:max-w-2xl md:rounded-[32px]"
                         initial={reduceMotion ? { opacity: 1 } : { y: 32, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={reduceMotion ? { opacity: 1 } : { y: 24, opacity: 0 }}
                         transition={{ duration: reduceMotion ? 0 : 0.2 }}
                         onClick={(event) => event.stopPropagation()}
                     >
-                        <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 md:px-6">
+                        <div className="flex items-start justify-between gap-4 border-b border-[rgba(var(--paper-border),0.92)] px-5 py-4 md:px-6">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Story Refinery</p>
-                                <h2 id="portfolio-evidence-editor-title" className="mt-1 text-xl font-semibold text-white">
+                                <h2 id="portfolio-evidence-editor-title" className="workspace-heading mt-1 text-xl font-semibold">
                                     {editingExperience.title || 'Refine story'}
                                 </h2>
                                 <p className="mt-2 text-sm text-ink-secondary">
@@ -2613,7 +2615,7 @@ export default function PortfolioWorkspace() {
                             <button
                                 type="button"
                                 onClick={() => setEditingEntryId(null)}
-                                className="rounded-xl border border-white/15 bg-white/[0.05] p-2 text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                className="workspace-button-outline rounded-xl p-2"
                                 aria-label="Close evidence editor"
                             >
                                 <FiX size={16} aria-hidden="true" />
@@ -2621,11 +2623,11 @@ export default function PortfolioWorkspace() {
                         </div>
 
                         <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5 md:px-6">
-                            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
+                            <div className="workspace-panel rounded-[24px] p-4">
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                     <div>
                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Draft readiness</p>
-                                        <p className="mt-1 text-lg font-semibold text-white">{draftCompleteness.score}% complete</p>
+                                        <p className="workspace-heading mt-1 text-lg font-semibold">{draftCompleteness.score}% complete</p>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         <TagPill>{draftCompleteness.presentCount}/{draftCompleteness.totalCount} blocks filled</TagPill>
@@ -2634,7 +2636,7 @@ export default function PortfolioWorkspace() {
                                         </TagPill>
                                     </div>
                                 </div>
-                                <div className="mt-4 h-2 rounded-full bg-white/10">
+                                <div className="mt-4 h-2 rounded-full bg-[rgba(var(--paper-border),0.62)]">
                                     <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${draftCompleteness.score}%` }} />
                                 </div>
                             </div>
@@ -2642,13 +2644,13 @@ export default function PortfolioWorkspace() {
                             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_240px]">
                                 <div className="rounded-[24px] border border-primary/25 bg-primary/12 p-4">
                                     <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best next block</p>
-                                    <h3 className="mt-2 text-lg font-semibold text-white">{focusCardTitle}</h3>
+                                    <h3 className="workspace-heading mt-2 text-lg font-semibold">{focusCardTitle}</h3>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">{focusCardBody}</p>
                                 </div>
 
-                                <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
+                                <div className="workspace-panel rounded-[24px] p-4">
                                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current status</p>
-                                    <p className="mt-2 text-lg font-semibold text-white">{statusTitle}</p>
+                                    <p className="workspace-heading mt-2 text-lg font-semibold">{statusTitle}</p>
                                     <div className="mt-3 flex flex-wrap gap-2">
                                         {draftCompleteness.missingFields.length > 0 ? draftCompleteness.missingFields.map((field) => (
                                             <TagPill key={field} tone="muted">{EVIDENCE_FIELD_LABELS[field]}</TagPill>
@@ -2664,7 +2666,7 @@ export default function PortfolioWorkspace() {
                                 </div>
                             </div>
 
-                            <div className="space-y-4 rounded-[24px] border border-white/10 bg-black/20 p-4">
+                            <div className="workspace-panel space-y-4 rounded-[24px] p-4">
                                 <div>
                                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Start here</p>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">
@@ -2676,20 +2678,20 @@ export default function PortfolioWorkspace() {
                                 </div>
                             </div>
 
-                            <div className="space-y-3 rounded-[22px] border border-white/10 bg-black/20 p-3">
+                            <div className="workspace-panel space-y-3 rounded-[22px] p-3">
                                 <button
                                     type="button"
                                     onClick={toggleEditingDetails}
                                     aria-expanded={showEditingDetails}
                                     aria-controls="portfolio-evidence-editor-details"
-                                    className="flex w-full items-start justify-between gap-3 rounded-2xl bg-white/[0.02] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                                    className="workspace-soft-panel flex w-full items-start justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors"
                                 >
                                     <span className="min-w-0">
                                         <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More refinements</span>
-                                        <span className="mt-2 block text-base font-semibold text-white">{editingDetailsLabel}</span>
+                                        <span className="workspace-heading mt-2 block text-base font-semibold">{editingDetailsLabel}</span>
                                         <span className="mt-2 block text-sm leading-7 text-ink-secondary">{editingDetailsDescription}</span>
                                     </span>
-                                    <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                                    <span className="workspace-icon-badge rounded-xl p-2 text-ink-secondary">
                                         {showEditingDetails ? <FiX size={16} aria-hidden="true" /> : <FiTool size={16} aria-hidden="true" />}
                                     </span>
                                 </button>
@@ -2702,12 +2704,12 @@ export default function PortfolioWorkspace() {
                             </div>
                         </div>
 
-                        <div className="border-t border-white/10 px-5 py-4 md:px-6">
+                        <div className="border-t border-[rgba(var(--paper-border),0.92)] px-5 py-4 md:px-6">
                             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                 <div className="flex flex-wrap gap-2">
                                     <Link
                                         href={sourceHref}
-                                        className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                        className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                                     >
                                         <FiArrowRight size={14} aria-hidden="true" />
                                         Source Entry
@@ -2728,7 +2730,7 @@ export default function PortfolioWorkspace() {
                                     <button
                                         type="button"
                                         onClick={() => setEditingEntryId(null)}
-                                        className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                        className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                                     >
                                         Cancel
                                     </button>
@@ -2738,7 +2740,7 @@ export default function PortfolioWorkspace() {
                                             void saveDraft(editingExperience.entryId);
                                         }}
                                         disabled={savingEntryId === editingExperience.entryId}
-                                        className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
+                                        className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] disabled:opacity-60"
                                     >
                                         <FiEdit2 size={14} aria-hidden="true" />
                                         {savingEntryId === editingExperience.entryId ? 'Saving...' : 'Save Story'}
@@ -2763,7 +2765,7 @@ export default function PortfolioWorkspace() {
         return (
             <div className="flex min-h-[50vh] items-center justify-center px-4 py-10">
                 <div className="flex flex-col items-center gap-3 text-center">
-                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-primary" />
+                    <Spinner size="lg" />
                     <p className="text-sm text-ink-secondary">Getting your stories ready...</p>
                 </div>
             </div>
@@ -2790,7 +2792,7 @@ export default function PortfolioWorkspace() {
                             void fetchOverview();
                             void fetchTrends(trendPeriod);
                         }}
-                        className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                        className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                     >
                         <FiArrowRight size={14} aria-hidden="true" />
                         Retry
@@ -2819,26 +2821,33 @@ export default function PortfolioWorkspace() {
 
     return (
         <div className="space-y-6 px-1 pb-32 pt-2">
-            <AppPanel className="sticky top-20 z-20 space-y-5 border-white/15 bg-[radial-gradient(circle_at_top_left,rgba(31,96,255,0.14),transparent_38%),rgba(5,10,20,0.92)] backdrop-blur-xl">
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <AppPanel className="workspace-panel sticky top-20 z-20 overflow-hidden space-y-5">
+                <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 opacity-70"
+                    style={{
+                        background: 'radial-gradient(circle at top left, rgba(var(--brand), 0.12), transparent 38%)',
+                    }}
+                />
+                <div className="relative grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
                     <div className="space-y-4">
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Stories</p>
-                                <h1 className="mt-1 text-3xl font-semibold text-white">Use one story move today</h1>
+                                <h1 className="workspace-heading mt-1 text-3xl font-semibold">Use one story move today</h1>
                                 <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">
                                     Start with the clearest next workspace. The rest of the studio stays tucked away until you want it.
                                 </p>
                             </div>
-                            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-2 text-xs uppercase tracking-[0.12em] text-ink-muted">
+                            <div className="workspace-pill-muted inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs uppercase tracking-[0.12em]">
                                 <ActiveViewIcon size={14} aria-hidden="true" />
                                 Current workspace: {currentWorkspaceLabel}
                             </div>
                         </div>
 
-                        <div className="rounded-[28px] border border-white/10 bg-black/20 p-4">
+                        <div className="workspace-soft-panel rounded-[28px] p-4">
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Studio snapshot</p>
-                            <h2 className="mt-2 text-lg font-semibold text-white">{storySnapshotTitle}</h2>
+                            <h2 className="workspace-heading mt-2 text-lg font-semibold">{storySnapshotTitle}</h2>
                             <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{storySnapshotDescription}</p>
                             <div className="mt-4 flex flex-wrap gap-2">
                                 <TagPill tone="primary">{filterCounts.ready_to_export} ready to use</TagPill>
@@ -2858,7 +2867,7 @@ export default function PortfolioWorkspace() {
                                 </div>
                                 <div className="min-w-0">
                                     <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best next move</p>
-                                    <h2 className="mt-2 text-lg font-semibold text-white">{nextAction.title}</h2>
+                                    <h2 className="workspace-heading mt-2 text-lg font-semibold">{nextAction.title}</h2>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">{nextAction.description}</p>
                                 </div>
                             </div>
@@ -2875,7 +2884,7 @@ export default function PortfolioWorkspace() {
                                             }
                                             switchView(targetView);
                                         }}
-                                        className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-primary/90"
+                                        className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                                     >
                                         {nextAction.actionLabel}
                                         <FiArrowRight size={14} aria-hidden="true" />
@@ -2883,7 +2892,7 @@ export default function PortfolioWorkspace() {
                                 ) : (
                                     <Link
                                         href={nextAction.actionHref || captureHref}
-                                        className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-primary/90"
+                                        className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                                     >
                                         {nextAction.actionLabel}
                                         <FiArrowRight size={14} aria-hidden="true" />
@@ -2892,9 +2901,9 @@ export default function PortfolioWorkspace() {
                             </div>
                         </div>
 
-                        <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
+                        <div className="workspace-panel rounded-[24px] p-4">
                             <div className="flex flex-wrap items-center gap-2">
-                                <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                                <div className="workspace-icon-badge rounded-2xl p-2 text-ink-secondary">
                                     <ActiveViewIcon size={16} aria-hidden="true" />
                                 </div>
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current workspace</p>
@@ -2906,7 +2915,7 @@ export default function PortfolioWorkspace() {
                                     <button
                                         type="button"
                                         onClick={resumePreviousSession}
-                                        className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                                        className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                                     >
                                         Resume last place
                                         <FiClock size={14} aria-hidden="true" />
@@ -2917,20 +2926,20 @@ export default function PortfolioWorkspace() {
                     </div>
                 </div>
 
-                <div className="space-y-3 rounded-[22px] border border-white/10 bg-black/20 p-3">
+                <div className="workspace-panel space-y-3 rounded-[22px] p-3">
                     <button
                         type="button"
                         onClick={toggleWorkspacePicker}
                         aria-expanded={showWorkspacePicker}
                         aria-controls="portfolio-workspace-picker"
-                        className="flex w-full items-start justify-between gap-3 rounded-2xl bg-white/[0.02] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                        className="workspace-soft-panel flex w-full items-start justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors"
                     >
                         <span className="min-w-0">
                             <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">More destinations</span>
-                            <span className="mt-2 block text-base font-semibold text-white">{workspacePickerLabel}</span>
+                            <span className="workspace-heading mt-2 block text-base font-semibold">{workspacePickerLabel}</span>
                             <span className="mt-2 block text-sm leading-7 text-ink-secondary">{workspacePickerDescription}</span>
                         </span>
-                        <span className="rounded-xl border border-white/10 bg-white/[0.05] p-2 text-ink-secondary">
+                        <span className="workspace-icon-badge rounded-xl p-2 text-ink-secondary">
                             {showWorkspacePicker ? <FiX size={16} aria-hidden="true" /> : <FiGrid size={16} aria-hidden="true" />}
                         </span>
                     </button>
@@ -3006,12 +3015,12 @@ export default function PortfolioWorkspace() {
                                     onClick={onClick}
                                     className={`inline-flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors ${
                                         active
-                                            ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                                            : 'bg-white/[0.02] text-ink-secondary hover:bg-white/[0.05] hover:text-white'
+                                            ? 'workspace-button-primary shadow-lg shadow-primary/20'
+                                            : 'workspace-button-outline'
                                     }`}
                                     >
                                         <span className="inline-flex items-center gap-3">
-                                            <span className={`rounded-xl border p-2 ${active ? 'border-white/20 bg-white/10' : 'border-white/10 bg-white/[0.03]'}`}>
+                                            <span className={`rounded-xl border p-2 ${active ? 'border-primary/20 bg-primary/15' : 'workspace-icon-badge'}`}>
                                                 <Icon size={15} aria-hidden="true" />
                                             </span>
                                         <span>
@@ -3027,7 +3036,7 @@ export default function PortfolioWorkspace() {
                                 </button>
                             ))}
                         </div>
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                        <div className="workspace-soft-panel rounded-2xl px-4 py-3">
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Keep the rest quiet</p>
                             <p className="mt-2 text-sm leading-7 text-ink-secondary">
                                 {resumeSession
@@ -3046,9 +3055,18 @@ export default function PortfolioWorkspace() {
             </AppPanel>
 
             {error && (
-                <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                    {error}
-                </div>
+                <ErrorState
+                    title="Failed to Load Portfolio"
+                    message={error}
+                    variant="compact"
+                    action={{
+                        label: "Try Again",
+                        onClick: () => {
+                            void fetchOverview();
+                            void fetchTrends(trendPeriod);
+                        },
+                    }}
+                />
             )}
 
             <AnimatePresence mode="wait" initial={false}>

@@ -91,6 +91,7 @@ export type SnapshotUserProfile = {
     location?: string | null;
     occupation?: string | null;
     website?: string | null;
+    birthDate?: string | null;
     lifeGoals?: string[] | null;
     primaryGoal?: string | null;
     focusArea?: string | null;
@@ -122,6 +123,7 @@ export type ProfileDraft = {
     location: string;
     occupation: string;
     website: string;
+    birthDate: string;
     lifeGoals: string[];
 };
 
@@ -182,6 +184,7 @@ export type PersonalizationSignals = {
     updatedAt?: string;
     settings?: {
         promptFrequency?: PromptFrequency;
+        dailyGentleReflectionsEnabled?: boolean;
     };
     metrics?: PersonalizationSignalMetrics;
     answers?: Record<string, StoredAnswer>;
@@ -247,7 +250,29 @@ export const EMPTY_PROFILE_DRAFT: ProfileDraft = {
     location: '',
     occupation: '',
     website: '',
+    birthDate: '',
     lifeGoals: [],
+};
+
+export const toDateInputValue = (value: string | null | undefined): string => {
+    if (!value) return '';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toISOString().slice(0, 10);
+};
+
+export const toBirthDateLabel = (value: string | null | undefined, fallback = 'Not set'): string => {
+    const inputValue = toDateInputValue(value);
+    if (!inputValue) return fallback;
+    const [year, month, day] = inputValue.split('-').map(Number);
+    if (!year || !month || !day) return fallback;
+
+    return new Intl.DateTimeFormat('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: 'UTC',
+    }).format(new Date(Date.UTC(year, month - 1, day)));
 };
 
 export const EMPTY_PREFERENCES_DRAFT: PreferencesDraft = {
@@ -475,6 +500,7 @@ export const buildProfileDraft = (source: SnapshotUser | null | undefined): Prof
     location: source?.profile?.location || '',
     occupation: source?.profile?.occupation || '',
     website: source?.profile?.website || '',
+    birthDate: toDateInputValue(source?.profile?.birthDate || null),
     lifeGoals: normalizeStringArray(source?.profile?.lifeGoals),
 });
 
@@ -523,6 +549,9 @@ export const normalizeSignals = (value: unknown): PersonalizationSignals | null 
         updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : undefined,
         settings: {
             promptFrequency: asPromptFrequency(source.settings?.promptFrequency),
+            dailyGentleReflectionsEnabled: source.settings?.dailyGentleReflectionsEnabled === true
+                ? true
+                : undefined,
         },
         metrics: {
             promptedCount: typeof source.metrics?.promptedCount === 'number' ? source.metrics.promptedCount : 0,
@@ -577,6 +606,7 @@ export const compactSignals = (value: PersonalizationSignals | null | undefined)
     }
 
     const promptFrequency = asPromptFrequency(normalized.settings?.promptFrequency);
+    const dailyGentleReflectionsEnabled = normalized.settings?.dailyGentleReflectionsEnabled === true;
     const answersCount = Object.keys(normalized.answers || {}).length;
     const historyCount = normalized.history?.length || 0;
     const promptedCount = normalized.metrics?.promptedCount || 0;
@@ -598,6 +628,7 @@ export const compactSignals = (value: PersonalizationSignals | null | undefined)
 
     if (
         promptFrequency === 'normal' &&
+        !dailyGentleReflectionsEnabled &&
         answersCount === 0 &&
         historyCount === 0 &&
         promptedCount === 0 &&
@@ -611,6 +642,10 @@ export const compactSignals = (value: PersonalizationSignals | null | undefined)
 
     return {
         ...normalized,
+        settings: {
+            promptFrequency,
+            ...(dailyGentleReflectionsEnabled ? { dailyGentleReflectionsEnabled: true } : {}),
+        },
         ...(supportPreferences ? { supportPreferences } : {}),
     };
 };

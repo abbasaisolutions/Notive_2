@@ -11,13 +11,40 @@ import useSpeechRecognition from '@/hooks/use-speech-recognition';
 import useUploadQueue from '@/hooks/use-upload-queue';
 import useTelemetry from '@/hooks/use-telemetry';
 import { API_URL } from '@/constants/config';
+import { DEFAULT_VOICE_LANGUAGE_MODE, VOICE_ALLOW_BROWSER_FALLBACK, VOICE_BACKEND_TRANSCRIPTION_ENABLED } from '@/constants/voice';
 import { useGamification } from '@/context/gamification-context';
-import { useAuth } from '@/context/auth-context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import EntryTopBar from '@/components/entry/new/EntryTopBar';
 import EntryEditorCard from '@/components/entry/new/EntryEditorCard';
 import EntryInsightsPanel from '@/components/entry/new/EntryInsightsPanel';
+import {
+    attachVoiceTranscriptionJob,
+    createVoiceTranscriptionJob,
+    getVoiceTranscriptionJob,
+    type VoiceCaptureQualityMetrics,
+    type VoiceTranscriptionJob,
+    type VoiceTranscriptionResponse,
+} from '@/services/voice-transcription.service';
+import { appendReturnTo } from '@/utils/navigation';
+import { useToast } from '@/context/toast-context';
+import { Spinner } from '@/components/ui';
+import {
+    buildBrowserFallbackTranscription,
+    getSpeechPreviewLocale,
+    mergeVoiceCaptureState,
+    takePendingVoiceCapture,
+    toVoiceCaptureState,
+    type VoiceCaptureState,
+} from '@/utils/voice-capture';
+import createVoiceCaptureMonitor from '@/utils/voice-capture-metrics';
 import { getStarterPrompt, getWritingSuggestions, polishEntryText, polishTitle } from '@/utils/writing-assistant';
+import {
+    GENTLE_REFLECTION_ID_PARAM,
+    GENTLE_REFLECTION_SOURCE,
+    GENTLE_REFLECTION_TAGS_PARAM,
+    markGentleReflectionCompleted,
+    parseGentleReflectionTags,
+} from '@/utils/gentle-reflection';
 import {
     DEFAULT_LIFE_AREA_BY_CATEGORY,
     LIFE_AREA_OPTIONS,
@@ -25,18 +52,15 @@ import {
     normalizeCategory,
     normalizeLifeArea,
 } from '@/constants/life-areas';
+import { captureEntryLocation, type EntryLocation } from '@/services/location-context.service';
 import type { IconType } from 'react-icons';
 import {
     FiAlertCircle,
     FiAlertTriangle,
     FiFrown,
-    FiHeart,
     FiHelpCircle,
-    FiMoon,
     FiSmile,
     FiSun,
-    FiTrendingUp,
-    FiXCircle,
     FiZap,
 } from 'react-icons/fi';
 
@@ -45,16 +69,14 @@ const MOODS = [
     { icon: FiSun, label: 'Calm', value: 'calm' },
     { icon: FiFrown, label: 'Sad', value: 'sad' },
     { icon: FiAlertCircle, label: 'Anxious', value: 'anxious' },
-    { icon: FiXCircle, label: 'Frustrated', value: 'frustrated' },
     { icon: FiHelpCircle, label: 'Thoughtful', value: 'thoughtful' },
-    { icon: FiTrendingUp, label: 'Motivated', value: 'motivated' },
-    { icon: FiMoon, label: 'Tired', value: 'tired' },
-    { icon: FiHeart, label: 'Grateful', value: 'grateful' },
 ] satisfies Array<{ icon: IconType; label: string; value: string }>;
 
 type DraftConflict = {
     seededText: string;
     seededAudioUrl: string | null;
+    seededTags: string[];
+    seededVoiceCapture: VoiceCaptureState | null;
 };
 
 type CollectionOption = {
@@ -77,18 +99,137 @@ type DuplicateCandidate = {
     matchReasons: string[];
 };
 
+const mergeUniqueTags = (base: string[], extras: string[]) =>
+    Array.from(
+        new Set(
+            [...base, ...extras]
+                .map((item) => item.replace(/\s+/g, ' ').trim())
+                .filter(Boolean)
+        )
+    ).slice(0, 12);
+
+const appendVoiceText = (existing: string, addition: string) => {
+    const next = addition.trim();
+    if (!next) return existing;
+    if (!existing.trim()) return next;
+    return `${existing.trim()} ${next}`.trim();
+};
+
+const resolveCandidateLanguages = (languageMode: 'auto' | string) => {
+    switch (languageMode) {
+        case 'en-ur':
+            return ['en', 'ur'];
+        case 'en-pa':
+            return ['en', 'pa'];
+        case 'en-ar':
+            return ['en', 'ar'];
+        case 'auto':
+        case 'other':
+            return [];
+        default:
+            return [languageMode];
+    }
+};
+
+const parseStoredVoiceCapture = (value: unknown): VoiceCaptureState | null => {
+    if (!value || typeof value !== 'object') return null;
+
+    const record = value as Record<string, unknown>;
+    const rawTranscript = typeof record.rawTranscript === 'string' ? record.rawTranscript.trim() : '';
+    const cleanTranscript = typeof record.cleanTranscript === 'string'
+        ? record.cleanTranscript.trim()
+        : rawTranscript;
+
+    if (!rawTranscript && !cleanTranscript) return null;
+
+    return {
+        rawTranscript,
+        cleanTranscript,
+        detectedLanguage: typeof record.detectedLanguage === 'string' ? record.detectedLanguage : null,
+        providers: Array.isArray(record.providers)
+            ? record.providers.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+            : [],
+        models: Array.isArray(record.models)
+            ? record.models.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+            : [],
+        sources: Array.isArray(record.sources)
+            ? record.sources.filter(
+                (item): item is VoiceCaptureState['sources'][number] =>
+                    item === 'backend_transcribe' || item === 'browser_fallback'
+            )
+            : [],
+        reviewRequired: Boolean(record.reviewRequired),
+        confidenceOverall: typeof record.confidenceOverall === 'number' ? record.confidenceOverall : null,
+        clipCount: typeof record.clipCount === 'number' && record.clipCount > 0 ? record.clipCount : 1,
+        captureMeta: record.captureMeta && typeof record.captureMeta === 'object' && !Array.isArray(record.captureMeta)
+            ? record.captureMeta as VoiceCaptureState['captureMeta']
+            : null,
+    };
+};
+
+const parseStoredVoiceJob = (value: unknown, audioUrl: string | null): VoiceTranscriptionJob | null => {
+    if (!value || typeof value !== 'object') return null;
+    const record = value as Record<string, unknown>;
+    const id = typeof record.transcriptionJobId === 'string' ? record.transcriptionJobId.trim() : '';
+    const status = typeof record.transcriptionStatus === 'string' ? record.transcriptionStatus.trim().toUpperCase() : '';
+
+    if (!id || !status || !audioUrl) {
+        return null;
+    }
+
+    if (!['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELED'].includes(status)) {
+        return null;
+    }
+
+    return {
+        id,
+        entryId: null,
+        audioUrl,
+        fileName: null,
+        mimeType: 'audio/webm',
+        languageMode: typeof record.transcriptionLanguageMode === 'string' ? record.transcriptionLanguageMode : DEFAULT_VOICE_LANGUAGE_MODE,
+        candidateLanguages: [],
+        recordingDurationMs: null,
+        hintText: null,
+        entryContext: null,
+        status: status as VoiceTranscriptionJob['status'],
+        provider: typeof record.transcriptionProvider === 'string' ? record.transcriptionProvider : null,
+        model: typeof record.transcriptionModel === 'string' ? record.transcriptionModel : null,
+        detectedLanguage: typeof record.detectedLanguage === 'string' ? record.detectedLanguage : null,
+        attemptCount: 0,
+        maxAttempts: 4,
+        lastError: typeof record.transcriptionLastError === 'string' ? record.transcriptionLastError : null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        startedAt: null,
+        completedAt: null,
+        canceledAt: null,
+        captureMeta: record.captureMeta && typeof record.captureMeta === 'object' && !Array.isArray(record.captureMeta)
+            ? record.captureMeta as VoiceCaptureState['captureMeta']
+            : null,
+        transcript: null,
+    };
+};
+
 function NewEntryPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
-    const { logout } = useAuth();
     const { awardXP, refreshStats } = useGamification();
     const { apiFetch } = useApi();
     const { trackEvent } = useTelemetry();
     const { enqueueUpload, processQueue, queueCount, recentUploads, clearUploadResult } = useUploadQueue();
     const { loadDraft, saveDraft, clearDraft } = useEntryDraft(user?.id ?? null);
     const { backHref, backLabel, navigateBack } = useContextNavigation('/dashboard', 'dashboard');
-    const isQuickMode = searchParams.get('mode') !== 'full';
+    const toast = useToast();
+    const modeParam = searchParams.get('mode');
+    const isQuickMode = modeParam !== 'full';
+    const isWhisperRequested = modeParam === 'whisper';
+    const isWhisperMode = isWhisperRequested || (!modeParam && new Date().getHours() >= 22);
+    const entrySource = searchParams.get('source');
+    const isGentleReflectionEntry = entrySource === GENTLE_REFLECTION_SOURCE;
+    const gentleReflectionId = searchParams.get(GENTLE_REFLECTION_ID_PARAM) || '';
+    const gentleReflectionTags = parseGentleReflectionTags(searchParams.get(GENTLE_REFLECTION_TAGS_PARAM));
 
     const [content, setContent] = useState('');
     const [contentHtml, setContentHtml] = useState('');
@@ -103,6 +244,9 @@ function NewEntryPageContent() {
     const [collectionId, setCollectionId] = useState<string | null>(null);
     const [collections, setCollections] = useState<CollectionOption[]>([]);
     const [voiceError, setVoiceError] = useState<string | null>(null);
+    const [isVoiceProcessing, setIsVoiceProcessing] = useState(false);
+    const [voiceCapture, setVoiceCapture] = useState<VoiceCaptureState | null>(null);
+    const [voiceJob, setVoiceJob] = useState<VoiceTranscriptionJob | null>(null);
     const [duplicateCandidates, setDuplicateCandidates] = useState<DuplicateCandidate[]>([]);
     const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
     const [duplicateError, setDuplicateError] = useState('');
@@ -110,20 +254,30 @@ function NewEntryPageContent() {
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [error, setError] = useState('');
-    const [showAdvancedTools, setShowAdvancedTools] = useState(false);
-    const [showInsightDetails, setShowInsightDetails] = useState(false);
+    const [showAdvancedTools, setShowAdvancedTools] = useState(modeParam === 'full');
     const [entryId, setEntryId] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
-    const [isSigningOut, setIsSigningOut] = useState(false);
     const [draftRestored, setDraftRestored] = useState(false);
     const [pendingSync, setPendingSync] = useState(false);
     const [polishNotice, setPolishNotice] = useState<string | null>(null);
     const [draftConflict, setDraftConflict] = useState<DraftConflict | null>(null);
+    const [entryLocation, setEntryLocation] = useState<EntryLocation | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
+    const draftPersistTimeoutRef = useRef<NodeJS.Timeout>();
     const polishNoticeTimeoutRef = useRef<NodeJS.Timeout>();
     const draftInitRef = useRef(false);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const mediaStreamRef = useRef<MediaStream | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const browserTranscriptRef = useRef('');
+    const shouldProcessVoiceStopRef = useRef(false);
+    const voiceRecordingStartedAtRef = useRef<number | null>(null);
+    const captureMonitorRef = useRef<Awaited<ReturnType<typeof createVoiceCaptureMonitor>> | null>(null);
+    const pendingVoicePreviewRef = useRef<string>('');
+    const appliedVoiceJobIdsRef = useRef<Set<string>>(new Set());
+    const completionTrackedVoiceJobIdsRef = useRef<Set<string>>(new Set());
 
     const {
         extractedData,
@@ -158,43 +312,84 @@ function NewEntryPageContent() {
         contentRef.current = content;
     }, [content]);
 
-    const handleVoiceFinal = useCallback((text: string) => {
-        if (!text.trim()) return;
-        const current = contentRef.current;
-        const separator = current && !current.endsWith(' ') ? ' ' : '';
-        setContent(current + separator + text.trim());
-    }, []);
+    const canRecordVoiceAudio = typeof window !== 'undefined'
+        && !!navigator.mediaDevices?.getUserMedia
+        && typeof MediaRecorder !== 'undefined';
 
     const {
-        isSupported: isVoiceSupported,
-        isListening: isRecording,
+        isSupported: isVoicePreviewSupported,
+        isListening: isBrowserListening,
         interimText,
         error: speechError,
-        start: startRecording,
-        stop: stopRecording,
+        start: startSpeechPreview,
+        stop: stopSpeechPreview,
     } = useSpeechRecognition({
-        language: 'en-US',
+        language: getSpeechPreviewLocale(DEFAULT_VOICE_LANGUAGE_MODE),
         interimResults: true,
         continuous: true,
         autoRestart: true,
-        onFinal: handleVoiceFinal,
+        onFinal: (text: string) => {
+            if (!text.trim()) return;
+            browserTranscriptRef.current = appendVoiceText(browserTranscriptRef.current, text);
+        },
     });
 
+    const isVoiceSupported = canRecordVoiceAudio || isVoicePreviewSupported;
+    const isRecording = Boolean(isBrowserListening || (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive'));
+
     useEffect(() => {
-        if (speechError) setVoiceError(speechError);
-    }, [speechError]);
+        if (speechError && !canRecordVoiceAudio) setVoiceError(speechError);
+    }, [canRecordVoiceAudio, speechError]);
 
     useEffect(() => {
         if (!isVoiceSupported) {
-            setVoiceError('Speech recognition not supported in this browser.');
+            setVoiceError('Voice notes are not available in this browser.');
         }
     }, [isVoiceSupported]);
+
+    const stopVoiceMediaStream = useCallback(() => {
+        if (mediaStreamRef.current) {
+            mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+            mediaStreamRef.current = null;
+        }
+    }, []);
+
+    const cleanupVoiceCapture = useCallback(() => {
+        captureMonitorRef.current?.dispose();
+        captureMonitorRef.current = null;
+        stopVoiceMediaStream();
+        mediaRecorderRef.current = null;
+        audioChunksRef.current = [];
+        voiceRecordingStartedAtRef.current = null;
+    }, [stopVoiceMediaStream]);
+
+    // Silently capture location when entry page loads (if permission already granted)
+    useEffect(() => {
+        let cancelled = false;
+        captureEntryLocation()
+            .then((loc) => { if (!cancelled && loc) setEntryLocation(loc); })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            shouldProcessVoiceStopRef.current = false;
+            cleanupVoiceCapture();
+        };
+    }, [cleanupVoiceCapture]);
 
     useEffect(() => {
         if (typeof navigator !== 'undefined' && navigator.onLine) {
             processQueue();
         }
     }, [processQueue]);
+
+    useEffect(() => {
+        if (modeParam === 'full') {
+            setShowAdvancedTools(true);
+        }
+    }, [modeParam]);
 
     useEffect(() => {
         if (!user) return;
@@ -230,7 +425,9 @@ function NewEntryPageContent() {
     }, [user, apiFetch]);
 
     useEffect(() => {
-        if (!user || isQuickMode) {
+        const detailsEnabled = showAdvancedTools && !isWhisperMode;
+
+        if (!user || !detailsEnabled) {
             setDuplicateCandidates([]);
             setDuplicateError('');
             setIsCheckingDuplicates(false);
@@ -265,7 +462,7 @@ function NewEntryPageContent() {
 
                 const data = await response.json().catch(() => null);
                 if (!response.ok) {
-                    throw new Error(data?.message || 'Failed to check similar notes');
+                    throw new Error(data?.message || 'We could not compare this note to older ones right now.');
                 }
 
                 setDuplicateCandidates(Array.isArray(data?.duplicates) ? data.duplicates : []);
@@ -273,7 +470,7 @@ function NewEntryPageContent() {
                 if (controller.signal.aborted) return;
                 console.error('Duplicate detection failed:', error);
                 setDuplicateCandidates([]);
-                setDuplicateError(error?.message || 'Failed to check similar notes');
+                setDuplicateError(error?.message || 'We could not compare this note to older ones right now.');
             } finally {
                 if (!controller.signal.aborted) {
                     setIsCheckingDuplicates(false);
@@ -285,7 +482,7 @@ function NewEntryPageContent() {
             controller.abort();
             clearTimeout(timeout);
         };
-    }, [apiFetch, content, duplicateCheckTitle, entryId, isQuickMode, user]);
+    }, [apiFetch, content, duplicateCheckTitle, entryId, isWhisperMode, showAdvancedTools, user]);
 
     useEffect(() => {
         return () => {
@@ -295,15 +492,110 @@ function NewEntryPageContent() {
         };
     }, []);
 
+    const applyCompletedVoiceTranscript = useCallback((job: VoiceTranscriptionJob) => {
+        if (appliedVoiceJobIdsRef.current.has(job.id) || !job.transcript) {
+            return;
+        }
+
+        appliedVoiceJobIdsRef.current.add(job.id);
+        const transcript: VoiceTranscriptionResponse = {
+            ...job.transcript,
+            captureMeta: job.captureMeta || job.transcript.captureMeta || null,
+        };
+        const nextText = transcript.cleanTranscript.trim();
+        const previewText = pendingVoicePreviewRef.current.trim();
+
+        if (nextText) {
+            setContent((current) => {
+                const normalizedCurrent = current.replace(/\s+/g, ' ').trim().toLowerCase();
+                const normalizedPreview = previewText.replace(/\s+/g, ' ').trim().toLowerCase();
+                const normalizedNext = nextText.replace(/\s+/g, ' ').trim().toLowerCase();
+
+                if (!normalizedCurrent) return nextText;
+                if (normalizedPreview && normalizedCurrent === normalizedPreview) return nextText;
+                if (normalizedCurrent.includes(normalizedNext)) return current;
+                return appendVoiceText(current, nextText);
+            });
+        }
+
+        setVoiceCapture((current) => mergeVoiceCaptureState(current, transcript));
+
+        if (job.audioUrl) {
+            setAudioUrl(job.audioUrl);
+        }
+
+        if (transcript.source === 'backend_transcribe' && !transcript.reviewRequired) {
+            setVoiceError(null);
+        }
+
+        if (!completionTrackedVoiceJobIdsRef.current.has(job.id)) {
+            completionTrackedVoiceJobIdsRef.current.add(job.id);
+            void trackEvent({
+                eventType: 'voice_transcribe_succeeded',
+                value: 'entry_new',
+                metadata: {
+                    source: transcript.source,
+                    provider: transcript.providerMeta?.provider || null,
+                    model: transcript.providerMeta?.model || null,
+                    reviewRequired: transcript.reviewRequired,
+                    jobStatus: job.status,
+                },
+            });
+        }
+
+        pendingVoicePreviewRef.current = '';
+        setIsVoiceProcessing(false);
+    }, [trackEvent]);
+
     useEffect(() => {
         if (!user || draftInitRef.current) return;
         draftInitRef.current = true;
 
+        const stagedVoiceCapture = searchParams.get('voiceSession') ? takePendingVoiceCapture() : null;
+        const stagedTranscript = stagedVoiceCapture?.transcript || null;
         const voiceText = searchParams.get('voice');
         const promptText = searchParams.get('prompt');
-        const audioParam = searchParams.get('audioUrl');
-        const seededText = voiceText || promptText || '';
+        const audioParam = stagedVoiceCapture?.audioUrl || searchParams.get('audioUrl');
+        const seededVoiceCapture = stagedTranscript
+            ? toVoiceCaptureState(stagedTranscript)
+            : voiceText?.trim()
+                ? toVoiceCaptureState(buildBrowserFallbackTranscription(voiceText, DEFAULT_VOICE_LANGUAGE_MODE))
+                : null;
+        const seededText = stagedTranscript?.cleanTranscript || voiceText || promptText || '';
         const savedDraft = loadDraft();
+        const restoredVoiceCapture = parseStoredVoiceCapture(savedDraft?.analysis?.voice);
+        const restoredVoiceJob = parseStoredVoiceJob(savedDraft?.analysis?.voice, savedDraft?.audioUrl || audioParam || null);
+        const pendingVoiceJob = stagedVoiceCapture?.pendingJob
+            || (stagedVoiceCapture?.jobId && stagedVoiceCapture.audioUrl
+                ? {
+                    id: stagedVoiceCapture.jobId,
+                    entryId: null,
+                    audioUrl: stagedVoiceCapture.audioUrl,
+                    fileName: null,
+                    mimeType: 'audio/webm',
+                    languageMode: stagedVoiceCapture.languageMode || DEFAULT_VOICE_LANGUAGE_MODE,
+                    candidateLanguages: [],
+                    recordingDurationMs: null,
+                    hintText: null,
+                    entryContext: null,
+                    status: 'PENDING' as const,
+                    provider: null,
+                    model: null,
+                    detectedLanguage: null,
+                    attemptCount: 0,
+                    maxAttempts: 4,
+                    lastError: null,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    startedAt: null,
+                    completedAt: null,
+                    canceledAt: null,
+                    captureMeta: stagedVoiceCapture.captureMeta || null,
+                    transcript: null,
+                }
+                : null);
+
+        pendingVoicePreviewRef.current = stagedVoiceCapture?.previewText?.trim() || '';
 
         if (seededText) {
             if (savedDraft?.content?.trim()) {
@@ -323,16 +615,23 @@ function NewEntryPageContent() {
                 if (savedDraft.analysis?.ai) {
                     setAiInsights(savedDraft.analysis.ai);
                 }
+                setVoiceCapture(restoredVoiceCapture);
+                setVoiceJob(pendingVoiceJob || restoredVoiceJob);
                 setDraftRestored(true);
                 setPendingSync(savedDraft.pendingSync);
                 setDraftConflict({
                     seededText,
                     seededAudioUrl: audioParam || null,
+                    seededTags: gentleReflectionTags,
+                    seededVoiceCapture,
                 });
                 return;
             }
 
             setContent(seededText);
+            setTagsOverride(gentleReflectionTags);
+            setVoiceCapture(seededVoiceCapture);
+            setVoiceJob(pendingVoiceJob || restoredVoiceJob);
             if (audioParam) {
                 setAudioUrl(audioParam);
             }
@@ -357,10 +656,108 @@ function NewEntryPageContent() {
             if (savedDraft.analysis?.ai) {
                 setAiInsights(savedDraft.analysis.ai);
             }
+            setVoiceCapture(restoredVoiceCapture);
+            setVoiceJob(restoredVoiceJob || pendingVoiceJob);
             setDraftRestored(true);
             setPendingSync(savedDraft.pendingSync);
+            if (audioParam) {
+                setAudioUrl(audioParam);
+            }
+            return;
         }
-    }, [user, searchParams, loadDraft, clearDraft, setExtractedData, setAiInsights]);
+
+        if (pendingVoiceJob) {
+            setVoiceJob(pendingVoiceJob);
+            if (audioParam) {
+                setAudioUrl(audioParam);
+            }
+        }
+    }, [user, searchParams, loadDraft, clearDraft, gentleReflectionTags, setExtractedData, setAiInsights]);
+
+    useEffect(() => {
+        if (!voiceJob) {
+            return;
+        }
+
+        if (voiceJob.status === 'COMPLETED') {
+            applyCompletedVoiceTranscript(voiceJob);
+            return;
+        }
+
+        if (voiceJob.status === 'FAILED' || voiceJob.status === 'CANCELED') {
+            setIsVoiceProcessing(false);
+
+            if (VOICE_ALLOW_BROWSER_FALLBACK && pendingVoicePreviewRef.current.trim()) {
+                const fallback = buildBrowserFallbackTranscription(
+                    pendingVoicePreviewRef.current,
+                    (voiceJob.languageMode as typeof DEFAULT_VOICE_LANGUAGE_MODE | string) as any
+                );
+                fallback.captureMeta = voiceJob.captureMeta || null;
+                setVoiceCapture((current) => mergeVoiceCaptureState(current, fallback));
+                setContent((current) => {
+                    const previewText = pendingVoicePreviewRef.current.trim();
+                    if (!previewText) return current;
+                    const normalizedCurrent = current.replace(/\s+/g, ' ').trim().toLowerCase();
+                    const normalizedPreview = previewText.replace(/\s+/g, ' ').trim().toLowerCase();
+                    if (!normalizedCurrent || normalizedCurrent === normalizedPreview) {
+                        return previewText;
+                    }
+                    return appendVoiceText(current, previewText);
+                });
+                setVoiceError('Transcript may need review before saving.');
+                pendingVoicePreviewRef.current = '';
+                return;
+            }
+
+            if (voiceJob.lastError) {
+                setVoiceError(voiceJob.lastError);
+            }
+            return;
+        }
+
+        setIsVoiceProcessing(true);
+        let cancelled = false;
+        let timer: ReturnType<typeof setTimeout> | null = null;
+
+        const poll = async () => {
+            try {
+                const nextJob = await getVoiceTranscriptionJob(apiFetch, voiceJob.id);
+                if (cancelled) return;
+
+                setVoiceJob(nextJob);
+                if (nextJob.audioUrl) {
+                    setAudioUrl(nextJob.audioUrl);
+                }
+
+                if (nextJob.status === 'COMPLETED') {
+                    applyCompletedVoiceTranscript(nextJob);
+                    return;
+                }
+
+                if (nextJob.status === 'FAILED' || nextJob.status === 'CANCELED') {
+                    setIsVoiceProcessing(false);
+                    if (nextJob.lastError) {
+                        setVoiceError(nextJob.lastError);
+                    }
+                    return;
+                }
+
+                timer = setTimeout(poll, 1800);
+            } catch (error) {
+                if (cancelled) return;
+                timer = setTimeout(poll, 3000);
+            }
+        };
+
+        void poll();
+
+        return () => {
+            cancelled = true;
+            if (timer) {
+                clearTimeout(timer);
+            }
+        };
+    }, [apiFetch, applyCompletedVoiceTranscript, voiceJob]);
 
     const handleKeepDraft = useCallback(() => {
         setDraftConflict(null);
@@ -372,8 +769,9 @@ function NewEntryPageContent() {
         setContentHtml('');
         setTitleOverride('');
         setMoodOverride(null);
-        setTagsOverride([]);
+        setTagsOverride(draftConflict.seededTags);
         setAudioUrl(draftConflict.seededAudioUrl);
+        setVoiceCapture(draftConflict.seededVoiceCapture);
         setCategory('PERSONAL');
         setLifeArea(DEFAULT_LIFE_AREA_BY_CATEGORY.PERSONAL);
         setCollectionId(null);
@@ -413,6 +811,37 @@ function NewEntryPageContent() {
         polishNoticeTimeoutRef.current = setTimeout(() => setPolishNotice(null), 3500);
     }, [content, titleOverride]);
 
+    const buildPersistedAnalysis = useCallback(() => {
+        const baseAnalysis = buildAnalysisPayload();
+        const voiceAnalysis = (voiceCapture || voiceJob)
+            ? {
+                rawTranscript: voiceCapture?.rawTranscript || '',
+                cleanTranscript: voiceCapture?.cleanTranscript || '',
+                detectedLanguage: voiceCapture?.detectedLanguage || voiceJob?.detectedLanguage || null,
+                providers: voiceCapture?.providers || [],
+                models: voiceCapture?.models || [],
+                sources: voiceCapture?.sources || [],
+                reviewRequired: voiceCapture?.reviewRequired || false,
+                confidenceOverall: voiceCapture?.confidenceOverall ?? null,
+                clipCount: voiceCapture?.clipCount || 0,
+                captureMeta: voiceCapture?.captureMeta || voiceJob?.captureMeta || null,
+                transcriptionJobId: voiceJob?.id || null,
+                transcriptionStatus: voiceJob?.status || null,
+                transcriptionProvider: voiceJob?.provider || null,
+                transcriptionModel: voiceJob?.model || null,
+                transcriptionLanguageMode: voiceJob?.languageMode || DEFAULT_VOICE_LANGUAGE_MODE,
+                transcriptionLastError: voiceJob?.lastError || null,
+            }
+            : null;
+
+        if (!baseAnalysis && !voiceAnalysis) return undefined;
+
+        return {
+            ...(baseAnalysis || {}),
+            ...(voiceAnalysis ? { voice: voiceAnalysis } : {}),
+        };
+    }, [buildAnalysisPayload, voiceCapture, voiceJob]);
+
     const persistDraftSnapshot = useCallback((pendingSyncOverride: boolean) => {
         saveDraft({
             content,
@@ -424,13 +853,13 @@ function NewEntryPageContent() {
             category,
             lifeArea,
             chapterId: collectionId,
-            analysis: buildAnalysisPayload(),
+            analysis: buildPersistedAnalysis(),
             updatedAt: Date.now(),
             pendingSync: pendingSyncOverride,
         });
     }, [
         audioUrl,
-        buildAnalysisPayload,
+        buildPersistedAnalysis,
         category,
         collectionId,
         content,
@@ -442,28 +871,200 @@ function NewEntryPageContent() {
         titleOverride,
     ]);
 
-    const buildCaptureModeHref = useCallback((mode: 'quick' | 'full') => {
-        const params = new URLSearchParams(searchParams.toString());
-        if (mode === 'quick') {
-            params.set('mode', 'quick');
-        } else {
-            params.set('mode', 'full');
+    const processVoiceCapture = useCallback(async (
+        audioBlob: Blob | null,
+        captureMeta: VoiceCaptureQualityMetrics | null
+    ) => {
+        const browserTranscript = browserTranscriptRef.current.trim();
+        if (!audioBlob && !browserTranscript) {
+            setVoiceError('No voice note came through. Try once more.');
+            return;
         }
 
-        const nextQuery = params.toString();
-        return nextQuery ? `/entry/new?${nextQuery}` : '/entry/new';
-    }, [searchParams]);
+        setIsVoiceProcessing(true);
+        setVoiceJob(null);
+        pendingVoicePreviewRef.current = browserTranscript;
+        let transcription: VoiceTranscriptionResponse | null = null;
+
+        try {
+            if (audioBlob && VOICE_BACKEND_TRANSCRIPTION_ENABLED) {
+                void trackEvent({
+                    eventType: 'voice_transcribe_requested',
+                    value: 'entry_new',
+                    metadata: {
+                        languageMode: DEFAULT_VOICE_LANGUAGE_MODE,
+                        captureRating: captureMeta?.rating || null,
+                    },
+                });
+
+                const createdJob = await createVoiceTranscriptionJob(apiFetch, {
+                    audioBlob,
+                    entryId,
+                    languageMode: DEFAULT_VOICE_LANGUAGE_MODE,
+                    candidateLanguages: resolveCandidateLanguages(DEFAULT_VOICE_LANGUAGE_MODE),
+                    previewText: browserTranscript || null,
+                    recordingDurationMs: voiceRecordingStartedAtRef.current ? Date.now() - voiceRecordingStartedAtRef.current : null,
+                    captureMeta,
+                });
+                setVoiceJob(createdJob);
+                if (createdJob.audioUrl) {
+                    setAudioUrl(createdJob.audioUrl);
+                }
+                browserTranscriptRef.current = '';
+                return;
+            }
+        } catch (error: any) {
+            console.error('Entry voice transcription failed:', error);
+            void trackEvent({
+                eventType: 'voice_transcribe_failed',
+                value: 'entry_new',
+                metadata: {
+                    code: error?.code || null,
+                    retryable: Boolean(error?.retryable),
+                },
+            });
+            setVoiceError(error?.message || 'Voice note could not be cleaned up. We will keep what we safely heard.');
+        }
+
+        if (!transcription && VOICE_ALLOW_BROWSER_FALLBACK && browserTranscript) {
+            transcription = buildBrowserFallbackTranscription(browserTranscript, DEFAULT_VOICE_LANGUAGE_MODE);
+            transcription.captureMeta = captureMeta;
+            setVoiceError('Transcript may need review before saving.');
+            void trackEvent({
+                eventType: 'voice_fallback_used',
+                value: 'entry_new',
+                metadata: {
+                    reason: VOICE_BACKEND_TRANSCRIPTION_ENABLED ? 'backend_failed' : 'backend_disabled',
+                },
+            });
+        }
+
+        if (!transcription) {
+            setIsVoiceProcessing(false);
+            browserTranscriptRef.current = '';
+            return;
+        }
+
+        const nextText = transcription.cleanTranscript.trim();
+        if (nextText) {
+            setContent((current) => appendVoiceText(current, nextText));
+        }
+        transcription.captureMeta = captureMeta;
+        setVoiceCapture((current) => mergeVoiceCaptureState(current, transcription));
+
+        if (transcription.source === 'backend_transcribe' && !transcription.reviewRequired) {
+            setVoiceError(null);
+        }
+
+        setIsVoiceProcessing(false);
+        browserTranscriptRef.current = '';
+        setVoiceJob(null);
+    }, [apiFetch, trackEvent]);
+
+    const startRecording = useCallback(async () => {
+        if (isVoiceProcessing) return;
+
+        if (!isVoiceSupported) {
+            setVoiceError('Voice capture is not supported in this browser.');
+            return;
+        }
+
+        setVoiceError(null);
+        setVoiceJob(null);
+        browserTranscriptRef.current = '';
+        audioChunksRef.current = [];
+        shouldProcessVoiceStopRef.current = true;
+        voiceRecordingStartedAtRef.current = Date.now();
+
+        try {
+            if (canRecordVoiceAudio) {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                    },
+                });
+                mediaStreamRef.current = stream;
+                captureMonitorRef.current = await createVoiceCaptureMonitor(stream);
+
+                const mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunksRef.current.push(event.data);
+                    }
+                };
+                mediaRecorder.onstop = async () => {
+                    const shouldProcess = shouldProcessVoiceStopRef.current;
+                    const chunks = [...audioChunksRef.current];
+                    const captureMeta = captureMonitorRef.current ? await captureMonitorRef.current.stop() : null;
+                    captureMonitorRef.current = null;
+                    cleanupVoiceCapture();
+
+                    if (!shouldProcess) {
+                        return;
+                    }
+
+                    const audioBlob = chunks.length > 0
+                        ? new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' })
+                        : null;
+                    await processVoiceCapture(audioBlob, captureMeta);
+                };
+                mediaRecorder.start();
+                mediaRecorderRef.current = mediaRecorder;
+            }
+
+            if (isVoicePreviewSupported) {
+                startSpeechPreview();
+            }
+
+            void trackEvent({
+                eventType: 'voice_recording_started',
+                value: 'entry_new',
+                metadata: {
+                    hasAudioRecorder: canRecordVoiceAudio,
+                    hasBrowserPreview: isVoicePreviewSupported,
+                },
+            });
+        } catch (error) {
+            console.error('Failed to start entry voice capture:', error);
+            setVoiceError('The mic did not start. Try again.');
+            cleanupVoiceCapture();
+        }
+    }, [
+        canRecordVoiceAudio,
+        cleanupVoiceCapture,
+        isVoiceProcessing,
+        isVoicePreviewSupported,
+        isVoiceSupported,
+        processVoiceCapture,
+        startSpeechPreview,
+        trackEvent,
+    ]);
+
+    const stopRecording = useCallback(() => {
+        shouldProcessVoiceStopRef.current = true;
+        stopSpeechPreview();
+
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+            return;
+        }
+
+        cleanupVoiceCapture();
+        void processVoiceCapture(null, null);
+    }, [cleanupVoiceCapture, processVoiceCapture, stopSpeechPreview]);
 
     const handleOpenFullStudio = useCallback(() => {
+        setShowAdvancedTools(true);
         void trackEvent({
-            eventType: 'entry_full_studio_opened',
-            value: 'from_quick_note',
+            eventType: 'entry_more_details_opened',
+            value: isQuickMode ? 'from_quick_note' : 'from_note_page',
             metadata: {
                 hasDraftContent: Boolean(content.trim() || titleOverride.trim() || tagsOverride.length > 0 || audioUrl),
             },
         });
-        router.replace(buildCaptureModeHref('full'), { scroll: false });
-    }, [audioUrl, buildCaptureModeHref, content, router, tagsOverride.length, titleOverride, trackEvent]);
+    }, [audioUrl, content, isQuickMode, tagsOverride.length, titleOverride, trackEvent]);
 
     const handleFinishLater = useCallback(() => {
         const hasDraftableContent = Boolean(
@@ -490,7 +1091,7 @@ function NewEntryPageContent() {
 
     const handleSave = useCallback(async (isAutoSave = false) => {
         if (!content.trim()) {
-            if (!isAutoSave) setError('Please write or speak something before saving.');
+            if (!isAutoSave) setError('Write or say one line before saving.');
             return;
         }
 
@@ -498,7 +1099,7 @@ function NewEntryPageContent() {
         if (offline) {
             persistDraftSnapshot(true);
             setPendingSync(true);
-            if (!isAutoSave) setError('You are offline. Draft saved locally and will sync when online.');
+            if (!isAutoSave) setError('You are offline. This draft is safe here and will sync when you are back online.');
             return;
         }
 
@@ -507,8 +1108,9 @@ function NewEntryPageContent() {
 
         const finalTitle = titleOverride || extractedData?.title || null;
         const finalMood = moodOverride || extractedData?.primaryEmotion?.emotion || null;
-        const finalTags = tagsOverride.length > 0 ? tagsOverride : (extractedData?.suggestedTags || []);
-        const analysis = buildAnalysisPayload();
+        const baseTags = tagsOverride.length > 0 ? tagsOverride : (extractedData?.suggestedTags || []);
+        const finalTags = mergeUniqueTags(baseTags, isGentleReflectionEntry ? gentleReflectionTags : []);
+        const analysis = buildPersistedAnalysis();
 
         try {
             const method = entryId ? 'PUT' : 'POST';
@@ -528,15 +1130,35 @@ function NewEntryPageContent() {
                     tags: finalTags,
                     audioUrl,
                     analysis,
+                    ...(entryLocation ? {
+                        locationLat: entryLocation.lat,
+                        locationLng: entryLocation.lng,
+                        locationName: entryLocation.name,
+                    } : {}),
                 }),
             });
 
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.message || 'Failed to save entry');
+                throw new Error(data.message || 'Could not save your note. Try again in a moment.');
             }
 
+            const savedEntryId = data.entry?.id || entryId || null;
+
             if (!entryId && data.entry?.id) setEntryId(data.entry.id);
+
+            if (voiceJob?.id && savedEntryId && voiceJob.entryId !== savedEntryId) {
+                try {
+                    const attachedJob = await attachVoiceTranscriptionJob(apiFetch, voiceJob.id, savedEntryId);
+                    setVoiceJob(attachedJob);
+                    if (attachedJob.status === 'COMPLETED') {
+                        applyCompletedVoiceTranscript(attachedJob);
+                    }
+                } catch (attachError) {
+                    console.warn('Failed to attach voice transcription job to entry', attachError);
+                }
+            }
+
             setLastSaved(new Date());
             setPendingSync(false);
 
@@ -545,25 +1167,72 @@ function NewEntryPageContent() {
                     eventType: 'entry_saved',
                     value: isQuickMode ? 'quick' : 'full',
                     metadata: {
-                        entryId: data.entry?.id || entryId || null,
+                        entryId: savedEntryId,
                         wordCount: content.trim().split(/\s+/).length,
                         hasMood: Boolean(finalMood),
                         hasTags: finalTags.length > 0,
+                        source: entrySource || null,
                     },
                 });
+                if (voiceCapture) {
+                    const normalizedContent = content.replace(/\s+/g, ' ').trim().toLowerCase();
+                    const normalizedCleanTranscript = voiceCapture.cleanTranscript.replace(/\s+/g, ' ').trim().toLowerCase();
+
+                    void trackEvent({
+                        eventType: 'voice_entry_saved',
+                        value: isQuickMode ? 'quick' : 'full',
+                        metadata: {
+                            entryId: savedEntryId,
+                            clipCount: voiceCapture.clipCount,
+                            reviewRequired: voiceCapture.reviewRequired,
+                            provider: voiceCapture.providers[0] || null,
+                            source: voiceCapture.sources[0] || null,
+                        },
+                    });
+
+                    if (
+                        normalizedCleanTranscript
+                        && normalizedContent
+                        && !normalizedContent.includes(normalizedCleanTranscript)
+                    ) {
+                        void trackEvent({
+                            eventType: 'voice_transcript_corrected',
+                            value: isQuickMode ? 'quick' : 'full',
+                            metadata: {
+                                entryId: savedEntryId,
+                                clipCount: voiceCapture.clipCount,
+                            },
+                        });
+                    }
+                }
                 localStorage.setItem('lastEntryTime', Date.now().toString());
                 if (!entryId) {
                     awardXP(50, 'Entry created');
                     refreshStats();
                 }
                 clearDraft();
+                if (!entryId && isGentleReflectionEntry && data.entry?.id) {
+                    if (user?.id && gentleReflectionId) {
+                        markGentleReflectionCompleted(user.id, gentleReflectionId);
+                    }
+
+                    toast.success('Note saved');
+                    router.push(appendReturnTo(`/entry/view?id=${data.entry.id}`, backHref));
+                    return;
+                }
+
+                toast.success('Note saved');
                 router.push(backHref);
             } else {
                 persistDraftSnapshot(false);
             }
         } catch (err: any) {
             console.error('Save error:', err);
-            if (!isAutoSave) setError(err.message || 'Failed to save entry');
+            if (!isAutoSave) {
+                const msg = err.message || 'Could not save your note. Try again in a moment.';
+                setError(msg);
+                toast.error(msg);
+            }
         } finally {
             setIsSaving(false);
         }
@@ -578,40 +1247,58 @@ function NewEntryPageContent() {
         lifeArea,
         collectionId,
         extractedData,
-        buildAnalysisPayload,
+        buildPersistedAnalysis,
         entryId,
         apiFetch,
+        applyCompletedVoiceTranscript,
         awardXP,
         refreshStats,
         clearDraft,
         backHref,
         router,
         persistDraftSnapshot,
+        gentleReflectionId,
+        gentleReflectionTags,
+        entrySource,
+        isGentleReflectionEntry,
         isQuickMode,
         trackEvent,
+        user?.id,
+        voiceCapture,
+        toast,
     ]);
 
     useEffect(() => {
         if (!content.trim() || isSaving) return;
 
+        if (draftPersistTimeoutRef.current) {
+            clearTimeout(draftPersistTimeoutRef.current);
+        }
         if (autoSaveTimeoutRef.current) {
             clearTimeout(autoSaveTimeoutRef.current);
         }
 
+        draftPersistTimeoutRef.current = setTimeout(() => {
+            const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+            persistDraftSnapshot(pendingSync || offline);
+            if (offline) {
+                setPendingSync(true);
+            }
+        }, 2000);
+
         autoSaveTimeoutRef.current = setTimeout(() => {
             const offline = typeof navigator !== 'undefined' && !navigator.onLine;
-
-            persistDraftSnapshot(pendingSync || offline);
-
             if (offline) {
                 setPendingSync(true);
                 return;
             }
-
             handleSave(true);
-        }, 3000);
+        }, 10000);
 
         return () => {
+            if (draftPersistTimeoutRef.current) {
+                clearTimeout(draftPersistTimeoutRef.current);
+            }
             if (autoSaveTimeoutRef.current) {
                 clearTimeout(autoSaveTimeoutRef.current);
             }
@@ -673,7 +1360,7 @@ function NewEntryPageContent() {
                 fileType: file.type,
             });
             if (fileInputRef.current) fileInputRef.current.value = '';
-            setError('You are offline. Image upload queued and will retry when online.');
+            setError('You are offline. The image is queued and will upload when you are back online.');
             return;
         }
 
@@ -689,7 +1376,7 @@ function NewEntryPageContent() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Failed to upload image');
+                throw new Error(data.message || 'That image did not upload. Try again in a moment.');
             }
 
             setContent(prev => `${prev}\n![Image](${data.url})\n`);
@@ -703,9 +1390,9 @@ function NewEntryPageContent() {
                     fileName: file.name,
                     fileType: file.type,
                 });
-                setError('Upload queued. We will retry when you are online.');
+                setError('That image is queued and will upload when you are back online.');
             } else {
-                setError(err.message || 'Failed to upload image');
+                setError(err.message || 'That image did not upload. Try again in a moment.');
             }
         } finally {
             setIsUploading(false);
@@ -715,7 +1402,7 @@ function NewEntryPageContent() {
     if (authLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                <Spinner size="md" />
             </div>
         );
     }
@@ -730,9 +1417,25 @@ function NewEntryPageContent() {
     const availableLifeAreas = LIFE_AREA_OPTIONS.filter((item) => item.category === category);
     const starterPrompt = getStarterPrompt(new Date(), displayMood);
     const writingSuggestions = getWritingSuggestions(content);
+    const showStudioPanels = !isWhisperMode && showAdvancedTools;
+    const voiceStatusMessage = voiceJob
+        ? voiceJob.status === 'PENDING'
+            ? 'Uploading your voice note...'
+            : voiceJob.status === 'PROCESSING'
+                ? 'Cleaning up the transcript...'
+                : voiceJob.status === 'FAILED'
+                    ? voiceJob.lastError || 'Voice note could not be cleaned up.'
+                    : voiceJob.status === 'CANCELED'
+                        ? 'Voice note was canceled.'
+                        : voiceCapture?.captureMeta?.rating === 'poor'
+                            ? 'The audio was rough, so give the transcript a quick look before saving.'
+                            : null
+        : null;
     const editorPlaceholder = content.trim()
         ? 'Keep going...'
-        : `Try this: ${starterPrompt.text}`;
+        : isWhisperMode
+            ? 'What\u2019s on your mind tonight?'
+            : `Try this: ${starterPrompt.text}`;
 
     const handleCategorySelect = (nextCategory: EntryCategory) => {
         setCategory(nextCategory);
@@ -744,23 +1447,20 @@ function NewEntryPageContent() {
         setContent(`${starterPrompt.text}\n\n`);
     };
 
-    const handleSignOut = async () => {
-        if (isSigningOut) return;
-        setIsSigningOut(true);
-        try {
-            await logout();
-            router.replace('/login');
-        } finally {
-            setIsSigningOut(false);
-        }
-    };
-
     return (
-        <div className="entry-studio min-h-screen text-white selection:bg-primary/30">
-            <div className="fixed top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[150px] pointer-events-none" />
-            <div className="fixed bottom-0 right-1/4 w-64 h-64 bg-secondary/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className={`entry-studio min-h-screen selection:bg-primary/30 ${isWhisperMode ? 'bg-[rgb(var(--bg-canvas))] text-[rgb(var(--text-soft))]' : 'text-[rgb(var(--text-primary))]'}`}>
+            <h1 className="sr-only">New Entry</h1>
+            {!isWhisperMode && (
+                <>
+                    <div className="fixed top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[150px] pointer-events-none" />
+                    <div className="fixed bottom-0 right-1/4 w-64 h-64 bg-secondary/10 rounded-full blur-[120px] pointer-events-none" />
+                </>
+            )}
 
-            <div className="max-w-3xl mx-auto px-4 pt-8 pb-28 md:pb-8 relative z-10">
+            <div className={`max-w-3xl mx-auto px-4 pb-28 md:pb-8 relative z-10 ${isWhisperMode ? 'pt-12 md:pt-16' : 'pt-8'}`}>
+                {isWhisperMode && (
+                    <p className="mb-8 text-center font-serif text-xs uppercase tracking-[0.2em] text-[rgba(255,255,255,0.24)]">whisper mode</p>
+                )}
                 <EntryTopBar
                     onBack={navigateBack}
                     backLabel={backLabel}
@@ -768,8 +1468,6 @@ function NewEntryPageContent() {
                     lastSaved={lastSaved}
                     canSave={!isSaving && !!content.trim()}
                     onSave={() => handleSave(false)}
-                    onSignOut={handleSignOut}
-                    isSigningOut={isSigningOut}
                     error={error}
                     draftRestored={draftRestored}
                     pendingSync={pendingSync}
@@ -779,14 +1477,18 @@ function NewEntryPageContent() {
                     onToggleAdvancedTools={() => setShowAdvancedTools((prev) => !prev)}
                     polishNotice={polishNotice}
                     isQuickMode={isQuickMode}
+                    isWhisperMode={isWhisperMode}
                     onFinishLater={handleFinishLater}
                     onOpenFullStudio={handleOpenFullStudio}
                 />
 
                 <EntryEditorCard
                     isRecording={isRecording}
+                    isVoiceProcessing={isVoiceProcessing}
                     isVoiceSupported={isVoiceSupported}
                     voiceError={voiceError}
+                    voiceReviewRequired={voiceCapture?.reviewRequired}
+                    voiceStatusMessage={voiceStatusMessage}
                     interimText={interimText}
                     onStartRecording={startRecording}
                     onStopRecording={stopRecording}
@@ -801,214 +1503,223 @@ function NewEntryPageContent() {
                     content={content}
                     editorPlaceholder={editorPlaceholder}
                     onEditorChange={handleEditorChange}
-                    autoFocus={isQuickMode}
-                    minimalEditor={isQuickMode}
-                    showImageUpload={!isQuickMode}
+                    autoFocus={isQuickMode || isWhisperMode}
+                    minimalEditor={isWhisperMode || (isQuickMode && !showAdvancedTools)}
+                    showImageUpload={!isWhisperMode && showAdvancedTools}
+                    showFormattingToolbar={showAdvancedTools}
                 />
 
-                {!isQuickMode && (
-                    <section className="mb-6 rounded-2xl border border-white/10 bg-surface-2/45 p-4">
-                    <button
-                        type="button"
-                        onClick={() => setShowAdvancedTools((prev) => !prev)}
-                        className="w-full text-left"
-                    >
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                {!isWhisperMode && (
+                    <section className="workspace-panel mb-6 rounded-2xl p-4">
+                        <button
+                            type="button"
+                            onClick={() => setShowAdvancedTools((prev) => !prev)}
+                            className="w-full flex items-start justify-between gap-3 text-left"
+                        >
                             <div>
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Add Details</p>
-                                <h3 className="text-sm font-semibold text-white">
-                                    Category, collection, polish, mood, tags, and AI insight
-                                </h3>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
+                                    {showAdvancedTools ? 'Hide details' : 'More details'}
+                                </p>
                                 <p className="mt-1 text-sm text-ink-secondary">
-                                    Start with writing. Open this when you want to add structure or explore signals.
+                                    AI read, title, mood, tags, formatting, and organization only when they help.
                                 </p>
                             </div>
-                            <span className="rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-xs uppercase tracking-[0.08em] text-ink-secondary">
-                                {showAdvancedTools ? 'Hide Details' : 'Open Details'}
-                            </span>
-                        </div>
-                    </button>
+                            <span className="pt-1 text-xs text-ink-muted">{showAdvancedTools ? '−' : '+'}</span>
+                        </button>
 
-                    <div className={`transition-all duration-300 ease-in-out ${showAdvancedTools ? 'max-h-[2400px] opacity-100 mt-4' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-                        <div className="space-y-4 border-t border-white/10 pt-4">
-                            <div className="grid gap-4 md:grid-cols-3">
-                                <div>
-                                    <label className="mb-2 block text-xs uppercase tracking-[0.1em] text-ink-muted">Category</label>
-                                    <div className="flex gap-2">
-                                        {(['PERSONAL', 'PROFESSIONAL'] as EntryCategory[]).map((option) => {
-                                            const active = category === option;
-                                            return (
-                                                <button
-                                                    key={option}
-                                                    type="button"
-                                                    onClick={() => handleCategorySelect(option)}
-                                                    className={`rounded-xl border px-3 py-2 text-xs uppercase tracking-[0.08em] transition ${
-                                                        active
-                                                            ? 'border-primary/40 bg-primary/15 text-primary'
-                                                            : 'border-white/15 bg-white/[0.03] text-ink-secondary hover:text-white'
-                                                    }`}
-                                                >
-                                                    {option === 'PERSONAL' ? 'Personal' : 'Professional'}
-                                                </button>
-                                            );
-                                        })}
+                        <div className={`transition-all duration-300 ease-in-out ${showAdvancedTools ? 'max-h-[2400px] opacity-100 mt-4' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                            <div className="space-y-4 border-t border-[rgba(var(--paper-border),0.92)] pt-4">
+                                <EntryInsightsPanel
+                                    embedded
+                                    isAnalyzing={isAnalyzing}
+                                    extractedData={extractedData}
+                                    displayMood={displayMood}
+                                    moods={MOODS}
+                                    content={content}
+                                    isAiLoading={isAiLoading}
+                                    onDeepInsight={handleDeepInsight}
+                                    aiError={aiError}
+                                    aiInsights={aiInsights}
+                                    aiEmotionEntries={aiEmotionEntries}
+                                    aiEmotionMax={aiEmotionMax}
+                                    displayTitle={displayTitle}
+                                    setTitleOverride={setTitleOverride}
+                                    moodOverride={moodOverride}
+                                    setMoodOverride={setMoodOverride}
+                                    displayTags={displayTags}
+                                    removeTag={removeTag}
+                                    addTag={addTag}
+                                    duplicateCandidates={duplicateCandidates}
+                                    isCheckingDuplicates={isCheckingDuplicates}
+                                    duplicateError={duplicateError}
+                                />
+
+                                <div className="workspace-soft-panel rounded-2xl p-4">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Enhance writing</p>
+                                            <p className="text-sm text-ink-secondary">
+                                                Open formatting only when you want structure. Use polish after the first honest draft is down.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handlePolishWriting}
+                                            disabled={!content.trim()}
+                                            className="workspace-button-outline rounded-xl px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            Polish Writing
+                                        </button>
                                     </div>
+                                    {!content.trim() && (
+                                        <p className="mt-3 text-xs text-ink-muted">
+                                            Write a few lines first. The page works best when the draft exists before the cleanup tools do.
+                                        </p>
+                                    )}
                                 </div>
 
-                                <div>
-                                    <label className="mb-2 block text-xs uppercase tracking-[0.1em] text-ink-muted">Life Area</label>
-                                    <select
-                                        value={lifeArea}
-                                        onChange={(event) => setLifeArea(normalizeLifeArea(event.target.value, category))}
-                                        className="w-full rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
-                                    >
-                                        {availableLifeAreas.map((option) => (
-                                            <option key={option.value} value={option.value} className="bg-surface-1">
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+                                {content.trim().length > 0 && writingSuggestions.length > 0 && (
+                                    <div className="workspace-panel rounded-2xl p-4">
+                                        <div className="mb-2 flex items-center justify-between gap-2">
+                                            <div className="text-xs uppercase tracking-[0.12em] text-ink-muted">Writing signals</div>
+                                            <span className="workspace-pill-muted rounded-full px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-ink-secondary">
+                                                {writingSuggestions.length}
+                                            </span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {writingSuggestions.map((item) => (
+                                                <div
+                                                    key={item.id}
+                                                    className="workspace-soft-panel rounded-xl px-3 py-2 text-sm text-ink-secondary"
+                                                >
+                                                    <span className="mr-1" aria-hidden="true">
+                                                        {item.severity === 'warning'
+                                                            ? <FiAlertTriangle className="inline" size={14} />
+                                                            : <FiZap className="inline" size={14} />}
+                                                    </span>
+                                                    <span className="line-clamp-2">{item.message}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
-                                <div>
-                                    <label className="mb-2 block text-xs uppercase tracking-[0.1em] text-ink-muted">Collection</label>
-                                    <select
-                                        value={collectionId || ''}
-                                        onChange={(event) => setCollectionId(event.target.value || null)}
-                                        className="w-full rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/35"
-                                    >
-                                        <option value="" className="bg-surface-1">No collection</option>
-                                        {collections.map((collection) => (
-                                            <option key={collection.id} value={collection.id} className="bg-surface-1">
-                                                {collection.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                    <div>
-                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Enhance Writing</p>
-                                        <p className="text-sm text-ink-secondary">
-                                            Polish grammar and spacing only when you want a cleanup pass.
+                                <div className="workspace-soft-panel rounded-2xl p-4">
+                                    <div className="mb-4">
+                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Organize note</p>
+                                        <p className="mt-1 text-sm text-ink-secondary">
+                                            Optional. Keep it blank if the note already says enough.
                                         </p>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={handlePolishWriting}
-                                        disabled={!content.trim()}
-                                        className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2 text-sm text-white hover:bg-white/[0.08] disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        Polish Writing
-                                    </button>
-                                </div>
-                                {!content.trim() && (
-                                    <p className="mt-3 text-xs text-ink-muted">
-                                        Write a few lines first to unlock suggestions, mood, tags, and AI insight.
-                                    </p>
-                                )}
-                            </div>
-
-                            {content.trim().length > 0 && writingSuggestions.length > 0 && (
-                                <div className="rounded-2xl border border-white/10 bg-surface-2/45 p-4">
-                                    <div className="mb-2 flex items-center justify-between gap-2">
-                                        <div className="text-xs uppercase tracking-[0.12em] text-ink-muted">Writing Signals</div>
-                                        <span className="rounded-full border border-white/15 bg-white/[0.03] px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-ink-secondary">
-                                            {writingSuggestions.length}
-                                        </span>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {writingSuggestions.map((item) => (
-                                            <div
-                                                key={item.id}
-                                                className="rounded-xl border border-white/12 bg-surface-2/55 px-3 py-2 text-sm text-foreground"
-                                            >
-                                                <span className="mr-1" aria-hidden="true">
-                                                    {item.severity === 'warning'
-                                                        ? <FiAlertTriangle className="inline" size={14} />
-                                                        : <FiZap className="inline" size={14} />}
-                                                </span>
-                                                <span className="line-clamp-2">{item.message}</span>
+                                    <div className="grid gap-4 md:grid-cols-3">
+                                        <div>
+                                            <label className="mb-2 block text-xs uppercase tracking-[0.1em] text-ink-muted">Category</label>
+                                            <div className="flex gap-2">
+                                                {(['PERSONAL', 'PROFESSIONAL'] as EntryCategory[]).map((option) => {
+                                                    const active = category === option;
+                                                    return (
+                                                        <button
+                                                            key={option}
+                                                            type="button"
+                                                            onClick={() => handleCategorySelect(option)}
+                                                            className={`rounded-xl border px-3 py-2 text-xs uppercase tracking-[0.08em] transition ${
+                                                                active
+                                                                    ? 'border-primary/40 bg-primary/15 text-primary'
+                                                                    : 'workspace-button-outline text-ink-secondary'
+                                                            }`}
+                                                        >
+                                                            {option === 'PERSONAL' ? 'Personal' : 'Professional'}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
-                                        ))}
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-2 block text-xs uppercase tracking-[0.1em] text-ink-muted">Life Area</label>
+                                            <select
+                                                value={lifeArea}
+                                                onChange={(event) => setLifeArea(normalizeLifeArea(event.target.value, category))}
+                                                className="workspace-input w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                            >
+                                                {availableLifeAreas.map((option) => (
+                                                    <option key={option.value} value={option.value} className="bg-surface-1">
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-2 block text-xs uppercase tracking-[0.1em] text-ink-muted">Collection</label>
+                                            <select
+                                                value={collectionId || ''}
+                                                onChange={(event) => setCollectionId(event.target.value || null)}
+                                                className="workspace-input w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                            >
+                                                <option value="" className="bg-surface-1">No collection</option>
+                                                {collections.map((collection) => (
+                                                    <option key={collection.id} value={collection.id} className="bg-surface-1">
+                                                        {collection.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                            )}
-
-                            <EntryInsightsPanel
-                                showDetails={showInsightDetails}
-                                setShowDetails={setShowInsightDetails}
-                                isAnalyzing={isAnalyzing}
-                                extractedData={extractedData}
-                                displayMood={displayMood}
-                                moods={MOODS}
-                                content={content}
-                                isAiLoading={isAiLoading}
-                                onDeepInsight={handleDeepInsight}
-                                aiError={aiError}
-                                aiInsights={aiInsights}
-                                aiEmotionEntries={aiEmotionEntries}
-                                aiEmotionMax={aiEmotionMax}
-                                displayTitle={displayTitle}
-                                setTitleOverride={setTitleOverride}
-                                moodOverride={moodOverride}
-                                setMoodOverride={setMoodOverride}
-                                displayTags={displayTags}
-                                removeTag={removeTag}
-                                addTag={addTag}
-                                duplicateCandidates={duplicateCandidates}
-                                isCheckingDuplicates={isCheckingDuplicates}
-                                duplicateError={duplicateError}
-                            />
+                            </div>
                         </div>
-                    </div>
                     </section>
                 )}
 
-                {!isQuickMode && !content && !isRecording && (
-                    <div className="mt-12 text-center">
-                        <div className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-surface-2/40 p-5">
-                            <div className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">{starterPrompt.label}</div>
-                            <p className="text-sm text-ink-secondary">{starterPrompt.text}</p>
-                            <div className="mt-4 flex items-center justify-center gap-2">
-                                <button
-                                    onClick={handleUseStarterPrompt}
-                                    className="rounded-xl border border-primary/35 bg-primary/15 px-3 py-2 text-sm text-primary hover:bg-primary/25 transition-colors"
-                                >
-                                    Use Prompt
-                                </button>
-                                <span className="text-xs text-ink-muted">or tap mic to dictate</span>
-                            </div>
-                        </div>
+                {!isQuickMode && !isWhisperMode && !content && !isRecording && (
+                    <div className="mt-8 text-center">
+                        <button
+                            onClick={handleUseStarterPrompt}
+                            className="workspace-button-outline mx-auto inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm transition-colors"
+                        >
+                            <span className="text-ink-muted">{starterPrompt.label}:</span>
+                            <span>{starterPrompt.text}</span>
+                        </button>
                     </div>
                 )}
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-surface-1/90 backdrop-blur-xl p-3 md:hidden">
-                <div className={`grid gap-2 ${isQuickMode ? 'grid-cols-2' : 'grid-cols-[1fr_1.6fr]'}`}>
-                    <button
-                        onClick={isQuickMode ? handleFinishLater : () => setShowAdvancedTools((prev) => !prev)}
-                        className="px-3 py-3 rounded-xl bg-surface-2/70 border border-white/15 text-foreground text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isQuickMode ? 'Finish Later' : (showAdvancedTools ? 'Hide Details' : 'Add Details')}
-                    </button>
+            <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[rgba(var(--paper-border),0.92)] bg-[rgba(255,255,255,0.92)] p-3 backdrop-blur-xl md:hidden">
+                <div className="flex gap-2">
+                    {isQuickMode && (
+                        <button
+                            onClick={handleFinishLater}
+                            className="workspace-button-outline flex-1 rounded-xl px-3 py-3 text-sm font-medium"
+                        >
+                            Later
+                        </button>
+                    )}
                     <button
                         onClick={() => handleSave(false)}
                         disabled={isSaving || !content.trim()}
-                        className="px-5 py-3 rounded-xl primary-cta text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        className="workspace-button-primary flex-[2] rounded-xl px-5 py-3 font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        {isSaving ? 'Saving...' : (entryId ? 'Update Note' : 'Save Note')}
+                        {isSaving ? 'Saving...' : 'Save'}
                     </button>
                 </div>
             </div>
 
             {draftConflict && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-surface-1/95 p-5 shadow-2xl">
+                <div
+                    className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgb(var(--bg-canvas))]/75 p-4 backdrop-blur-sm"
+                    onClick={handleKeepDraft}
+                    onKeyDown={(e) => { if (e.key === 'Escape') handleKeepDraft(); }}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="draft-conflict-title"
+                        className="workspace-panel w-full max-w-lg rounded-2xl p-5 shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <p className="text-xs uppercase tracking-[0.15em] text-ink-muted">Draft Detected</p>
-                        <h2 className="mt-2 text-xl font-semibold text-white">Keep your existing draft or replace it?</h2>
+                        <h2 id="draft-conflict-title" className="workspace-heading mt-2 text-xl font-semibold">Keep your existing draft or replace it?</h2>
                         <p className="mt-2 text-sm text-ink-secondary">
                             A saved draft exists for this account. A prompt link was also opened. Choose how to proceed.
                         </p>
@@ -1016,7 +1727,7 @@ function NewEntryPageContent() {
                         <div className="mt-5 grid gap-2">
                             <button
                                 onClick={handleKeepDraft}
-                                className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-left text-sm text-white hover:bg-white/10"
+                                className="workspace-button-outline rounded-xl px-4 py-3 text-left text-sm"
                             >
                                 Continue existing draft
                             </button>
@@ -1041,5 +1752,3 @@ export default function NewEntryPage() {
         </Suspense>
     );
 }
-
-

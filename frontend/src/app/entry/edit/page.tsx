@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/form-elements';
+import { Spinner } from '@/components/ui';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useApi from '@/hooks/use-api';
 import useContextNavigation from '@/hooks/use-context-navigation';
@@ -26,7 +27,7 @@ import {
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
     ssr: false,
-    loading: () => <div className="glass-card rounded-2xl h-[400px] animate-pulse" />,
+    loading: () => <div className="workspace-soft-panel rounded-2xl h-[400px] animate-pulse" />,
 });
 
 const MOODS = [
@@ -92,7 +93,7 @@ function EditEntryContent() {
     if (authLoading || isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                <Spinner size="md" />
             </div>
         );
     }
@@ -104,7 +105,7 @@ function EditEntryContent() {
     if (error && !contentHtml) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center text-center p-4">
-                <h2 className="text-2xl font-bold text-white mb-2">Error</h2>
+                <h1 className="text-2xl font-bold workspace-heading mb-2">Error</h1>
                 <p className="text-ink-muted mb-6">{error}</p>
                 <Link href={backHref} className="text-primary hover:underline">
                     Return to previous page
@@ -142,16 +143,16 @@ function EditEntryContent() {
                             onClick={navigateBack}
                             aria-label={backLabel}
                             title={backLabel}
-                            className="p-2 rounded-lg text-ink-muted hover:text-white hover:bg-white/10 transition-all"
+                            className="p-2 rounded-lg text-ink-muted hover:text-[rgb(var(--text-primary))] hover:bg-white/10 transition-all"
                         >
                             <FiArrowLeft size={24} aria-hidden="true" />
                         </button>
                         <div>
-                            <h1 className="text-2xl font-bold text-white">Edit Entry</h1>
+                            <h1 className="text-2xl font-bold workspace-heading">Edit Entry</h1>
                             <div className="flex items-center gap-2">
                                 {lastSaved && <p className="text-xs text-ink-muted">Last saved: {lastSaved.toLocaleTimeString()}</p>}
                                 {isAutoSaving && <p className="text-xs text-primary animate-pulse">Saving...</p>}
-                                {hasUnsavedChanges && !isAutoSaving && <p className="text-xs text-zinc-300">Unsaved changes</p>}
+                                {hasUnsavedChanges && !isAutoSaving && <p className="text-xs text-ink-secondary">Unsaved changes</p>}
                             </div>
                         </div>
                     </div>
@@ -160,7 +161,7 @@ function EditEntryContent() {
                             type="button"
                             onClick={handleSignOut}
                             disabled={isSigningOut}
-                            className="px-3 py-2 rounded-xl border border-white/12 bg-surface-2/55 text-xs uppercase tracking-widest text-foreground hover:bg-surface-2/80 disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="workspace-button-outline px-3 py-2 rounded-xl text-xs uppercase tracking-widest text-ink-secondary hover:text-[rgb(var(--text-primary))] disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {isSigningOut ? 'Signing Out...' : 'Sign Out'}
                         </button>
@@ -171,7 +172,7 @@ function EditEntryContent() {
                 </div>
 
                 {error && (
-                    <div className="mb-4 bg-surface-2/55 border border-white/15 text-ink-secondary px-4 py-3 rounded-xl text-sm">
+                    <div className="mb-4 workspace-soft-panel text-ink-secondary px-4 py-3 rounded-xl text-sm">
                         {error}
                     </div>
                 )}
@@ -182,18 +183,19 @@ function EditEntryContent() {
                             <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
                             <button
                                 onClick={() => setCoverImage(null)}
-                                className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/70"
+                                aria-label="Remove cover image"
+                                className="absolute top-4 right-4 p-2 bg-[rgb(var(--surface-2))]/80 text-[rgb(var(--text-strong))] rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[rgb(var(--brand))]/70"
                             >
                                 ×
                             </button>
                         </div>
                     ) : (
-                        <label className="w-full h-32 rounded-2xl border-2 border-dashed border-white/10 hover:border-primary/50 hover:bg-white/5 flex flex-col items-center justify-center cursor-pointer transition-all group">
+                        <label className="workspace-soft-panel w-full h-32 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all group hover:brightness-[1.05]">
                             <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={isUploading} />
                             {isUploading ? (
-                                <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+                                <Spinner size="sm" />
                             ) : (
-                                <span className="text-sm text-ink-muted group-hover:text-white transition-colors">Add Cover Image</span>
+                                <span className="text-sm text-ink-muted group-hover:text-[rgb(var(--text-primary))] transition-colors">Add Cover Image</span>
                             )}
                         </label>
                     )}
@@ -204,10 +206,10 @@ function EditEntryContent() {
                     placeholder="Entry title (optional)"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full bg-transparent border-none text-3xl font-bold text-white placeholder-ink-muted focus:outline-none mb-6"
+                    className="w-full ink-title-input text-xl md:text-3xl font-bold font-serif focus:outline-none mb-6 bg-transparent"
                 />
 
-                <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="mb-6 workspace-soft-panel rounded-2xl p-4">
                     <div className="grid gap-4 md:grid-cols-3">
                         <div>
                             <label className="mb-2 block text-xs uppercase tracking-[0.1em] text-ink-muted">Category</label>
@@ -222,7 +224,7 @@ function EditEntryContent() {
                                             className={`rounded-xl border px-3 py-2 text-xs uppercase tracking-[0.08em] transition ${
                                                 active
                                                     ? 'border-primary/45 bg-primary/15 text-primary'
-                                                    : 'border-white/15 bg-white/[0.03] text-ink-secondary hover:text-white'
+                                                    : 'workspace-button-outline text-ink-secondary hover:text-[rgb(var(--text-primary))]'
                                             }`}
                                         >
                                             {option === 'PERSONAL' ? 'Personal' : 'Professional'}
@@ -237,7 +239,7 @@ function EditEntryContent() {
                             <select
                                 value={lifeArea}
                                 onChange={(event) => setLifeArea(normalizeLifeArea(event.target.value, category))}
-                                className="w-full rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                className="w-full workspace-input rounded-xl px-3 py-2 text-sm text-[rgb(var(--text-primary))] focus:outline-none focus:ring-2 focus:ring-primary/40"
                             >
                                 {availableLifeAreas.map((option) => (
                                     <option key={option.value} value={option.value} className="bg-surface-1">
@@ -252,7 +254,7 @@ function EditEntryContent() {
                             <select
                                 value={chapterId || ''}
                                 onChange={(event) => setChapterId(event.target.value || null)}
-                                className="w-full rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                className="w-full workspace-input rounded-xl px-3 py-2 text-sm text-[rgb(var(--text-primary))] focus:outline-none focus:ring-2 focus:ring-primary/40"
                             >
                                 <option value="" className="bg-surface-1">No collection</option>
                                 {collections.map((collection) => (
@@ -275,7 +277,7 @@ function EditEntryContent() {
                                 onClick={() => setMood(mood === m.value ? null : m.value)}
                                 className={`px-3 py-2 rounded-xl text-sm flex items-center gap-2 transition-all ${mood === m.value
                                     ? 'bg-primary text-white'
-                                    : 'bg-white/5 text-ink-secondary hover:bg-white/10'
+                                    : 'workspace-pill text-ink-secondary'
                                     }`}
                             >
                                 <m.icon size={14} aria-hidden="true" />
@@ -295,9 +297,9 @@ function EditEntryContent() {
                     <label className="block text-sm font-medium text-ink-muted mb-2">Tags</label>
                     <div className="flex flex-wrap gap-2 mb-2">
                         {tags.map((tag) => (
-                            <span key={tag} className="px-3 py-1 rounded-full bg-white/10 text-sm text-foreground flex items-center gap-2">
+                            <span key={tag} className="workspace-pill px-3 py-1 rounded-full text-sm text-ink-secondary flex items-center gap-2">
                                 #{tag}
-                                <button type="button" onClick={() => handleRemoveTag(tag)} className="text-ink-muted hover:text-white">
+                                <button type="button" onClick={() => handleRemoveTag(tag)} aria-label={`Remove tag ${tag}`} className="text-ink-muted hover:text-[rgb(var(--text-primary))]">
                                     ×
                                 </button>
                             </span>
@@ -309,7 +311,7 @@ function EditEntryContent() {
                         value={tagInput}
                         onChange={(e) => setTagInput(e.target.value)}
                         onKeyDown={handleAddTag}
-                        className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="w-full workspace-input px-4 py-2 rounded-xl text-[rgb(var(--text-primary))] focus:outline-none focus:ring-2 focus:ring-primary/50"
                     />
                 </div>
             </div>
@@ -319,7 +321,7 @@ function EditEntryContent() {
 
 export default function EditEntryPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Spinner size="md" /></div>}>
             <EditEntryContent />
         </Suspense>
     );

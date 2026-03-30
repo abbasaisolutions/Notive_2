@@ -1,10 +1,33 @@
 'use client';
 
-import { useEditor, EditorContent, Editor } from '@tiptap/react';
-import { useEffect, useRef } from 'react';
+import { useEditor, EditorContent, Editor, Extension } from '@tiptap/react';
+import { useEffect, useRef, useState } from 'react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { FiBold, FiHash, FiItalic, FiList, FiMessageSquare, FiUnderline } from 'react-icons/fi';
+
+function countWords(text: string): number {
+    return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function createWordLimitExtension(maxWords: number) {
+    return Extension.create({
+        name: 'wordLimit',
+        addProseMirrorPlugins() {
+            return [
+                new Plugin({
+                    key: new PluginKey('wordLimit'),
+                    filterTransaction(transaction, _state) {
+                        if (!transaction.docChanged) return true;
+                        const words = countWords(transaction.doc.textContent);
+                        return words <= maxWords;
+                    },
+                }),
+            ];
+        },
+    });
+}
 
 interface TiptapEditorProps {
     content?: string;
@@ -13,36 +36,36 @@ interface TiptapEditorProps {
     placeholder?: string;
     showToolbar?: boolean;
     autoFocus?: boolean;
+    variant?: 'glass' | 'paper';
+    maxWords?: number;
 }
 
-import VoiceRecorder from './VoiceRecorder';
-
-const MenuBar = ({ editor }: { editor: Editor | null }) => {
+const MenuBar = ({
+    editor,
+    variant = 'glass',
+}: {
+    editor: Editor | null;
+    variant?: 'glass' | 'paper';
+}) => {
     if (!editor) return null;
-
-    const handleVoiceTranscript = (text: string) => {
-        // Get current content to determine if we need a space
-        const currentContent = editor.getText();
-        const needsSpace = currentContent.length > 0 && !currentContent.endsWith(' ');
-
-        // Insert text at current cursor position with proper spacing
-        const textToInsert = needsSpace ? ` ${text}` : text;
-        editor.chain().focus().insertContent(textToInsert).run();
-    };
+    const isPaper = variant === 'paper';
+    const baseButtonClass = isPaper
+        ? 'text-[rgb(var(--paper-ink-muted))] hover:bg-white/70 hover:text-[rgb(var(--paper-ink))]'
+        : 'text-ink-muted hover:bg-white/10 hover:text-white';
+    const activeButtonClass = isPaper
+        ? 'bg-[rgba(var(--paper-sage),0.46)] text-[rgb(var(--paper-ink))]'
+        : 'bg-primary text-white';
+    const separatorClass = isPaper ? 'bg-[rgba(var(--paper-border),0.78)]' : 'bg-white/10';
+    const menuClass = isPaper
+        ? 'flex flex-nowrap overflow-x-auto gap-1 p-1.5 border-b border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.56)] scrollbar-hide'
+        : 'flex flex-nowrap overflow-x-auto gap-1 p-1.5 border-b border-white/10 bg-surface-2/45 scrollbar-hide';
 
     return (
-        <div className="flex flex-nowrap overflow-x-auto gap-1 p-2 border-b border-white/10 bg-surface-2/45 scrollbar-hide">
-            <VoiceRecorder
-                onTranscript={handleVoiceTranscript}
-                showInterimResults={true}
-                language="en-US"
-            />
-            <div className="w-px bg-white/10 mx-1" />
-
+        <div className={menuClass}>
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleBold().run()}
-                className={`p-2 rounded-lg transition-colors ${editor.isActive('bold') ? 'bg-primary text-white' : 'text-ink-muted hover:bg-white/10 hover:text-white'
+                className={`p-3 rounded-lg transition-colors ${editor.isActive('bold') ? activeButtonClass : baseButtonClass
                     }`}
                 title="Bold"
             >
@@ -51,7 +74,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleItalic().run()}
-                className={`p-2 rounded-lg transition-colors ${editor.isActive('italic') ? 'bg-primary text-white' : 'text-ink-muted hover:bg-white/10 hover:text-white'
+                className={`p-3 rounded-lg transition-colors ${editor.isActive('italic') ? activeButtonClass : baseButtonClass
                     }`}
                 title="Italic"
             >
@@ -60,19 +83,19 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleUnderline().run()}
-                className={`p-2 rounded-lg transition-colors ${editor.isActive('underline') ? 'bg-primary text-white' : 'text-ink-muted hover:bg-white/10 hover:text-white'
+                className={`p-3 rounded-lg transition-colors ${editor.isActive('underline') ? activeButtonClass : baseButtonClass
                     }`}
                 title="Underline"
             >
                 <FiUnderline size={16} aria-hidden="true" />
             </button>
 
-            <div className="w-px bg-white/10 mx-1" />
+            <div className={`w-px mx-1 ${separatorClass}`} />
 
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                className={`p-2 rounded-lg transition-colors ${editor.isActive('heading', { level: 1 }) ? 'bg-primary text-white' : 'text-ink-muted hover:bg-white/10 hover:text-white'
+                className={`p-3 rounded-lg transition-colors ${editor.isActive('heading', { level: 1 }) ? activeButtonClass : baseButtonClass
                     }`}
                 title="Heading 1"
             >
@@ -81,19 +104,19 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                className={`p-2 rounded-lg transition-colors ${editor.isActive('heading', { level: 2 }) ? 'bg-primary text-white' : 'text-ink-muted hover:bg-white/10 hover:text-white'
+                className={`p-3 rounded-lg transition-colors ${editor.isActive('heading', { level: 2 }) ? activeButtonClass : baseButtonClass
                     }`}
                 title="Heading 2"
             >
                 <span className="font-bold text-sm">H2</span>
             </button>
 
-            <div className="w-px bg-white/10 mx-1" />
+            <div className={`w-px mx-1 ${separatorClass}`} />
 
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleBulletList().run()}
-                className={`p-2 rounded-lg transition-colors ${editor.isActive('bulletList') ? 'bg-primary text-white' : 'text-ink-muted hover:bg-white/10 hover:text-white'
+                className={`p-3 rounded-lg transition-colors ${editor.isActive('bulletList') ? activeButtonClass : baseButtonClass
                     }`}
                 title="Bullet List"
             >
@@ -102,7 +125,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                className={`p-2 rounded-lg transition-colors ${editor.isActive('orderedList') ? 'bg-primary text-white' : 'text-ink-muted hover:bg-white/10 hover:text-white'
+                className={`p-3 rounded-lg transition-colors ${editor.isActive('orderedList') ? activeButtonClass : baseButtonClass
                     }`}
                 title="Numbered List"
             >
@@ -111,7 +134,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
             <button
                 type="button"
                 onClick={() => editor.chain().focus().toggleBlockquote().run()}
-                className={`p-2 rounded-lg transition-colors ${editor.isActive('blockquote') ? 'bg-primary text-white' : 'text-ink-muted hover:bg-white/10 hover:text-white'
+                className={`p-3 rounded-lg transition-colors ${editor.isActive('blockquote') ? activeButtonClass : baseButtonClass
                     }`}
                 title="Quote"
             >
@@ -128,34 +151,46 @@ export default function TiptapEditor({
     placeholder = 'Start writing...',
     showToolbar = true,
     autoFocus = false,
+    variant = 'glass',
+    maxWords,
 }: TiptapEditorProps) {
     const contentRef = useRef(initialContent || content);
     const isExternalUpdate = useRef(false);
+    const [wordCount, setWordCount] = useState(() => countWords(initialContent || content));
+    const isPaper = variant === 'paper';
+    const editorClass = isPaper
+        ? 'prose prose-sm sm:prose-base max-w-none focus:outline-none min-h-[280px] px-5 py-6 text-[rgb(var(--paper-ink-soft))]'
+        : 'prose prose-invert prose-sm sm:prose-base max-w-none focus:outline-none min-h-[220px] p-5 text-ink-secondary';
+    const shellClass = isPaper
+        ? 'entry-paper entry-paper-shell entry-paper-ruled rounded-[1.75rem] overflow-hidden'
+        : 'workspace-panel rounded-2xl overflow-hidden';
+
+    const extensions = [
+        StarterKit,
+        Placeholder.configure({ placeholder }),
+        ...(maxWords ? [createWordLimitExtension(maxWords)] : []),
+    ];
 
     const editor = useEditor({
-        extensions: [
-            StarterKit,
-            Placeholder.configure({
-                placeholder,
-            }),
-        ],
+        extensions,
         content: contentRef.current,
         editorProps: {
             attributes: {
-                class: 'prose prose-invert prose-sm sm:prose-base max-w-none focus:outline-none min-h-[220px] p-5 text-ink-secondary',
+                class: editorClass,
             },
         },
         autofocus: autoFocus ? 'end' : false,
         onUpdate: ({ editor }) => {
+            const text = editor.getText();
+            setWordCount(countWords(text));
             if (isExternalUpdate.current) {
                 isExternalUpdate.current = false;
                 if (onChange) {
-                    onChange(editor.getText(), editor.getHTML());
+                    onChange(text, editor.getHTML());
                 }
                 return;
             }
             if (onChange) {
-                const text = editor.getText();
                 const html = editor.getHTML();
                 contentRef.current = text;
                 onChange(text, html);
@@ -179,10 +214,28 @@ export default function TiptapEditor({
         };
     }, []);
 
+    const atLimit = maxWords !== undefined && wordCount >= maxWords;
+    const nearLimit = maxWords !== undefined && wordCount >= maxWords - 50 && !atLimit;
+
     return (
-        <div className="glass-card rounded-2xl overflow-hidden border border-white/10">
-            {showToolbar && <MenuBar editor={editor} />}
-            <EditorContent editor={editor} />
+        <div className={shellClass}>
+            {showToolbar && <MenuBar editor={editor} variant={variant} />}
+            <div className="relative">
+                <EditorContent editor={editor} />
+                {maxWords !== undefined && (
+                    <div className={`absolute bottom-3 right-4 text-[11px] font-semibold tabular-nums pointer-events-none select-none transition-colors ${
+                        atLimit
+                            ? 'text-red-400'
+                            : nearLimit
+                                ? 'text-amber-500'
+                                : isPaper
+                                    ? 'text-[rgba(141,123,105,0.45)]'
+                                    : 'text-ink-muted/50'
+                    }`}>
+                        {wordCount} / {maxWords}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

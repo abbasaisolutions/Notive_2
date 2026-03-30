@@ -47,22 +47,22 @@ export default function WorkspaceResumeCard({
     const stage = journeyStages.find((item) => item.id === session.stage);
 
     return (
-        <section className={`rounded-2xl border border-white/10 bg-surface-2/30 p-3 ${className || ''}`} aria-label="Resume last workspace">
+        <section className={`workspace-soft-panel rounded-2xl p-3 ${className || ''}`} aria-label="Resume last workspace">
             <div className="mb-2 flex items-center justify-between gap-2">
-                <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-ink-muted">
+                <div className="type-overline inline-flex items-center gap-2 text-muted">
                     <FiClock size={12} aria-hidden="true" />
                     Resume Journey
                 </div>
                 {stage && (
-                    <span className="text-xs uppercase tracking-[0.12em] text-ink-secondary">
+                    <span className="type-micro text-soft">
                         {stage.label}
                     </span>
                 )}
             </div>
-            <p className="text-sm font-semibold text-white">{session.title}</p>
-            <p className="mt-1 text-sm text-ink-secondary">{session.summary}</p>
+            <p className="type-card-title text-strong">{session.title}</p>
+            <p className="type-body-sm mt-1 text-default">{session.summary}</p>
             <div className="mt-3 flex items-center justify-between gap-3">
-                <span className="text-xs uppercase tracking-[0.12em] text-ink-muted">
+                <span className="type-micro text-muted">
                     {formatRelativeTime(session.updatedAt)}
                 </span>
                 <Link
@@ -77,7 +77,7 @@ export default function WorkspaceResumeCard({
                             },
                         });
                     }}
-                    className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
+                    className="workspace-button-primary type-label-sm inline-flex items-center gap-2 rounded-xl px-3 py-2 transition-colors hover:bg-primary/20"
                 >
                     {session.actionLabel || 'Resume'}
                     <FiArrowRight size={13} aria-hidden="true" />

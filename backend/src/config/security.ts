@@ -78,6 +78,10 @@ export const securityConfig = {
             windowMs: readPositiveInt(process.env.RATE_LIMIT_AI_WINDOW_MS, 5 * ONE_MINUTE_MS),
             max: readPositiveInt(process.env.RATE_LIMIT_AI_MAX, 45),
         },
+        voiceTranscription: {
+            windowMs: readPositiveInt(process.env.RATE_LIMIT_VOICE_WINDOW_MS, 5 * ONE_MINUTE_MS),
+            max: readPositiveInt(process.env.RATE_LIMIT_VOICE_MAX, 12),
+        },
         import: {
             windowMs: readPositiveInt(process.env.RATE_LIMIT_IMPORT_WINDOW_MS, 10 * ONE_MINUTE_MS),
             max: readPositiveInt(process.env.RATE_LIMIT_IMPORT_MAX, 20),

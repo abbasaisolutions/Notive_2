@@ -43,12 +43,16 @@ export class AIService {
         if (!hasLlmProvider()) {
             return 'AI features are not available. Please configure a supported LLM provider.';
         }
-        // Format entries as context
+        // Format entries as context (truncate each to avoid token bloat)
+        const MAX_ENTRY_CHARS = 1500;
         const context = entries.map((entry, i) => {
             const date = new Date(entry.createdAt).toLocaleDateString();
+            const truncatedContent = entry.content.length > MAX_ENTRY_CHARS
+                ? entry.content.slice(0, MAX_ENTRY_CHARS) + '…'
+                : entry.content;
             return `[Entry ${i + 1} - ${date}]
 Title: ${entry.title || 'Untitled'}
-${entry.content}`;
+${truncatedContent}`;
         }).join('\n\n---\n\n');
 
         const response = await createLlmChatCompletion({

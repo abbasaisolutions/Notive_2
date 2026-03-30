@@ -171,7 +171,7 @@ class SimilarityService:
         return int(self._model.get_sentence_embedding_dimension())
 
     def _prepare_texts(self, texts: List[str], mode: str) -> List[str]:
-        cleaned_texts = [self.text_processor.clean_for_embedding(text) for text in texts]
+        cleaned_texts = [self._truncate_text(self.text_processor.clean_for_embedding(text)) for text in texts]
         if mode == 'query' and self.model_name.lower().startswith('baai/bge'):
             return [
                 f"{self.BGE_QUERY_PREFIX}{text}" if text else text
@@ -197,30 +197,14 @@ class SimilarityService:
         pad_width = pad_to_dims - current_dims
         return np.pad(embeddings, ((0, 0), (0, pad_width)), mode='constant')
 
-    def compute_cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float:
-        """
-        Compute cosine similarity between two vectors.
-        
-        Args:
-            vec1: First embedding vector.
-            vec2: Second embedding vector.
-            
-        Returns:
-            Cosine similarity score between -1 and 1 (typically 0 to 1 for text).
-        """
-        # Ensure vectors are 1D
-        vec1 = np.asarray(vec1).flatten()
-        vec2 = np.asarray(vec2).flatten()
-        
-        # Handle zero vectors
-        norm1 = np.linalg.norm(vec1)
-        norm2 = np.linalg.norm(vec2)
-        
-        if norm1 == 0 or norm2 == 0:
-            return 0.0
-        
-        # Cosine similarity = dot product / (norm1 * norm2)
-        return float(np.dot(vec1, vec2) / (norm1 * norm2))
+    # Maximum tokens the BGE model supports (512 tokens ≈ ~2000 chars for English)
+    MAX_INPUT_CHARS = int(os.getenv('MAX_EMBEDDING_INPUT_CHARS', '2000'))
+
+    def _truncate_text(self, text: str) -> str:
+        """Truncate text to stay within the model's 512-token context window."""
+        if len(text) <= self.MAX_INPUT_CHARS:
+            return text
+        return text[:self.MAX_INPUT_CHARS]
 
     def get_embeddings(
         self,

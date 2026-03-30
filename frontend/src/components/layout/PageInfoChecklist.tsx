@@ -29,7 +29,7 @@ const inferSignalVisual = (value: string): SignalVisual => {
     if (text.includes('trend') || text.includes('pattern')) {
         return {
             icon: <FiTrendingUp size={14} aria-hidden="true" />,
-            tone: 'text-white border-white/15 bg-white/[0.04]',
+            tone: 'workspace-pill text-[rgb(var(--text-primary))]',
             label: 'Trends',
             detail: value,
         };
@@ -38,7 +38,7 @@ const inferSignalVisual = (value: string): SignalVisual => {
     if (text.includes('entry') || text.includes('feed')) {
         return {
             icon: <FiFileText size={14} aria-hidden="true" />,
-            tone: 'text-zinc-200 border-zinc-400/30 bg-zinc-500/12',
+            tone: 'workspace-pill text-ink-secondary',
             label: 'Entries',
             detail: value,
         };
@@ -47,7 +47,7 @@ const inferSignalVisual = (value: string): SignalVisual => {
     if (text.includes('action') || text.includes('follow')) {
         return {
             icon: <FiCheckCircle size={14} aria-hidden="true" />,
-            tone: 'text-neutral-200 border-neutral-400/30 bg-neutral-500/12',
+            tone: 'border-primary/30 bg-primary/10 text-primary',
             label: 'Next Step',
             detail: value,
         };
@@ -56,7 +56,7 @@ const inferSignalVisual = (value: string): SignalVisual => {
     if (text.includes('profile') || text.includes('identity') || text.includes('privacy')) {
         return {
             icon: <FiUser size={14} aria-hidden="true" />,
-            tone: 'text-stone-200 border-stone-400/30 bg-stone-500/12',
+            tone: 'workspace-soft-panel text-ink-secondary',
             label: 'Profile',
             detail: value,
         };
@@ -65,7 +65,7 @@ const inferSignalVisual = (value: string): SignalVisual => {
     if (text.includes('streak') || text.includes('momentum')) {
         return {
             icon: <FiActivity size={14} aria-hidden="true" />,
-            tone: 'text-white border-white/15 bg-white/[0.03]',
+            tone: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
             label: 'Momentum',
             detail: value,
         };
@@ -74,7 +74,7 @@ const inferSignalVisual = (value: string): SignalVisual => {
     if (text.includes('filter') || text.includes('control')) {
         return {
             icon: <FiFilter size={14} aria-hidden="true" />,
-            tone: 'text-zinc-100 border-zinc-300/25 bg-zinc-500/10',
+            tone: 'workspace-pill-muted text-ink-muted',
             label: 'Controls',
             detail: value,
         };
@@ -83,7 +83,7 @@ const inferSignalVisual = (value: string): SignalVisual => {
     if (text.includes('evidence') || text.includes('export')) {
         return {
             icon: <FiDownload size={14} aria-hidden="true" />,
-            tone: 'text-neutral-100 border-neutral-300/25 bg-neutral-500/10',
+            tone: 'workspace-pill text-ink-secondary',
             label: 'Output',
             detail: value,
         };
@@ -91,7 +91,7 @@ const inferSignalVisual = (value: string): SignalVisual => {
 
     return {
         icon: <FiMinus size={14} aria-hidden="true" />,
-        tone: 'text-ink-secondary border-white/15 bg-white/[0.04]',
+        tone: 'workspace-pill text-ink-secondary',
         label: value,
         detail: value,
     };
@@ -115,7 +115,7 @@ export default function PageInfoChecklist() {
 
     return (
         <section className="px-4 pt-3 md:px-8" aria-label="Page visibility checklist">
-            <div className="mx-auto max-w-6xl rounded-2xl border border-white/10 bg-surface-2/20 px-4 py-3 md:px-5">
+            <div className="workspace-soft-panel mx-auto max-w-6xl rounded-2xl px-4 py-3 md:px-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
                         <p className="text-xs uppercase tracking-[0.16em] text-ink-muted">Signal Check</p>
@@ -125,7 +125,7 @@ export default function PageInfoChecklist() {
                         {routeMeta.secondaryAction && (
                             <Link
                                 href={routeMeta.secondaryAction.href}
-                                className="rounded-lg border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-ink-secondary hover:text-white hover:bg-white/10 transition-colors"
+                                className="workspace-button-outline rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] transition-colors"
                             >
                                 {routeMeta.secondaryAction.shortLabel || routeMeta.secondaryAction.label}
                             </Link>
@@ -156,7 +156,7 @@ export default function PageInfoChecklist() {
                             className={`rounded-xl border px-3 py-2 text-xs ${item.tone}`}
                         >
                             <div className="flex items-center gap-2">
-                                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/20">{item.icon}</span>
+                                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-ink-muted/15">{item.icon}</span>
                                 <span className="font-semibold uppercase tracking-[0.08em] text-xs">{item.label}</span>
                             </div>
                             {showDetails && (

@@ -8,6 +8,7 @@ import studentActionService, {
     type StudentBridgeDraft,
 } from './student-action.service';
 import type { StudentRisk, StudentSafetyCard } from './student-safety.service';
+import { createLlmChatCompletion, aiRuntime, hasLlmProvider } from '../config/ai';
 
 type GuidedReflectionIntent = 'summary' | 'pattern' | 'emotion' | 'next_step' | 'memory' | 'bridge' | 'general';
 export type GuidedReflectionLens = 'clarity' | 'memory' | 'growth' | 'patterns' | 'bridge';
@@ -306,6 +307,42 @@ const buildStrategyLabel = (searchResults: HybridSearchResult[] | null, entryCou
     return 'starter';
 };
 
+export type NotiveInsightType = 'thread' | 'lesson' | 'strength';
+export type NotiveDoodle = 'knot' | 'ladder' | 'sprout' | 'steady-me' | 'reach-someone' | 'see-my-growth' | 'shape-my-future';
+
+export type NotiveInsight = {
+    type: NotiveInsightType;
+    text: string;
+    doodle: NotiveDoodle;
+};
+
+const NOTIVE_INSIGHT_SCHEMA = `[
+  { "type": "thread", "text": "...", "doodle": "knot" },
+  { "type": "lesson", "text": "...", "doodle": "ladder" },
+  { "type": "strength", "text": "...", "doodle": "sprout" }
+]`;
+
+const SAFE_DOODLES: NotiveDoodle[] = ['knot', 'ladder', 'sprout', 'steady-me', 'reach-someone', 'see-my-growth', 'shape-my-future'];
+
+function parseNotiveInsights(raw: string): NotiveInsight[] | null {
+    try {
+        const jsonMatch = raw.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) return null;
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (!Array.isArray(parsed)) return null;
+        return parsed
+            .filter((item) => item && typeof item.text === 'string' && item.text.trim().length > 0)
+            .slice(0, 3)
+            .map((item) => ({
+                type: ['thread', 'lesson', 'strength'].includes(item.type) ? item.type : 'thread',
+                text: String(item.text).trim(),
+                doodle: SAFE_DOODLES.includes(item.doodle) ? item.doodle : 'sprout',
+            }));
+    } catch {
+        return null;
+    }
+}
+
 class GuidedReflectionService {
     async getStatus(userId: string): Promise<GuidedReflectionStatus> {
         const [profile, activeEmbeddingConfig] = await Promise.all([
@@ -411,12 +448,7 @@ class GuidedReflectionService {
             });
 
             return {
-                response: [
-                    'Guide is ready in local reflection mode, but there are no notes to ground this in yet.',
-                    'Start with one short entry about what happened today, how it affected you, and what feels unfinished.',
-                    'Try one of these prompts:',
-                    ...prompts.map((prompt, index) => `${index + 1}. ${prompt}`),
-                ].join('\n\n'),
+                response: 'No notes to look at yet. Write one short entry about what happened today and what feels unfinished — that gives me enough to start finding patterns.',
                 provider: 'guided_reflection',
                 vendor: 'local',
                 mode: 'guided_reflection',
@@ -564,102 +596,42 @@ class GuidedReflectionService {
             };
         }
 
-        const intro = searchResult?.results?.length
-            ? `Guide is running in ${lens} mode, so I stayed close to the notes that best match your question.`
-            : `Guide is running in ${lens} mode, so I grounded this in your most recent notes instead of generating a freeform answer.`;
-
-        const responseSections: string[] = [
-            intro,
-        ];
+        // Build a compact, direct response that answers the user's question first.
+        // Highlights are already rendered as cards in the UI — don't repeat them as text.
+        const responseSections: string[] = [];
 
         if (lens === 'bridge' && actionResponse.bridge) {
+            // Bridge mode: focus on who to talk to and what to say
+            if (actionResponse.brief) {
+                responseSections.push(actionResponse.brief.pattern);
+            }
             responseSections.push(
-                [
-                    'What I found',
-                    ...highlights.map((highlight) =>
-                        `- ${highlight.createdAt}: ${highlight.title || 'Untitled note'}${highlight.mood ? ` (${highlight.mood})` : ''} - ${highlight.excerpt} [${highlight.reason}]`
-                    ),
-                ].join('\n'),
-                actionResponse.brief
-                    ? [
-                        'Why this feels live right now',
-                        actionResponse.brief.pattern,
-                    ].join('\n')
-                    : '',
-                actionResponse.brief?.whatHelpedBefore
-                    ? [
-                        'What helped before',
-                        actionResponse.brief.whatHelpedBefore.summary,
-                    ].join('\n')
-                    : '',
-                [
-                    'Who could help now',
-                    `${actionResponse.bridge.recommendedRecipient}${actionResponse.bridge.channelLabel ? ` (${actionResponse.bridge.channelLabel.toLowerCase()})` : ''}: ${actionResponse.bridge.whyNow}`,
-                ].join('\n'),
-                [
-                    'What to say first',
-                    actionResponse.bridge.messageDraft,
-                ].join('\n'),
-                [
-                    'Keep the conversation small',
-                    ...actionResponse.bridge.talkTrack.map((item, index) => `${index + 1}. ${item}`),
-                ].join('\n'),
-                [
-                    'If you want to write before reaching out',
-                    ...prompts.map((prompt, index) => `${index + 1}. ${prompt}`),
-                ].join('\n')
+                `${actionResponse.bridge.recommendedRecipient} might be the right person${actionResponse.bridge.channelLabel ? ` (${actionResponse.bridge.channelLabel.toLowerCase()})` : ''}. ${actionResponse.bridge.whyNow}`,
             );
+            if (actionResponse.brief?.whatHelpedBefore) {
+                responseSections.push(actionResponse.brief.whatHelpedBefore.summary);
+            }
         } else {
-            responseSections.push(
-                [
-                    'What I found',
-                    ...highlights.map((highlight) =>
-                        `- ${highlight.createdAt}: ${highlight.title || 'Untitled note'}${highlight.mood ? ` (${highlight.mood})` : ''} - ${highlight.excerpt} [${highlight.reason}]`
-                    ),
-                ].join('\n'),
-                [
-                    'Pattern to notice',
-                    buildOverviewLine({
-                        lens,
-                        dominantMood: insights.dominantMood,
-                        moodTrend: insights.moodTrend,
-                        topTopics: topics,
-                        entryCount: insightEntries.length,
-                    }),
-                ].join('\n'),
-                [
-                    'Try exploring next',
-                    ...prompts.map((prompt, index) => `${index + 1}. ${prompt}`),
-                ].join('\n')
-            );
-        }
+            // All other modes: lead with the pattern/overview, then one nudge
+            const overview = buildOverviewLine({
+                lens,
+                dominantMood: insights.dominantMood,
+                moodTrend: insights.moodTrend,
+                topTopics: topics,
+                entryCount: insightEntries.length,
+            });
+            responseSections.push(overview);
 
-        if (insights.suggestions.length > 0) {
-            responseSections.push([
-                'One practical nudge',
-                insights.suggestions[0],
-            ].join('\n'));
-        }
+            if (actionResponse.brief) {
+                responseSections.push(actionResponse.brief.pattern);
+                if (actionResponse.brief.nextMove) {
+                    responseSections.push(actionResponse.brief.nextMove.description);
+                }
+            }
 
-        if (actionResponse.brief) {
-            responseSections.splice(2, 0,
-                [
-                    'What this seems like',
-                    actionResponse.brief.pattern,
-                ].join('\n'),
-                actionResponse.brief.whatHelpedBefore
-                    ? [
-                        'What helped before',
-                        actionResponse.brief.whatHelpedBefore.summary,
-                    ].join('\n')
-                    : '',
-                actionResponse.brief.nextMove
-                    ? [
-                        'One move for today',
-                        actionResponse.brief.nextMove.description,
-                    ].join('\n')
-                    : ''
-            );
+            if (insights.suggestions.length > 0 && !actionResponse.brief?.nextMove) {
+                responseSections.push(insights.suggestions[0]);
+            }
         }
 
         return {
@@ -677,6 +649,99 @@ class GuidedReflectionService {
             risk: actionResponse.risk,
             safetyCard: actionResponse.safetyCard,
         };
+    }
+
+    async generateNotiveInsights(entryId: string, userId: string): Promise<NotiveInsight[] | null> {
+        if (!hasLlmProvider()) return null;
+
+        const [entry, recentEntries] = await Promise.all([
+            prisma.entry.findUnique({
+                where: { id: entryId, userId },
+                select: {
+                    id: true,
+                    title: true,
+                    content: true,
+                    analysis: true,
+                    skills: true,
+                    lessons: true,
+                    mood: true,
+                },
+            }),
+            prisma.entry.findMany({
+                where: { userId, deletedAt: null, NOT: { id: entryId } },
+                orderBy: { createdAt: 'desc' },
+                take: 4,
+                select: {
+                    skills: true,
+                    lessons: true,
+                    mood: true,
+                    analysisRecord: {
+                        select: { topics: true, summary: true },
+                    },
+                },
+            }),
+        ]);
+
+        if (!entry) return null;
+
+        const excerpt = takeFirstSentence(entry.content, 200);
+        const recentContext = recentEntries.map((e, i) => ({
+            index: i + 1,
+            skills: e.skills.slice(0, 2),
+            lessons: e.lessons.slice(0, 2),
+            mood: e.mood,
+            topics: e.analysisRecord?.topics.slice(0, 2) || [],
+        }));
+
+        const prompt = `You are Notive, a calm notebook for teenagers.
+The user just wrote or viewed this memory:
+Title: ${entry.title || '(no title)'}
+Excerpt: ${excerpt}
+Skills noted: ${entry.skills.join(', ') || 'none'}
+Lessons noted: ${entry.lessons.join(', ') || 'none'}
+Analysis: ${JSON.stringify(entry.analysis || {})}
+
+From the last ${recentEntries.length} entries context: ${JSON.stringify(recentContext)}
+
+Surface 3 short, grounded insights (max 18 words each):
+- One recurring thread or pattern (what keeps coming up)
+- One real lesson learned from their own past notes
+- One quiet strength or skill showing up
+
+Always be calm, specific, non-clinical, and action-oriented.
+Pick one doodle per insight from: knot (tension/uncertainty), ladder (progress/lesson), sprout (growth/strength), steady-me (self-regulation), reach-someone (support/connection), see-my-growth (patterns), shape-my-future (future/stories).
+
+Output ONLY as JSON array of exactly 3 objects:
+${NOTIVE_INSIGHT_SCHEMA}`;
+
+        try {
+            const result = await createLlmChatCompletion({
+                model: aiRuntime.promptModel,
+                response_format: { type: 'json_object' },
+                messages: [{ role: 'system', content: 'You generate journal insights. Always respond with valid JSON only.' }, { role: 'user', content: prompt }],
+                max_tokens: 300,
+                temperature: 0.7,
+            });
+            const raw = result?.choices?.[0]?.message?.content || '';
+            const insights = parseNotiveInsights(raw);
+            if (!insights || insights.length === 0) return null;
+
+            // Persist insights back into analysis JSON (no schema change — analysis is Json?)
+            await prisma.entry.update({
+                where: { id: entryId },
+                data: {
+                    analysis: {
+                        ...(typeof entry.analysis === 'object' && entry.analysis !== null ? entry.analysis as object : {}),
+                        notiveInsights: insights,
+                    },
+                },
+            });
+
+            return insights;
+        } catch (err) {
+            console.error('generateNotiveInsights error:', err);
+            return null;
+        }
     }
 }
 

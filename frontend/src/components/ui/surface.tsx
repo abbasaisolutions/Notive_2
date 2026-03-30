@@ -3,46 +3,82 @@
 import React from 'react';
 import Link from 'next/link';
 import { cn } from '@/utils/cn';
+import {
+    NotebookDoodle,
+    type NotebookAccentName,
+    type NotebookDoodleName,
+} from '@/components/dashboard/NotebookDoodles';
 
 type AppPanelTone = 'default' | 'soft' | 'accent';
 type StatTileTone = 'default' | 'primary' | 'subtle';
 type TagTone = 'default' | 'primary' | 'muted';
 
 const panelToneClasses: Record<AppPanelTone, string> = {
-    default: 'glass-card border border-white/10',
-    soft: 'rounded-2xl border border-white/10 bg-white/[0.03]',
+    default: 'workspace-panel',
+    soft: 'workspace-soft-panel rounded-2xl',
     accent: 'rounded-2xl border border-primary/30 bg-primary/12',
 };
 
 const statToneClasses: Record<StatTileTone, string> = {
-    default: 'border-white/10 bg-white/[0.03] text-white',
-    primary: 'border-primary/30 bg-primary/12 text-white',
-    subtle: 'border-white/15 bg-black/20 text-ink-secondary',
+    default: 'workspace-soft-panel text-[rgb(var(--text-primary))]',
+    primary: 'border-primary/30 bg-primary/12 text-[rgb(var(--text-primary))]',
+    subtle: 'workspace-muted-panel text-ink-secondary',
 };
 
 const tagToneClasses: Record<TagTone, string> = {
-    default: 'border-white/15 bg-white/[0.03] text-ink-secondary',
+    default: 'workspace-pill text-ink-secondary',
     primary: 'border-primary/30 bg-primary/12 text-primary',
-    muted: 'border-white/10 bg-black/20 text-ink-muted',
+    muted: 'workspace-pill-muted text-ink-muted',
 };
 
 export function AppPanel({
     children,
     className,
     tone = 'default',
+    doodle,
+    doodleAccent = 'sage',
+    doodleClassName,
     ...props
 }: React.HTMLAttributes<HTMLElement> & {
     children: React.ReactNode;
     tone?: AppPanelTone;
+    doodle?: NotebookDoodleName;
+    doodleAccent?: NotebookAccentName;
+    doodleClassName?: string;
 }) {
+    const usesPaperSurface = className?.includes('app-paper');
+
     return (
         <section
-            className={cn('rounded-2xl p-5 md:p-6', panelToneClasses[tone], className)}
+            className={cn(
+                'relative overflow-hidden rounded-2xl p-5 md:p-6',
+                !usesPaperSurface && panelToneClasses[tone],
+                className
+            )}
             {...props}
         >
-            {children}
+            {doodle && (
+                <div className={cn('pointer-events-none absolute right-4 top-4 sprout-accent opacity-80', doodleClassName)}>
+                    <NotebookDoodle name={doodle} accent={doodleAccent} />
+                </div>
+            )}
+            <div className={cn('relative', doodle && 'pr-10')}>
+                {children}
+            </div>
         </section>
     );
+}
+
+export function Surface(
+    props: React.HTMLAttributes<HTMLElement> & {
+        children: React.ReactNode;
+        tone?: AppPanelTone;
+        doodle?: NotebookDoodleName;
+        doodleAccent?: NotebookAccentName;
+        doodleClassName?: string;
+    }
+) {
+    return <AppPanel {...props} />;
 }
 
 export function SectionHeader({
@@ -52,6 +88,7 @@ export function SectionHeader({
     actionLabel,
     actionHref,
     className,
+    as: Heading = 'h2',
 }: {
     title: string;
     description?: string;
@@ -59,12 +96,13 @@ export function SectionHeader({
     actionLabel?: string;
     actionHref?: string;
     className?: string;
+    as?: 'h1' | 'h2' | 'h3';
 }) {
     return (
         <div className={cn('flex flex-wrap items-start justify-between gap-3', className)}>
             <div>
                 {kicker && <p className="text-xs uppercase tracking-[0.14em] text-ink-muted mb-1">{kicker}</p>}
-                <h2 className="text-xl md:text-2xl font-semibold text-white">{title}</h2>
+                <Heading className="workspace-heading text-xl md:text-2xl font-semibold">{title}</Heading>
                 {description && <p className="text-sm text-ink-secondary mt-1">{description}</p>}
             </div>
             {actionLabel && actionHref && (
@@ -95,7 +133,7 @@ export function StatTile({
     return (
         <div className={cn('rounded-xl border px-3 py-2', statToneClasses[tone], className)}>
             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">{label}</p>
-            <p className="mt-1 text-lg font-semibold text-white">{value}</p>
+            <p className="workspace-heading mt-1 text-lg font-semibold">{value}</p>
             {hint && <p className="mt-1 text-[12px] text-ink-secondary">{hint}</p>}
         </div>
     );
@@ -125,7 +163,7 @@ export function ActionBar({
     className?: string;
 }) {
     return (
-        <div className={cn('flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2', className)}>
+        <div className={cn('workspace-actionbar flex flex-wrap items-center gap-2 rounded-xl p-2', className)}>
             {children}
         </div>
     );
@@ -146,7 +184,7 @@ export function EmptyState({
 }) {
     return (
         <AppPanel className={cn('text-center', className)} tone="soft">
-            <h3 className="text-xl font-semibold text-white">{title}</h3>
+            <h3 className="workspace-heading text-xl font-semibold">{title}</h3>
             <p className="text-sm text-ink-secondary mt-2">{description}</p>
             {actionLabel && actionHref && (
                 <Link

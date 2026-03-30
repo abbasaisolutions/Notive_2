@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
 import useApi from '@/hooks/use-api';
 import SocialSelectionModal from './SocialSelectionModal';
+import { ConfirmDialog } from '@/components/ui';
+import { useToast } from '@/context/toast-context';
 
 type ImportStatus = {
     instagram: number;
@@ -84,6 +86,7 @@ const formatDate = (value: string | null | undefined): string | null => {
 
 export function SocialImportPanel({ returnToPath, compact = false }: SocialImportPanelProps) {
     const { apiFetch } = useApi();
+    const toast = useToast();
     const [status, setStatus] = useState<ImportStatus | null>(null);
     const [connections, setConnections] = useState<Record<ProviderKey, ConnectionSummary>>({
         instagram: { provider: 'instagram', connected: false },
@@ -100,6 +103,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
     const [providerSetupIssues, setProviderSetupIssues] = useState<Partial<Record<ProviderKey, string>>>({});
     const [showWorkflowDetails, setShowWorkflowDetails] = useState(false);
     const [showArchiveImport, setShowArchiveImport] = useState(false);
+    const [switchConfirmProvider, setSwitchConfirmProvider] = useState<ProviderKey | null>(null);
 
     const clearImportQueryParams = useCallback(() => {
         const url = new URL(window.location.href);
@@ -298,19 +302,26 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
     const switchProviderAccount = useCallback(async (provider: ProviderKey) => {
         const current = connections[provider];
         if (current?.connected) {
-            const confirmed = window.confirm(`Switch ${provider} account? This will disconnect the current account first.`);
-            if (!confirmed) return;
-            const disconnected = await disconnectProvider(provider, { suppressNotice: true });
-            if (!disconnected) {
-                setImportResult({
-                    success: false,
-                    source: provider,
-                    message: `Could not fully disconnect ${provider}. Trying reconnection now...`,
-                });
-            }
+            setSwitchConfirmProvider(provider);
+            return;
         }
         await startConnect(provider, { forceReauth: true });
-    }, [connections, disconnectProvider, startConnect]);
+    }, [connections, startConnect]);
+
+    const confirmSwitchProvider = useCallback(async () => {
+        const provider = switchConfirmProvider;
+        if (!provider) return;
+        setSwitchConfirmProvider(null);
+        const disconnected = await disconnectProvider(provider, { suppressNotice: true });
+        if (!disconnected) {
+            setImportResult({
+                success: false,
+                source: provider,
+                message: `Could not fully disconnect ${provider}. Trying reconnection now...`,
+            });
+        }
+        await startConnect(provider, { forceReauth: true });
+    }, [switchConfirmProvider, disconnectProvider, startConnect]);
 
     const handleArchiveImport = async (provider: ProviderKey, file: File) => {
         setArchiveError(null);
@@ -391,7 +402,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
         }
         return '/timeline';
     }, [importResult?.source]);
-    const panelClassName = compact ? 'rounded-3xl border border-white/10 bg-white/5 p-6' : 'bento-box p-8';
+    const panelClassName = compact ? 'workspace-panel rounded-3xl p-6' : 'workspace-panel p-8';
 
     const renderProviderCard = (provider: ProviderKey) => {
         const connection = connections[provider];
@@ -401,15 +412,15 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
         const setupIssue = providerSetupIssues[provider] || null;
         const hasBlockingSetupIssue = Boolean(setupIssue) && !isConnected;
         const label = provider === 'instagram' ? 'Instagram' : 'Facebook';
-        const gradient = 'from-primary/10 to-secondary/10 border-white/10';
+        const gradient = 'from-primary/10 to-secondary/10';
 
         return (
-            <div key={provider} className={`rounded-2xl border bg-gradient-to-br p-4 ${gradient}`}>
+            <div key={provider} className={`workspace-soft-panel rounded-2xl bg-gradient-to-br p-4 ${gradient}`}>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-white font-semibold">{label}</p>
+                    <p className="workspace-heading font-semibold">{label}</p>
                     <span
-                        className={`rounded-full px-2.5 py-1 text-xs uppercase tracking-[0.08em] border border-white/15 bg-white/[0.03] ${
-                            isReadyForImport || isExpired ? 'text-white' : 'text-ink-secondary'
+                        className={`workspace-pill-muted rounded-full px-2.5 py-1 text-xs uppercase tracking-[0.08em] ${
+                            isReadyForImport || isExpired ? 'text-[rgb(var(--text-primary))]' : 'text-ink-secondary'
                         }`}
                     >
                         {isReadyForImport ? 'Connected' : isExpired ? 'Expired' : 'Not connected'}
@@ -443,7 +454,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                         <button
                             onClick={() => switchProviderAccount(provider)}
                             disabled={isConnecting !== null || isDisconnecting !== null}
-                            className="rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-ink-secondary hover:text-white disabled:opacity-50"
+                            className="workspace-button-outline rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.06em] disabled:opacity-50"
                         >
                             {isConnecting === provider ? 'Switching...' : 'Switch'}
                         </button>
@@ -452,7 +463,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                         <button
                             onClick={() => disconnectProvider(provider)}
                             disabled={isDisconnecting !== null || isConnecting !== null}
-                            className="col-[1/-1] rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-white disabled:opacity-50"
+                            className="workspace-button-outline col-[1/-1] rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.06em] disabled:opacity-50"
                         >
                             {isDisconnecting === provider ? 'Disconnecting...' : 'Disconnect'}
                         </button>
@@ -468,14 +479,14 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                 <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Import Workflow</p>
-                        <h3 className="text-xl font-semibold text-white">Connect a source</h3>
+                        <h3 className="workspace-heading text-xl font-semibold">Connect a source</h3>
                         <p className="text-sm text-ink-secondary">Connect an account, choose memories, and bring them into your timeline.</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <button
                             type="button"
                             onClick={() => setShowWorkflowDetails((current) => !current)}
-                            className="rounded-lg border border-white/10 px-3 py-2 text-xs text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                            className="workspace-button-outline rounded-lg px-3 py-2 text-xs"
                             aria-expanded={showWorkflowDetails}
                         >
                             {showWorkflowDetails ? 'Hide details' : 'Show details'}
@@ -485,7 +496,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                                 fetchStatus();
                                 fetchProviderReadiness();
                             }}
-                            className="rounded-lg border border-white/10 px-3 py-2 text-xs text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                            className="workspace-button-outline rounded-lg px-3 py-2 text-xs"
                         >
                             Refresh
                         </button>
@@ -493,8 +504,8 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                 </div>
 
                 {importResult && (
-                    <div className="mb-5 rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm text-white">
-                        <p className="font-semibold">{importResult.success ? 'Success' : 'Action needed'}</p>
+                    <div className="workspace-soft-panel mb-5 rounded-xl px-4 py-3 text-sm text-[rgb(var(--text-primary))]">
+                        <p className="workspace-heading font-semibold">{importResult.success ? 'Success' : 'Action needed'}</p>
                         <p className="mt-1 text-xs opacity-90">{importResult.message}</p>
                         {(importResult.imported ?? 0) > 0 && (
                             <p className="mt-1 text-xs opacity-90">
@@ -504,18 +515,18 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                     </div>
                 )}
 
-                <section className="mb-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <section className="workspace-soft-panel mb-5 rounded-2xl p-4">
                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current snapshot</p>
-                    <p className="mt-2 text-sm leading-7 text-white">{workflowSummary}</p>
+                    <p className="mt-2 text-sm leading-7 text-[rgb(var(--text-primary))]">{workflowSummary}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                         <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs text-primary">
                             {connectedCount}/2 connected
                         </span>
-                        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-white">
+                        <span className="workspace-pill-muted rounded-full px-3 py-1 text-xs text-[rgb(var(--text-primary))]">
                             {status?.total || 0} total notes
                         </span>
                         {hasAnyConnected && (
-                            <Link href={timelineHref} className="rounded-full border border-white/12 bg-black/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary transition-colors hover:bg-black/30 hover:text-white">
+                            <Link href={timelineHref} className="workspace-button-outline rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em]">
                                 Open {NOTIVE_VOICE.surfaces.memoryAtlas}
                             </Link>
                         )}
@@ -540,39 +551,39 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                                 <section>
                                     <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">Current totals</p>
                                     <div className="grid grid-cols-[repeat(auto-fit,minmax(105px,1fr))] gap-2">
-                                        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                                        <div className="workspace-soft-panel rounded-xl px-3 py-2">
                                             <p className="text-xs text-ink-muted uppercase tracking-[0.06em]">Notive</p>
-                                            <p className="text-lg text-white font-semibold">{status.notive}</p>
+                                            <p className="workspace-heading text-lg font-semibold">{status.notive}</p>
                                         </div>
-                                        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                                        <div className="workspace-soft-panel rounded-xl px-3 py-2">
                                             <p className="text-xs text-ink-muted uppercase tracking-[0.06em]">Instagram</p>
-                                            <p className="text-lg text-white font-semibold">{status.instagram}</p>
+                                            <p className="workspace-heading text-lg font-semibold">{status.instagram}</p>
                                         </div>
-                                        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                                        <div className="workspace-soft-panel rounded-xl px-3 py-2">
                                             <p className="text-xs text-ink-muted uppercase tracking-[0.06em]">Facebook</p>
-                                            <p className="text-lg text-white font-semibold">{status.facebook}</p>
+                                            <p className="workspace-heading text-lg font-semibold">{status.facebook}</p>
                                         </div>
-                                        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                                        <div className="workspace-soft-panel rounded-xl px-3 py-2">
                                             <p className="text-xs text-ink-muted uppercase tracking-[0.06em]">Total</p>
-                                            <p className="text-lg text-white font-semibold">{status.total}</p>
+                                            <p className="workspace-heading text-lg font-semibold">{status.total}</p>
                                         </div>
                                     </div>
                                 </section>
                             )}
 
-                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                            <div className="workspace-soft-panel rounded-2xl p-4">
                                 <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">Step 2: Field mapping</p>
                                 <p className="text-xs leading-relaxed text-ink-secondary">
                                     Imported posts map to entry fields as follows:
-                                    <span className="text-white"> title</span> from caption or message,
-                                    <span className="text-white"> content</span> from post text,
-                                    <span className="text-white"> createdAt</span> from the post timestamp,
-                                    <span className="text-white"> coverImage</span> from media, and
-                                    <span className="text-white"> source/externalId</span> for duplicate prevention.
+                                    <span className="workspace-heading"> title</span> from caption or message,
+                                    <span className="workspace-heading"> content</span> from post text,
+                                    <span className="workspace-heading"> createdAt</span> from the post timestamp,
+                                    <span className="workspace-heading"> coverImage</span> from media, and
+                                    <span className="workspace-heading"> source/externalId</span> for duplicate prevention.
                                 </p>
                             </div>
 
-                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                            <div className="workspace-soft-panel rounded-2xl p-4">
                                 <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">Step 3: Review in {NOTIVE_VOICE.surfaces.memoryAtlas}</p>
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className="text-xs text-ink-secondary">
@@ -587,7 +598,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                     )}
                 </section>
 
-                <section className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <section className="workspace-soft-panel mt-5 rounded-2xl p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Archive import</p>
@@ -596,7 +607,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                         <button
                             type="button"
                             onClick={() => setShowArchiveImport((current) => !current)}
-                            className="rounded-lg border border-white/10 px-3 py-2 text-xs text-ink-secondary transition-colors hover:bg-white/10 hover:text-white"
+                            className="workspace-button-outline rounded-lg px-3 py-2 text-xs"
                             aria-expanded={showArchiveImport}
                         >
                             {showArchiveImport ? 'Hide upload tools' : 'Show upload tools'}
@@ -606,7 +617,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                         <div className="mt-4">
                             {archiveError && <p className="mb-2 text-xs text-ink-secondary">{archiveError}</p>}
                             <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-2">
-                                <label className="cursor-pointer rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.08em] text-white">
+                                <label className="workspace-button-outline cursor-pointer rounded-xl px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.08em]">
                                     {isArchiveImporting ? 'Importing...' : 'Instagram ZIP/JSON'}
                                     <input
                                         type="file"
@@ -616,7 +627,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                                         className="hidden"
                                     />
                                 </label>
-                                <label className="cursor-pointer rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.08em] text-white">
+                                <label className="workspace-button-outline cursor-pointer rounded-xl px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.08em]">
                                     {isArchiveImporting ? 'Importing...' : 'Facebook ZIP/JSON'}
                                     <input
                                         type="file"
@@ -631,8 +642,8 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                     )}
                 </section>
 
-                <div className="mt-4 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-ink-secondary">
-                    Connected providers: <span className="text-white font-semibold">{connectedCount}/2</span>
+                <div className="workspace-muted-panel mt-4 rounded-xl px-3 py-2 text-xs text-ink-secondary">
+                    Connected providers: <span className="workspace-heading font-semibold">{connectedCount}/2</span>
                     {!hasAnyConnected && <span className="ml-2 text-ink-secondary">Connect at least one account to import.</span>}
                 </div>
             </div>
@@ -642,6 +653,15 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                 onClose={() => setModalOpen(false)}
                 provider={modalProvider}
                 onImportComplete={handleImportComplete}
+            />
+
+            <ConfirmDialog
+                open={!!switchConfirmProvider}
+                title={`Switch ${switchConfirmProvider || ''} account?`}
+                description="This will disconnect the current account first."
+                actionLabel="Switch"
+                onConfirm={confirmSwitchProvider}
+                onCancel={() => setSwitchConfirmProvider(null)}
             />
         </>
     );

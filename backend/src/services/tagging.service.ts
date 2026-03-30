@@ -154,6 +154,7 @@ export class TaggingService {
         try {
             const response = await createLlmChatCompletion({
                 model: aiRuntime.taggingModel,
+                response_format: { type: 'json_object' },
                 messages: [
                     {
                         role: 'system',
@@ -163,7 +164,7 @@ export class TaggingService {
                         1. Tags should be short (1-2 words).
                         2. Respect negation (e.g., "I did not study" should NOT be tagged "Study").
                         3. Focus on topics, activities, emotions, and locations.
-                        4. Return ONLY a JSON array of strings, e.g., ["Work", "Anxiety", "Cafe"].`
+                        4. Return ONLY a JSON object with a "tags" key containing an array of strings, e.g., {"tags": ["Work", "Anxiety", "Cafe"]}.`
                     },
                     { role: 'user', content: text },
                 ],
@@ -176,7 +177,8 @@ export class TaggingService {
 
             let tags: string[] = [];
             try {
-                tags = JSON.parse(contentStr);
+                const parsed = JSON.parse(contentStr);
+                tags = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.tags) ? parsed.tags : []);
             } catch (e) {
                 tags = contentStr.replace(/[\[\]"]+/g, '').split(',').map(t => t.trim());
             }

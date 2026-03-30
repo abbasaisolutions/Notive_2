@@ -6,7 +6,7 @@ interface SkeletonProps {
 }
 
 export default function Skeleton({ className = '', variant = 'rectangular' }: SkeletonProps) {
-  const baseClasses = 'animate-pulse bg-gradient-to-r from-surface-2 via-surface-3 to-surface-2 bg-[length:200%_100%]';
+  const baseClasses = 'animate-pulse bg-ink-muted/15 bg-[length:200%_100%]';
 
   const variantClasses = {
     text: 'h-4 rounded',
@@ -25,7 +25,7 @@ export default function Skeleton({ className = '', variant = 'rectangular' }: Sk
 // Skeleton card for entry previews
 export function SkeletonCard() {
   return (
-    <div className="bento-box p-8">
+    <div className="workspace-panel rounded-[2rem] p-8">
       <div className="flex justify-between items-start mb-4">
         <Skeleton className="h-6 w-32" />
         <Skeleton variant="circular" className="h-8 w-8" />
@@ -45,7 +45,7 @@ export function SkeletonCard() {
 // Skeleton for stat card
 export function SkeletonStat() {
   return (
-    <div className="bento-box p-6">
+    <div className="workspace-panel rounded-[2rem] p-6">
       <Skeleton variant="circular" className="h-10 w-10 mb-3" />
       <Skeleton className="h-8 w-16 mb-2" />
       <Skeleton className="h-4 w-24" />

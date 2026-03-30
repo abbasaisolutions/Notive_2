@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/utils/cn';
+import { useToast } from '@/context/toast-context';
 import type { StudentRisk, StudentSafetyCard } from '@/components/action/types';
 import SupportOutcomeStrip from '@/components/action/SupportOutcomeStrip';
 
@@ -20,6 +21,7 @@ export default function SafetyBanner({
 }) {
     const [copied, setCopied] = useState(false);
     const [feedbackActionKind, setFeedbackActionKind] = useState<'copy' | 'text' | 'call' | 'email' | 'manual' | null>(null);
+    const { toast } = useToast();
 
     useEffect(() => {
         setCopied(false);
@@ -39,6 +41,7 @@ export default function SafetyBanner({
         try {
             await navigator.clipboard.writeText(safetyCard.draftMessage);
             setCopied(true);
+            toast.success('Copied to clipboard!');
             if (safetyCard.trustedContactName) {
                 setFeedbackActionKind('copy');
             }

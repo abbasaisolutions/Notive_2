@@ -34,11 +34,11 @@ export default function MoodRiver({ data, selectedDate = null, onPointSelect }: 
 
     if (normalizedData.length === 0) {
         return (
-            <div className="glass-card p-6 rounded-2xl text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/[0.03]">
+            <div className="workspace-panel rounded-2xl p-6 text-center">
+                <div className="workspace-icon-badge mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl">
                     <FiTrendingUp size={24} className="text-ink-secondary" aria-hidden="true" />
                 </div>
-                <h3 className="text-lg font-bold text-white">Mood Flow</h3>
+                <h3 className="workspace-heading text-lg font-bold">Mood Flow</h3>
                 <p className="mt-1 text-sm text-ink-secondary">Add notes to see how feelings change over time.</p>
             </div>
         );
@@ -52,13 +52,13 @@ export default function MoodRiver({ data, selectedDate = null, onPointSelect }: 
         : 0;
 
     let trendLabel = 'Stable';
-    let trendClass = 'border-white/20 bg-white/10 text-ink-secondary';
+    let trendClass = 'workspace-pill-muted text-ink-secondary';
     if (scoreDelta > 0.3) {
         trendLabel = 'Rising';
-        trendClass = 'border-white/15 bg-white/[0.04] text-white';
+        trendClass = 'workspace-pill text-[rgb(var(--text-primary))]';
     } else if (scoreDelta < -0.3) {
         trendLabel = 'Falling';
-        trendClass = 'border-zinc-400/35 bg-zinc-500/12 text-zinc-200';
+        trendClass = 'workspace-pill text-ink-secondary';
     }
 
     const moodCounts = new Map<string, number>();
@@ -112,10 +112,10 @@ export default function MoodRiver({ data, selectedDate = null, onPointSelect }: 
     const lineGradientId = `mood-line-${chartId}`;
 
     return (
-        <div className="glass-card p-6 rounded-2xl">
+        <div className="workspace-panel rounded-2xl p-6">
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h3 className="text-lg font-bold text-white">Mood Flow</h3>
+                    <h3 className="workspace-heading text-lg font-bold">Mood Flow</h3>
                     <p className="text-xs text-ink-muted">
                         How feelings changed in recent notes{onPointSelect ? ' - tap a point to open that day' : ''}
                     </p>
@@ -126,19 +126,19 @@ export default function MoodRiver({ data, selectedDate = null, onPointSelect }: 
             </div>
 
             <div className="mb-4 grid grid-cols-3 gap-2">
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                <div className="workspace-soft-panel rounded-xl px-3 py-2">
                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Average</p>
-                    <p className="text-lg font-semibold text-white">{averageScore}/10</p>
+                    <p className="workspace-heading text-lg font-semibold">{averageScore}/10</p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                <div className="workspace-soft-panel rounded-xl px-3 py-2">
                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Change</p>
-                    <p className={`text-lg font-semibold ${scoreDelta >= 0 ? 'text-ink-secondary' : 'text-zinc-300'}`}>
+                    <p className="text-lg font-semibold text-ink-secondary">
                         {scoreDelta >= 0 ? '+' : ''}{scoreDelta}
                     </p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                <div className="workspace-soft-panel rounded-xl px-3 py-2">
                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Main feeling</p>
-                    <p className="text-lg font-semibold text-white">
+                    <p className="workspace-heading text-lg font-semibold">
                         {getMoodEmoji(dominantMood)} {formatMoodLabel(dominantMood)}
                     </p>
                 </div>
@@ -169,7 +169,7 @@ export default function MoodRiver({ data, selectedDate = null, onPointSelect }: 
                             y1={y}
                             x2={width}
                             y2={y}
-                            stroke="rgba(255,255,255,0.1)"
+                            stroke="rgba(194,174,150,0.52)"
                             strokeWidth="0.4"
                             strokeDasharray="1.5 2"
                         />
@@ -200,7 +200,7 @@ export default function MoodRiver({ data, selectedDate = null, onPointSelect }: 
                             cy={p.y}
                             r={selectedDate === p.date ? '4.5' : '3'}
                             fill={p.color}
-                            stroke={selectedDate === p.date ? 'rgba(255,255,255,0.9)' : 'transparent'}
+                            stroke={selectedDate === p.date ? 'rgba(47,42,38,0.72)' : 'transparent'}
                             strokeWidth={selectedDate === p.date ? '1.5' : '0'}
                             className={onPointSelect ? 'cursor-pointer transition-all hover:r-5' : 'transition-all hover:r-5'}
                             onClick={() => onPointSelect?.({
@@ -237,7 +237,7 @@ export default function MoodRiver({ data, selectedDate = null, onPointSelect }: 
                 {legendMoods.map((mood) => (
                     <span
                         key={mood}
-                        className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.03] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary"
+                        className="workspace-pill-muted inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary"
                     >
                         <span style={{ color: getMoodColor(mood) }}>{getMoodEmoji(mood)}</span>
                         <span>{formatMoodLabel(mood)}</span>

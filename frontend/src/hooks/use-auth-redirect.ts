@@ -3,7 +3,8 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import { buildLoginRedirect, buildLoginRedirectWithReason } from '@/utils/redirect';
+import { buildAuthAwareReturnTo, buildLoginRedirect, buildLoginRedirectWithReason } from '@/utils/redirect';
+import { buildBirthDateCollectionRedirect, needsBirthDateCollection } from '@/utils/auth-routing';
 
 export function useAuthRedirect() {
     const router = useRouter();
@@ -14,7 +15,7 @@ export function useAuthRedirect() {
         if (isLoading) return;
 
         const query = typeof window !== 'undefined' ? window.location.search : '';
-        const returnTo = `${pathname || '/dashboard'}${query}`;
+        const returnTo = buildAuthAwareReturnTo(pathname, query);
 
         if (!user) {
             if (typeof window !== 'undefined' && sessionStorage.getItem('notive_auth_reason') === 'session-expired') {
@@ -23,6 +24,11 @@ export function useAuthRedirect() {
                 return;
             }
             router.replace(buildLoginRedirect(returnTo));
+            return;
+        }
+
+        if (needsBirthDateCollection(user) && pathname !== '/profile/complete') {
+            router.replace(buildBirthDateCollectionRedirect(returnTo));
             return;
         }
 

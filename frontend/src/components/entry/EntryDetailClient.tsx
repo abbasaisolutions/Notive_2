@@ -10,6 +10,7 @@ import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { getMoodEmoji, normalizeMood } from '@/constants/moods';
 import { AppPanel, TagPill } from '@/components/ui/surface';
+import { ConfirmDialog, ErrorState, EmptyState, Spinner } from '@/components/ui';
 import { formatStoryConfidence, storyFieldLabel, storyStatusClassName, storyStatusLabel, type StorySignal } from '@/utils/story-engine';
 import { FiArrowLeft, FiArrowRight, FiBriefcase, FiMic, FiUploadCloud } from 'react-icons/fi';
 import ActionBriefPanel from '@/components/action/ActionBriefPanel';
@@ -17,6 +18,7 @@ import BridgeCard from '@/components/action/BridgeCard';
 import SafetyBanner from '@/components/safety/SafetyBanner';
 import type { StudentActionResponse } from '@/components/action/types';
 import useTelemetry from '@/hooks/use-telemetry';
+import { useToast } from '@/context/toast-context';
 
 
 interface Entry {
@@ -57,6 +59,7 @@ function EntryDetailContent() {
     const { isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { apiFetch } = useApi();
     const { trackEvent } = useTelemetry();
+    const toast = useToast();
     const [entry, setEntry] = useState<Entry | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -68,6 +71,7 @@ function EntryDetailContent() {
     const [relatedEntries, setRelatedEntries] = useState<RelatedEntry[]>([]);
     const [isLoadingRelated, setIsLoadingRelated] = useState(false);
     const [entryAction, setEntryAction] = useState<StudentActionResponse | null>(null);
+    const [entryError, setEntryError] = useState<string | null>(null);
     const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
@@ -91,6 +95,7 @@ function EntryDetailContent() {
                 if (mounted) {
                     setIsLoadingRelated(true);
                     setRelatedEntries([]);
+                    setEntryError(null);
                 }
                 const [entryResponse, relatedResponse] = await Promise.all([
                     apiFetch(`${API_URL}/entries/${id}`, {
@@ -106,8 +111,10 @@ function EntryDetailContent() {
                 if (entryResponse.ok) {
                     const data = await entryResponse.json();
                     setEntry(data.entry);
+                    setEntryError(null);
                 } else {
-                    router.push(backHref);
+                    setEntryError('Note not found. It may have been deleted.');
+                    setEntry(null);
                     return;
                 }
 
@@ -209,13 +216,14 @@ function EntryDetailContent() {
             });
 
             if (response.ok) {
+                toast.success('Note deleted');
                 router.push(backHref);
                 return;
             }
-            setActionError('Failed to delete entry. Please try again.');
+            toast.error('Failed to delete entry. Please try again.');
         } catch (error) {
             console.error('Failed to delete entry:', error);
-            setActionError('Failed to delete entry. Please try again.');
+            toast.error('Failed to delete entry. Please try again.');
         } finally {
             setIsDeleting(false);
             setShowDeleteConfirm(false);
@@ -225,13 +233,31 @@ function EntryDetailContent() {
     if (authLoading || isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                <Spinner size="md" />
             </div>
         );
     }
 
     if (!isAuthenticated) {
         return null;
+    }
+
+    if (entryError) {
+        return (
+            <div className="min-h-screen p-4 md:p-8">
+                <div className="max-w-3xl mx-auto">
+                    <ErrorState
+                        title="Note Not Found"
+                        message={entryError}
+                        variant="full-page"
+                        action={{
+                            label: "Back",
+                            onClick: navigateBack,
+                        }}
+                    />
+                </div>
+            </div>
+        );
     }
 
     if (!entry) return null;
@@ -299,7 +325,7 @@ function EntryDetailContent() {
             <div className="fixed top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[150px] pointer-events-none" />
 
             <div className="max-w-3xl mx-auto relative z-10">
-                <header className="mb-6 rounded-2xl border border-white/10 bg-surface-1/70 p-4 md:p-5 backdrop-blur-xl">
+                <header className="workspace-panel mb-6 rounded-2xl p-4 md:p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                             <button
@@ -307,20 +333,20 @@ function EntryDetailContent() {
                                 onClick={navigateBack}
                                 aria-label={backLabel}
                                 title={backLabel}
-                                className="p-2 rounded-xl text-ink-secondary hover:text-white hover:bg-white/10 transition-all"
+                                className="workspace-button-outline rounded-xl p-2 transition-all"
                             >
                                 <FiArrowLeft size={22} aria-hidden="true" />
                             </button>
                             <div>
                                 <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Note</p>
-                                <p className="text-sm font-semibold text-white">Read Note</p>
+                                <p className="workspace-heading text-sm font-semibold">Read Note</p>
                             </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             <button
                                 onClick={handleShare}
                                 disabled={isSharing}
-                                className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/10 transition-all"
+                                className="workspace-button-outline rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-all"
                             >
                                 {isCopied ? 'Copied' : isSharing ? 'Sharing' : 'Share'}
                             </button>
@@ -332,7 +358,7 @@ function EntryDetailContent() {
                             </Link>
                             <button
                                 onClick={() => setShowDeleteConfirm(true)}
-                                className="rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary hover:bg-white/[0.07] transition-all"
+                                className="workspace-button-outline rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-all"
                                 aria-label="Delete entry"
                             >
                                 Delete
@@ -342,15 +368,15 @@ function EntryDetailContent() {
                 </header>
 
                 {actionError && (
-                    <div className="mb-4 rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm text-white">
+                    <div className="workspace-soft-panel mb-4 rounded-xl px-4 py-3 text-sm text-[rgb(var(--text-primary))]">
                         {actionError}
                     </div>
                 )}
 
                 {shareUrl && (
-                    <div className="mb-5 rounded-xl border border-white/15 bg-white/[0.03] p-3 text-sm">
+                    <div className="workspace-soft-panel mb-5 rounded-xl p-3 text-sm">
                         <p className="mb-1 text-xs uppercase tracking-[0.12em] text-ink-secondary">Share Link</p>
-                        <p className="truncate text-white">{shareUrl}</p>
+                        <p className="workspace-heading truncate">{shareUrl}</p>
                         <button
                             onClick={() => {
                                 navigator.clipboard.writeText(shareUrl);
@@ -358,7 +384,7 @@ function EntryDetailContent() {
                                 if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
                                 copyTimeoutRef.current = setTimeout(() => setIsCopied(false), 2000);
                             }}
-                            className="mt-2 rounded-lg border border-white/15 bg-white/[0.04] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/[0.07]"
+                            className="workspace-button-outline mt-2 rounded-lg px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em]"
                         >
                             {isCopied ? 'Copied' : 'Copy Link'}
                         </button>
@@ -366,59 +392,50 @@ function EntryDetailContent() {
                 )}
 
                 {showDeleteConfirm && (
-                    <div className="mb-6 rounded-2xl border border-white/15 bg-white/[0.03] p-4">
-                        <p className="mb-3 text-sm text-white">Delete this note forever? This cannot be undone.</p>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={handleDelete}
-                                disabled={isDeleting}
-                                className="rounded-xl bg-primary/85 px-3 py-2 text-sm text-white hover:bg-primary disabled:opacity-70"
-                            >
-                                {isDeleting ? 'Deleting...' : 'Confirm Delete'}
-                            </button>
-                            <button
-                                onClick={() => setShowDeleteConfirm(false)}
-                                disabled={isDeleting}
-                                className="rounded-xl bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20 disabled:opacity-70"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
+                    <ConfirmDialog
+                        open={showDeleteConfirm}
+                        title="Delete this note?"
+                        description="This action cannot be undone."
+                        actionLabel="Delete"
+                        isDangerous={true}
+                        isLoading={isDeleting}
+                        onConfirm={handleDelete}
+                        onCancel={() => setShowDeleteConfirm(false)}
+                    />
                 )}
 
                 <div className="mb-5 grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-2">
-                    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <div className="workspace-soft-panel rounded-xl px-3 py-2">
                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Created</p>
-                        <p className="text-sm font-semibold text-white">
+                        <p className="workspace-heading text-sm font-semibold">
                             {createdAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         </p>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <div className="workspace-soft-panel rounded-xl px-3 py-2">
                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Volume</p>
-                        <p className="text-sm font-semibold text-white">{wordCount} words</p>
+                        <p className="workspace-heading text-sm font-semibold">{wordCount} words</p>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <div className="workspace-soft-panel rounded-xl px-3 py-2">
                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Time to Read</p>
-                        <p className="text-sm font-semibold text-white">{readingTime} min</p>
+                        <p className="workspace-heading text-sm font-semibold">{readingTime} min</p>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <div className="workspace-soft-panel rounded-xl px-3 py-2">
                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Updated</p>
-                        <p className="text-sm font-semibold text-white">
+                        <p className="workspace-heading text-sm font-semibold">
                             {updatedAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         </p>
                     </div>
                 </div>
 
                 <div className="mb-6">
-                    <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{entry.title || 'Untitled Note'}</h1>
+                    <h1 className="workspace-heading mb-2 text-3xl font-bold md:text-4xl">{entry.title || 'Untitled Note'}</h1>
                     <p className="text-ink-secondary text-sm">
                         {createdAt.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
 
                 <div className="mb-6 flex flex-wrap gap-2">
-                    <span className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary">
+                    <span className="workspace-pill rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary">
                         {sourceLabel}
                     </span>
                     {normalizedMood && (
@@ -429,7 +446,7 @@ function EntryDetailContent() {
                     {entry.tags.map((tag) => (
                         <span
                             key={tag}
-                            className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary"
+                            className="workspace-pill rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary"
                         >
                             #{tag}
                         </span>
@@ -449,7 +466,7 @@ function EntryDetailContent() {
                                 </div>
                                 <div>
                                     <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Story Details</p>
-                                    <h2 className="mt-1 text-xl font-semibold text-white">Turn this note into a story you can use</h2>
+                                    <h2 className="workspace-heading mt-1 text-xl font-semibold">Turn this note into a story you can use</h2>
                                     <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{storyMessage}</p>
                                 </div>
                             </div>
@@ -464,7 +481,7 @@ function EntryDetailContent() {
                                 </Link>
                                 <Link
                                     href={storySecondaryHref}
-                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/[0.08] hover:text-white"
+                                    className="workspace-button-outline inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.1em] transition-colors"
                                 >
                                     {shouldOpenInterviewDeck || !isImportedEntry ? (
                                         <FiArrowRight size={14} aria-hidden="true" />
@@ -512,6 +529,7 @@ function EntryDetailContent() {
                                     entryId={entry.id}
                                     openEntryHref={(entryId) => withCurrentReturnTo(`/entry/view?id=${entryId}`)}
                                     onCopyDraft={() => handleEntryBridgeCopy(entryAction.bridge?.recommendedRecipient || 'trusted contact')}
+                                    variant="notebook"
                                 />
                             </div>
                         )}
@@ -525,7 +543,7 @@ function EntryDetailContent() {
                 )}
 
                 {entry.audioUrl && (
-                    <div className="mb-8 p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-4">
+                    <div className="workspace-soft-panel mb-8 flex items-center gap-4 rounded-2xl p-4">
                         <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                             <FiMic size={24} className="text-primary" aria-hidden="true" />
                         </div>
@@ -536,9 +554,12 @@ function EntryDetailContent() {
                     </div>
                 )}
 
-                <div className="glass-card p-6 md:p-8 rounded-2xl">
+                <div className="workspace-panel rounded-2xl p-6 md:p-8">
                     {safeHtml ? (
-                        <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: safeHtml }} />
+                        <div
+                            className="prose max-w-none prose-headings:text-[rgb(var(--text-primary))] prose-p:text-ink-secondary prose-strong:text-[rgb(var(--text-primary))] prose-li:text-ink-secondary prose-a:text-primary prose-blockquote:text-ink-secondary"
+                            dangerouslySetInnerHTML={{ __html: safeHtml }}
+                        />
                     ) : (
                         <p className="text-ink-secondary whitespace-pre-wrap leading-relaxed">{entry.content}</p>
                     )}
@@ -549,7 +570,7 @@ function EntryDetailContent() {
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Related Entries</p>
-                                <h2 className="mt-1 text-xl font-semibold text-white">Notes connected to this one</h2>
+                                <h2 className="workspace-heading mt-1 text-xl font-semibold">Notes connected to this one</h2>
                                 <p className="mt-2 text-sm leading-7 text-ink-secondary">
                                     Similar notes come from the new local retrieval layer, with optional reranking when the local service is available.
                                 </p>
@@ -559,37 +580,44 @@ function EntryDetailContent() {
                             )}
                         </div>
 
-                        <div className="grid gap-3 md:grid-cols-2">
-                            {relatedEntries.map((relatedEntry) => (
-                                <Link
-                                    key={relatedEntry.id}
-                                    href={withCurrentReturnTo(`/entry/view?id=${relatedEntry.id}`)}
-                                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
-                                                {new Date(relatedEntry.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                            </p>
-                                            <h3 className="mt-2 text-base font-semibold text-white">{relatedEntry.title || 'Untitled Note'}</h3>
+                        {relatedEntries.length > 0 ? (
+                            <div className="grid gap-3 md:grid-cols-2">
+                                {relatedEntries.map((relatedEntry) => (
+                                    <Link
+                                        key={relatedEntry.id}
+                                        href={withCurrentReturnTo(`/entry/view?id=${relatedEntry.id}`)}
+                                        className="workspace-soft-panel rounded-2xl p-4 transition-colors"
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
+                                                    {new Date(relatedEntry.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                </p>
+                                                <h3 className="workspace-heading mt-2 text-base font-semibold">{relatedEntry.title || 'Untitled Note'}</h3>
+                                            </div>
+                                            <FiArrowRight size={16} className="text-ink-muted" aria-hidden="true" />
                                         </div>
-                                        <FiArrowRight size={16} className="text-ink-muted" aria-hidden="true" />
-                                    </div>
 
-                                    <p className="mt-3 text-sm leading-7 text-ink-secondary">{relatedEntry.contentPreview}</p>
+                                        <p className="mt-3 text-sm leading-7 text-ink-secondary">{relatedEntry.contentPreview}</p>
 
-                                    <div className="mt-4 flex flex-wrap gap-2">
-                                        {relatedEntry.mood && (
-                                            <TagPill tone="primary">{getMoodEmoji(relatedEntry.mood)} {relatedEntry.mood}</TagPill>
-                                        )}
-                                        <TagPill>{Math.round((relatedEntry.relevance || 0) * 100)}% match</TagPill>
-                                        {relatedEntry.matchReasons.slice(0, 2).map((reason) => (
-                                            <TagPill key={`${relatedEntry.id}-${reason}`}>{reason}</TagPill>
-                                        ))}
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            {relatedEntry.mood && (
+                                                <TagPill tone="primary">{getMoodEmoji(relatedEntry.mood)} {relatedEntry.mood}</TagPill>
+                                            )}
+                                            <TagPill>{Math.round((relatedEntry.relevance || 0) * 100)}% match</TagPill>
+                                            {relatedEntry.matchReasons.slice(0, 2).map((reason) => (
+                                                <TagPill key={`${relatedEntry.id}-${reason}`}>{reason}</TagPill>
+                                            ))}
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : !isLoadingRelated ? (
+                            <EmptyState
+                                title="No Related Notes"
+                                subtitle="This note doesn't have similar entries yet. Keep adding notes to build connections!"
+                            />
+                        ) : null}
                     </AppPanel>
                 )}
             </div>
@@ -599,7 +627,7 @@ function EntryDetailContent() {
 
 export default function EntryDetailClient() {
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Spinner size="md" /></div>}>
             <EntryDetailContent />
         </Suspense>
     );

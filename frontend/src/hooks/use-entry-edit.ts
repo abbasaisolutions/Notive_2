@@ -10,6 +10,7 @@ import {
     normalizeCategory,
     normalizeLifeArea,
 } from '@/constants/life-areas';
+import { useToast } from '@/context/toast-context';
 
 type ApiFetch = (path: string, options?: RequestInit & { retryOnUnauthorized?: boolean }) => Promise<Response>;
 
@@ -45,6 +46,7 @@ export function useEntryEdit({
     const [tagInput, setTagInput] = useState('');
     const [coverImage, setCoverImage] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const toast = useToast();
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
@@ -241,9 +243,12 @@ export function useEntryEdit({
                 lifeArea,
                 chapterId,
             });
+            toast.success('Changes saved');
             navigateAfterSave();
         } catch (err: any) {
-            setError(err.message || 'Failed to update entry');
+            const msg = err.message || 'Failed to update entry';
+            setError(msg);
+            toast.error(msg);
         } finally {
             setIsSaving(false);
         }

@@ -104,6 +104,17 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    
+    // Firebase (Push Notifications)
+    // Import the Firebase BoM (Bill of Materials) for version management
+    implementation platform('com.google.firebase:firebase-bom:34.11.0')
+    
+    // Firebase Cloud Messaging (for push notifications)
+    implementation 'com.google.firebase:firebase-messaging'
+    
+    // Firebase Analytics (recommended for Firebase integration)
+    implementation 'com.google.firebase:firebase-analytics'
+    
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

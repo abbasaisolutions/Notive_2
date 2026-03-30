@@ -141,7 +141,7 @@ export default function PromptExperimentReport() {
             {isLoading ? (
                 <div className="grid gap-4 md:grid-cols-2">
                     {[1, 2].map((item) => (
-                        <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+                        <div key={item} className="workspace-soft-panel rounded-2xl p-5">
                             <div className="h-5 w-40 animate-pulse rounded bg-white/10" />
                             <div className="mt-3 h-4 w-64 animate-pulse rounded bg-white/10" />
                             <div className="mt-5 grid grid-cols-3 gap-3">
@@ -153,11 +153,11 @@ export default function PromptExperimentReport() {
                     ))}
                 </div>
             ) : error ? (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm text-ink-secondary">
+                <div className="workspace-soft-panel rounded-2xl p-5 text-sm text-ink-secondary">
                     {error}
                 </div>
             ) : report.experiments.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm leading-7 text-ink-secondary">
+                <div className="workspace-soft-panel rounded-2xl p-5 text-sm leading-7 text-ink-secondary">
                     Prompt results will appear here after Notive has enough prompt views and replies to compare.
                 </div>
             ) : (
@@ -165,11 +165,11 @@ export default function PromptExperimentReport() {
                     {report.experiments.map((experiment) => {
                         const labels = SURFACE_LABELS[experiment.surface];
                         return (
-                            <div key={`${experiment.surface}-${experiment.experimentId}`} className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5">
+                            <div key={`${experiment.surface}-${experiment.experimentId}`} className="workspace-soft-panel rounded-[1.75rem] p-5">
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div className="space-y-2">
                                         <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">{labels.title}</p>
-                                        <h3 className="text-lg font-semibold text-white">
+                                        <h3 className="workspace-heading text-lg font-semibold">
                                             {formatVariantName(experiment.winningVariant || 'No winner yet')}
                                         </h3>
                                         <p className="max-w-xl text-sm leading-7 text-ink-secondary">
@@ -182,21 +182,21 @@ export default function PromptExperimentReport() {
                                 </div>
 
                                 <div className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
-                                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                                    <div className="workspace-muted-panel rounded-2xl p-3">
                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Impressions</p>
-                                        <p className="mt-2 text-lg font-semibold text-white">{experiment.impressions}</p>
+                                        <p className="workspace-heading mt-2 text-lg font-semibold">{experiment.impressions}</p>
                                     </div>
-                                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                                    <div className="workspace-muted-panel rounded-2xl p-3">
                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Accepted</p>
-                                        <p className="mt-2 text-lg font-semibold text-white">{formatRate(experiment.acceptanceRate)}</p>
+                                        <p className="workspace-heading mt-2 text-lg font-semibold">{formatRate(experiment.acceptanceRate)}</p>
                                     </div>
-                                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                                    <div className="workspace-muted-panel rounded-2xl p-3">
                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Dismissed</p>
-                                        <p className="mt-2 text-lg font-semibold text-white">{formatRate(experiment.dismissalRate)}</p>
+                                        <p className="workspace-heading mt-2 text-lg font-semibold">{formatRate(experiment.dismissalRate)}</p>
                                     </div>
-                                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                                    <div className="workspace-muted-panel rounded-2xl p-3">
                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Ignored</p>
-                                        <p className="mt-2 text-lg font-semibold text-white">{formatRate(experiment.ignoreRate)}</p>
+                                        <p className="workspace-heading mt-2 text-lg font-semibold">{formatRate(experiment.ignoreRate)}</p>
                                     </div>
                                 </div>
 
@@ -209,12 +209,12 @@ export default function PromptExperimentReport() {
                                                 className={`rounded-2xl border p-4 ${
                                                     isWinner
                                                         ? 'border-primary/30 bg-primary/10'
-                                                        : 'border-white/10 bg-white/[0.03]'
+                                                        : 'workspace-soft-panel'
                                                 }`}
                                             >
                                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                                     <div>
-                                                        <p className="text-sm font-semibold text-white">{formatVariantName(variant.variant)}</p>
+                                                        <p className="workspace-heading text-sm font-semibold">{formatVariantName(variant.variant)}</p>
                                                         <p className="text-xs text-ink-secondary">{variant.impressions} prompt views</p>
                                                     </div>
                                                     {isWinner && <TagPill tone="primary">Top style</TagPill>}
@@ -223,15 +223,15 @@ export default function PromptExperimentReport() {
                                                 <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
                                                     <div>
                                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Accept</p>
-                                                        <p className="mt-1 font-semibold text-white">{formatRate(variant.acceptanceRate)}</p>
+                                                        <p className="workspace-heading mt-1 font-semibold">{formatRate(variant.acceptanceRate)}</p>
                                                     </div>
                                                     <div>
                                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Dismiss</p>
-                                                        <p className="mt-1 font-semibold text-white">{formatRate(variant.dismissalRate)}</p>
+                                                        <p className="workspace-heading mt-1 font-semibold">{formatRate(variant.dismissalRate)}</p>
                                                     </div>
                                                     <div>
                                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Ignore</p>
-                                                        <p className="mt-1 font-semibold text-white">{formatRate(variant.ignoreRate)}</p>
+                                                        <p className="workspace-heading mt-1 font-semibold">{formatRate(variant.ignoreRate)}</p>
                                                     </div>
                                                 </div>
                                             </div>

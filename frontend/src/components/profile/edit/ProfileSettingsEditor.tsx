@@ -4,10 +4,17 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
+import { Spinner } from '@/components/ui';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { useAuth } from '@/context/auth-context';
 import { buildProfileContextSummary } from '@/services/profile-context.service';
+import {
+    deleteVoiceLexiconItem,
+    listVoiceLexiconItems,
+    upsertVoiceLexiconItem,
+    type VoiceLexiconItem,
+} from '@/services/voice-lexicon.service';
 import { hasCompletedOnboardingRequirements } from '@/utils/onboarding';
 import { FiArrowLeft, FiClock } from 'react-icons/fi';
 import { NoticeBanner } from './fields';
@@ -15,6 +22,7 @@ import { PreferencesSection } from './PreferencesSection';
 import { PrivacySection } from './PrivacySection';
 import { ProfileSection } from './ProfileSection';
 import { SecuritySection } from './SecuritySection';
+import { mergeGentleReflectionSetting, isGentleReflectionEnabled } from '@/utils/gentle-reflection';
 import {
     addTag,
     asPromptFrequency,
@@ -76,6 +84,14 @@ export function ProfileSettingsEditor() {
     const [notice, setNotice] = useState<Notice | null>(null);
     const [conflict, setConflict] = useState<ConflictState | null>(null);
     const [isSavingTab, setIsSavingTab] = useState<EditableTab | null>(null);
+    const [voiceLexiconItems, setVoiceLexiconItems] = useState<VoiceLexiconItem[]>([]);
+    const [voiceLexiconDraft, setVoiceLexiconDraft] = useState('');
+    const [voiceLexiconAliasesDraft, setVoiceLexiconAliasesDraft] = useState('');
+    const [voiceLexiconLocaleDraft, setVoiceLexiconLocaleDraft] = useState('');
+    const [voiceLexiconTypeDraft, setVoiceLexiconTypeDraft] = useState('');
+    const [voiceLexiconError, setVoiceLexiconError] = useState<string | null>(null);
+    const [isLoadingVoiceLexicon, setIsLoadingVoiceLexicon] = useState(false);
+    const [isSavingVoiceLexicon, setIsSavingVoiceLexicon] = useState(false);
     const [reauthPassword, setReauthPassword] = useState('');
     const [sensitiveActionToken, setSensitiveActionToken] = useState('');
     const [sensitiveSessionExpiresAt, setSensitiveSessionExpiresAt] = useState<string | null>(null);
@@ -125,6 +141,32 @@ export function ProfileSettingsEditor() {
         hydrateDraftsFromSnapshot(user as SnapshotUser);
         setHydratedUserId(user.id);
     }, [user, hydratedUserId]);
+
+    useEffect(() => {
+        if (!user) return;
+
+        let cancelled = false;
+        setIsLoadingVoiceLexicon(true);
+        setVoiceLexiconError(null);
+
+        void listVoiceLexiconItems(apiFetch)
+            .then((items) => {
+                if (cancelled) return;
+                setVoiceLexiconItems(items);
+            })
+            .catch((error: any) => {
+                if (cancelled) return;
+                setVoiceLexiconError(error?.message || 'Failed to load voice spellings.');
+            })
+            .finally(() => {
+                if (cancelled) return;
+                setIsLoadingVoiceLexicon(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [apiFetch, user]);
 
     useEffect(() => {
         const nextTab = resolveEditTab(searchParams.get('tab'));
@@ -250,6 +292,7 @@ export function ProfileSettingsEditor() {
     );
 
     const promptFrequency = asPromptFrequency(privacyDraft.personalizationSignals?.settings?.promptFrequency);
+    const dailyGentleReflectionsEnabled = isGentleReflectionEnabled(privacyDraft.personalizationSignals);
     const safetyRegion = (privacyDraft.personalizationSignals?.supportPreferences?.safetyRegion || 'auto') as SafetyRegion;
     const pinnedPeople = privacyDraft.personalizationSignals?.supportPreferences?.pinnedPeople || [];
     const groundingRoutines = privacyDraft.personalizationSignals?.supportPreferences?.groundingRoutines || [];
@@ -321,6 +364,22 @@ export function ProfileSettingsEditor() {
             };
             return {
                 personalizationSignals: compactSignals(nextSignals),
+            };
+        });
+        resetNoticeState();
+    };
+
+    const handleDailyGentleReflectionsChange = (enabled: boolean) => {
+        setPrivacyDraft((current) => {
+            const nextSignals = ensureSignalsDraft(current.personalizationSignals);
+            const merged = mergeGentleReflectionSetting(nextSignals, enabled);
+
+            return {
+                personalizationSignals: compactSignals({
+                    ...merged,
+                    version: 1,
+                    updatedAt: new Date().toISOString(),
+                }),
             };
         });
         resetNoticeState();
@@ -613,6 +672,7 @@ export function ProfileSettingsEditor() {
                     location: profileDraft.location,
                     occupation: profileDraft.occupation,
                     website: profileDraft.website || null,
+                    birthDate: profileDraft.birthDate || null,
                     lifeGoals: profileDraft.lifeGoals,
                 };
             } else if (tab === 'preferences') {
@@ -983,10 +1043,56 @@ export function ProfileSettingsEditor() {
         }
     };
 
+    const handleSaveVoiceLexiconItem = async () => {
+        const canonical = voiceLexiconDraft.trim();
+        if (!canonical) {
+            setVoiceLexiconError('Add a spelling first.');
+            return;
+        }
+
+        setIsSavingVoiceLexicon(true);
+        setVoiceLexiconError(null);
+
+        try {
+            const item = await upsertVoiceLexiconItem(apiFetch, {
+                canonical,
+                aliases: voiceLexiconAliasesDraft
+                    .split(',')
+                    .map((value) => value.replace(/\s+/g, ' ').trim())
+                    .filter(Boolean),
+                locale: voiceLexiconLocaleDraft || null,
+                itemType: voiceLexiconTypeDraft || null,
+            });
+
+            setVoiceLexiconItems((current) => {
+                const next = current.filter((existing) => existing.id !== item.id);
+                return [item, ...next];
+            });
+            setVoiceLexiconDraft('');
+            setVoiceLexiconAliasesDraft('');
+            setVoiceLexiconLocaleDraft('');
+            setVoiceLexiconTypeDraft('');
+        } catch (error: any) {
+            setVoiceLexiconError(error?.message || 'Failed to save voice spelling.');
+        } finally {
+            setIsSavingVoiceLexicon(false);
+        }
+    };
+
+    const handleDeleteVoiceLexiconEntry = async (id: string) => {
+        setVoiceLexiconError(null);
+        try {
+            await deleteVoiceLexiconItem(apiFetch, id);
+            setVoiceLexiconItems((current) => current.filter((item) => item.id !== id));
+        } catch (error: any) {
+            setVoiceLexiconError(error?.message || 'Failed to remove voice spelling.');
+        }
+    };
+
     if (authLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                <Spinner size="md" />
             </div>
         );
     }
@@ -998,7 +1104,7 @@ export function ProfileSettingsEditor() {
     if (!hydratedUserId) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                <Spinner size="md" />
             </div>
         );
     }
@@ -1010,20 +1116,20 @@ export function ProfileSettingsEditor() {
                     <div className="flex items-start gap-4">
                         <Link
                             href="/profile"
-                            className="mt-1 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-ink-secondary hover:text-white hover:bg-white/10 transition-all"
+                            className="workspace-button-outline mt-1 flex h-12 w-12 items-center justify-center rounded-2xl transition-all"
                         >
                             <FiArrowLeft size={18} aria-hidden="true" />
                         </Link>
                         <div className="space-y-2">
                             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Settings</p>
-                            <h1 className="text-4xl font-serif text-white tracking-tight">Change your details, goals, sign-in, and data</h1>
+                            <h1 className="workspace-heading text-2xl md:text-4xl font-serif tracking-tight">Change your details, goals, sign-in, and data</h1>
                             <p className="max-w-3xl text-sm md:text-base text-ink-secondary">
                                 Keep each kind of change in its own place so saving feels simpler and safer.
                             </p>
                         </div>
                     </div>
-                    <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-ink-secondary">
-                        <div className="flex items-center gap-2 text-white font-semibold">
+                    <div className="workspace-soft-panel rounded-[1.6rem] px-4 py-3 text-sm text-ink-secondary">
+                        <div className="workspace-heading flex items-center gap-2 font-semibold">
                             <FiClock size={16} aria-hidden="true" />
                             Last synced
                         </div>
@@ -1033,22 +1139,22 @@ export function ProfileSettingsEditor() {
 
                 {notice && <NoticeBanner notice={notice} />}
 
-                <SlideUp className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
+                <SlideUp className="workspace-panel rounded-[1.6rem] p-5">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="flex items-start gap-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-white">
+                            <div className="workspace-icon-badge flex h-12 w-12 items-center justify-center rounded-2xl">
                                 <activeTabItem.Icon size={18} aria-hidden="true" />
                             </div>
                             <div>
                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Current section</p>
-                                <h2 className="mt-2 text-2xl font-serif text-white">{activeTabItem.label}</h2>
+                                <h2 className="workspace-heading mt-2 text-2xl font-serif">{activeTabItem.label}</h2>
                                 <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{activeTabDescription}</p>
                             </div>
                         </div>
                         <button
                             type="button"
                             onClick={() => setShowSectionPicker((current) => !current)}
-                            className="rounded-[1.1rem] border border-white/12 bg-black/20 px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:bg-black/30 hover:text-white"
+                            className="workspace-button-outline rounded-[1.1rem] px-4 py-2 text-sm font-semibold transition-colors"
                             aria-expanded={showSectionPicker}
                         >
                             {showSectionPicker ? 'Keep this section' : 'Change section'}
@@ -1067,8 +1173,8 @@ export function ProfileSettingsEditor() {
                                         onClick={() => handleTabChange(tab.id)}
                                         className={`flex items-center gap-2 rounded-[1.2rem] px-4 py-3 text-sm font-semibold transition-all ${
                                             isActive
-                                                ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                                                : 'text-ink-secondary hover:text-white hover:bg-white/5'
+                                                ? 'workspace-button-primary shadow-lg shadow-primary/20'
+                                                : 'workspace-button-ghost'
                                         }`}
                                     >
                                         <tab.Icon size={15} aria-hidden="true" />
@@ -1151,6 +1257,7 @@ export function ProfileSettingsEditor() {
                     <SlideUp>
                         <PrivacySection
                             promptFrequency={promptFrequency}
+                            dailyGentleReflectionsEnabled={dailyGentleReflectionsEnabled}
                             safetyRegion={safetyRegion}
                             pinnedPeople={pinnedPeople}
                             pinnedPeopleDraft={pinnedPeopleDraft}
@@ -1164,7 +1271,16 @@ export function ProfileSettingsEditor() {
                             dismissedCount={dismissedCount}
                             lastSignalAction={lastSignalAction}
                             isExporting={isExporting}
+                            isLoadingVoiceLexicon={isLoadingVoiceLexicon}
+                            isSavingVoiceLexicon={isSavingVoiceLexicon}
+                            voiceLexiconItems={voiceLexiconItems}
+                            voiceLexiconDraft={voiceLexiconDraft}
+                            voiceLexiconAliasesDraft={voiceLexiconAliasesDraft}
+                            voiceLexiconLocaleDraft={voiceLexiconLocaleDraft}
+                            voiceLexiconTypeDraft={voiceLexiconTypeDraft}
+                            voiceLexiconError={voiceLexiconError}
                             onPromptFrequencyChange={handlePromptFrequencyChange}
+                            onDailyGentleReflectionsChange={handleDailyGentleReflectionsChange}
                             onSafetyRegionChange={handleSafetyRegionChange}
                             onPinnedPeopleDraftChange={setPinnedPeopleDraft}
                             onAddPinnedPerson={handleAddPinnedPerson}
@@ -1179,6 +1295,12 @@ export function ProfileSettingsEditor() {
                             onResetSignals={handleResetSignalsDraft}
                             onRemoveSignal={handleRemoveSignal}
                             onExportData={handleExportData}
+                            onVoiceLexiconDraftChange={setVoiceLexiconDraft}
+                            onVoiceLexiconAliasesDraftChange={setVoiceLexiconAliasesDraft}
+                            onVoiceLexiconLocaleDraftChange={setVoiceLexiconLocaleDraft}
+                            onVoiceLexiconTypeDraftChange={setVoiceLexiconTypeDraft}
+                            onSaveVoiceLexiconItem={handleSaveVoiceLexiconItem}
+                            onDeleteVoiceLexiconItem={handleDeleteVoiceLexiconEntry}
                         />
                     </SlideUp>
                 )}
@@ -1186,10 +1308,10 @@ export function ProfileSettingsEditor() {
 
             {activeEditableTab && (activeDirty || activeConflict) && (
                 <div className="fixed inset-x-0 bottom-4 z-40 px-4">
-                    <div className="mx-auto max-w-5xl rounded-[1.6rem] border border-white/10 bg-[#0e1324]/95 px-5 py-4 shadow-2xl backdrop-blur-xl">
+                    <div className="workspace-panel mx-auto max-w-5xl rounded-[1.6rem] px-5 py-4 shadow-2xl">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="space-y-1">
-                                <p className="text-sm font-semibold text-white">
+                                <p className="workspace-heading text-sm font-semibold">
                                     {activeConflict
                                         ? 'This section changed somewhere else.'
                                         : `Unsaved changes in ${TAB_ITEMS.find((tab) => tab.id === activeEditableTab)?.label}.`}
@@ -1206,7 +1328,7 @@ export function ProfileSettingsEditor() {
                                         <button
                                             type="button"
                                             onClick={handleReloadLatest}
-                                            className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-ink-secondary hover:text-white hover:border-white/30 transition-colors"
+                                            className="workspace-button-outline rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
                                         >
                                             Load Newest
                                         </button>
@@ -1214,7 +1336,7 @@ export function ProfileSettingsEditor() {
                                             type="button"
                                             onClick={handleOverwriteAndSave}
                                             disabled={isSavingTab === activeEditableTab}
-                                            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors disabled:opacity-50"
+                                            className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50"
                                         >
                                             {isSavingTab === activeEditableTab && (
                                                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -1227,7 +1349,7 @@ export function ProfileSettingsEditor() {
                                         <button
                                             type="button"
                                             onClick={handleDiscardActiveChanges}
-                                            className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-ink-secondary hover:text-white hover:border-white/30 transition-colors"
+                                            className="workspace-button-outline rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
                                         >
                                             Undo
                                         </button>
@@ -1235,7 +1357,7 @@ export function ProfileSettingsEditor() {
                                             type="button"
                                             onClick={() => saveSection(activeEditableTab)}
                                             disabled={isSavingTab === activeEditableTab}
-                                            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors disabled:opacity-50"
+                                            className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50"
                                         >
                                             {isSavingTab === activeEditableTab && (
                                                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />

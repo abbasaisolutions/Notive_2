@@ -1005,28 +1005,36 @@ Rules:
                 return availability.message || 'AI Coach is not enabled yet for this environment.';
             }
 
+            // Truncate context to prevent token bloat with many entries
+            const MAX_CONTEXT_CHARS = 6000;
+            const truncatedContext = context.length > MAX_CONTEXT_CHARS
+                ? context.slice(0, MAX_CONTEXT_CHARS) + '\n…(additional notes omitted for brevity)'
+                : context;
+
             if (availability.provider === 'llm') {
                 const response = await createLlmChatCompletion({
                     model: aiRuntime.chatModel,
                     messages: [
                         {
                         role: 'system',
-                        content: `You are a helpful and empathetic AI journaling assistant.
-                            You only have access to the grounded note snippets provided below, not the user's full journal.
-                            Use that context to answer the user's question about their life, patterns, and feelings.
+                        content: `You are a personal journal guide for a student. Answer their question directly and concisely.
 
-                            Context (Grounded Note Snippets):
-                            ${context}
+Context (note snippets — the only facts you have):
+${truncatedContext}
 
-                            Instructions:
-                            - Be supportive and insightful.
-                            - Stay grounded in the provided snippets and do not invent missing facts.
-                            - Cite specific dates, titles, moods, or events when possible from the context.
-                            - If the evidence is thin or the answer is not in the snippets, say so gently and offer a next question or general advice.`
+Response rules:
+1. Lead with the answer. First sentence should directly address what they asked.
+2. Keep it short — 2-4 sentences for simple questions, up to 6 for summaries.
+3. Reference specific dates, moods, or words from their notes when relevant.
+4. If the snippets don't contain enough to answer, say "I don't have enough notes on that yet" and suggest what to write about.
+5. Never lecture, moralize, or give unsolicited advice. Mirror what you see in their words.
+6. Use "you" language, not "I found" or "I noticed" — make it about them.
+7. One follow-up question at the end is fine. Never more than one.
+8. No headers, bullet lists, or numbered lists. Write in natural paragraphs.`
                         },
                         { role: 'user', content: query }
                     ],
-                    max_tokens: 500,
+                    max_tokens: 300,
                     temperature: 0.7,
                 });
                 return response?.choices[0]?.message?.content || "I couldn't generate a response.";
@@ -1036,14 +1044,12 @@ Rules:
             const hfToken = (process.env.HF_API_KEY || process.env.HUGGINGFACE_API_KEY || '').trim();
             const hfModel = "mistralai/Mistral-7B-Instruct-v0.2";
 
-            const prompt = `<s>[INST] You are a helpful and empathetic AI journaling assistant.
-Use only the grounded note snippets below to answer the user's question.
-Do not invent details that are not in the snippets.
+            const prompt = `<s>[INST] You are a personal journal guide for a student. Answer their question directly in 2-4 sentences. Reference specific dates or moods from the notes. No bullet lists or headers.
 
 Context:
 ${context}
 
-User Question: ${query} [/INST]`;
+Question: ${query} [/INST]`;
 
             const headers: Record<string, string> = {
                 "Content-Type": "application/json"

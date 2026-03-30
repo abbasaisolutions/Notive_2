@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import SocialImportPanel from '@/components/import/SocialImportPanel';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { ActionBar, AppPanel, SectionHeader, TagPill } from '@/components/ui/surface';
+import { ErrorState, Spinner } from '@/components/ui';
 import { API_URL } from '@/constants/config';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
@@ -220,7 +221,7 @@ export default function ImportPage() {
     if (authLoading || isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                <Spinner size="md" />
             </div>
         );
     }
@@ -238,6 +239,7 @@ export default function ImportPage() {
                             kicker="Imports"
                             title="Move outside memories into your story pipeline"
                             description="Connect apps, review imported notes, verify the strongest stories, and move them into packs you can use."
+                            as="h1"
                         />
 
                         <div className="flex flex-wrap gap-2">
@@ -248,13 +250,13 @@ export default function ImportPage() {
                     </div>
 
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
-                        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                        <div className="workspace-panel rounded-2xl p-4">
                             <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Recommended next step</p>
-                            <h2 className="mt-2 text-xl font-semibold text-white">{nextAction.label}</h2>
+                            <h2 className="workspace-heading mt-2 text-xl font-semibold">{nextAction.label}</h2>
                             <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{nextAction.description}</p>
                             <Link
                                 href={nextAction.href}
-                                className="mt-4 inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
+                                className="workspace-button-primary mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                             >
                                 Continue
                                 <FiArrowRight size={14} aria-hidden="true" />
@@ -262,9 +264,9 @@ export default function ImportPage() {
                         </div>
 
                         <div className="space-y-3">
-                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                            <div className="workspace-soft-panel rounded-2xl p-4">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Import snapshot</p>
-                                <p className="mt-2 text-sm leading-7 text-white">{importSnapshot}</p>
+                                <p className="mt-2 text-sm leading-7 text-[rgb(var(--text-primary))]">{importSnapshot}</p>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     <TagPill tone="primary">{connectedCount}/2 connected</TagPill>
                                     <TagPill>{(status?.instagram || 0) + (status?.facebook || 0)} imported entries</TagPill>
@@ -275,7 +277,7 @@ export default function ImportPage() {
                             <button
                                 type="button"
                                 onClick={() => setShowImportDetails((current) => !current)}
-                                className="inline-flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-ink-secondary transition-colors hover:bg-white/[0.06] hover:text-white"
+                                className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
                                 aria-expanded={showImportDetails}
                             >
                                 {showImportDetails ? 'Hide extra import paths' : 'Show more import paths'}
@@ -286,9 +288,15 @@ export default function ImportPage() {
                 </AppPanel>
 
                 {error && (
-                    <AppPanel tone="soft" className="border-white/15">
-                        <p className="text-sm text-white">{error}</p>
-                    </AppPanel>
+                    <ErrorState
+                        title="Failed to Load"
+                        message={error}
+                        variant="compact"
+                        action={{
+                            label: "Try Again",
+                            onClick: () => window.location.reload(),
+                        }}
+                    />
                 )}
 
                 {showImportDetails && (
@@ -302,10 +310,10 @@ export default function ImportPage() {
                             <div className="grid gap-3 lg:grid-cols-3">
                                 <Link
                                     href={appendReturnTo('/timeline?source=instagram', currentReturnTo)}
-                                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
+                                    className="workspace-soft-panel rounded-2xl p-4 transition hover:opacity-95"
                                 >
                                     <FiLayers size={18} className="text-primary" aria-hidden="true" />
-                                    <h3 className="mt-3 text-lg font-semibold text-white">Review imported notes</h3>
+                                    <h3 className="workspace-heading mt-3 text-lg font-semibold">Review imported notes</h3>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">Open imported memories in time order and read them before editing.</p>
                                 </Link>
                                 <Link
@@ -319,15 +327,15 @@ export default function ImportPage() {
                                             },
                                         });
                                     }}
-                                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
+                                    className="workspace-soft-panel rounded-2xl p-4 transition hover:opacity-95"
                                 >
                                     <FiGrid size={18} className="text-primary" aria-hidden="true" />
-                                    <h3 className="mt-3 text-lg font-semibold text-white">Fix weak stories</h3>
+                                    <h3 className="workspace-heading mt-3 text-lg font-semibold">Fix weak stories</h3>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">Send low-detail notes into the story queue and fill in the missing parts.</p>
                                 </Link>
-                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                <div className="workspace-soft-panel rounded-2xl p-4">
                                     <FiCheckCircle size={18} className="text-primary" aria-hidden="true" />
-                                    <h3 className="mt-3 text-lg font-semibold text-white">Open an output directly</h3>
+                                    <h3 className="workspace-heading mt-3 text-lg font-semibold">Open an output directly</h3>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">Once strong stories are checked, jump straight into the output you need.</p>
                                     <div className="mt-4 flex flex-wrap gap-2">
                                         <Link
@@ -356,7 +364,7 @@ export default function ImportPage() {
                                                     },
                                                 });
                                             }}
-                                            className="rounded-full border border-white/12 bg-black/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-black/30 hover:text-white"
+                                            className="workspace-button-outline rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em]"
                                         >
                                             Statement
                                         </Link>
@@ -371,7 +379,7 @@ export default function ImportPage() {
                                                     },
                                                 });
                                             }}
-                                            className="rounded-full border border-white/12 bg-black/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-black/30 hover:text-white"
+                                            className="workspace-button-outline rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em]"
                                         >
                                             Interview
                                         </Link>
@@ -386,7 +394,7 @@ export default function ImportPage() {
                                 title="See what each imported story needs next"
                                 description="Use status to decide whether imports need more detail, checking, or are ready to use."
                             />
-                            <ActionBar className="gap-2 overflow-x-auto bg-black/20 border-white/10">
+                            <ActionBar className="gap-2 overflow-x-auto">
                                 {(['needs_attention', 'ready_to_verify', 'ready_to_export', 'verified'] as StoryEngineStatus[]).map((statusKey) => (
                                     <Link
                                         key={statusKey}
@@ -399,7 +407,7 @@ export default function ImportPage() {
                                         className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] whitespace-nowrap ${storyStatusClassName[statusKey]}`}
                                     >
                                         {storyStatusLabel[statusKey]}
-                                        <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-xs text-white">
+                                        <span className="workspace-pill-muted rounded-full px-2 py-0.5 text-xs text-[rgb(var(--text-primary))]">
                                             {queueCounts[statusKey]}
                                         </span>
                                     </Link>

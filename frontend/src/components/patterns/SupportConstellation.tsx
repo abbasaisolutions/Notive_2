@@ -3,13 +3,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AppPanel, SectionHeader, TagPill } from '@/components/ui/surface';
+import { useToast } from '@/context/toast-context';
 import type { SupportAnchor, SupportMapResponse } from './types';
 
 const TYPE_STYLES: Record<SupportAnchor['type'], string> = {
-    person: 'border-amber-300/30 bg-amber-200/[0.10] text-white',
-    group: 'border-sky-300/30 bg-sky-300/[0.10] text-white',
-    place: 'border-emerald-300/30 bg-emerald-300/[0.10] text-white',
-    routine: 'border-violet-300/30 bg-violet-300/[0.10] text-white',
+    person: 'border-amber-300/40 bg-amber-200/35 text-[rgb(var(--text-primary))]',
+    group: 'border-sky-300/40 bg-sky-200/35 text-[rgb(var(--text-primary))]',
+    place: 'border-emerald-300/40 bg-emerald-200/35 text-[rgb(var(--text-primary))]',
+    routine: 'border-violet-300/40 bg-violet-200/35 text-[rgb(var(--text-primary))]',
 };
 
 const TYPE_LABELS: Record<SupportAnchor['type'], string> = {
@@ -71,6 +72,7 @@ export default function SupportConstellation({
     const anchors = supportMap?.anchors || [];
     const [selectedId, setSelectedId] = useState<string | null>(anchors[0]?.id || null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const { toast } = useToast();
 
     useEffect(() => {
         setSelectedId((current) => (current && anchors.some((anchor) => anchor.id === current) ? current : anchors[0]?.id || null));
@@ -91,6 +93,7 @@ export default function SupportConstellation({
         try {
             await navigator.clipboard.writeText(anchor.messageStarter);
             setCopiedId(anchor.id);
+            toast.success('Copied to clipboard!');
             onCopyStarter?.(anchor);
             window.setTimeout(() => {
                 setCopiedId((current) => (current === anchor.id ? null : current));
@@ -108,7 +111,7 @@ export default function SupportConstellation({
                     title="Support anchors will form here"
                     description="Once a few notes show who or what helps, Notive will turn them into a visible support map."
                 />
-                <div className="rounded-[1.8rem] border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-ink-secondary">
+                <div className="workspace-soft-panel rounded-[1.8rem] p-5 text-sm leading-7 text-ink-secondary">
                     People, places, and routines do not need to be perfect to matter. Notive will start surfacing them when the pattern gets strong enough.
                 </div>
             </AppPanel>
@@ -130,12 +133,12 @@ export default function SupportConstellation({
             </div>
 
             <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)]">
-                <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(17,23,38,0.96),rgba(9,12,21,0.82))] p-5">
+                <div className="workspace-soft-panel relative overflow-hidden rounded-[2rem] p-5">
                     <div className="pointer-events-none absolute inset-0 opacity-40">
-                        <div className="absolute left-[-8%] top-[18%] h-36 w-36 rounded-full border border-white/10" />
-                        <div className="absolute right-[4%] top-[10%] h-24 w-24 rounded-full border border-white/10" />
-                        <div className="absolute bottom-[12%] left-[12%] h-20 w-20 rounded-full border border-white/10" />
-                        <div className="absolute bottom-[18%] right-[10%] h-32 w-32 rounded-full border border-white/10" />
+                        <div className="absolute left-[-8%] top-[18%] h-36 w-36 rounded-full border border-[rgba(var(--paper-border),0.76)]" />
+                        <div className="absolute right-[4%] top-[10%] h-24 w-24 rounded-full border border-[rgba(var(--paper-border),0.76)]" />
+                        <div className="absolute bottom-[12%] left-[12%] h-20 w-20 rounded-full border border-[rgba(var(--paper-border),0.76)]" />
+                        <div className="absolute bottom-[18%] right-[10%] h-32 w-32 rounded-full border border-[rgba(var(--paper-border),0.76)]" />
                     </div>
                     <div className="relative flex min-h-[18rem] flex-wrap items-center justify-center gap-3">
                         {anchors.map((anchor, index) => {
@@ -158,9 +161,9 @@ export default function SupportConstellation({
                                         transform: `translateY(${offset})`,
                                     }}
                                 >
-                                    <p className="text-xs uppercase tracking-[0.12em] text-white/70">{TYPE_LABELS[anchor.type]}</p>
-                                    <p className="mt-1 text-sm font-semibold text-white">{anchor.label}</p>
-                                    <p className="mt-1 text-xs text-white/70">{anchor.supportCount} steady notes</p>
+                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">{TYPE_LABELS[anchor.type]}</p>
+                                    <p className="workspace-heading mt-1 text-sm font-semibold">{anchor.label}</p>
+                                    <p className="mt-1 text-xs text-ink-secondary">{anchor.supportCount} steady notes</p>
                                 </button>
                             );
                         })}
@@ -169,7 +172,7 @@ export default function SupportConstellation({
 
                 {activeAnchor && (
                     <div className="space-y-4">
-                        <div className="rounded-[1.8rem] border border-white/10 bg-black/20 p-5">
+                        <div className="workspace-panel rounded-[1.8rem] p-5">
                             <div className="flex flex-wrap items-center gap-2">
                                 <TagPill tone="primary">{TYPE_LABELS[activeAnchor.type]}</TagPill>
                                 <TagPill>{Math.round(activeAnchor.strength * 100)}% strength</TagPill>
@@ -189,14 +192,14 @@ export default function SupportConstellation({
                                     </TagPill>
                                 ) : null}
                             </div>
-                            <h3 className="mt-4 text-2xl font-semibold text-white">{activeAnchor.label}</h3>
+                            <h3 className="workspace-heading mt-4 text-2xl font-semibold">{activeAnchor.label}</h3>
                             <p className="mt-3 text-sm leading-7 text-ink-secondary">{activeAnchor.whyItHelps}</p>
                         </div>
 
                         {activeAnchor.outcomeMemory && (
                             <div className="rounded-[1.8rem] border border-emerald-300/20 bg-emerald-300/[0.06] p-5">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">After reach-outs</p>
-                                <p className="mt-2 text-sm leading-7 text-white">
+                                <p className="mt-2 text-sm leading-7 text-[rgb(var(--text-primary))]">
                                     {formatOutcomeMemoryLine(activeAnchor)}
                                 </p>
                                 <div className="mt-4 flex flex-wrap gap-2">
@@ -224,15 +227,15 @@ export default function SupportConstellation({
 
                         <div className="rounded-[1.8rem] border border-amber-300/20 bg-amber-200/[0.06] p-5">
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Reconnect move</p>
-                            <p className="mt-2 text-sm leading-7 text-white">{activeAnchor.reconnectSuggestion}</p>
+                            <p className="mt-2 text-sm leading-7 text-[rgb(var(--text-primary))]">{activeAnchor.reconnectSuggestion}</p>
                             {activeAnchor.messageStarter && (
                                 <>
                                     <p className="mt-4 text-xs uppercase tracking-[0.12em] text-ink-muted">What to say</p>
-                                    <p className="mt-2 text-sm leading-7 text-white/90">{activeAnchor.messageStarter}</p>
+                                    <p className="mt-2 text-sm leading-7 text-[rgb(var(--text-primary))]">{activeAnchor.messageStarter}</p>
                                     <button
                                         type="button"
                                         onClick={() => handleCopy(activeAnchor)}
-                                        className="mt-4 rounded-full border border-amber-300/25 bg-amber-200/[0.08] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-amber-200/[0.14]"
+                                        className="workspace-button-outline mt-4 rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em]"
                                     >
                                         {copiedId === activeAnchor.id ? 'Copied' : 'Copy check-in line'}
                                     </button>
@@ -240,10 +243,10 @@ export default function SupportConstellation({
                             )}
                         </div>
 
-                        <div className="rounded-[1.8rem] border border-white/10 bg-white/[0.03] p-5">
+                        <div className="workspace-soft-panel rounded-[1.8rem] p-5">
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Grounding notes</p>
                             {activeAnchor.evidence.length === 0 ? (
-                                <div className="mt-4 rounded-2xl border border-dashed border-white/12 bg-black/20 p-4 text-sm leading-7 text-ink-secondary">
+                                <div className="workspace-muted-panel mt-4 rounded-2xl border-dashed p-4 text-sm leading-7 text-ink-secondary">
                                     {activeAnchor.source === 'pinned'
                                         ? 'This anchor is pinned in Me, so it stays available even before enough notes build evidence around it.'
                                         : 'No grounding notes are attached to this anchor yet.'}
@@ -251,18 +254,18 @@ export default function SupportConstellation({
                             ) : (
                                 <div className="mt-4 space-y-3">
                                     {activeAnchor.evidence.map((evidence) => (
-                                        <div key={`${activeAnchor.id}-${evidence.entryId}-${evidence.createdAt}`} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                        <div key={`${activeAnchor.id}-${evidence.entryId}-${evidence.createdAt}`} className="workspace-muted-panel rounded-2xl p-4">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <TagPill tone={VALENCE_TONES[evidence.valence]}>{evidence.valence}</TagPill>
                                                 <TagPill>{evidence.createdAt}</TagPill>
                                             </div>
-                                            <p className="mt-3 text-sm font-semibold text-white">{evidence.title || 'Untitled note'}</p>
+                                            <p className="workspace-heading mt-3 text-sm font-semibold">{evidence.title || 'Untitled note'}</p>
                                             <p className="mt-2 text-sm leading-7 text-ink-secondary">{evidence.excerpt}</p>
                                             <p className="mt-2 text-xs leading-6 text-ink-muted">{evidence.reason}</p>
                                             {openEntryHref && (
                                                 <Link
                                                     href={openEntryHref(evidence.entryId)}
-                                                    className="mt-3 inline-flex rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary transition-colors hover:bg-white/[0.08] hover:text-white"
+                                                    className="workspace-button-outline mt-3 inline-flex rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em]"
                                                 >
                                                     Open note
                                                 </Link>

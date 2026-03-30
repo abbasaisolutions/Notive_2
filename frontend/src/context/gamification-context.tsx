@@ -96,23 +96,27 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     const [newBadge, setNewBadge] = useState<typeof BADGES[keyof typeof BADGES] | null>(null);
     const [showCelebration, setShowCelebration] = useState(false);
     const [celebrationType, setCelebrationType] = useState<'badge' | 'levelup' | 'streak' | null>(null);
+    const buildBaseStats = (): UserStats => ({
+        xp: 0,
+        level: 1,
+        badges: [],
+        currentStreak: 0,
+        totalEntries: 0,
+        totalWords: 0,
+    });
 
     // Load stats from localStorage (we'll store locally for simplicity)
     useEffect(() => {
         if (user) {
-            const stored = localStorage.getItem(`notive_stats_${user.id}`);
-            if (stored) {
-                setStats(JSON.parse(stored));
-            } else {
-                setStats({
-                    xp: 0,
-                    level: 1,
-                    badges: [],
-                    currentStreak: 0,
-                    totalEntries: 0,
-                    totalWords: 0,
-                });
+            try {
+                const stored = localStorage.getItem(`notive_stats_${user.id}`);
+                setStats(stored ? JSON.parse(stored) as UserStats : null);
+            } catch (error) {
+                console.warn('Failed to parse stored gamification stats:', error);
+                setStats(null);
             }
+        } else {
+            setStats(null);
         }
         setIsLoading(false);
     }, [user]);
@@ -128,41 +132,41 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
         if (!accessToken) return;
 
         try {
+            setIsLoading(true);
             const response = await apiFetch(`${API_URL}/analytics/stats`);
             if (response.ok) {
                 const data = await response.json();
                 setStats(prev => {
-                    if (!prev) return prev;
-
-                    const newStats = { ...prev };
+                    const base = prev ?? buildBaseStats();
+                    const newStats = { ...base };
 
                     // Check for new badges
-                    if (data.totalEntries >= 1 && !prev.badges.includes('first_entry')) {
-                        newStats.badges = [...prev.badges, 'first_entry'];
+                    if (data.totalEntries >= 1 && !base.badges.includes('first_entry')) {
+                        newStats.badges = [...base.badges, 'first_entry'];
                         setNewBadge(BADGES.first_entry);
                         setCelebrationType('badge');
                         setShowCelebration(true);
                     }
-                    if (data.currentStreak >= 3 && !prev.badges.includes('streak_3')) {
-                        newStats.badges = [...prev.badges, 'streak_3'];
+                    if (data.currentStreak >= 3 && !newStats.badges.includes('streak_3')) {
+                        newStats.badges = [...newStats.badges, 'streak_3'];
                         setNewBadge(BADGES.streak_3);
                         setCelebrationType('streak');
                         setShowCelebration(true);
                     }
-                    if (data.currentStreak >= 7 && !prev.badges.includes('streak_7')) {
-                        newStats.badges = [...prev.badges, 'streak_7'];
+                    if (data.currentStreak >= 7 && !newStats.badges.includes('streak_7')) {
+                        newStats.badges = [...newStats.badges, 'streak_7'];
                         setNewBadge(BADGES.streak_7);
                         setCelebrationType('streak');
                         setShowCelebration(true);
                     }
-                    if (data.totalEntries >= 10 && !prev.badges.includes('entries_10')) {
-                        newStats.badges = [...prev.badges, 'entries_10'];
+                    if (data.totalEntries >= 10 && !newStats.badges.includes('entries_10')) {
+                        newStats.badges = [...newStats.badges, 'entries_10'];
                         setNewBadge(BADGES.entries_10);
                         setCelebrationType('badge');
                         setShowCelebration(true);
                     }
-                    if (data.totalWords >= 1000 && !prev.badges.includes('words_1000')) {
-                        newStats.badges = [...prev.badges, 'words_1000'];
+                    if (data.totalWords >= 1000 && !newStats.badges.includes('words_1000')) {
+                        newStats.badges = [...newStats.badges, 'words_1000'];
                         setNewBadge(BADGES.words_1000);
                         setCelebrationType('badge');
                         setShowCelebration(true);
@@ -177,22 +181,23 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
             }
         } catch (error) {
             console.error('Failed to refresh stats:', error);
+        } finally {
+            setIsLoading(false);
         }
     }, [accessToken, apiFetch]);
 
     const awardXP = useCallback((amount: number, reason: string) => {
         setStats(prev => {
-            if (!prev) return prev;
-
-            const newXP = prev.xp + amount;
+            const base = prev ?? buildBaseStats();
+            const newXP = base.xp + amount;
             const newLevel = getLevelFromXP(newXP);
 
-            if (newLevel > prev.level) {
+            if (newLevel > base.level) {
                 setCelebrationType('levelup');
                 setShowCelebration(true);
             }
 
-            return { ...prev, xp: newXP, level: newLevel };
+            return { ...base, xp: newXP, level: newLevel };
         });
     }, []);
 

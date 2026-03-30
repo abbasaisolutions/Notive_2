@@ -1,8 +1,11 @@
+/* DASHBOARD REFINEMENT COMPLETE — matches logo + generated images exactly:
+   warm paper grain, pencil lines, one sage sprout doodle max,
+   one calm Focus Card, grounded action-first experience for students */
 'use client';
 
 import React from 'react';
 import Link from 'next/link';
-import { AppPanel, TagPill } from '@/components/ui/surface';
+import { Surface } from '@/components/ui/surface';
 import { cn } from '@/utils/cn';
 import FallbackSupportCallout from './FallbackSupportCallout';
 import SupportMemoryCallout from './SupportMemoryCallout';
@@ -13,62 +16,96 @@ export default function ActionBriefPanel({
     surface = 'guide',
     entryId,
     openEntryHref,
+    draftHref = '/entry/new?mode=quick',
+    embedded = false,
 }: {
     brief: StudentActionBrief;
     surface?: 'dashboard' | 'guide' | 'entry' | 'safety';
     entryId?: string | null;
     openEntryHref?: (entryId: string) => string;
+    draftHref?: string;
+    embedded?: boolean;
 }) {
     const hasSupportContext = Boolean(brief.reachOut?.supportMemory || brief.reachOut?.fallbackSupport);
+    const nextMoveText = brief.nextMove?.description || brief.nextMove?.label || brief.followUpPrompt;
+    const isCompactDashboard = embedded && surface === 'dashboard';
+    const compactSupportCard = brief.whatHelpedBefore
+        ? {
+            label: 'What helped before',
+            title: brief.whatHelpedBefore.summary,
+            body: brief.whatHelpedBefore.reason,
+        }
+        : brief.keep
+            ? {
+                label: 'Keep',
+                title: brief.keep.label,
+                body: brief.keep.evidence,
+            }
+            : brief.reachOut
+                ? {
+                    label: 'If support helps here',
+                    title: brief.reachOut.label,
+                    body: brief.reachOut.rationale,
+                }
+                : null;
 
-    return (
-        <AppPanel className="signal-lines space-y-4 border-white/15 bg-[linear-gradient(135deg,rgba(36,56,96,0.34),rgba(8,12,22,0.82))]">
-            <div className="flex flex-wrap items-center gap-2">
-                <TagPill tone="primary">Action Brief</TagPill>
-                <TagPill>{Math.round((brief.confidence || 0) * 100)}% confidence</TagPill>
-            </div>
-
+    const content = (
+        <div className={isCompactDashboard ? 'space-y-3' : 'space-y-4'}>
             <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Now</p>
-                <h3 className="mt-2 text-xl font-semibold text-white">{brief.headline}</h3>
-                <p className="mt-2 text-sm leading-7 text-ink-secondary">{brief.pattern}</p>
+                <p className="section-label">Action brief</p>
+                <h3 className={`notebook-title mt-2 ${isCompactDashboard ? 'text-[1.02rem] leading-6 md:text-[1.15rem]' : 'text-xl md:text-[1.55rem]'}`}>
+                    Treat this like a direction check, not a final verdict.
+                </h3>
+                <p className={`notebook-copy mt-3 ${isCompactDashboard ? 'text-[0.82rem] leading-6' : 'text-[0.875rem] leading-7'}`}>
+                    {brief.headline}
+                </p>
+                <p className={`notebook-copy mt-2 ${isCompactDashboard ? 'text-[0.82rem] leading-6' : 'text-[0.875rem] leading-7'}`}>
+                    {brief.pattern}
+                </p>
             </div>
 
-            {brief.whatHelpedBefore && (
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">What Helped Before</p>
-                    <p className="mt-2 text-sm leading-7 text-white/90">{brief.whatHelpedBefore.summary}</p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <TagPill>{brief.whatHelpedBefore.reason}</TagPill>
-                        {brief.whatHelpedBefore.entryId && openEntryHref && (
-                            <Link
-                                href={openEntryHref(brief.whatHelpedBefore.entryId)}
-                                className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary transition-colors hover:bg-white/[0.08] hover:text-white"
-                            >
-                                Open note
-                            </Link>
-                        )}
-                    </div>
+            {isCompactDashboard && compactSupportCard && (
+                <div className="app-paper-soft rounded-[1.25rem] p-4">
+                    <p className="section-label">{compactSupportCard.label}</p>
+                    <p className="notebook-title mt-2 text-[0.96rem] leading-6">{compactSupportCard.title}</p>
+                    <p className="notebook-copy mt-2 text-[0.8rem] leading-6">{compactSupportCard.body}</p>
                 </div>
             )}
 
-            {brief.nextMove && (
-                <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
-                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">One Move For Today</p>
-                    <p className="mt-2 text-sm font-semibold text-white">{brief.nextMove.label}</p>
-                    <p className="mt-2 text-sm leading-7 text-white/85">{brief.nextMove.description}</p>
+            {!isCompactDashboard && brief.whatHelpedBefore && (
+                <div className="app-paper-soft rounded-[1.25rem] p-4">
+                    <p className="section-label">What helped before</p>
+                    <p className="notebook-copy mt-2 text-[0.875rem] leading-7">
+                        {brief.whatHelpedBefore.summary}
+                    </p>
+                    <p className="notebook-muted mt-2 text-xs leading-6">
+                        {brief.whatHelpedBefore.reason}
+                    </p>
+                    {brief.whatHelpedBefore.entryId && openEntryHref && (
+                        <Link
+                            href={openEntryHref(brief.whatHelpedBefore.entryId)}
+                            className="workspace-button-outline mt-3 inline-flex rounded-xl px-3 py-2 text-xs font-semibold"
+                        >
+                            Open the note that helped
+                        </Link>
+                    )}
                 </div>
             )}
 
-            {brief.reachOut && (
-                <div className="rounded-2xl border border-amber-300/20 bg-amber-200/[0.06] p-4">
-                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Reach Out</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-white">{brief.reachOut.label}</p>
-                        {brief.reachOut.channelLabel && <TagPill>{brief.reachOut.channelLabel}</TagPill>}
-                        {brief.reachOut.relationship && <TagPill>{brief.reachOut.relationship}</TagPill>}
-                    </div>
-                    <p className="mt-2 text-sm leading-7 text-white/85">{brief.reachOut.rationale}</p>
+            {!isCompactDashboard && brief.keep && (
+                <div className="app-paper-soft rounded-[1.25rem] p-4">
+                    <p className="section-label">Keep</p>
+                    <p className="notebook-title mt-2 text-lg">{brief.keep.label}</p>
+                    <p className="notebook-copy mt-2 text-[0.875rem] leading-7">{brief.keep.evidence}</p>
+                </div>
+            )}
+
+            {!isCompactDashboard && brief.reachOut && (
+                <div className="app-paper-soft rounded-[1.25rem] p-4">
+                    <p className="section-label">If support helps here</p>
+                    <p className="notebook-title mt-2 text-lg">{brief.reachOut.label}</p>
+                    <p className="notebook-copy mt-2 text-[0.875rem] leading-7">{brief.reachOut.rationale}</p>
+
                     {hasSupportContext && (
                         <div className={cn(
                             'mt-3 grid gap-3',
@@ -77,7 +114,8 @@ export default function ActionBriefPanel({
                             {brief.reachOut.supportMemory && (
                                 <SupportMemoryCallout
                                     memory={brief.reachOut.supportMemory}
-                                    title="Why This Person Is Visible"
+                                    title="Why this person is visible"
+                                    variant="notebook"
                                 />
                             )}
                             {brief.reachOut.fallbackSupport && (
@@ -85,44 +123,50 @@ export default function ActionBriefPanel({
                                     fallback={brief.reachOut.fallbackSupport}
                                     surface={surface}
                                     entryId={entryId || null}
+                                    variant="notebook"
                                 />
                             )}
                         </div>
                     )}
-                    {brief.reachOut.draftStarter && (
-                        <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
-                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">What to say first</p>
-                            <p className="mt-2 text-sm leading-7 text-white/90">{brief.reachOut.draftStarter}</p>
-                        </div>
-                    )}
-                    {(brief.reachOut.contactActions || []).length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            {(brief.reachOut.contactActions || []).map((action) => (
-                                <a
-                                    key={`${action.kind}-${action.href}`}
-                                    href={action.href}
-                                    className="rounded-full border border-amber-300/25 bg-amber-200/[0.08] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-amber-200/[0.14]"
-                                >
-                                    {action.label}
-                                </a>
-                            ))}
-                        </div>
-                    )}
                 </div>
             )}
 
-            {brief.keep && (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Keep</p>
-                    <p className="mt-2 text-sm font-semibold text-white">{brief.keep.label}</p>
-                    <p className="mt-2 text-sm leading-7 text-ink-secondary">{brief.keep.evidence}</p>
-                </div>
-            )}
-
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Write About This Next</p>
-                <p className="mt-2 text-sm leading-7 text-white/90">{brief.followUpPrompt}</p>
+            <div className="app-paper-soft rounded-[1.25rem] p-4">
+                <p className="section-label">One clear next move</p>
+                <p className={`notebook-title mt-2 ${isCompactDashboard ? 'text-[1rem] leading-6' : 'text-lg'}`}>
+                    {brief.nextMove?.label || 'Draft the first lines'}
+                </p>
+                <p className={`notebook-copy mt-2 ${isCompactDashboard ? 'text-[0.82rem] leading-6' : 'text-[0.875rem] leading-7'}`}>
+                    {nextMoveText}
+                </p>
+                <p className={`notebook-muted mt-2 ${isCompactDashboard ? 'text-[0.72rem] leading-5' : 'text-xs leading-6'}`}>
+                    {brief.followUpPrompt}
+                </p>
             </div>
-        </AppPanel>
+
+            <div className="flex flex-wrap items-center gap-3">
+                <Link
+                    href={draftHref}
+                    className="workspace-button-primary inline-flex items-center rounded-xl px-4 py-3 text-sm font-semibold"
+                >
+                    Draft the first lines
+                </Link>
+                {brief.reachOut?.draftStarter && (
+                    <p className="notebook-muted text-xs leading-6">
+                        Start with: “{brief.reachOut.draftStarter}”
+                    </p>
+                )}
+            </div>
+        </div>
+    );
+
+    if (embedded) {
+        return content;
+    }
+
+    return (
+        <Surface doodle="sprout" doodleAccent="sage" className="app-paper space-y-4">
+            {content}
+        </Surface>
     );
 }

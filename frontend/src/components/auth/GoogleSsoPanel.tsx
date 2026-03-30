@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { getCredentialSsoAvailability } from '@/utils/sso';
+import { ensureNativeGoogleSsoInitialized, signInWithNativeGoogleCredential } from '@/utils/native-google-auth';
+import { FiLoader } from 'react-icons/fi';
 
 type GoogleSsoPanelMode = 'login' | 'register' | 'reauth';
 
@@ -62,48 +64,106 @@ export function GoogleSsoPanel({
 }: GoogleSsoPanelProps) {
     const availability = getCredentialSsoAvailability('google');
     const copy = PANEL_COPY[mode];
+    const [nativeLoading, setNativeLoading] = useState(false);
+    const [nativeError, setNativeError] = useState<string | null>(null);
     const showButton = availability.enabled;
-    const isInteractionDisabled = isLoading || isBlocked;
+    const isNativeSso = availability.enabled && availability.surface === 'native';
+    const isInteractionDisabled = isLoading || isBlocked || nativeLoading;
 
-    let unavailableMessage = 'Google sign-in is being configured for this environment.';
-    if (availability.reason === 'native_webview') {
-        unavailableMessage = 'Google sign-in is not enabled inside the mobile app yet. Use email and password here, or sign in on the web at notive.abbasaisolutions.com.';
-    }
+    useEffect(() => {
+        if (!isNativeSso) return;
+
+        let isMounted = true;
+        void ensureNativeGoogleSsoInitialized().catch((error) => {
+            if (!isMounted) return;
+            setNativeError(error instanceof Error ? error.message : 'Google sign-in is not ready on this device yet.');
+        });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [isNativeSso]);
+
+    const unavailableMessage = useMemo(() => {
+        if (nativeError) {
+            return nativeError;
+        }
+
+        if (availability.reason === 'missing_ios_client_id') {
+            return 'Google sign-in is missing the iOS client ID for this mobile build.';
+        }
+
+        return 'Google sign-in is being configured for this environment.';
+    }, [availability.reason, nativeError]);
+
+    const handleNativeSignIn = async () => {
+        try {
+            setNativeError(null);
+            setNativeLoading(true);
+            const credential = await signInWithNativeGoogleCredential();
+            await onSuccess({ credential });
+        } catch (error) {
+            setNativeError(error instanceof Error ? error.message : 'Google sign-in failed. Please try again.');
+            onError();
+        } finally {
+            setNativeLoading(false);
+        }
+    };
 
     return (
-        <div className={`rounded-2xl border border-white/10 bg-white/[0.03] p-4 ${ALIGNMENT[align]}`}>
+        <div className={`rounded-2xl workspace-soft-panel p-4 ${ALIGNMENT[align]}`}>
             <div className={`flex w-full flex-col gap-4 ${ALIGNMENT[align]}`}>
                 <div className="space-y-2">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-muted">
                         {copy.eyebrow}
                     </p>
                     <div className="space-y-1">
-                        <p className="text-base font-semibold text-white">{copy.title}</p>
+                        <p className="text-base font-semibold workspace-heading">{copy.title}</p>
                         <p className="text-sm text-ink-secondary">{copy.description}</p>
                     </div>
                 </div>
 
                 {showButton ? (
                     <div className={`flex w-full flex-col gap-3 ${ALIGNMENT[align]}`}>
-                        <div className={`max-w-full ${isInteractionDisabled ? 'pointer-events-none opacity-60' : ''}`}>
-                            <GoogleLogin
-                                onSuccess={onSuccess}
-                                onError={onError}
-                                theme="outline"
-                                size="large"
-                                shape="pill"
-                                text={copy.buttonText}
-                                width="320"
-                            />
-                        </div>
+                        {isNativeSso ? (
+                            <button
+                                type="button"
+                                onClick={handleNativeSignIn}
+                                disabled={isInteractionDisabled}
+                                className="inline-flex w-full max-w-[320px] items-center justify-center gap-3 rounded-[1.2rem] border border-[rgba(92,92,92,0.22)] bg-[rgba(255,251,245,0.9)] px-4 py-3 text-sm font-semibold text-[rgb(58,58,58)] transition-all hover:bg-[rgba(255,251,245,0.96)] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {nativeLoading ? (
+                                    <FiLoader className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                ) : (
+                                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[rgba(92,92,92,0.18)] bg-white text-xs font-semibold">
+                                        G
+                                    </span>
+                                )}
+                                <span>{copy.title}</span>
+                            </button>
+                        ) : (
+                            <div className={`max-w-full ${isInteractionDisabled ? 'pointer-events-none opacity-60' : ''}`}>
+                                <GoogleLogin
+                                    onSuccess={onSuccess}
+                                    onError={onError}
+                                    theme="outline"
+                                    size="large"
+                                    shape="pill"
+                                    text={copy.buttonText}
+                                    width="320"
+                                />
+                            </div>
+                        )}
                         {isBlocked && blockedMessage ? (
                             <p className="text-xs text-ink-muted">{blockedMessage}</p>
+                        ) : nativeError ? (
+                            <p className="text-xs text-[rgb(122,87,76)]">{nativeError}</p>
                         ) : (
                             <p className="text-xs text-ink-muted">{copy.supportText}</p>
                         )}
                     </div>
                 ) : (
-                    <div className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-ink-secondary">
+                    <div className="w-full rounded-xl workspace-muted-panel px-4 py-3 text-sm text-ink-secondary">
                         {unavailableMessage}
                     </div>
                 )}

@@ -2,13 +2,20 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import NotiveLogo from '@/components/ui/NotiveLogo';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Input, Button } from '@/components/ui/form-elements';
 import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
 import { GoogleSsoPanel } from '@/components/auth/GoogleSsoPanel';
 import { motion } from 'framer-motion';
-import { sanitizeReturnTo } from '@/utils/redirect';
+import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
+import {
+    quietNotebookPageStyle,
+    quietNotebookPanelStyle,
+} from '@/components/marketing/NotiveShowcase';
+import { unwrapSetupReturnTo } from '@/utils/redirect';
 import { resolvePostAuthDestination } from '@/utils/auth-routing';
 
 type LoginFieldErrors = {
@@ -17,16 +24,14 @@ type LoginFieldErrors = {
 };
 
 const TRUST_POINTS = [
-    'Safe sign-in and secure sessions',
-    'Your notes, patterns, and stories stay together',
-    'One place for life, school, and work stories',
+    'Your notes are private and encrypted',
+    'No ads, no data selling — ever',
+    'Works on phone, tablet, and laptop',
 ];
 
-const FLOW_STEPS = [
-    { title: 'Write', description: 'Save the moment while it is fresh.' },
-    { title: 'See', description: 'Notice feelings, habits, and topics.' },
-    { title: 'Use', description: 'Turn notes into stories you can use.' },
-];
+const SIGNIN_DESKTOP_HERO = '/images/auth-signin-desktop.jpg';
+const SIGNIN_MOBILE_HERO = '/images/auth-signin-mobile.jpg';
+const AUTH_SIDE_STRIP = '/images/auth-side-strip.jpg';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -42,7 +47,7 @@ export default function LoginPage() {
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const params = new URLSearchParams(window.location.search);
-        setSafeReturnTo(sanitizeReturnTo(params.get('returnTo')));
+        setSafeReturnTo(unwrapSetupReturnTo(params.get('returnTo')));
         if (params.get('reason') === 'session-expired') {
             setNotice('Your session expired. Please sign in again.');
         } else {
@@ -53,7 +58,7 @@ export default function LoginPage() {
     const resolvePostAuthRoute = useCallback((nextUser?: typeof user) => {
         const resolvedReturnTo = safeReturnTo || (
             typeof window !== 'undefined'
-                ? sanitizeReturnTo(new URLSearchParams(window.location.search).get('returnTo'))
+                ? unwrapSetupReturnTo(new URLSearchParams(window.location.search).get('returnTo'))
                 : null
         );
         return resolvePostAuthDestination(nextUser ?? user, resolvedReturnTo);
@@ -120,90 +125,119 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4 py-8 relative overflow-hidden">
-            <motion.div
-                animate={{
-                    scale: [1, 1.18, 1],
-                    opacity: [0.2, 0.45, 0.2],
-                }}
-                transition={{
-                    duration: 11,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                }}
-                className="absolute top-[-8rem] left-[-4rem] w-[30rem] h-[30rem] bg-primary/25 rounded-full blur-[140px] pointer-events-none"
-            />
-            <motion.div
-                animate={{
-                    scale: [1, 1.14, 1],
-                    opacity: [0.18, 0.35, 0.18],
-                }}
-                transition={{
-                    duration: 14,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                    delay: 1.3,
-                }}
-                className="absolute bottom-[-10rem] right-[-4rem] w-[28rem] h-[28rem] bg-secondary/25 rounded-full blur-[140px] pointer-events-none"
-            />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_12%,rgba(255,255,255,0.08),transparent_38%),radial-gradient(circle_at_80%_76%,rgba(255,255,255,0.06),transparent_42%)] pointer-events-none" />
+        <div className="page-paper-canvas min-h-screen px-3 py-3 md:px-5 md:py-5" style={quietNotebookPageStyle}>
+            <FadeIn className="mx-auto w-full max-w-[88rem]">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.84fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_320px]">
+                    <div className="space-y-4">
+                        <div
+                            className="paper-card app-paper overflow-hidden rounded-[2rem] lg:hidden"
+                            style={quietNotebookPanelStyle}
+                        >
+                            <div className="relative h-[18rem] sm:h-[20rem]">
+                                <Image
+                                    src={SIGNIN_MOBILE_HERO}
+                                    alt="Phone mockup of the Notive sign-in screen with welcome-back form fields, showing the calm notebook interface students return to on mobile."
+                                    fill
+                                    priority
+                                    sizes="100vw"
+                                    className="object-cover object-center"
+                                />
+                                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.5))]" />
+                                <div className="absolute inset-x-0 top-0 p-4">
+                                    <div className="inline-flex rounded-[1rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.84)] px-3 py-2">
+                                        <NotiveLogo href="/" size="xs" />
+                                    </div>
+                                </div>
+                                <div className="absolute inset-x-0 bottom-0 p-4">
+                                    <div className="rounded-[1.4rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-4 backdrop-blur-sm">
+                                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                                            Sign in
+                                        </p>
+                                        <h2 className="mt-2 text-2xl font-semibold leading-[1.08] tracking-[-0.04em] text-[rgb(39,35,31)]">
+                                            Return to your notebook.
+                                        </h2>
+                                        <p className="mt-2 text-sm leading-6 text-[rgb(76,70,62)]">
+                                            Pick up the calmer thread you already started.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-            <FadeIn className="w-full max-w-6xl relative z-10">
-                <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-6 items-stretch">
-                    <section className="hidden lg:flex flex-col rounded-[2rem] border border-white/10 bg-gradient-to-br from-surface-2/75 via-surface-1/70 to-surface-1/55 p-8 shadow-2xl shadow-black/25 relative overflow-hidden">
-                        <div className="absolute top-[-10rem] right-[-4rem] w-72 h-72 bg-primary/20 rounded-full blur-[90px] pointer-events-none" />
-                        <div className="absolute bottom-[-8rem] left-[-4rem] w-72 h-72 bg-secondary/20 rounded-full blur-[90px] pointer-events-none" />
-                        <div className="relative z-10 space-y-6">
-                            <span className="section-kicker">Sign In</span>
-                            <h1 className="text-4xl xl:text-5xl text-white leading-tight">Come back to your notes, patterns, and stories.</h1>
-                            <p className="text-base text-ink-secondary max-w-lg">
-                                One calmer place for writing, reviewing memories, and shaping stories you can use later.
+                        <div
+                            className="paper-card app-paper relative hidden overflow-hidden rounded-[2rem] lg:flex lg:min-h-[42rem]"
+                            style={quietNotebookPanelStyle}
+                        >
+                            <Image
+                                src={SIGNIN_DESKTOP_HERO}
+                                alt="Phone mockup showing a teen opening Notive sign-in with an Action Brief notebook scene, signaling a calm notebook return before signing in."
+                                fill
+                                priority
+                                sizes="(min-width: 1280px) 32vw, 44vw"
+                                className="object-cover object-center"
+                            />
+                            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.56))]" />
+                            <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5">
+                                <div className="rounded-[1rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.84)] px-3 py-2 backdrop-blur-sm">
+                                    <NotiveLogo href="/" size="xs" />
+                                </div>
+                                <NotebookDoodle name="sprout" accent="sage" className="h-8 w-8 opacity-90" />
+                            </div>
+                            <div className="absolute inset-x-0 bottom-0 p-6">
+                                <div className="max-w-md rounded-[1.6rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-5 backdrop-blur-sm">
+                                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                                        Return quietly
+                                    </p>
+                                    <h2 className="mt-3 text-[2rem] font-semibold leading-[1.05] tracking-[-0.04em] text-[rgb(39,35,31)]">
+                                        Sign in to your notebook.
+                                    </h2>
+                                    <p className="mt-3 text-sm leading-7 text-[rgb(76,70,62)]">
+                                        Come back to the notes you kept, the patterns you noticed, and the next move that already feels more manageable.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 18 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.42, ease: 'easeOut' }}
+                        className="paper-card app-paper relative rounded-[2rem] p-5 sm:p-8"
+                        style={quietNotebookPanelStyle}
+                    >
+                        <div className="absolute right-5 top-5">
+                            <NotebookDoodle name="sprout" accent="sage" className="h-9 w-9 opacity-90" />
+                        </div>
+
+                        <div className="pr-12">
+                            <NotiveLogo href="/" size="sm" />
+                            <p className="mt-6 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                                Sign in
+                            </p>
+                            <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-[rgb(39,35,31)] md:text-[3rem]">
+                                One note today. One clearer tomorrow.
+                            </h1>
+                            <p className="mt-4 max-w-xl text-sm leading-7 text-[rgb(76,70,62)] md:text-base">
+                                Sign in to reopen your notes, revisit the patterns, and keep the next useful part of your story close.
                             </p>
                         </div>
 
-                        <div className="relative z-10 mt-6 grid gap-3">
-                            {FLOW_STEPS.map((step, index) => (
-                                <div
-                                    key={step.title}
-                                    className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 flex items-center justify-between"
-                                >
-                                    <div>
-                                        <p className="text-sm font-semibold text-white">{step.title}</p>
-                                        <p className="text-xs text-ink-secondary">{step.description}</p>
+                        <div
+                            className="app-paper-soft mt-5 rounded-[1.4rem] px-4 py-4"
+                            style={{
+                                background: 'linear-gradient(180deg, rgba(255,255,255,0.84), rgba(255,251,245,0.72))',
+                                border: '1.5px solid rgba(92,92,92,0.18)',
+                            }}
+                        >
+                            <div className="space-y-3">
+                                {TRUST_POINTS.map((point) => (
+                                    <div key={point} className="flex items-start gap-3 text-sm leading-6 text-[rgb(76,70,62)]">
+                                        <span className="mt-2 inline-block h-1.5 w-1.5 rounded-full bg-[rgb(122,112,98)]" />
+                                        <span>{point}</span>
                                     </div>
-                                    <span className="text-xs font-bold tracking-[0.2em] text-primary uppercase">
-                                        0{index + 1}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="relative z-10 mt-auto rounded-2xl border border-white/10 bg-surface-1/45 px-4 py-4 space-y-2">
-                            {TRUST_POINTS.map((point) => (
-                                <div key={point} className="flex items-start gap-2 text-sm text-ink-secondary">
-                                    <span className="mt-0.5 text-primary">•</span>
-                                    <span>{point}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    <div className="glass-card p-6 sm:p-8 rounded-[2rem] shadow-xl shadow-black/20">
-                        <div className="text-center mb-7">
-                            <Link href="/">
-                                <motion.h1
-                                    whileHover={{ scale: 1.03 }}
-                                    className="text-4xl font-bold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent inline-block cursor-pointer"
-                                >
-                                    Notive.
-                                </motion.h1>
-                            </Link>
-                            <p className="text-ink-secondary mt-2">Sign in to keep writing, revisiting memories, and building useful stories.</p>
-                        </div>
-
-                        <div className="lg:hidden mb-6 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                            <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">How It Works</p>
-                            <p className="text-sm text-white mt-2">Write moments. Reopen what matters. Shape stories you can use.</p>
+                                ))}
+                            </div>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-5">
@@ -213,7 +247,8 @@ export default function LoginPage() {
                                     animate={{ opacity: 1, y: 0 }}
                                     role="status"
                                     aria-live="polite"
-                                    className="bg-surface-2/55 border border-white/15 text-foreground px-4 py-3 rounded-xl text-sm"
+                                    className="px-4 py-3 rounded-xl text-sm"
+                                    style={{ background: 'rgba(216, 226, 229, 0.52)', border: '1px solid rgba(137, 146, 151, 0.24)', color: 'rgb(63 57 51)' }}
                                 >
                                     {notice}
                                 </motion.div>
@@ -224,7 +259,8 @@ export default function LoginPage() {
                                     animate={{ opacity: 1, y: 0 }}
                                     role="alert"
                                     aria-live="assertive"
-                                    className="bg-surface-2/55 border border-white/15 text-ink-muted px-4 py-3 rounded-xl text-sm"
+                                    className="px-4 py-3 rounded-xl text-sm"
+                                    style={{ background: 'rgba(229, 213, 194, 0.52)', border: '1px solid rgba(160, 139, 118, 0.24)', color: 'rgb(63 57 51)' }}
                                 >
                                     {error}
                                 </motion.div>
@@ -283,10 +319,15 @@ export default function LoginPage() {
 
                         <SlideUp delay={0.5} className="relative my-7">
                             <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-white/10"></div>
+                                <div className="w-full border-t" style={{ borderColor: 'rgba(var(--paper-border), 0.4)' }}></div>
                             </div>
                             <div className="relative flex justify-center text-xs uppercase tracking-[0.16em]">
-                                <span className="px-4 bg-surface-1/80 text-ink-muted">Or continue with</span>
+                                <span
+                                    className="px-4 text-xs font-semibold"
+                                    style={{ background: 'rgba(255,250,241,0.92)', color: 'rgb(126,117,103)' }}
+                                >
+                                    Or continue with
+                                </span>
                             </div>
                         </SlideUp>
 
@@ -300,20 +341,48 @@ export default function LoginPage() {
                         </SlideUp>
 
                         <SlideUp delay={0.7}>
-                            <p className="text-center mt-6 text-ink-secondary">
+                            <p className="text-center mt-6 text-sm" style={{ color: 'rgb(93 85 75)' }}>
                                 Don&apos;t have an account?{' '}
-                                <Link href={registerHref} className="text-primary hover:text-primary/80 font-medium transition-colors">
+                                <Link
+                                    href={registerHref}
+                                    className="font-semibold transition-colors hover:opacity-70"
+                                    style={{ color: 'rgb(39 35 31)' }}
+                                >
                                     Create one
                                 </Link>
                             </p>
-                            <p className="mt-3 text-center text-xs text-ink-muted">
+                            <p className="mt-3 text-center text-xs leading-6" style={{ color: 'rgb(126 117 103)' }}>
                                 By continuing, you agree to our{' '}
-                                <Link href="/terms" className="text-primary hover:text-primary/80 transition-colors">Terms</Link>
+                                <Link href="/terms" className="underline transition-colors hover:opacity-70" style={{ color: 'rgb(93 85 75)' }}>Terms</Link>
                                 {' '}and{' '}
-                                <Link href="/privacy" className="text-primary hover:text-primary/80 transition-colors">Privacy Policy</Link>.
+                                <Link href="/privacy" className="underline transition-colors hover:opacity-70" style={{ color: 'rgb(93 85 75)' }}>Privacy Policy</Link>.
                             </p>
                         </SlideUp>
-                    </div>
+                    </motion.div>
+
+                    <aside
+                        className="paper-card app-paper relative hidden overflow-hidden rounded-[2rem] xl:flex"
+                        style={quietNotebookPanelStyle}
+                    >
+                        <Image
+                            src={AUTH_SIDE_STRIP}
+                            alt="Vertical notebook reflection strip about a student's journey, reinforcing that Notive sign-in is part of reflection and growth."
+                            fill
+                            sizes="320px"
+                            className="object-cover object-center"
+                        />
+                        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.42))]" />
+                        <div className="absolute inset-x-0 bottom-0 p-5">
+                            <div className="rounded-[1.35rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-4 backdrop-blur-sm">
+                                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                                    Keep growing
+                                </p>
+                                <p className="mt-2 text-sm leading-7 text-[rgb(76,70,62)]">
+                                    Every honest note can come back later as self-advocacy, resilience, or one calmer next move.
+                                </p>
+                            </div>
+                        </div>
+                    </aside>
                 </div>
             </FadeIn>
         </div>

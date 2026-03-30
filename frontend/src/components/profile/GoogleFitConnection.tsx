@@ -42,8 +42,8 @@ interface HealthStats {
 }
 
 const TrendIcon = ({ trend }: { trend: 'improving' | 'declining' | 'stable' }) => {
-    if (trend === 'improving') return <FiTrendingUp className="w-3 h-3 text-emerald-400" />;
-    if (trend === 'declining') return <FiTrendingDown className="w-3 h-3 text-amber-400" />;
+    if (trend === 'improving') return <FiTrendingUp className="w-3 h-3 text-success" />;
+    if (trend === 'declining') return <FiTrendingDown className="w-3 h-3 text-danger" />;
     return <FiMinus className="w-3 h-3 text-ink-muted" />;
 };
 
@@ -198,9 +198,9 @@ export default function GoogleFitConnection() {
 
     if (isLoading) {
         return (
-            <div className="bento-box p-6 animate-pulse h-full">
-                <div className="h-6 bg-white/10 rounded w-1/3 mb-4" />
-                <div className="h-4 bg-white/10 rounded w-2/3" />
+            <div className="workspace-panel h-full animate-pulse p-6">
+                <div className="mb-4 h-6 w-1/3 rounded bg-[rgba(var(--text-muted),0.18)]" />
+                <div className="h-4 w-2/3 rounded bg-[rgba(var(--text-muted),0.14)]" />
             </div>
         );
     }
@@ -209,7 +209,7 @@ export default function GoogleFitConnection() {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bento-box p-6 relative overflow-hidden h-full flex flex-col"
+            className="workspace-panel relative flex h-full flex-col overflow-hidden p-6"
         >
             {/* Subtle neutral gradient background */}
             <div className="health-glow absolute right-0 top-0 h-32 w-32 -translate-y-1/2 translate-x-1/2 rounded-full blur-[60px]" />
@@ -221,7 +221,7 @@ export default function GoogleFitConnection() {
                         <FiActivity className="w-5 h-5 text-ink-secondary" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-white">Google Fit</h3>
+                        <h3 className="workspace-heading text-lg font-semibold">Google Fit</h3>
                         <p className="health-kicker">
                             {status?.connected ? 'Connected' : 'Health tracking'}
                         </p>
@@ -234,7 +234,7 @@ export default function GoogleFitConnection() {
                         whileTap={{ scale: 0.9 }}
                         onClick={handleSync}
                         disabled={isSyncing}
-                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-50"
+                        className="workspace-button-outline rounded-lg p-2 transition-colors disabled:opacity-50"
                         title="Sync now"
                     >
                         <FiRefreshCw className={`w-4 h-4 text-ink-secondary ${isSyncing ? 'animate-spin' : ''}`} />
@@ -249,10 +249,10 @@ export default function GoogleFitConnection() {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2"
+                        className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/20 flex items-center gap-2"
                     >
-                        <FiAlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                        <span className="text-xs text-red-300">{error}</span>
+                        <FiAlertCircle className="w-4 h-4 text-danger flex-shrink-0" />
+                        <span className="text-xs text-danger">{error}</span>
                     </motion.div>
                 )}
 
@@ -261,10 +261,10 @@ export default function GoogleFitConnection() {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="mb-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2"
+                        className="mb-4 p-3 rounded-lg bg-success/10 border border-success/20 flex items-center gap-2"
                     >
-                        <FiCheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                        <span className="text-xs text-emerald-300">{successMessage}</span>
+                        <FiCheckCircle className="w-4 h-4 text-success flex-shrink-0" />
+                        <span className="text-xs text-success">{successMessage}</span>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -278,7 +278,7 @@ export default function GoogleFitConnection() {
                             <div className="grid grid-cols-3 gap-2">
                                 <div className="health-stat-card rounded-xl p-3 text-center">
                                     <FiMoon className="mx-auto mb-1 h-4 w-4 text-ink-secondary" />
-                                    <p className="text-base font-semibold text-white">
+                                    <p className="workspace-heading text-base font-semibold">
                                         {healthStats.avgSleepHours?.toFixed(1) || '—'}
                                     </p>
                                     <p className="health-kicker">Sleep</p>
@@ -288,7 +288,7 @@ export default function GoogleFitConnection() {
                                 </div>
                                 <div className="health-stat-card rounded-xl p-3 text-center">
                                     <FiActivity className="mx-auto mb-1 h-4 w-4 text-ink-secondary" />
-                                    <p className="text-base font-semibold text-white">
+                                    <p className="workspace-heading text-base font-semibold">
                                         {healthStats.avgSteps ? (healthStats.avgSteps / 1000).toFixed(1) + 'k' : '—'}
                                     </p>
                                     <p className="health-kicker">Steps</p>
@@ -298,7 +298,7 @@ export default function GoogleFitConnection() {
                                 </div>
                                 <div className="health-stat-card rounded-xl p-3 text-center">
                                     <FiHeart className="mx-auto mb-1 h-4 w-4 text-ink-secondary" />
-                                    <p className="text-base font-semibold text-white">
+                                    <p className="workspace-heading text-base font-semibold">
                                         {healthStats.avgHeartRate || '—'}
                                     </p>
                                     <p className="health-kicker">HR</p>
@@ -353,7 +353,7 @@ export default function GoogleFitConnection() {
                         </div>
 
                         {status?.message && (
-                            <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-ink-secondary">
+                            <div className="workspace-muted-panel px-3 py-2 text-xs text-ink-secondary">
                                 {status.message}
                             </div>
                         )}

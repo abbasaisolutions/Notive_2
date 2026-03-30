@@ -43,7 +43,7 @@ export default function HealthContextBadge({ context, healthInsight, minimal = f
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 text-xs"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-ink/5 text-xs"
             >
                 {hasSleep && (
                     <span className="flex items-center gap-1 text-indigo-300">
@@ -51,7 +51,7 @@ export default function HealthContextBadge({ context, healthInsight, minimal = f
                         {context.sleepHours}h
                     </span>
                 )}
-                {hasSleep && hasActivity && <span className="text-white/20">•</span>}
+                {hasSleep && hasActivity && <span className="text-ink-muted">•</span>}
                 {hasActivity && (
                     <span className={`flex items-center gap-1 ${activityConfig[context.activityLevel || 'moderate'].color}`}>
                         <FiActivity className="w-3 h-3" />
@@ -66,7 +66,7 @@ export default function HealthContextBadge({ context, healthInsight, minimal = f
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl bg-white/[0.03] border border-white/5 p-4 space-y-3"
+            className="workspace-panel rounded-xl p-4 space-y-3"
         >
             <div className="flex items-center justify-between">
                 <span className="health-kicker">
@@ -82,7 +82,7 @@ export default function HealthContextBadge({ context, healthInsight, minimal = f
                             <FiMoon className="w-4 h-4 text-indigo-400" />
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-white">{context.sleepHours}h</p>
+                            <p className="text-sm font-medium text-ink">{context.sleepHours}h</p>
                             {context.sleepQuality && (
                                 <p className={`text-xs ${sleepConfig[context.sleepQuality as keyof typeof sleepConfig]?.color || 'text-ink-muted'}`}>
                                     {sleepConfig[context.sleepQuality as keyof typeof sleepConfig]?.label || context.sleepQuality}
@@ -99,7 +99,7 @@ export default function HealthContextBadge({ context, healthInsight, minimal = f
                             <FiActivity className={`w-4 h-4 ${activityConfig[context.activityLevel || 'moderate'].color}`} />
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-white">
+                            <p className="text-sm font-medium text-ink">
                                 {context.steps ? context.steps.toLocaleString() : '—'}
                             </p>
                             <p className={`text-xs capitalize ${activityConfig[context.activityLevel || 'moderate'].color}`}>

@@ -27,10 +27,10 @@ const formatMoodLabel = (mood: string) => {
 };
 
 const sentimentStyles: Record<StructuredEntryData['overallSentiment'], string> = {
-    positive: 'border-white/15 bg-white/[0.05] text-white',
-    negative: 'border-zinc-400/35 bg-zinc-500/15 text-zinc-200',
-    mixed: 'border-stone-400/35 bg-stone-500/15 text-stone-200',
-    neutral: 'border-white/20 bg-white/10 text-ink-secondary',
+    positive: 'workspace-pill text-[rgb(var(--text-primary))]',
+    negative: 'workspace-pill text-ink-secondary',
+    mixed: 'workspace-pill-muted text-ink-secondary',
+    neutral: 'workspace-pill-muted text-ink-secondary',
 };
 
 const sentimentLabels: Record<StructuredEntryData['overallSentiment'], string> = {
@@ -41,9 +41,9 @@ const sentimentLabels: Record<StructuredEntryData['overallSentiment'], string> =
 };
 
 const goalStatusStyles: Record<StructuredEntryData['goals'][number]['status'], string> = {
-    achieved: 'border-white/15 bg-white/[0.04] text-white',
-    struggling: 'border-zinc-400/30 bg-zinc-500/12 text-zinc-200',
-    'in-progress': 'border-stone-400/30 bg-stone-500/12 text-stone-200',
+    achieved: 'workspace-pill text-[rgb(var(--text-primary))]',
+    struggling: 'workspace-soft-panel text-ink-secondary',
+    'in-progress': 'workspace-pill text-ink-secondary',
     new: 'border-primary/30 bg-primary/12 text-primary',
 };
 
@@ -79,14 +79,14 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                 icon: <FiCpu size={12} aria-hidden="true" />,
                 label: 'Found',
                 value: `${signalCount} items`,
-                className: 'border-white/15 bg-white/[0.04] text-white',
+                className: 'workspace-pill text-[rgb(var(--text-primary))]',
             },
             {
                 id: 'volume',
                 icon: <FiTrendingUp size={12} aria-hidden="true" />,
                 label: 'Size',
                 value: `${data.wordCount} words · ${data.readingTime}m`,
-                className: 'border-white/15 bg-white/[0.03] text-ink-secondary',
+                className: 'workspace-pill-muted text-ink-secondary',
             },
         ] as Array<{ id: string; icon: ReactNode; label: string; value: string; className: string }>;
     }, [data, normalizedPrimaryMood]);
@@ -118,15 +118,15 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
     if (!data && !isLoading) return null;
 
     return (
-        <section className="mb-6 overflow-hidden rounded-2xl border border-white/10 bg-surface-1/70 backdrop-blur-xl">
+        <section className="workspace-panel mb-6 overflow-hidden rounded-2xl">
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full p-4 md:p-5 flex items-center justify-between hover:bg-white/5 transition-colors"
+                className="flex w-full items-center justify-between p-4 transition-colors hover:bg-primary/[0.04] md:p-5"
             >
                 <div className="flex items-center gap-2.5">
                     <FiCpu size={20} aria-hidden="true" />
                     <div className="text-left">
-                        <p className="font-semibold text-white">Quick Read</p>
+                        <p className="workspace-heading font-semibold">Quick Read</p>
                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">What Notive found</p>
                     </div>
                     {isLoading && (
@@ -134,7 +134,7 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className={`hidden sm:inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.1em] ${isLoading ? 'border-primary/35 bg-primary/15 text-primary' : 'border-white/15 bg-white/[0.03] text-white'
+                    <span className={`hidden sm:inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.1em] ${isLoading ? 'border-primary/35 bg-primary/15 text-primary' : 'workspace-pill text-[rgb(var(--text-primary))]'
                         }`}>
                         {isLoading ? 'Reading' : 'Ready'}
                     </span>
@@ -161,27 +161,27 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
             )}
 
             {isExpanded && data && (
-                <div className="border-t border-white/10 px-4 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5 space-y-4">
+                <div className="space-y-4 border-t border-[rgba(var(--paper-border),0.92)] px-4 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5">
                     {data.title !== 'Untitled Entry' && data.title !== 'Untitled Note' && (
-                        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                        <div className="workspace-soft-panel rounded-xl p-3">
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-1">Title idea</p>
-                            <p className="text-white font-semibold line-clamp-2">{data.title}</p>
+                            <p className="workspace-heading line-clamp-2 font-semibold">{data.title}</p>
                         </div>
                     )}
 
                     <div className="grid gap-3 md:grid-cols-2">
                         {data.people.length > 0 && (
-                            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                            <div className="workspace-soft-panel rounded-xl p-3">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-2 inline-flex items-center gap-1.5"><FiMessageCircle size={12} aria-hidden="true" />People</p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {data.people.slice(0, 6).map((person, i) => (
                                         <span
                                             key={`${person.name}-${i}`}
                                             className={`rounded-full border px-2 py-1 text-xs font-semibold uppercase tracking-[0.08em] ${person.sentiment > 0.3
-                                                ? 'border-white/15 bg-white/[0.04] text-white'
+                                                ? 'workspace-pill text-[rgb(var(--text-primary))]'
                                                 : person.sentiment < -0.3
-                                                    ? 'border-zinc-400/30 bg-zinc-500/12 text-zinc-200'
-                                                    : 'border-white/15 bg-white/[0.03] text-ink-secondary'
+                                                    ? 'workspace-pill text-ink-secondary'
+                                                    : 'workspace-pill-muted text-ink-secondary'
                                                 }`}
                                         >
                                             {person.name}
@@ -192,7 +192,7 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                         )}
 
                         {data.activities.length > 0 && (
-                            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                            <div className="workspace-soft-panel rounded-xl p-3">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-2 inline-flex items-center gap-1.5"><FiActivity size={12} aria-hidden="true" />Activities</p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {data.activities.slice(0, 6).map((activity, i) => (
@@ -209,7 +209,7 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                         )}
 
                         {data.places.length > 0 && (
-                            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                            <div className="workspace-soft-panel rounded-xl p-3">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-2 inline-flex items-center gap-1.5"><FiMapPin size={12} aria-hidden="true" />Places</p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {data.places.slice(0, 6).map((place, i) => (
@@ -225,13 +225,13 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                         )}
 
                         {data.suggestedTags.length > 0 && (
-                            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                            <div className="workspace-soft-panel rounded-xl p-3">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-2 inline-flex items-center gap-1.5"><FiTag size={12} aria-hidden="true" />Tags</p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {data.suggestedTags.slice(0, 8).map((tag, i) => (
                                         <span
                                             key={`${tag}-${i}`}
-                                            className="rounded-full border border-white/15 bg-white/[0.03] px-2 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary"
+                                            className="workspace-pill-muted rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary"
                                         >
                                             #{tag}
                                         </span>
@@ -242,20 +242,20 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                     </div>
 
                     {data.goals.length > 0 && (
-                        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                        <div className="workspace-soft-panel rounded-xl p-3">
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-2 inline-flex items-center gap-1.5"><FiTarget size={12} aria-hidden="true" />Goals</p>
                             <div className="space-y-2">
                                 {data.goals.map((goal, i) => (
-                                    <div key={`${goal.goal}-${i}`} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                                    <div key={`${goal.goal}-${i}`} className="workspace-muted-panel rounded-lg px-3 py-2">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <span className={`rounded-full border px-2 py-0.5 text-xs font-bold uppercase tracking-[0.12em] ${goalStatusStyles[goal.status]}`}>
                                                 {goal.status.replace('-', ' ')}
                                             </span>
-                                            <span className="rounded-full border border-white/15 bg-white/[0.03] px-2 py-0.5 text-xs font-bold uppercase tracking-[0.12em] text-ink-secondary">
+                                            <span className="workspace-pill-muted rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-[0.12em] text-ink-secondary">
                                                 {goal.category}
                                             </span>
                                         </div>
-                                        <p className="mt-1 text-sm text-white leading-snug">{goal.goal}</p>
+                                        <p className="mt-1 text-sm leading-snug text-[rgb(var(--text-primary))]">{goal.goal}</p>
                                     </div>
                                 ))}
                             </div>
@@ -263,16 +263,16 @@ export default function StructuredDataPreview({ content, onDataExtracted }: Stru
                     )}
 
                     {data.insights.length > 0 && (
-                        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                        <div className="workspace-soft-panel rounded-xl p-3">
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-2 inline-flex items-center gap-1.5"><FiTrendingUp size={12} aria-hidden="true" />Main ideas</p>
                             <div className="grid gap-2 md:grid-cols-2">
                                 {data.insights.slice(0, 6).map((insight, i) => (
                                     <div
                                         key={`${insight.type}-${i}`}
-                                        className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"
+                                        className="workspace-muted-panel rounded-lg px-3 py-2"
                                     >
                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-1">{insight.type}</p>
-                                        <p className="text-sm text-white line-clamp-2">{insight.content}</p>
+                                        <p className="line-clamp-2 text-sm text-[rgb(var(--text-primary))]">{insight.content}</p>
                                     </div>
                                 ))}
                             </div>

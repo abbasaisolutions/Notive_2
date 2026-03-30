@@ -5,11 +5,11 @@ import { buildProfileContextSummary, type ProfileContextSource } from '@/service
 import {
     FiBookOpen,
     FiBriefcase,
-    FiClock,
+    FiFolder,
     FiHome,
+    FiMessageCircle,
     FiPlus,
     FiShield,
-    FiTrendingUp,
     FiUploadCloud,
     FiUser,
 } from 'react-icons/fi';
@@ -67,10 +67,10 @@ export type JourneyStage = {
 const icons = {
     home: <FiHome aria-hidden="true" />,
     write: <FiPlus aria-hidden="true" />,
-    memories: <FiClock aria-hidden="true" />,
-    insights: <FiTrendingUp aria-hidden="true" />,
+    memories: <FiBookOpen aria-hidden="true" />,
+    guide: <FiMessageCircle aria-hidden="true" />,
     profile: <FiUser aria-hidden="true" />,
-    chapters: <FiBookOpen aria-hidden="true" />,
+    chapters: <FiFolder aria-hidden="true" />,
     stories: <FiBriefcase aria-hidden="true" />,
     imports: <FiUploadCloud aria-hidden="true" />,
     admin: <FiShield aria-hidden="true" />,
@@ -79,10 +79,10 @@ const icons = {
 const homeNavItem: NavItem = { href: '/dashboard', label: 'Home', shortLabel: 'Home', icon: icons.home, matchPrefixes: ['/dashboard'] };
 const writeNavItem: NavItem = { href: '/entry/new', label: 'Write', shortLabel: 'Write', icon: icons.write, isMain: true, matchPrefixes: ['/entry/new', '/entry/edit'] };
 const memoriesNavItem: NavItem = { href: '/timeline', label: 'Memories', shortLabel: 'Memories', icon: icons.memories, matchPrefixes: ['/timeline'] };
-const patternsNavItem: NavItem = { href: '/insights', label: 'Patterns', shortLabel: 'Patterns', icon: icons.insights, matchPrefixes: ['/insights'] };
+const guideNavItem: NavItem = { href: '/chat', label: 'Guide', shortLabel: 'Guide', icon: icons.guide, matchPrefixes: ['/chat'] };
 const groupsNavItem: NavItem = { href: '/chapters', label: 'Groups', shortLabel: 'Groups', icon: icons.chapters, matchPrefixes: ['/chapters'] };
 const importsNavItem: NavItem = { href: '/import', label: 'Imports', shortLabel: 'Imports', icon: icons.imports, matchPrefixes: ['/import'] };
-const storiesNavItem: NavItem = { href: '/portfolio', label: 'Stories', shortLabel: 'Stories', icon: icons.stories, matchPrefixes: ['/portfolio', '/legacy'] };
+const storiesNavItem: NavItem = { href: '/portfolio', label: 'Stories', shortLabel: 'Stories', icon: icons.stories, matchPrefixes: ['/portfolio'] };
 const profileNavItem: NavItem = { href: '/profile', label: 'Me', shortLabel: 'Me', icon: icons.profile, matchPrefixes: ['/profile'] };
 const adminNavItem: NavItem = { href: '/admin', label: 'Admin', shortLabel: 'Admin', icon: icons.admin, matchPrefixes: ['/admin'], allowedRoles: ['ADMIN', 'SUPERADMIN'] };
 
@@ -90,7 +90,7 @@ export const primaryNavItems: NavItem[] = [
     homeNavItem,
     writeNavItem,
     memoriesNavItem,
-    patternsNavItem,
+    guideNavItem,
 ];
 
 export const secondaryNavItems: NavItem[] = [
@@ -155,14 +155,15 @@ export const getDesktopNavSections = (maturity: WorkspaceMaturity): NavSection[]
 
     if (maturity === 'growing') {
         return [
-            { id: 'main', label: 'Main', items: [homeNavItem, writeNavItem, memoriesNavItem, patternsNavItem] },
-            { id: 'more', label: 'More', items: [storiesNavItem, profileNavItem, adminNavItem] },
+            { id: 'main', label: 'Main', items: [homeNavItem, writeNavItem, memoriesNavItem, guideNavItem] },
+            { id: 'account', label: 'Account', items: [profileNavItem, adminNavItem] },
         ];
     }
 
     return [
-        { id: 'main', label: 'Main', items: [homeNavItem, writeNavItem, memoriesNavItem, patternsNavItem] },
-        { id: 'more', label: 'More', items: [groupsNavItem, importsNavItem, storiesNavItem, profileNavItem, adminNavItem] },
+        { id: 'main', label: 'Main', items: [homeNavItem, writeNavItem, memoriesNavItem, guideNavItem] },
+        { id: 'more', label: 'More', items: [groupsNavItem, importsNavItem, storiesNavItem] },
+        { id: 'account', label: 'Account', items: [profileNavItem, adminNavItem] },
     ];
 };
 
@@ -171,45 +172,17 @@ export const getMobileMainNavItems = (maturity: WorkspaceMaturity): NavItem[] =>
         return [homeNavItem, memoriesNavItem, writeNavItem, profileNavItem];
     }
 
-    return [homeNavItem, memoriesNavItem, writeNavItem, patternsNavItem];
+    return [homeNavItem, memoriesNavItem, writeNavItem, guideNavItem, profileNavItem];
 };
 
-export const getMobileMoreNavSections = (maturity: WorkspaceMaturity): NavSection[] => {
-    if (maturity === 'new') {
-        return [
-            {
-                id: 'account',
-                label: 'Account',
-                items: [adminNavItem],
-            },
-        ];
-    }
-
-    if (maturity === 'growing') {
-        return [
-            {
-                id: 'reflect',
-                label: 'More',
-                items: [storiesNavItem],
-            },
-            {
-                id: 'account',
-                label: 'Account',
-                items: [profileNavItem, adminNavItem],
-            },
-        ];
-    }
-
+export const getMobileMoreNavSections = (_maturity: WorkspaceMaturity): NavSection[] => {
+    // Only admin items remain in the More drawer.
+    // Regular users see Home, Memories, +Write, Guide, Me in the bottom bar.
     return [
         {
-            id: 'organize',
-            label: 'More',
-            items: [groupsNavItem, importsNavItem, storiesNavItem],
-        },
-        {
-            id: 'account',
-            label: 'Account',
-            items: [profileNavItem, adminNavItem],
+            id: 'admin',
+            label: 'Admin',
+            items: [adminNavItem],
         },
     ];
 };
@@ -233,7 +206,7 @@ export const getProfileReadinessAction = (completionScore: number): RouteAction 
 export const journeyStages: JourneyStage[] = [
     { id: 'capture', label: 'Write', description: 'Save moments while they are still fresh.', href: '/entry/new' },
     { id: 'organize', label: 'Groups', description: 'Group related memories so they are easy to find.', href: '/chapters' },
-    { id: 'reflect', label: 'Patterns', description: 'See feelings, habits, and repeated topics.', href: '/insights' },
+    { id: 'reflect', label: 'Guide', description: 'Get grounded advice based on your notes.', href: '/chat' },
     { id: 'apply', label: 'Stories', description: 'Turn moments into clear stories you can use later.', href: '/portfolio' },
     { id: 'account', label: 'Me', description: 'Choose your goals, settings, and privacy.', href: '/profile' },
 ];
@@ -281,20 +254,6 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
         },
     },
     {
-        prefix: '/insights',
-        meta: {
-            title: 'Patterns',
-            description: 'See feelings, habits, and repeated topics across your notes.',
-            section: 'Reflect',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Patterns' }],
-            primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
-            secondaryAction: { label: 'Open Stories', shortLabel: 'Stories', href: '/portfolio' },
-            visibleInfo: ['Feelings', 'Main topics', 'Next ideas'],
-            journeyStage: 'reflect',
-            headerMode: 'none',
-        },
-    },
-    {
         prefix: '/chapters',
         meta: {
             title: 'Groups',
@@ -325,10 +284,10 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
     {
         prefix: '/chat',
         meta: {
-            title: 'Action Console',
-            description: 'Turn a hard moment into one grounded next move, one support draft, or one clearer writing question.',
+            title: 'Guide',
+            description: 'Get grounded advice based on your notes — one next step, one support draft, or a clearer question.',
             section: 'Reflect',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Action Console' }],
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Guide' }],
             primaryAction: { label: 'Open Memories', shortLabel: 'Memories', href: '/timeline' },
             secondaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
             visibleInfo: ['Action brief', 'Bridge draft', 'Next step'],
@@ -346,20 +305,6 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
             secondaryAction: { label: 'Open Me', shortLabel: 'Me', href: '/profile/edit' },
             visibleInfo: ['Story quality', 'Practice', 'Exports'],
-            journeyStage: 'apply',
-            headerMode: 'none',
-        },
-    },
-    {
-        prefix: '/legacy',
-        meta: {
-            title: 'Stories',
-            description: 'Open resume, statement, interview, and growth tools built from your notes.',
-            section: 'Apply',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Stories' }],
-            primaryAction: { label: 'Open Stories', shortLabel: 'Stories', href: '/portfolio' },
-            secondaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
-            visibleInfo: ['Old view', 'Story details', 'Highlights'],
             journeyStage: 'apply',
             headerMode: 'none',
         },

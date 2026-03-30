@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import useApi from '@/hooks/use-api';
 import { FiCheck } from 'react-icons/fi';
+import { Spinner, EmptyState } from '@/components/ui';
 
 interface ImportCandidate {
     id: string;
@@ -84,9 +85,7 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
     const providerGradient = provider === 'instagram'
         ? 'from-primary via-accent to-secondary'
         : 'from-primary/90 via-accent to-secondary';
-    const providerAccent = provider === 'instagram'
-        ? 'border-white/15 bg-white/[0.03] text-white'
-        : 'border-white/15 bg-white/[0.03] text-white';
+    const providerAccent = 'workspace-pill-muted text-[rgb(var(--text-primary))]';
 
     const visibleCandidates = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -204,32 +203,36 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
                 onClick={onClose}
+                onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
             >
                 <motion.div
                     initial={{ opacity: 0, scale: 0.96, y: 14 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96, y: 10 }}
                     transition={{ duration: 0.22 }}
-                    className="w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-3xl border border-white/10 bg-surface-1 shadow-[0_28px_120px_rgba(0,0,0,0.6)] flex flex-col"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="social-selection-title"
+                    className="workspace-panel flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl shadow-[0_28px_90px_rgba(90,72,52,0.18)]"
                     onClick={(event) => event.stopPropagation()}
                 >
                     <header className={`bg-gradient-to-r ${providerGradient} p-6`}>
                         <div className="flex items-start justify-between gap-3">
                             <div className="space-y-2">
-                                <p className="text-xs uppercase tracking-[0.16em] text-white/80">Step 2: Select Memories</p>
-                                <h2 className="text-2xl font-semibold text-white">{providerName} Import Queue</h2>
-                                <p className="text-sm text-white/85">Choose memories to map into your timeline entries.</p>
+                                <p className="text-xs uppercase tracking-[0.16em] text-[rgba(255,255,255,0.82)]">Step 2: Select Memories</p>
+                                <h2 id="social-selection-title" className="text-2xl font-semibold text-[rgb(var(--paper-soft))]">{providerName} Import Queue</h2>
+                                <p className="text-sm text-[rgba(255,255,255,0.88)]">Choose memories to map into your timeline entries.</p>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="rounded-xl border border-white/40 bg-white/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/30"
+                                className="workspace-button-outline rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]"
                             >
                                 Close
                             </button>
                         </div>
                     </header>
 
-                    <section className="border-b border-white/10 bg-surface-1/80 p-4">
+                    <section className="border-b border-[rgba(var(--paper-border),0.92)] bg-[rgba(255,255,255,0.72)] p-4">
                         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
                             <div className="relative">
                                 <input
@@ -237,25 +240,25 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                                     value={search}
                                     onChange={(event) => setSearch(event.target.value)}
                                     placeholder="Filter by text or tag"
-                                    className="w-full rounded-xl border border-white/15 bg-white/[0.03] px-4 py-2.5 text-sm text-white placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                    className="workspace-input w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                                 />
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 <button
                                     onClick={selectAll}
-                                    className="rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/[0.08]"
+                                    className="workspace-button-outline rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]"
                                 >
                                     Select All
                                 </button>
                                 <button
                                     onClick={selectVisible}
-                                    className="rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/[0.08]"
+                                    className="workspace-button-outline rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]"
                                 >
                                     Select Visible
                                 </button>
                                 <button
                                     onClick={clearAll}
-                                    className="rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/[0.08]"
+                                    className="workspace-button-outline rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]"
                                 >
                                     Clear
                                 </button>
@@ -266,7 +269,7 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                             <span className="text-ink-secondary">
                                 Showing {visibleCandidates.length} of {candidates.length}
                             </span>
-                            <span className={`rounded-full border px-2.5 py-1 ${providerAccent}`}>
+                            <span className={`rounded-full px-2.5 py-1 ${providerAccent}`}>
                                 {selectedIds.size} selected
                             </span>
                         </div>
@@ -275,16 +278,16 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                     <div className="flex-1 overflow-y-auto p-4 md:p-6">
                         {isLoading && (
                             <div className="flex h-52 items-center justify-center">
-                                <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                                <Spinner size="lg" />
                             </div>
                         )}
 
                         {!isLoading && error && (
-                            <div className="rounded-2xl border border-white/15 bg-white/[0.03] p-5 text-sm text-white">
+                            <div className="workspace-soft-panel rounded-2xl p-5 text-sm text-[rgb(var(--text-primary))]">
                                 <p>{error}</p>
                                 <button
                                     onClick={fetchCandidates}
-                                    className="mt-3 rounded-lg border border-white/15 bg-white/[0.05] px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]"
+                                    className="workspace-button-outline mt-3 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]"
                                 >
                                     Retry
                                 </button>
@@ -292,9 +295,12 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                         )}
 
                         {!isLoading && !error && visibleCandidates.length === 0 && (
-                            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center">
-                                <p className="text-sm text-ink-secondary">No memories match this filter.</p>
-                            </div>
+                            <EmptyState
+                                doodle="knot"
+                                doodleAccent="lilac"
+                                title="No memories match this filter"
+                                subtitle="Try selecting a different platform or adjusting your date range."
+                            />
                         )}
 
                         {!isLoading && !error && visibleCandidates.length > 0 && (
@@ -319,10 +325,10 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                                             className={`relative overflow-hidden rounded-2xl border text-left transition ${
                                                 selected
                                                     ? 'border-primary/70 bg-primary/[0.08] shadow-[0_0_0_1px_rgba(127,90,240,0.3)]'
-                                                    : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                                                    : 'workspace-soft-panel'
                                             }`}
                                         >
-                                            <div className="relative aspect-[4/3] overflow-hidden bg-surface-1">
+                                            <div className="relative aspect-[4/3] overflow-hidden bg-[rgb(var(--paper-soft))]">
                                                 {candidate.imageUrl ? (
                                                     <img
                                                         src={candidate.imageUrl}
@@ -336,8 +342,8 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                                                 <div className="absolute right-3 top-3">
                                                     <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${
                                                         selected
-                                                            ? 'border-primary bg-primary text-white'
-                                                            : 'border-white/40 bg-black/45 text-white'
+                                                            ? 'border-primary bg-primary text-[rgb(var(--paper-soft))]'
+                                                            : 'border-[rgba(var(--paper-border),0.96)] bg-[rgba(255,255,255,0.82)] text-ink-secondary'
                                                     }`}>
                                                         {selected && (
                                                             <FiCheck size={12} aria-hidden="true" />
@@ -347,7 +353,7 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                                             </div>
 
                                             <div className="space-y-3 p-3">
-                                                <p className="line-clamp-3 text-sm text-white">{candidate.text}</p>
+                                                <p className="line-clamp-3 text-sm text-[rgb(var(--text-primary))]">{candidate.text}</p>
                                                 <div className="flex items-center justify-between gap-2 text-xs text-ink-secondary">
                                                     <span>{formatDate(candidate.createdAt)}</span>
                                                     {candidate.sourceLink && (
@@ -356,7 +362,7 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                                                             target="_blank"
                                                             rel="noreferrer"
                                                             onClick={(event) => event.stopPropagation()}
-                                                            className="rounded-md border border-white/20 bg-white/[0.04] px-2 py-1 uppercase tracking-[0.08em] text-white hover:bg-white/[0.08]"
+                                                            className="workspace-button-outline rounded-md px-2 py-1 uppercase tracking-[0.08em]"
                                                         >
                                                             Source
                                                         </a>
@@ -367,7 +373,7 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                                                         {candidate.tags.slice(0, 3).map((tag) => (
                                                             <span
                                                                 key={`${candidate.id}-${tag}`}
-                                                                className="rounded-full border border-white/15 bg-white/[0.03] px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-ink-secondary"
+                                                                className="workspace-pill-muted rounded-full px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-ink-secondary"
                                                             >
                                                                 #{tag}
                                                             </span>
@@ -382,20 +388,20 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                         )}
                     </div>
 
-                    <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-surface-1/80 p-4">
+                    <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[rgba(var(--paper-border),0.92)] bg-[rgba(255,255,255,0.72)] p-4">
                         <button
                             onClick={onClose}
-                            className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/[0.08]"
+                            className="workspace-button-outline rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em]"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleImport}
                             disabled={selectedIds.size === 0 || isImporting}
-                            className={`rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.09em] text-white transition ${
+                            className={`rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.09em] transition ${
                                 selectedIds.size === 0 || isImporting
-                                    ? 'cursor-not-allowed bg-surface-2/80 opacity-60'
-                                    : `bg-gradient-to-r ${providerGradient} shadow-lg`
+                                    ? 'cursor-not-allowed bg-[rgba(var(--paper-border),0.72)] text-ink-muted opacity-60'
+                                    : 'workspace-button-primary shadow-lg'
                             }`}
                         >
                             {isImporting

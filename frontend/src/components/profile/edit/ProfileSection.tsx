@@ -3,7 +3,7 @@
 import React from 'react';
 import { FiInfo } from 'react-icons/fi';
 import { TagInput, TextAreaField, TextField } from './fields';
-import type { ProfileDraft } from './types';
+import { toBirthDateLabel, type ProfileDraft } from './types';
 
 type ProfileSectionProps = {
     draft: ProfileDraft;
@@ -25,10 +25,10 @@ export function ProfileSection({
     return (
         <div className="space-y-6">
             <section className="grid gap-6 lg:grid-cols-[1.6fr,1fr]">
-                <div className="bento-box p-8 space-y-6">
+                <div className="workspace-panel p-8 space-y-6 rounded-[2rem]">
                     <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">About</p>
-                        <h2 className="mt-2 text-2xl font-serif text-white">Basic details</h2>
+                        <h2 className="workspace-heading mt-2 text-2xl font-serif">Basic details</h2>
                         <p className="mt-2 text-sm text-ink-secondary">
                             Keep your name and public details here. Sign-in email and account delete tools are in Security.
                         </p>
@@ -68,6 +68,13 @@ export function ProfileSection({
                             onChange={(value) => onChange((current) => ({ ...current, occupation: value }))}
                             placeholder="Student, designer, engineer..."
                         />
+                        <TextField
+                            label="Date of birth"
+                            type="date"
+                            value={draft.birthDate}
+                            onChange={(value) => onChange((current) => ({ ...current, birthDate: value }))}
+                            helper="Used privately for age-aware and seasonal personalization."
+                        />
                         <div className="md:col-span-2">
                             <TextAreaField
                                 label="Bio"
@@ -94,39 +101,43 @@ export function ProfileSection({
                 </div>
 
                 <div className="space-y-6">
-                    <section className="bento-box p-6 space-y-4">
+                    <section className="workspace-panel p-6 space-y-4 rounded-[2rem]">
                         <div>
                             <p className="text-xs uppercase tracking-[0.18em] text-ink-muted font-bold">Quick View</p>
-                            <h3 className="mt-2 text-xl font-serif text-white">What the app uses</h3>
+                            <h3 className="workspace-heading mt-2 text-xl font-serif">What the app uses</h3>
                         </div>
                         <div className="space-y-3 text-sm text-ink-secondary">
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="workspace-soft-panel rounded-2xl p-4">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Name</p>
-                                <p className="mt-1 text-white">{draft.name || 'Not set'}</p>
+                                <p className="workspace-heading mt-1">{draft.name || 'Not set'}</p>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="workspace-soft-panel rounded-2xl p-4">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Email</p>
-                                <p className="mt-1 text-white break-all">{draft.email || 'Not set'}</p>
+                                <p className="workspace-heading mt-1 break-all">{draft.email || 'Not set'}</p>
                                 <p className="mt-2 text-xs text-ink-secondary">
                                     Change sign-in email in Security.
                                 </p>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="workspace-soft-panel rounded-2xl p-4">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">About you</p>
-                                <p className="mt-1 text-white">
+                                <p className="workspace-heading mt-1">
                                     {draft.bio.trim() || 'No short bio yet.'}
                                 </p>
+                            </div>
+                            <div className="workspace-soft-panel rounded-2xl p-4">
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Date of birth</p>
+                                <p className="workspace-heading mt-1">{toBirthDateLabel(draft.birthDate, 'Not set yet')}</p>
                             </div>
                         </div>
                     </section>
 
-                    <section className="bento-box p-6 space-y-4">
+                    <section className="workspace-panel p-6 space-y-4 rounded-[2rem]">
                         <div className="flex items-start gap-3">
                             <div className="mt-1 rounded-xl bg-primary/10 p-2 text-primary">
                                 <FiInfo size={16} aria-hidden="true" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-serif text-white">Why this is separate</h3>
+                                <h3 className="workspace-heading text-lg font-serif">Why this is separate</h3>
                                 <p className="mt-2 text-sm text-ink-secondary">
                                     Your basic details change less often than your goals or data choices. Keeping them separate makes saving clearer.
                                 </p>

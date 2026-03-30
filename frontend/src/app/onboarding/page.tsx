@@ -2,10 +2,12 @@
 
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import NotiveLogo from '@/components/ui/NotiveLogo';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FiCamera, FiCpu, FiTrendingUp, FiZap } from 'react-icons/fi';
 import type { IconType } from 'react-icons';
+import { NotebookDoodle, type NotebookDoodleName } from '@/components/dashboard/NotebookDoodles';
 import { Button } from '@/components/ui/form-elements';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useApi from '@/hooks/use-api';
@@ -19,13 +21,14 @@ import {
     hasCompletedOnboardingFromProfile,
     saveOnboardingState,
 } from '@/utils/onboarding';
-import { sanitizeReturnTo } from '@/utils/redirect';
+import { unwrapSetupReturnTo } from '@/utils/redirect';
+import { Spinner } from '@/components/ui';
 
-const GOALS: Array<{ id: OnboardingGoal; icon: IconType; label: string; desc: string }> = [
-    { id: 'clarity', icon: FiCpu, label: 'Clear mind', desc: 'Notice what matters and pick the next step.' },
-    { id: 'memory', icon: FiCamera, label: 'Remember life', desc: 'Save moments, feelings, and details worth keeping.' },
-    { id: 'growth', icon: FiTrendingUp, label: 'Grow', desc: 'Notice lessons, habits, and change over time.' },
-    { id: 'productivity', icon: FiZap, label: 'Get things done', desc: 'Save wins, blockers, and stories you can use later.' },
+const GOALS: Array<{ id: OnboardingGoal; icon: IconType; doodle: NotebookDoodleName; label: string; desc: string }> = [
+    { id: 'clarity', icon: FiCpu, doodle: 'steady-me', label: 'Clear mind', desc: 'Notice what matters and pick the next step.' },
+    { id: 'memory', icon: FiCamera, doodle: 'moon', label: 'Remember life', desc: 'Save moments, feelings, and details worth keeping.' },
+    { id: 'growth', icon: FiTrendingUp, doodle: 'see-my-growth', label: 'Grow', desc: 'Notice lessons, habits, and change over time.' },
+    { id: 'productivity', icon: FiZap, doodle: 'shape-my-future', label: 'Get things done', desc: 'Save wins, blockers, and stories you can use later.' },
 ];
 
 const TRACKS: Array<{ id: OnboardingTrack; label: string; desc: string }> = [
@@ -170,7 +173,7 @@ function OnboardingPageContent() {
     const [isSigningOut, setIsSigningOut] = useState(false);
     const hasHydratedProfileRef = useRef(false);
     const safeReturnTo = useMemo(
-        () => sanitizeReturnTo(searchParams.get('returnTo')),
+        () => unwrapSetupReturnTo(searchParams.get('returnTo')),
         [searchParams]
     );
 
@@ -402,7 +405,7 @@ function OnboardingPageContent() {
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                <Spinner size="md" />
             </div>
         );
     }
@@ -416,23 +419,21 @@ function OnboardingPageContent() {
 
             <div className="w-full max-w-4xl relative z-10">
                 <div className="mb-3 flex items-center justify-between">
-                    <Link href="/onboarding" className="text-xl font-semibold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
-                        Notive.
-                    </Link>
+                    <NotiveLogo href="/onboarding" size="xs" />
                     <button
                         type="button"
                         onClick={handleSignOut}
                         disabled={isSigningOut}
-                        className="px-3 py-2 rounded-xl border border-white/15 bg-surface-2/55 text-xs uppercase tracking-widest text-foreground hover:bg-surface-2/80 disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="workspace-button-outline type-label-sm rounded-xl px-3 py-2 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {isSigningOut ? 'Signing Out...' : 'Sign Out'}
                     </button>
                 </div>
 
                 <div className="mb-4 text-center">
-                    <div className="text-xs uppercase tracking-[0.2em] text-ink-muted">Setup {step}/3</div>
-                    <h1 className="text-3xl md:text-4xl font-serif text-white mt-2">Choose how Notive should help you first.</h1>
-                    <p className="mt-3 text-sm text-ink-secondary max-w-2xl mx-auto">
+                    <div className="type-overline text-muted">Setup {step}/3</div>
+                    <h1 className="type-display-lg mt-2 text-strong">Choose how Notive should help you first.</h1>
+                    <p className="type-body-sm mx-auto mt-3 max-w-2xl text-default">
                         Pick your goal, choose the part of life to focus on, and start with one easy first question for your first note.
                     </p>
                     <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -445,12 +446,12 @@ function OnboardingPageContent() {
                                     type="button"
                                     onClick={() => jumpToStep(item.id)}
                                     disabled={!isAvailable || isSubmitting || isProgressSaving}
-                                    className={`rounded-xl border px-3 py-1.5 text-xs uppercase tracking-[0.1em] transition-colors ${
+                                    className={`type-label-sm rounded-xl border px-3 py-1.5 transition-colors ${
                                         isActive
-                                            ? 'border-primary/40 bg-primary/15 text-white'
+                                            ? 'border-primary/40 bg-primary/15 text-strong'
                                             : isAvailable
-                                                ? 'border-white/15 bg-white/[0.03] text-ink-secondary hover:text-white'
-                                                : 'border-white/10 bg-white/[0.02] text-ink-muted/70 cursor-not-allowed'
+                                                ? 'workspace-button-outline text-soft'
+                                                : 'workspace-pill-muted cursor-not-allowed text-disabled'
                                     }`}
                                 >
                                     {item.label}
@@ -461,13 +462,13 @@ function OnboardingPageContent() {
                 </div>
 
                 {submitError && (
-                    <div className="mb-4 rounded-xl border border-white/15 bg-surface-2/55 px-4 py-3 text-sm text-foreground">
+                    <div className="workspace-soft-panel type-body-sm mb-4 rounded-xl px-4 py-3 text-strong">
                         {submitError}
                     </div>
                 )}
 
                 {savedNotice && (
-                    <div className="mb-4 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-primary">
+                    <div className="type-body-sm mb-4 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-accent">
                         {savedNotice}
                     </div>
                 )}
@@ -479,9 +480,9 @@ function OnboardingPageContent() {
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -12 }}
-                            className="glass-card p-6 md:p-8 rounded-3xl border border-white/10"
+                            className="workspace-panel rounded-3xl p-6 md:p-8"
                         >
-                            <p className="text-ink-secondary mb-6">What do you want Notive to help with first?</p>
+                            <p className="type-body-md mb-6 text-default">What do you want Notive to help with first?</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {GOALS.map((item) => (
                                     <button
@@ -492,17 +493,19 @@ function OnboardingPageContent() {
                                             setSavedNotice('');
                                             setGoal(item.id);
                                         }}
-                                        className={`text-left rounded-2xl border p-4 transition-colors ${
+                                        className={`relative text-left rounded-2xl border p-4 overflow-hidden transition-colors ${
                                             goal === item.id
                                                 ? 'border-primary/40 bg-primary/15'
-                                                : 'border-white/10 bg-white/5 hover:bg-white/10'
+                                                : 'workspace-soft-panel'
                                         }`}
                                     >
-                                        <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/[0.04]">
-                                            <item.icon size={18} className="text-foreground" aria-hidden="true" />
+                                        <div className="pointer-events-none absolute right-3 top-3 opacity-25 sprout-accent">
+                                            <NotebookDoodle name={item.doodle} accent="sage" size={52} />
                                         </div>
-                                        <div className="text-white font-semibold">{item.label}</div>
-                                        <div className="text-xs text-ink-secondary mt-1">{item.desc}</div>
+                                        <div className="relative">
+                                            <div className="type-card-title text-strong">{item.label}</div>
+                                            <div className="type-body-sm mt-1 text-default">{item.desc}</div>
+                                        </div>
                                     </button>
                                 ))}
                             </div>
@@ -514,10 +517,10 @@ function OnboardingPageContent() {
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -12 }}
-                            className="glass-card p-6 md:p-8 rounded-3xl border border-white/10 space-y-6"
+                            className="workspace-panel rounded-3xl p-6 md:p-8 space-y-6"
                         >
                             <div>
-                                <p className="text-ink-secondary mb-3">What part of life should Notive focus on first?</p>
+                                <p className="type-body-md mb-3 text-default">What part of life should Notive focus on first?</p>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                     {TRACKS.map((item) => (
                                         <button
@@ -531,28 +534,28 @@ function OnboardingPageContent() {
                                             className={`text-left rounded-2xl border p-4 transition-colors ${
                                                 track === item.id
                                                     ? 'border-primary/40 bg-primary/15'
-                                                    : 'border-white/10 bg-white/5 hover:bg-white/10'
+                                                    : 'workspace-soft-panel'
                                             }`}
                                         >
-                                            <div className="text-white font-semibold">{item.label}</div>
-                                            <div className="text-xs text-ink-secondary mt-1">{item.desc}</div>
+                                            <div className="type-card-title text-strong">{item.label}</div>
+                                            <div className="type-body-sm mt-1 text-default">{item.desc}</div>
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                            <div className="workspace-soft-panel rounded-2xl p-4">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
-                                        <div className="text-sm font-semibold text-white">More details</div>
-                                        <p className="text-xs text-ink-secondary mt-1">
-                                            Add more now, or let Notive learn as you go and change it later in Me.
+                                        <div className="type-card-title text-strong">More details</div>
+                                        <p className="type-micro mt-1 text-default">
+                                            Add more now, or let Notive learn as you go and update it later in your profile.
                                         </p>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => setShowOptionalProfile((current) => !current)}
-                                        className="rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-xs uppercase tracking-[0.1em] text-ink-secondary hover:text-white"
+                                        className="workspace-button-outline type-label-sm rounded-xl px-3 py-2"
                                     >
                                         {showOptionalProfile ? 'Hide' : 'Add More'}
                                     </button>
@@ -561,17 +564,17 @@ function OnboardingPageContent() {
                                 {showOptionalProfile && (
                                     <div className="mt-5 space-y-5">
                                         <div>
-                                            <p className="text-ink-secondary mb-3">Where are you right now?</p>
+                                            <p className="type-body-sm mb-3 text-default">Where are you right now?</p>
                                             <div className="flex flex-wrap gap-2">
                                                 {EXPERIENCE_LEVELS.map((item) => (
                                                     <button
                                                         key={item.id}
                                                         type="button"
                                                         onClick={() => setExperienceLevel(item.id)}
-                                                        className={`px-4 py-2 rounded-xl border text-sm ${
+                                                        className={`type-label-md rounded-xl border px-4 py-2 ${
                                                             experienceLevel === item.id
-                                                                ? 'border-primary/40 bg-primary/15 text-white'
-                                                                : 'border-white/15 bg-white/5 text-ink-secondary hover:text-white'
+                                                                ? 'border-primary/40 bg-primary/15 text-strong'
+                                                                : 'workspace-button-outline text-soft'
                                                         }`}
                                                     >
                                                         {item.label}
@@ -581,7 +584,7 @@ function OnboardingPageContent() {
                                         </div>
 
                                         <div>
-                                            <p className="text-ink-secondary mb-3">How do you want writing to feel?</p>
+                                            <p className="type-body-sm mb-3 text-default">How do you want writing to feel?</p>
                                             <div className="space-y-2">
                                                 {WRITING_PREFERENCES.map((item) => (
                                                     <button
@@ -591,28 +594,28 @@ function OnboardingPageContent() {
                                                         className={`w-full text-left rounded-2xl border p-4 transition-colors ${
                                                             writingPreference === item.id
                                                                 ? 'border-primary/40 bg-primary/15'
-                                                                : 'border-white/10 bg-white/5 hover:bg-white/10'
+                                                                : 'workspace-soft-panel'
                                                         }`}
                                                     >
-                                                        <div className="text-white font-semibold">{item.label}</div>
-                                                        <div className="text-xs text-ink-secondary mt-1">{item.desc}</div>
+                                                        <div className="type-card-title text-strong">{item.label}</div>
+                                                        <div className="type-body-sm mt-1 text-default">{item.desc}</div>
                                                     </button>
                                                 ))}
                                             </div>
                                         </div>
 
                                         <div>
-                                            <p className="text-ink-secondary mb-3">What do you want to use these notes for later?</p>
+                                            <p className="type-body-sm mb-3 text-default">What do you want to use these notes for later?</p>
                                             <div className="flex flex-wrap gap-2">
                                                 {OUTPUT_GOALS.map((item) => (
                                                     <button
                                                         key={item.id}
                                                         type="button"
                                                         onClick={() => toggleOutputGoal(item.id)}
-                                                        className={`px-3 py-2 rounded-xl border text-sm ${
+                                                        className={`type-label-md rounded-xl border px-3 py-2 ${
                                                             selectedOutputGoals.includes(item.id)
-                                                                ? 'border-primary/40 bg-primary/15 text-white'
-                                                                : 'border-white/15 bg-white/5 text-ink-secondary hover:text-white'
+                                                                ? 'border-primary/40 bg-primary/15 text-strong'
+                                                                : 'workspace-button-outline text-soft'
                                                         }`}
                                                     >
                                                         {item.label}
@@ -632,9 +635,9 @@ function OnboardingPageContent() {
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -12 }}
-                            className="glass-card p-6 md:p-8 rounded-3xl border border-white/10"
+                            className="workspace-panel rounded-3xl p-6 md:p-8"
                         >
-                            <p className="text-ink-secondary mb-6">Choose an easy first question for your first note.</p>
+                            <p className="type-body-md mb-6 text-default">Choose an easy first question for your first note.</p>
                             <div className="space-y-3 mb-4">
                                 {promptOptions.map((prompt) => (
                                     <button
@@ -643,8 +646,8 @@ function OnboardingPageContent() {
                                         onClick={() => setSelectedPrompt(prompt)}
                                         className={`w-full text-left rounded-2xl border p-4 transition-colors ${
                                             selectedPrompt === prompt
-                                                ? 'border-primary/40 bg-primary/15 text-white'
-                                                : 'border-white/10 bg-white/5 text-ink-secondary hover:bg-white/10'
+                                                ? 'border-primary/40 bg-primary/15 text-strong'
+                                                : 'workspace-soft-panel text-default'
                                         }`}
                                     >
                                         {prompt}
@@ -655,17 +658,28 @@ function OnboardingPageContent() {
                             <button
                                 type="button"
                                 onClick={() => setSelectedPrompt('')}
-                                className={`text-xs px-3 py-1.5 rounded-lg border ${
+                                className={`type-label-sm rounded-lg border px-3 py-1.5 ${
                                     selectedPrompt === ''
                                         ? 'border-primary/40 bg-primary/15 text-primary'
-                                        : 'border-white/15 text-ink-muted hover:text-white'
+                                        : 'workspace-button-outline text-muted'
                                 }`}
                             >
                                 Start with a blank note
                             </button>
 
-                            <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-ink-secondary">
+                            <div className="workspace-soft-panel type-micro mt-6 rounded-xl p-4 text-default">
                                 You can bring in old memories later in Me after your first note is saved.
+                            </div>
+
+                            <div className="workspace-soft-panel type-micro mt-3 rounded-xl p-4 text-default space-y-1.5">
+                                <p className="font-semibold text-xs">Notive learns your patterns as you write</p>
+                                <p className="text-xs opacity-80">
+                                    Vocabulary, emotional range, life balance, and growth language
+                                    are tracked privately — just pattern detection from your words.
+                                </p>
+                                <p className="text-xs opacity-60">
+                                    You can connect Spotify and health data later in Me → Privacy &amp; Data.
+                                </p>
                             </div>
                         </motion.div>
                     )}
@@ -676,7 +690,7 @@ function OnboardingPageContent() {
                         type="button"
                         onClick={goBack}
                         disabled={step === 1 || isSubmitting || isProgressSaving}
-                        className="px-4 py-2 rounded-xl text-sm border border-white/15 bg-white/5 text-ink-secondary hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="workspace-button-outline type-label-md rounded-xl px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                         Back
                     </button>
@@ -686,7 +700,7 @@ function OnboardingPageContent() {
                             type="button"
                             onClick={handleSaveForLater}
                             disabled={isSubmitting || isProgressSaving}
-                            className="px-4 py-2 rounded-xl text-sm border border-white/15 bg-white/[0.03] text-ink-secondary hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="workspace-button-outline type-label-md rounded-xl px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             {isProgressSaving ? 'Saving...' : 'Save for Later'}
                         </button>

@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx prisma:*)",
+      "Bash(grep -r \"HEALTH_FEATURE_ENABLED\\\\|GOOGLE_CLIENT_ID\\\\|GOOGLE_FIT\" c:/Users/mtabe/Notive --include=.env*)",
+      "Bash(grep -r \"from ''@capacitor\" c:/Users/mtabe/Notive/frontend/src --include=\"*.ts\" --include=\"*.tsx\")",
+      "Bash(grep -ri \"spotify\\\\|apple music\\\\|youtube music\\\\|soundcloud\\\\|streaming\\\\|playlist\\\\|audio\\\\|music\" c:/Users/mtabe/Notive/backend/src --include=*.ts)",
+      "Bash(npm install:*)",
+      "Bash(git log:*)",
+      "Bash(grep -r \"locationLat\\\\|locationLng\\\\|locationName\" c:/Users/mtabe/Notive/frontend/src --include=*.tsx --include=*.ts)",
+      "Bash(npx next:*)",
+      "Bash(ls -la /c/Users/mtabe/Notive/*.md)",
+      "Bash(ls /c/Users/mtabe/Notive/*.md)",
+      "Bash(find /c/Users/mtabe/Notive/frontend/public -name *.webmanifest -o -name manifest.json)",
+      "Bash(find /c/Users/mtabe/Notive/frontend/src -name *.css -type f)",
+      "Bash(grep -n \"try\\\\|catch\" /c/Users/mtabe/Notive/backend/src/controllers/*.ts)",
+      "Bash(grep -r \"console\\\\.log\\\\|console\\\\.error\\\\|console\\\\.warn\\\\|console\\\\.debug\" /c/Users/mtabe/Notive/frontend/src --include=*.tsx --include=*.ts)",
+      "Bash(grep -r \"TODO\\\\|FIXME\\\\|HACK\" /c/Users/mtabe/Notive/frontend/src --include=*.tsx --include=*.ts)",
+      "Bash(grep -r \"placeholder\\\\|coming soon\\\\|lorem\" /c/Users/mtabe/Notive/frontend/src --include=*.tsx --include=*.ts -i)",
+      "Bash(grep -n \"async \\(req: Request, res: Response\\)\" /c/Users/mtabe/Notive/backend/src/controllers/*.ts)",
+      "Bash(grep -r sk- /c/Users/mtabe/Notive --include=*.ts --include=*.tsx --include=*.env --include=*.json)",
+      "Bash(grep -r \"data-theme\\\\|theme.*dark\\\\|darkMode\" /c/Users/mtabe/Notive/frontend/src --include=*.tsx --include=*.ts)",
+      "Bash(ls -la /c/Users/mtabe/Notive/frontend/android/app/src/main/res/mipmap*)",
+      "Bash(grep -v \"^//\")",
+      "Bash(find /c/Users/mtabe/Notive/backend/src -name *.ts -newer /c/Users/mtabe/Notive/backend/package.json)"
+    ]
+  }
+}

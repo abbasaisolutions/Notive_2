@@ -295,22 +295,22 @@ export function PredictiveInsights({
 
     const priorityStyles: Record<Insight['priority'], string> = {
         high: 'border-primary/30 bg-gradient-to-br from-primary/12 to-secondary/12',
-        medium: 'border-white/12 bg-surface-1/60',
-        low: 'border-white/10 bg-surface-1/35',
+        medium: 'workspace-soft-panel',
+        low: 'workspace-muted-panel',
     };
 
     const typeStyles: Record<Insight['type'], string> = {
-        achievement: 'bg-zinc-500/20 text-zinc-200 border border-zinc-400/30',
-        wellness: 'bg-white/[0.07] text-white border border-white/15',
-        motivation: 'bg-neutral-500/20 text-neutral-200 border border-neutral-400/30',
-        pattern: 'bg-stone-500/20 text-stone-200 border border-stone-400/30',
-        suggestion: 'bg-white/10 text-ink-secondary border border-white/15',
+        achievement: 'workspace-pill text-ink-secondary',
+        wellness: 'workspace-pill text-[rgb(var(--text-primary))]',
+        motivation: 'workspace-pill-muted text-ink-muted',
+        pattern: 'workspace-soft-panel text-ink-secondary',
+        suggestion: 'workspace-pill-muted text-ink-secondary',
     };
 
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between px-2">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <h3 className="workspace-heading flex items-center gap-2 text-lg font-bold">
                     <FiZap size={20} aria-hidden="true" />
                     Quick Ideas
                 </h3>
@@ -329,23 +329,23 @@ export function PredictiveInsights({
                         <>
                         <button
                             onClick={() => dismissInsight(insight.id)}
-                            className="absolute right-3 top-3 rounded-full p-1 text-ink-muted transition-colors hover:bg-white/10 hover:text-white"
+                            className="absolute right-3 top-3 rounded-full p-1 text-ink-muted transition-colors hover:bg-primary/10 hover:text-[rgb(var(--text-primary))]"
                             aria-label="Dismiss insight"
                         >
                             <FiX size={14} aria-hidden="true" />
                         </button>
 
                         <div className="flex items-start gap-3">
-                            <div className="rounded-xl bg-white/5 p-2 text-white">
+                            <div className="workspace-icon-badge rounded-xl p-2 text-[rgb(var(--text-primary))]">
                                 <InsightIcon size={22} aria-hidden="true" />
                             </div>
                             <div className="min-w-0 flex-1 pr-7">
                                 <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                                    <h4 className="font-bold text-white">{insight.title}</h4>
+                                    <h4 className="workspace-heading font-bold">{insight.title}</h4>
                                     <span className={`rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-[0.14em] ${typeStyles[insight.type]}`}>
                                         {INSIGHT_TYPE_LABELS[insight.type]}
                                     </span>
-                                    <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-xs uppercase tracking-[0.14em] text-ink-muted">
+                                    <span className="workspace-pill-muted rounded-full px-2 py-0.5 text-xs uppercase tracking-[0.14em] text-ink-muted">
                                         {insight.priority}
                                     </span>
                                 </div>
@@ -357,9 +357,9 @@ export function PredictiveInsights({
                             {(insight.signals || []).map((signal) => (
                                 <span
                                     key={`${insight.id}-${signal.label}`}
-                                    className="rounded-full border border-white/15 bg-white/[0.03] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary"
+                                    className="workspace-pill-muted rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary"
                                 >
-                                    {signal.label}: <span className="text-white">{signal.value}</span>
+                                    {signal.label}: <span className="text-[rgb(var(--text-primary))]">{signal.value}</span>
                                 </span>
                             ))}
 

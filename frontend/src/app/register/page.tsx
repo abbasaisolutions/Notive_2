@@ -2,28 +2,36 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import NotiveLogo from '@/components/ui/NotiveLogo';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Input, Button } from '@/components/ui/form-elements';
 import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
 import { motion } from 'framer-motion';
 import { GoogleSsoPanel } from '@/components/auth/GoogleSsoPanel';
+import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
+import {
+    quietNotebookPageStyle,
+    quietNotebookPanelStyle,
+} from '@/components/marketing/NotiveShowcase';
 import { clearOnboardingState } from '@/utils/onboarding';
-import { sanitizeReturnTo } from '@/utils/redirect';
+import { unwrapSetupReturnTo } from '@/utils/redirect';
 import { resolvePostAuthDestination } from '@/utils/auth-routing';
 
 type RegisterFieldErrors = {
     name?: string;
     email?: string;
+    birthDate?: string;
     password?: string;
     confirmPassword?: string;
     policies?: string;
 };
 
 const SIGNUP_VALUE_POINTS = [
-    'Pick what you want Notive to help with',
-    'Turn raw notes into patterns and stories',
-    'Keep life, school, and work notes in one place',
+    'Capture the note while it still feels true',
+    'Notice moods, themes, and patterns that keep returning',
+    'Save story seeds you can use later for school, work, and growth',
 ];
 
 const PASSWORD_GUIDANCE = [
@@ -36,11 +44,15 @@ const PASSWORD_GUIDANCE = [
 const hasStrongPassword = (value: string): boolean =>
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
 
+const REGISTER_HERO = '/images/auth-register-hero.jpg';
+const AUTH_SIDE_STRIP = '/images/auth-side-strip.jpg';
+
 export default function RegisterPage() {
     const router = useRouter();
     const { register, loginWithSsoCredential, user, isLoading: authLoading } = useAuth();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
+    const [birthDate, setBirthDate] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [acceptedPolicies, setAcceptedPolicies] = useState(false);
@@ -55,17 +67,18 @@ export default function RegisterPage() {
         lower: /[a-z]/.test(password),
         digit: /\d/.test(password),
     }), [password]);
+    const maxBirthDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const params = new URLSearchParams(window.location.search);
-        setSafeReturnTo(sanitizeReturnTo(params.get('returnTo')));
+        setSafeReturnTo(unwrapSetupReturnTo(params.get('returnTo')));
     }, []);
 
     const resolvePostAuthRoute = useCallback((nextUser?: typeof user) => {
         const resolvedReturnTo = safeReturnTo || (
             typeof window !== 'undefined'
-                ? sanitizeReturnTo(new URLSearchParams(window.location.search).get('returnTo'))
+                ? unwrapSetupReturnTo(new URLSearchParams(window.location.search).get('returnTo'))
                 : null
         );
         return resolvePostAuthDestination(nextUser ?? user, resolvedReturnTo);
@@ -97,6 +110,11 @@ export default function RegisterPage() {
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
             nextFieldErrors.email = 'Enter a valid email address.';
         }
+        if (!birthDate) {
+            nextFieldErrors.birthDate = 'Date of birth is required.';
+        } else if (Number.isNaN(new Date(`${birthDate}T00:00:00.000Z`).getTime())) {
+            nextFieldErrors.birthDate = 'Enter a valid birth date.';
+        }
         if (!password) {
             nextFieldErrors.password = 'Password is required.';
         } else if (!hasStrongPassword(password)) {
@@ -120,7 +138,7 @@ export default function RegisterPage() {
         setIsLoading(true);
 
         try {
-            const registeredUser = await register(trimmedEmail, password, trimmedName || undefined);
+            const registeredUser = await register(trimmedEmail, password, trimmedName || undefined, birthDate);
             clearOnboardingState(registeredUser.id);
             router.replace(resolvePostAuthRoute(registeredUser));
         } catch (err: any) {
@@ -158,77 +176,119 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4 py-8 relative overflow-hidden bg-background">
-            <motion.div
-                animate={{
-                    scale: [1, 1.22, 1],
-                    opacity: [0.2, 0.42, 0.2],
-                    rotate: [0, 90, 0],
-                }}
-                transition={{
-                    duration: 15,
-                    repeat: Infinity,
-                    ease: 'linear',
-                }}
-                className="absolute top-1/4 right-0 w-[500px] h-[500px] bg-secondary/20 rounded-full blur-[150px] pointer-events-none"
-            />
-            <motion.div
-                animate={{
-                    scale: [1, 1.3, 1],
-                    opacity: [0.2, 0.4, 0.2],
-                    rotate: [0, -60, 0],
-                }}
-                transition={{
-                    duration: 20,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                }}
-                className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/20 rounded-full blur-[120px] pointer-events-none"
-            />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.08),transparent_38%),radial-gradient(circle_at_84%_85%,rgba(255,255,255,0.05),transparent_45%)] pointer-events-none" />
-
-            <FadeIn className="w-full max-w-6xl relative z-10">
-                <div className="grid grid-cols-1 lg:grid-cols-[1.02fr_0.98fr] gap-6 items-stretch">
-                    <section className="hidden lg:flex flex-col rounded-[2rem] border border-white/10 bg-gradient-to-br from-surface-2/75 via-surface-1/70 to-surface-1/55 p-8 shadow-2xl shadow-black/25 relative overflow-hidden">
-                        <div className="absolute top-[-9rem] left-[-5rem] w-72 h-72 bg-primary/20 rounded-full blur-[95px] pointer-events-none" />
-                        <div className="absolute bottom-[-8rem] right-[-4rem] w-72 h-72 bg-secondary/20 rounded-full blur-[95px] pointer-events-none" />
-
-                        <div className="relative z-10 space-y-5">
-                            <span className="section-kicker">Create Account</span>
-                            <h1 className="text-4xl xl:text-5xl text-white leading-tight">Start with notes now and shape stories later.</h1>
-                            <p className="text-base text-ink-secondary">
-                                Your setup helps Notive ask better questions, show stronger patterns, and build more useful story packs.
-                            </p>
-                        </div>
-
-                        <div className="relative z-10 mt-7 rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
-                            {SIGNUP_VALUE_POINTS.map((point) => (
-                                <div key={point} className="flex items-start gap-2 text-sm text-ink-secondary">
-                                    <span className="mt-0.5 text-primary">•</span>
-                                    <span>{point}</span>
+        <div className="page-paper-canvas min-h-screen px-3 py-3 md:px-5 md:py-5" style={quietNotebookPageStyle}>
+            <FadeIn className="mx-auto w-full max-w-[88rem]">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.84fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_320px]">
+                    <div className="space-y-4">
+                        <div
+                            className="paper-card app-paper overflow-hidden rounded-[2rem] lg:hidden"
+                            style={quietNotebookPanelStyle}
+                        >
+                            <div className="relative h-[19rem] sm:h-[21rem]">
+                                <Image
+                                    src={REGISTER_HERO}
+                                    alt="Teen writing a first Notive note on a phone, beginning account creation with one note today and one clearer tomorrow."
+                                    fill
+                                    priority
+                                    sizes="100vw"
+                                    className="object-cover object-center"
+                                />
+                                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.52))]" />
+                                <div className="absolute inset-x-0 top-0 p-4">
+                                    <div className="inline-flex rounded-[1rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.84)] px-3 py-2">
+                                        <NotiveLogo href="/" size="xs" />
+                                    </div>
                                 </div>
-                            ))}
+                                <div className="absolute inset-x-0 bottom-0 p-4">
+                                    <div className="rounded-[1.4rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-4 backdrop-blur-sm">
+                                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                                            Create account
+                                        </p>
+                                        <h2 className="mt-2 text-2xl font-semibold leading-[1.08] tracking-[-0.04em] text-[rgb(39,35,31)]">
+                                            One note today. One clearer tomorrow.
+                                        </h2>
+                                        <p className="mt-2 text-sm leading-6 text-[rgb(76,70,62)]">
+                                            Your first note does not need to be polished. It just needs to be true enough to start.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="relative z-10 mt-auto rounded-2xl border border-primary/20 bg-primary/10 px-4 py-4">
-                            <p className="text-xs uppercase tracking-[0.16em] text-primary font-semibold">What Happens Next</p>
-                            <p className="text-sm text-ink-secondary mt-2">
-                                After sign-up, you will tell Notive what you want help with and pick an easy way to start writing.
+                        <div
+                            className="paper-card app-paper relative hidden overflow-hidden rounded-[2rem] lg:flex lg:min-h-[42rem]"
+                            style={quietNotebookPanelStyle}
+                        >
+                            <Image
+                                src={REGISTER_HERO}
+                                alt="Teen writing a first Notive note on a phone, beginning account creation with one note today and one clearer tomorrow."
+                                fill
+                                priority
+                                sizes="(min-width: 1280px) 32vw, 44vw"
+                                className="object-cover object-center"
+                            />
+                            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.5))]" />
+                            <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5">
+                                <div className="rounded-[1rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.84)] px-3 py-2 backdrop-blur-sm">
+                                    <NotiveLogo href="/" size="xs" />
+                                </div>
+                                <NotebookDoodle name="sprout" accent="sage" className="h-8 w-8 opacity-90" />
+                            </div>
+                            <div className="absolute inset-x-0 bottom-0 p-6">
+                                <div className="max-w-md rounded-[1.6rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-5 backdrop-blur-sm">
+                                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                                        Quiet notebook
+                                    </p>
+                                    <h2 className="mt-3 text-[2rem] font-semibold leading-[1.05] tracking-[-0.04em] text-[rgb(39,35,31)]">
+                                        One note today. One clearer tomorrow.
+                                    </h2>
+                                    <p className="mt-3 text-sm leading-7 text-[rgb(76,70,62)]">
+                                        Start by dropping what happened. Notive keeps the thread, offers one calm next step, and saves the part that helps you grow.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 18 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.42, ease: 'easeOut' }}
+                        className="paper-card app-paper relative rounded-[2rem] p-5 sm:p-8"
+                        style={quietNotebookPanelStyle}
+                    >
+                        <div className="absolute right-5 top-5">
+                            <NotebookDoodle name="sprout" accent="sage" className="h-9 w-9 opacity-90" />
+                        </div>
+
+                        <div className="pr-12">
+                            <NotiveLogo href="/" size="sm" />
+                            <p className="mt-6 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                                Create account
+                            </p>
+                            <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-[rgb(39,35,31)] md:text-[3rem]">
+                                One note today. One clearer tomorrow.
+                            </h1>
+                            <p className="mt-4 max-w-xl text-sm leading-7 text-[rgb(76,70,62)] md:text-base">
+                                Open a private home for the moments, patterns, and story pieces you want to keep.
                             </p>
                         </div>
-                    </section>
 
-                    <div className="glass-card p-6 sm:p-8 rounded-[2rem] border border-white/10 shadow-xl shadow-black/20">
-                        <div className="text-center mb-7">
-                            <Link href="/">
-                                <motion.h1
-                                    whileHover={{ scale: 1.03 }}
-                                    className="text-4xl font-bold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent inline-block"
-                                >
-                                    Notive.
-                                </motion.h1>
-                            </Link>
-                            <p className="text-ink-muted mt-2">Create your account and start writing notes, revisiting memories, and building stories.</p>
+                        <div
+                            className="app-paper-soft mt-5 rounded-[1.4rem] px-4 py-4"
+                            style={{
+                                background: 'linear-gradient(180deg, rgba(255,255,255,0.84), rgba(255,251,245,0.72))',
+                                border: '1.5px solid rgba(92,92,92,0.18)',
+                            }}
+                        >
+                            <div className="space-y-3">
+                                {SIGNUP_VALUE_POINTS.map((point) => (
+                                    <div key={point} className="flex items-start gap-3 text-sm leading-6 text-[rgb(76,70,62)]">
+                                        <span className="mt-2 inline-block h-1.5 w-1.5 rounded-full bg-[rgb(122,112,98)]" />
+                                        <span>{point}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-5">
@@ -238,7 +298,8 @@ export default function RegisterPage() {
                                     animate={{ opacity: 1, height: 'auto' }}
                                     role="alert"
                                     aria-live="assertive"
-                                    className="bg-surface-2/55 border border-white/15 text-ink-muted px-4 py-3 rounded-xl text-sm"
+                                    className="px-4 py-3 rounded-xl text-sm"
+                                    style={{ background: 'rgba(229, 213, 194, 0.52)', border: '1px solid rgba(160, 139, 118, 0.24)', color: 'rgb(63 57 51)' }}
                                 >
                                     {error}
                                 </motion.div>
@@ -283,6 +344,28 @@ export default function RegisterPage() {
 
                             <SlideUp delay={0.3}>
                                 <Input
+                                    id="birthDate"
+                                    label="Date of birth"
+                                    type="date"
+                                    autoComplete="bday"
+                                    value={birthDate}
+                                    max={maxBirthDate}
+                                    onChange={(e) => {
+                                        setBirthDate(e.target.value);
+                                        if (fieldErrors.birthDate) {
+                                            setFieldErrors((prev) => ({ ...prev, birthDate: undefined }));
+                                        }
+                                    }}
+                                    error={fieldErrors.birthDate}
+                                    required
+                                />
+                                <p className="mt-2 text-xs leading-5 text-[rgb(126,117,103)]">
+                                    Kept private. Used for age-aware and seasonal personalization.
+                                </p>
+                            </SlideUp>
+
+                            <SlideUp delay={0.4}>
+                                <Input
                                     id="password"
                                     label="Password"
                                     type="password"
@@ -304,9 +387,9 @@ export default function RegisterPage() {
                                         return (
                                             <div
                                                 key={rule.id}
-                                                className={`rounded-lg border px-3 py-2 text-xs ${met
-                                                    ? 'border-white/15 bg-surface-2/55 text-foreground'
-                                                    : 'border-white/10 bg-white/[0.03] text-ink-muted'
+                                                className={`rounded-lg border px-3 py-2 text-xs workspace-pill ${met
+                                                    ? 'border-success/40 bg-success/10 text-success'
+                                                    : ''
                                                     }`}
                                             >
                                                 {rule.label}
@@ -316,7 +399,7 @@ export default function RegisterPage() {
                                 </div>
                             </SlideUp>
 
-                            <SlideUp delay={0.4}>
+                            <SlideUp delay={0.5}>
                                 <Input
                                     id="confirmPassword"
                                     label="Confirm Password"
@@ -335,7 +418,7 @@ export default function RegisterPage() {
                                 />
                             </SlideUp>
 
-                            <SlideUp delay={0.5} className="text-sm text-ink-muted">
+                            <SlideUp delay={0.6} className="text-sm text-ink-muted">
                                 <label className="flex items-start gap-2 cursor-pointer hover:text-ink-secondary transition-colors">
                                     <input
                                         type="checkbox"
@@ -348,7 +431,8 @@ export default function RegisterPage() {
                                         }}
                                         aria-invalid={fieldErrors.policies ? true : undefined}
                                         aria-describedby={fieldErrors.policies ? 'register-policies-error' : undefined}
-                                        className="w-4 h-4 mt-0.5 rounded bg-surface-2 border-white/10 text-primary focus:ring-primary/50"
+                                        className="w-4 h-4 mt-0.5 rounded border text-primary focus:ring-primary/50 accent-[rgb(var(--brand))]"
+                                        style={{ borderColor: 'rgba(var(--paper-border), 0.7)' }}
                                     />
                                     <span>
                                         I agree to the{' '}
@@ -368,23 +452,28 @@ export default function RegisterPage() {
                                 )}
                             </SlideUp>
 
-                            <SlideUp delay={0.6}>
+                            <SlideUp delay={0.7}>
                                 <Button type="submit" className="w-full" isLoading={isLoading}>
                                     Create Account
                                 </Button>
                             </SlideUp>
                         </form>
 
-                        <SlideUp delay={0.7} className="relative my-6">
+                        <SlideUp delay={0.8} className="relative my-6">
                             <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-white/10"></div>
+                                <div className="w-full border-t" style={{ borderColor: 'rgba(var(--paper-border), 0.4)' }}></div>
                             </div>
                             <div className="relative flex justify-center text-xs uppercase tracking-[0.16em]">
-                                <span className="px-4 bg-surface-1/70 text-ink-muted">Or sign up with</span>
+                                <span
+                                    className="px-4 text-xs font-semibold"
+                                    style={{ background: 'rgba(255,250,241,0.92)', color: 'rgb(126,117,103)' }}
+                                >
+                                    Or sign up with
+                                </span>
                             </div>
                         </SlideUp>
 
-                        <SlideUp delay={0.8}>
+                        <SlideUp delay={0.9}>
                             <GoogleSsoPanel
                                 mode="register"
                                 isLoading={isLoading}
@@ -393,23 +482,50 @@ export default function RegisterPage() {
                                 onSuccess={handleGoogleSuccess}
                                 onError={handleGoogleError}
                             />
+                            <p className="mt-3 text-center text-xs leading-5 text-[rgb(126,117,103)]">
+                                If Google does not share your birthday, we will ask for it right after sign-up.
+                            </p>
                         </SlideUp>
 
-                        <SlideUp delay={0.9}>
-                            <p className="text-center mt-6 text-ink-muted">
+                        <SlideUp delay={1}>
+                            <p className="text-center mt-6 text-sm" style={{ color: 'rgb(93 85 75)' }}>
                                 Already have an account?{' '}
-                                <Link href={loginHref} className="text-primary hover:text-primary/80 font-medium transition-colors">
+                                <Link href={loginHref} className="font-semibold transition-colors hover:opacity-70" style={{ color: 'rgb(39 35 31)' }}>
                                     Sign in
                                 </Link>
                             </p>
-                            <p className="mt-3 text-center text-xs text-ink-muted">
+                            <p className="mt-3 text-center text-xs leading-6" style={{ color: 'rgb(126 117 103)' }}>
                                 Need the details first? Read our{' '}
-                                <Link href="/terms" className="text-primary hover:text-primary/80 transition-colors">Terms</Link>
+                                <Link href="/terms" className="underline transition-colors hover:opacity-70" style={{ color: 'rgb(93 85 75)' }}>Terms</Link>
                                 {' '}and{' '}
-                                <Link href="/privacy" className="text-primary hover:text-primary/80 transition-colors">Privacy Policy</Link>.
+                                <Link href="/privacy" className="underline transition-colors hover:opacity-70" style={{ color: 'rgb(93 85 75)' }}>Privacy Policy</Link>.
                             </p>
                         </SlideUp>
-                    </div>
+                    </motion.div>
+
+                    <aside
+                        className="paper-card app-paper relative hidden overflow-hidden rounded-[2rem] xl:flex"
+                        style={quietNotebookPanelStyle}
+                    >
+                        <Image
+                            src={AUTH_SIDE_STRIP}
+                            alt="Vertical notebook reflection strip about a student's journey, reinforcing that Notive registration is part of reflection and growth."
+                            fill
+                            sizes="320px"
+                            className="object-cover object-center"
+                        />
+                        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.42))]" />
+                        <div className="absolute inset-x-0 bottom-0 p-5">
+                            <div className="rounded-[1.35rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-4 backdrop-blur-sm">
+                                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                                    Start a trusted notebook
+                                </p>
+                                <p className="mt-2 text-sm leading-7 text-[rgb(76,70,62)]">
+                                    The notes you write here can quietly become story evidence for school, work, and the person you are becoming.
+                                </p>
+                            </div>
+                        </div>
+                    </aside>
                 </div>
             </FadeIn>
         </div>

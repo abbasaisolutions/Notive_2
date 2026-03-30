@@ -35,7 +35,7 @@ export default function ContextPrompt() {
 
     return (
         <div className="fixed bottom-8 right-8 z-50 animate-slide-up">
-            <div className="glass-card p-6 rounded-2xl shadow-2xl border border-primary/20 max-w-sm relative overflow-hidden">
+            <div className="workspace-soft-panel p-6 rounded-2xl shadow-2xl border border-primary/20 max-w-sm relative overflow-hidden">
                 {/* Decorative background */}
                 <div className="absolute top-0 right-0 w-24 h-24 bg-primary/20 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
 

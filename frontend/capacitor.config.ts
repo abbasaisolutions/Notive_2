@@ -6,6 +6,17 @@ const config: CapacitorConfig = {
   appId: 'com.notive.app',
   appName: 'Notive',
   webDir: 'out',
+  plugins: {
+    SocialLogin: {
+      providers: {
+        google: true,
+        facebook: false,
+        apple: false,
+        twitter: false,
+      },
+      logLevel: 1,
+    },
+  },
   ...(devServerUrl
     ? {
         server: {

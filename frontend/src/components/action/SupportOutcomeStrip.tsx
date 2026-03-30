@@ -14,6 +14,7 @@ type SupportOutcomeStripProps = {
     riskLevel?: 'none' | 'yellow' | 'orange' | 'red';
     entryId?: string | null;
     actionKind?: 'copy' | 'text' | 'call' | 'email' | 'manual';
+    variant?: 'default' | 'notebook';
 };
 
 type ContactOutcome = 'helped' | 'still_need_support';
@@ -56,6 +57,7 @@ export default function SupportOutcomeStrip({
     riskLevel,
     entryId,
     actionKind,
+    variant = 'default',
 }: SupportOutcomeStripProps) {
     const { apiFetch } = useApi();
     const { trackEvent } = useTelemetry();
@@ -74,6 +76,7 @@ export default function SupportOutcomeStrip({
         () => buildPrompt(contactName, actionKind, channel),
         [actionKind, channel, contactName]
     );
+    const isNotebook = variant === 'notebook';
 
     const handleSubmit = async (outcome: ContactOutcome) => {
         if (status === 'saving') return;
@@ -141,19 +144,19 @@ export default function SupportOutcomeStrip({
     };
 
     return (
-        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Support Loop</p>
-            <p className="mt-2 text-sm font-semibold text-white">{headline}</p>
+        <div className={isNotebook ? 'notebook-card-soft rounded-[1.5rem] p-4' : 'rounded-2xl border border-white/10 bg-black/20 p-4'}>
+            <p className={isNotebook ? 'notebook-kicker' : 'text-xs uppercase tracking-[0.14em] text-ink-muted'}>Support Loop</p>
+            <p className={isNotebook ? 'notebook-title mt-2 text-xl' : 'mt-2 text-sm font-semibold text-white'}>{headline}</p>
 
             {status === 'saved' && savedOutcome ? (
-                <p className="mt-2 text-sm leading-7 text-emerald-100/90">
+                <p className={isNotebook ? 'notebook-copy mt-2 text-sm leading-7' : 'mt-2 text-sm leading-7 text-emerald-100/90'}>
                     {buildSavedMessage(contactName, savedOutcome, source)}
                 </p>
             ) : (
                 <>
-                    <p className="mt-2 text-sm leading-7 text-ink-secondary">{prompt}</p>
+                    <p className={isNotebook ? 'notebook-copy mt-2 text-sm leading-7' : 'mt-2 text-sm leading-7 text-ink-secondary'}>{prompt}</p>
                     {status === 'error' && (
-                        <p className="mt-2 text-sm leading-7 text-rose-200/90">
+                        <p className={isNotebook ? 'mt-2 text-sm leading-7 text-[rgb(var(--paper-ink-soft))]' : 'mt-2 text-sm leading-7 text-rose-200/90'}>
                             Notive could not save that just now. You can try again.
                         </p>
                     )}
@@ -162,7 +165,9 @@ export default function SupportOutcomeStrip({
                             type="button"
                             onClick={() => void handleSubmit('helped')}
                             disabled={status === 'saving'}
-                            className="rounded-full border border-emerald-300/25 bg-emerald-300/[0.10] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-emerald-300/[0.16] disabled:cursor-not-allowed disabled:opacity-60"
+                            className={isNotebook
+                                ? 'notebook-primary-cta rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] disabled:cursor-not-allowed disabled:opacity-60'
+                                : 'rounded-full border border-emerald-300/25 bg-emerald-300/[0.10] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-emerald-300/[0.16] disabled:cursor-not-allowed disabled:opacity-60'}
                         >
                             {status === 'saving' && pendingOutcome === 'helped' ? 'Saving...' : 'That helped'}
                         </button>
@@ -170,7 +175,9 @@ export default function SupportOutcomeStrip({
                             type="button"
                             onClick={() => void handleSubmit('still_need_support')}
                             disabled={status === 'saving'}
-                            className="rounded-full border border-amber-300/25 bg-amber-300/[0.10] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-amber-300/[0.16] disabled:cursor-not-allowed disabled:opacity-60"
+                            className={isNotebook
+                                ? 'notebook-secondary-cta rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] disabled:cursor-not-allowed disabled:opacity-60'
+                                : 'rounded-full border border-amber-300/25 bg-amber-300/[0.10] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-amber-300/[0.16] disabled:cursor-not-allowed disabled:opacity-60'}
                         >
                             {status === 'saving' && pendingOutcome === 'still_need_support' ? 'Saving...' : 'Still need support'}
                         </button>

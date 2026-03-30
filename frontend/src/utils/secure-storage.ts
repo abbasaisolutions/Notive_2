@@ -1,21 +1,17 @@
 'use client';
 
+import { Capacitor } from '@capacitor/core';
+import { Preferences } from '@capacitor/preferences';
+import { SecureStorage } from '@aparajita/capacitor-secure-storage';
+
 const isNativePlatform = () => {
     if (typeof window === 'undefined') return false;
-    const cap = (window as any).Capacitor;
-    if (cap?.isNativePlatform) return cap.isNativePlatform();
-    if (cap?.getPlatform) {
-        const platform = cap.getPlatform();
-        return platform === 'ios' || platform === 'android';
+    if (typeof Capacitor.isNativePlatform === 'function') {
+        return Capacitor.isNativePlatform();
     }
-    return false;
-};
 
-const getCapacitorPlugin = () => {
-    if (typeof window === 'undefined') return null;
-    const cap = (window as any).Capacitor;
-    if (!cap?.Plugins) return null;
-    return cap.Plugins.SecureStoragePlugin || cap.Plugins.Preferences || null;
+    const platform = Capacitor.getPlatform?.();
+    return platform === 'ios' || platform === 'android';
 };
 
 export const secureStorage = {
@@ -24,13 +20,16 @@ export const secureStorage = {
             return typeof window !== 'undefined' ? localStorage.getItem(key) : null;
         }
 
-        const plugin = getCapacitorPlugin();
-        if (!plugin?.get) {
-            return typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+        try {
+            return await SecureStorage.getItem(key);
+        } catch {
+            try {
+                const result = await Preferences.get({ key });
+                return result?.value ?? null;
+            } catch {
+                return typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+            }
         }
-
-        const result = await plugin.get({ key });
-        return result?.value ?? null;
     },
 
     async set(key: string, value: string): Promise<void> {
@@ -39,13 +38,15 @@ export const secureStorage = {
             return;
         }
 
-        const plugin = getCapacitorPlugin();
-        if (!plugin?.set) {
-            if (typeof window !== 'undefined') localStorage.setItem(key, value);
-            return;
+        try {
+            await SecureStorage.setItem(key, value);
+        } catch {
+            try {
+                await Preferences.set({ key, value });
+            } catch {
+                if (typeof window !== 'undefined') localStorage.setItem(key, value);
+            }
         }
-
-        await plugin.set({ key, value });
     },
 
     async remove(key: string): Promise<void> {
@@ -54,13 +55,15 @@ export const secureStorage = {
             return;
         }
 
-        const plugin = getCapacitorPlugin();
-        if (!plugin?.remove) {
-            if (typeof window !== 'undefined') localStorage.removeItem(key);
-            return;
+        try {
+            await SecureStorage.removeItem(key);
+        } catch {
+            try {
+                await Preferences.remove({ key });
+            } catch {
+                if (typeof window !== 'undefined') localStorage.removeItem(key);
+            }
         }
-
-        await plugin.remove({ key });
     }
 };
 

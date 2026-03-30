@@ -25,12 +25,22 @@ const isLocalHostname = (hostname: string) =>
 
 export const resolveApiUrl = () => {
     const configuredUrl = (process.env.NEXT_PUBLIC_API_URL || '').trim();
-    if (configuredUrl) {
-        return normalizeUrl(configuredUrl);
-    }
+    const nativeConfiguredUrl = (process.env.NEXT_PUBLIC_NATIVE_API_URL || '').trim();
 
     if (isNativePlatform()) {
+        if (nativeConfiguredUrl) {
+            return normalizeUrl(nativeConfiguredUrl);
+        }
+
+        if (configuredUrl) {
+            return normalizeUrl(configuredUrl);
+        }
+
         return PRODUCTION_API_URL;
+    }
+
+    if (configuredUrl) {
+        return normalizeUrl(configuredUrl);
     }
 
     if (typeof window !== 'undefined' && isLocalHostname(window.location.hostname)) {

@@ -33,11 +33,10 @@ export function Input({ label, error, className, id, ...props }: InputProps) {
                     aria-invalid={error ? true : undefined}
                     aria-describedby={error && errorId ? errorId : props['aria-describedby']}
                     className={cn(
-                        'w-full px-4 py-3 rounded-xl bg-surface-1/70 border border-white/15',
-                        'text-white placeholder-ink-muted',
+                        'workspace-input w-full px-4 py-3 rounded-xl',
                         'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50',
-                        'transition-all duration-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]',
-                        error && 'border-white/35 focus:ring-white/25',
+                        'transition-all duration-200',
+                        error && 'border-red-400/50 focus:ring-red-400/30',
                         className
                     )}
                     {...props}
@@ -51,7 +50,7 @@ export function Input({ label, error, className, id, ...props }: InputProps) {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="mt-1.5 text-sm text-ink-secondary overflow-hidden"
+                        className="mt-1.5 text-sm text-red-600/90 dark:text-red-400 overflow-hidden"
                     >
                         {error}
                     </motion.p>
@@ -80,10 +79,10 @@ export function Button({
 
     const variants = {
         primary:
-            'bg-gradient-to-r from-primary to-primary/80 text-white border border-white/20 shadow-lg shadow-primary/30 hover:brightness-105',
+            'workspace-button-primary hover:brightness-105',
         secondary:
-            'bg-surface-2/80 text-white border border-white/15 hover:bg-surface-2',
-        ghost: 'bg-transparent text-ink-secondary hover:text-white hover:bg-white/5',
+            'workspace-button-secondary hover:brightness-[1.02]',
+        ghost: 'workspace-button-ghost bg-transparent',
     };
 
     return (

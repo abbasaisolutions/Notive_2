@@ -29,10 +29,12 @@ const bootstrap = async () => {
         const [
             { default: app },
             { default: embeddingService },
+            { default: voiceTranscriptionJobService },
             { healthCronService },
         ] = await Promise.all([
             import('./app'),
             import('./services/embedding.service'),
+            import('./services/voice-transcription-job.service'),
             import('./services/health-cron.service'),
         ]);
 
@@ -48,6 +50,7 @@ const bootstrap = async () => {
             }
 
             embeddingService.startJobWorker();
+            voiceTranscriptionJobService.startJobWorker();
         });
 
         server.on('error', (error: Error) => {

@@ -6,15 +6,15 @@ import { usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '@/context/auth-context';
 import { useGamification } from '@/context/gamification-context';
-import { buildProfileContextSummary } from '@/services/profile-context.service';
+import { useTheme } from '@/context/theme-context';
 import { FiMoreHorizontal } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
+import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import {
     filterNavItemsByRole,
     filterNavSectionsByRole,
     getMobileMainNavItems,
     getMobileMoreNavSections,
-    getProfileReadinessAction,
     getWorkspaceMaturity,
     isNavItemActive,
     shouldHideGlobalNav,
@@ -25,10 +25,12 @@ export default function MobileNav() {
     const router = useRouter();
     const { user, logout } = useAuth();
     const { stats } = useGamification();
+    const { theme } = useTheme();
     const navRef = useRef<HTMLElement | null>(null);
     const [isMoreOpen, setIsMoreOpen] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const profileSummary = buildProfileContextSummary(user?.profile ?? null);
+    const [isCaptureOpen, setIsCaptureOpen] = useState(false);
+    const isPaper = theme === 'paper';
     const workspaceMaturity = getWorkspaceMaturity({
         role: user?.role ?? null,
         profile: user?.profile ?? null,
@@ -36,7 +38,6 @@ export default function MobileNav() {
     });
     const mainNavItems = filterNavItemsByRole(getMobileMainNavItems(workspaceMaturity), user?.role ?? null);
     const moreNavSections = filterNavSectionsByRole(getMobileMoreNavSections(workspaceMaturity), user?.role ?? null);
-    const readinessAction = getProfileReadinessAction(profileSummary.completionScore);
     const moreSectionItems = useMemo(
         () => moreNavSections.flatMap((section) => section.items),
         [moreNavSections]
@@ -46,10 +47,36 @@ export default function MobileNav() {
         () => buildCurrentReturnTo(pathname, typeof window !== 'undefined' ? window.location.search : ''),
         [pathname]
     );
+    const writeEntryHref = useMemo(
+        () => appendReturnTo('/entry/new?mode=quick', currentReturnTo),
+        [currentReturnTo]
+    );
+    const voiceEntryHref = useMemo(
+        () => appendReturnTo('/entry/new?mode=quick&voiceSession=1', currentReturnTo),
+        [currentReturnTo]
+    );
 
     useEffect(() => {
         setIsMoreOpen(false);
+        setIsCaptureOpen(false);
     }, [pathname]);
+
+    useEffect(() => {
+        if (!isCaptureOpen) return;
+        const handleOutside = (e: MouseEvent | TouchEvent) => {
+            const target = e.target as Node;
+            if (navRef.current && !navRef.current.contains(target)) {
+                setIsCaptureOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleOutside);
+        document.addEventListener('touchstart', handleOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleOutside);
+            document.removeEventListener('touchstart', handleOutside);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isCaptureOpen]);
 
     useEffect(() => {
         if (!isMoreOpen) return;
@@ -74,7 +101,7 @@ export default function MobileNav() {
         if (typeof window === 'undefined') return;
 
         const root = document.documentElement;
-        const mediaQuery = window.matchMedia('(max-width: 767px)');
+        const mediaQuery = window.matchMedia('(max-width: 1023px)');
         let animationFrameId = 0;
         let resizeObserver: ResizeObserver | null = null;
 
@@ -91,8 +118,8 @@ export default function MobileNav() {
 
             const rect = navRef.current.getBoundingClientRect();
             const occupiedHeight = Math.max(window.innerHeight - rect.top, 0);
-            const clearance = Math.ceil(occupiedHeight + 16);
-            const floatingOffset = Math.ceil(occupiedHeight + 20);
+            const clearance = Math.max(Math.ceil(occupiedHeight - 10), 72);
+            const floatingOffset = Math.max(clearance + 10, 84);
 
             root.style.setProperty('--app-bottom-clearance', `${clearance}px`);
             root.style.setProperty('--app-floating-voice-bottom', `${floatingOffset}px`);
@@ -143,6 +170,11 @@ export default function MobileNav() {
         }
     };
 
+    const handleCaptureTap = () => {
+        setIsMoreOpen(false);
+        setIsCaptureOpen((current) => !current);
+    };
+
     if (shouldHideGlobalNav(pathname)) {
         return null;
     }
@@ -160,32 +192,11 @@ export default function MobileNav() {
                         role="dialog"
                         aria-modal="true"
                         aria-label="More navigation"
-                        className="fixed bottom-28 right-6 z-50 w-[260px] rounded-2xl border border-white/15 bg-surface-1/95 p-3 shadow-xl backdrop-blur-xl md:hidden"
+                        className="fixed bottom-28 right-6 z-50 w-[260px] rounded-2xl glass-nav p-3 shadow-xl lg:hidden"
                     >
-                        {user && workspaceMaturity !== 'new' && (
-                            <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                                <div className="flex items-center justify-between mb-2">
-                                    <p className="text-xs uppercase tracking-[0.16em] text-ink-muted">Profile Readiness</p>
-                                    <span className="text-xs font-semibold text-white">{profileSummary.completionScore}%</span>
-                                </div>
-                                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                                    <div
-                                        className="h-full rounded-full bg-gradient-to-r from-primary via-accent to-secondary"
-                                        style={{ width: `${profileSummary.completionScore}%` }}
-                                    />
-                                </div>
-                                <Link
-                                    href={readinessAction.href}
-                                    onClick={() => setIsMoreOpen(false)}
-                                    className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-primary/30 bg-primary/12 px-2 py-1.5 text-xs uppercase tracking-[0.12em] text-primary"
-                                >
-                                    {readinessAction.label}
-                                </Link>
-                            </div>
-                        )}
                         {moreNavSections.map((section) => (
                             <div key={section.id} className="mb-2 last:mb-0">
-                                <div className="px-2 pb-1 text-xs uppercase tracking-[0.18em] text-ink-muted">
+                                <div className="type-overline px-2 pb-1 text-muted">
                                     {section.label}
                                 </div>
                                 <div className="space-y-1">
@@ -197,13 +208,13 @@ export default function MobileNav() {
                                                 href={item.href}
                                                 onClick={() => setIsMoreOpen(false)}
                                                 aria-current={isActive ? 'page' : undefined}
-                                                className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${isActive
-                                                    ? 'border-primary/35 bg-primary/15 text-white'
-                                                    : 'border-white/10 text-ink-secondary hover:text-white hover:bg-white/10'
+                                                className={`type-label-md flex items-center gap-3 rounded-xl border p-3 transition-colors ${isActive
+                                                    ? 'border-primary/25 bg-primary/14 text-strong'
+                                                    : 'border-white/10 text-soft hover:bg-white/10 hover:text-strong'
                                                     }`}
                                             >
                                                 {item.icon}
-                                                <span className="text-sm font-semibold">{item.label}</span>
+                                                <span>{item.label}</span>
                                             </Link>
                                         );
                                     })}
@@ -212,14 +223,14 @@ export default function MobileNav() {
                         ))}
                         {user && (
                             <div className="mt-3 border-t border-white/10 pt-3">
-                                <div className="px-2 pb-2 text-xs uppercase tracking-[0.18em] text-ink-muted">
+                                <div className="type-overline px-2 pb-2 text-muted">
                                     Session
                                 </div>
                                 <button
                                     type="button"
                                     onClick={handleLogout}
                                     disabled={isLoggingOut}
-                                    className="w-full rounded-xl border border-white/15 bg-white/[0.03] px-3 py-3 text-left text-sm font-semibold text-ink-secondary disabled:opacity-60 disabled:cursor-not-allowed"
+                                    className="type-label-md w-full rounded-xl border border-white/15 bg-white/[0.03] px-3 py-3 text-left text-soft disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     {isLoggingOut ? 'Signing out...' : 'Sign out'}
                                 </button>
@@ -236,36 +247,127 @@ export default function MobileNav() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => setIsMoreOpen(false)}
-                        className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
+                        className={`fixed inset-0 z-40 lg:hidden backdrop-blur-sm ${isPaper ? 'bg-[rgba(41,32,22,0.34)]' : 'bg-black/50'}`}
                     />
                 )}
             </AnimatePresence>
 
             <nav
                 ref={navRef}
-                className="fixed left-4 right-4 z-50 md:hidden"
-                style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+                className="fixed left-3 right-3 z-50 lg:hidden"
+                style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
                 aria-label="Mobile navigation"
             >
-                <div className="bg-surface-1/80 backdrop-blur-2xl border border-white/15 rounded-[2.5rem] px-4 py-3 shadow-2xl flex items-center justify-around relative overflow-hidden">
+                <div className="glass-nav relative flex items-center justify-around rounded-[2.2rem] px-3 py-2.5 shadow-2xl">
                     <div className="absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-secondary/10 pointer-events-none" />
 
                     {mainNavItems.map((item) => {
                         const isActive = isNavItemActive(pathname, item);
 
                         if (item.isMain) {
-                            const quickCaptureHref = item.href === '/entry/new'
-                                ? appendReturnTo('/entry/new?mode=quick', currentReturnTo)
-                                : appendReturnTo(item.href, currentReturnTo);
                             return (
-                                <Link
-                                    key={item.href}
-                                    href={quickCaptureHref}
-                                    aria-label={item.label}
-                                    className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary text-white shadow-xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all relative z-10 mx-2"
-                                >
-                                    {item.icon}
-                                </Link>
+                                <div key={item.href} className="relative z-10 mx-1.5 flex flex-col items-center">
+                                    {/* Floating choice panel — slides up from above the button */}
+                                    <AnimatePresence>
+                                        {isCaptureOpen && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 12, scale: 0.92, rotateX: -16 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
+                                                exit={{ opacity: 0, y: 12, scale: 0.92, rotateX: -12 }}
+                                                transition={{ duration: 0.28, ease: 'easeOut' }}
+                                                className="absolute bottom-full mb-3 w-[16.25rem] origin-bottom"
+                                                style={{ transformPerspective: 1200 }}
+                                            >
+                                                <div className="app-paper relative overflow-hidden rounded-[1.5rem] px-3 pb-3 pt-2.5 shadow-[0_10px_28px_rgba(138,154,111,0.22)]">
+                                                    <div
+                                                        className="pointer-events-none absolute inset-0 opacity-50"
+                                                        style={{
+                                                            backgroundImage: 'repeating-linear-gradient(180deg, transparent 0px, transparent 25px, rgba(92,92,92,0.08) 25px, rgba(92,92,92,0.08) 26px)',
+                                                        }}
+                                                    />
+                                                    <div className="pointer-events-none absolute right-0 top-0 h-8 w-8 border-l border-b border-[rgba(92,92,92,0.12)] bg-[linear-gradient(135deg,rgba(255,255,255,0.92)_0%,rgba(244,239,229,0.88)_100%)]" style={{ clipPath: 'polygon(100% 0, 0 0, 100% 100%)' }} />
+
+                                                    <div className="relative">
+                                                        <div className="flex items-center justify-between gap-3 border-b border-[rgba(92,92,92,0.14)] pb-2">
+                                                            <div>
+                                                                <p className="type-overline text-[rgb(107,107,107)]">Quick capture</p>
+                                                                <p className="mt-0.5 text-[0.72rem] text-[rgb(107,107,107)]">
+                                                                    Open one small page.
+                                                                </p>
+                                                            </div>
+                                                            <NotebookDoodle name="sprout" accent="sage" size={18} className="opacity-80" />
+                                                        </div>
+
+                                                        <div className="mt-3 grid grid-cols-2 gap-2.5">
+                                                            <Link
+                                                                href={writeEntryHref}
+                                                                onClick={() => setIsCaptureOpen(false)}
+                                                                aria-label="Write entry"
+                                                                className="group rounded-[1.1rem] border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.58)] px-3 py-3 text-left text-[rgb(var(--paper-ink))] transition-all hover:-translate-y-0.5 hover:bg-white/70"
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    <NotebookDoodle name="pen" accent="sage" size={20} />
+                                                                    <span className="type-label-md font-semibold">Write</span>
+                                                                </div>
+                                                                <p className="mt-2 text-[0.68rem] leading-4 text-[rgb(107,107,107)]">
+                                                                    Drop what happened while it still feels true.
+                                                                </p>
+                                                            </Link>
+
+                                                            <Link
+                                                                href={voiceEntryHref}
+                                                                onClick={() => setIsCaptureOpen(false)}
+                                                                aria-label="Voice entry"
+                                                                className="group rounded-[1.1rem] border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.58)] px-3 py-3 text-left text-[rgb(var(--paper-ink))] transition-all hover:-translate-y-0.5 hover:bg-white/70"
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    <NotebookDoodle name="mic" accent="sage" size={20} />
+                                                                    <span className="type-label-md font-semibold">Voice</span>
+                                                                </div>
+                                                                <p className="mt-2 text-[0.68rem] leading-4 text-[rgb(107,107,107)]">
+                                                                    Say the messy version first and sort it after.
+                                                                </p>
+                                                            </Link>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="pointer-events-none absolute left-1/2 top-full flex -translate-x-1/2 flex-col items-center">
+                                                    <div className="h-3 w-px bg-[rgba(92,92,92,0.22)]" />
+                                                    <div className="mt-0.5 h-2.5 w-8 rounded-b-full border border-t-0 border-[rgba(92,92,92,0.16)] bg-[rgba(248,244,237,0.92)]" />
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
+                                    <motion.button
+                                        type="button"
+                                        onClick={handleCaptureTap}
+                                        whileTap={{ scale: 0.92 }}
+                                        aria-label={isCaptureOpen ? 'Close capture menu' : 'Quick Capture'}
+                                        aria-expanded={isCaptureOpen}
+                                        aria-haspopup="menu"
+                                        className="app-paper relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-[1.6rem] shadow-[0_6px_20px_rgba(138,154,111,0.25)]"
+                                        style={{ backgroundColor: '#8A9A6F' }}
+                                    >
+                                        <motion.div
+                                            animate={{ rotate: isCaptureOpen ? 90 : 0 }}
+                                            transition={{ duration: 0.28, ease: 'easeOut' }}
+                                            className="relative flex h-8 w-8 items-center justify-center"
+                                        >
+                                            {!isCaptureOpen && (
+                                                <span className="select-none text-4xl leading-none text-white">+</span>
+                                            )}
+                                            {isCaptureOpen && (
+                                                <div className="flex items-center gap-2">
+                                                    <NotebookDoodle name="pen" accent="sage" size={18} color="#F8F4ED" />
+                                                    <div className="h-5 w-px bg-white/60" style={{ transform: 'rotate(12deg)' }} />
+                                                    <NotebookDoodle name="mic" accent="sage" size={18} color="#F8F4ED" />
+                                                </div>
+                                            )}
+                                        </motion.div>
+                                    </motion.button>
+                                </div>
                             );
                         }
 
@@ -274,39 +376,40 @@ export default function MobileNav() {
                                 key={item.href}
                                 href={item.href}
                                 aria-current={isActive ? 'page' : undefined}
-                                className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative z-10 flex-1 ${isActive ? 'text-primary' : 'text-ink-muted hover:text-white'
-                                    }`}
+                                className={`relative z-10 flex min-h-[44px] flex-1 flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all ${isActive ? 'text-accent' : 'text-muted hover:text-strong'}`}
                             >
                                 <div className={`${isActive ? 'opacity-100 scale-110' : 'opacity-70'} transition-transform duration-200`}>
                                     {React.cloneElement(item.icon as React.ReactElement, {
-                                        size: 24, // Increased size for touch targets
+                                        size: 22,
                                         strokeWidth: isActive ? 2.5 : 2
                                     })}
                                 </div>
-                                <span className={`text-xs mt-1 font-bold uppercase tracking-widest ${isActive ? 'opacity-100' : 'opacity-40'}`}>
+                                <span className={`type-micro mt-0.5 ${isActive ? 'text-strong opacity-100' : 'opacity-75'}`}>
                                     {item.shortLabel || item.label}
                                 </span>
                             </Link>
                         );
                     })}
 
-                    {/* More Button */}
-                    <button
-                        type="button"
-                        onClick={() => setIsMoreOpen(!isMoreOpen)}
-                        aria-expanded={isMoreOpen}
-                        aria-controls="mobile-more-drawer"
-                        aria-current={isMoreSectionActive ? 'page' : undefined}
-                        aria-label="Open more navigation"
-                        className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all relative z-10 flex-1 ${(isMoreOpen || isMoreSectionActive) ? 'text-white' : 'text-ink-muted hover:text-white'}`}
-                    >
-                        <div className={`${(isMoreOpen || isMoreSectionActive) ? 'opacity-100 scale-110' : 'opacity-70'} transition-transform duration-200`}>
-                            <FiMoreHorizontal size={24} aria-hidden="true" />
-                        </div>
-                        <span className={`text-xs mt-1 font-bold uppercase tracking-widest ${(isMoreOpen || isMoreSectionActive) ? 'opacity-100' : 'opacity-40'}`}>
-                            More
-                        </span>
-                    </button>
+                    {/* More Button — only visible for admin users */}
+                    {moreSectionItems.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setIsMoreOpen(!isMoreOpen)}
+                            aria-expanded={isMoreOpen}
+                            aria-controls="mobile-more-drawer"
+                            aria-current={isMoreSectionActive ? 'page' : undefined}
+                            aria-label="Open more navigation"
+                            className={`relative z-10 flex min-h-[44px] flex-1 flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all ${(isMoreOpen || isMoreSectionActive) ? 'text-strong' : 'text-muted hover:text-strong'}`}
+                        >
+                            <div className={`${(isMoreOpen || isMoreSectionActive) ? 'opacity-100 scale-110' : 'opacity-70'} transition-transform duration-200`}>
+                                <FiMoreHorizontal size={22} aria-hidden="true" />
+                            </div>
+                            <span className={`type-micro mt-0.5 ${(isMoreOpen || isMoreSectionActive) ? 'text-strong opacity-100' : 'opacity-75'}`}>
+                                More
+                            </span>
+                        </button>
+                    )}
                 </div>
             </nav>
         </>

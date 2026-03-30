@@ -117,12 +117,11 @@ export default function RewriteToolbar({ content, onRewrite, disabled }: Rewrite
                     <button
                         onClick={() => setIsOpen(!isOpen)}
                         disabled={disabled || isLoading}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all
-                            ${isOpen 
-                                ? 'bg-neutral-700 text-white' 
-                                : 'bg-neutral-800/50 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 border border-neutral-700/50'
-                            }
-                            disabled:opacity-50 disabled:cursor-not-allowed`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed
+                            ${isOpen
+                                ? 'workspace-button-secondary'
+                                : 'workspace-pill text-ink-secondary hover:text-[rgb(var(--text-primary))]'
+                            }`}
                     >
                         {isLoading ? (
                             <FiRefreshCw className="w-4 h-4 animate-spin" />
@@ -135,9 +134,9 @@ export default function RewriteToolbar({ content, onRewrite, disabled }: Rewrite
 
                     {/* Dropdown Menu */}
                     {isOpen && (
-                        <div className="absolute top-full left-0 mt-2 w-64 rounded-xl bg-neutral-900 border border-neutral-700/50 shadow-xl z-50 overflow-hidden">
+                        <div className="absolute top-full left-0 mt-2 w-64 rounded-xl workspace-panel shadow-xl z-50 overflow-hidden">
                             <div className="p-2">
-                                <p className="text-xs text-neutral-500 uppercase tracking-wider px-3 py-2 font-semibold">
+                                <p className="text-xs text-ink-muted uppercase tracking-wider px-3 py-2 font-semibold">
                                     Transform your text
                                 </p>
                                 {REWRITE_OPTIONS.map((option) => (
@@ -145,16 +144,16 @@ export default function RewriteToolbar({ content, onRewrite, disabled }: Rewrite
                                         key={option.id}
                                         onClick={() => handleRewrite(option.id)}
                                         disabled={isLoading}
-                                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-neutral-800 transition-all group disabled:opacity-50"
+                                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-white/10 transition-all group disabled:opacity-50"
                                     >
-                                        <span className="text-neutral-400 group-hover:text-neutral-200">
+                                        <span className="text-ink-muted group-hover:text-[rgb(var(--text-primary))]">
                                             {getOptionIcon(option.iconName)}
                                         </span>
                                         <div className="flex-1">
-                                            <p className="text-sm text-neutral-200 font-medium group-hover:text-white transition-colors">
+                                            <p className="text-sm workspace-heading font-medium transition-colors">
                                                 {option.label}
                                             </p>
-                                            <p className="text-xs text-neutral-500">
+                                            <p className="text-xs text-ink-muted">
                                                 {option.description}
                                             </p>
                                         </div>
@@ -175,8 +174,18 @@ export default function RewriteToolbar({ content, onRewrite, disabled }: Rewrite
 
             {/* Preview Panel - Fixed Modal */}
             {previewContent && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-                    <div className="w-full max-w-2xl bg-neutral-900 rounded-2xl border border-neutral-700/50 shadow-2xl overflow-hidden my-auto">
+                <div
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+                    onClick={rejectRewrite}
+                    onKeyDown={(e) => { if (e.key === 'Escape') rejectRewrite(); }}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="rewrite-preview-title"
+                        className="w-full max-w-2xl bg-neutral-900 rounded-2xl border border-neutral-700/50 shadow-2xl overflow-hidden my-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         {/* Header */}
                         <div className="px-6 py-4 border-b border-neutral-800 flex items-center justify-between bg-neutral-900">
                             <div className="flex items-center gap-3">
@@ -184,7 +193,7 @@ export default function RewriteToolbar({ content, onRewrite, disabled }: Rewrite
                                     <FiZap className="w-5 h-5 text-neutral-300" />
                                 </div>
                                 <div>
-                                    <h3 className="text-neutral-100 font-semibold">AI Rewrite Preview</h3>
+                                    <h3 id="rewrite-preview-title" className="text-neutral-100 font-semibold">AI Rewrite Preview</h3>
                                     <p className="text-xs text-neutral-500 flex items-center gap-1.5">
                                         Style: {activeOption?.label}
                                         <span className="text-neutral-600">
@@ -195,6 +204,7 @@ export default function RewriteToolbar({ content, onRewrite, disabled }: Rewrite
                             </div>
                             <button
                                 onClick={rejectRewrite}
+                                aria-label="Close rewrite preview"
                                 className="p-2 rounded-lg text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 transition-all"
                             >
                                 <FiX className="w-5 h-5" />

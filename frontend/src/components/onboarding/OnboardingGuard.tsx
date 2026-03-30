@@ -4,12 +4,14 @@ import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { hasCompletedOnboardingFromProfile } from '@/utils/onboarding';
-import { sanitizeReturnTo } from '@/utils/redirect';
+import { buildAuthAwareReturnTo } from '@/utils/redirect';
+import { buildBirthDateCollectionRedirect, needsBirthDateCollection } from '@/utils/auth-routing';
 
 const PUBLIC_PREFIXES = [
     '/login',
     '/register',
     '/onboarding',
+    '/profile/complete',
     '/forgot-password',
     '/reset-password',
     '/terms',
@@ -34,10 +36,17 @@ export default function OnboardingGuard() {
         if (isLoading) return;
         if (!user) return;
         if (isPublicPath(pathname)) return;
-        if (hasCompletedOnboardingFromProfile(user.profile ?? null)) return;
 
         const currentQuery = typeof window !== 'undefined' ? window.location.search : '';
-        const safeReturnTo = sanitizeReturnTo(`${pathname || '/dashboard'}${currentQuery}`);
+        const safeReturnTo = buildAuthAwareReturnTo(pathname, currentQuery);
+
+        if (needsBirthDateCollection(user)) {
+            router.replace(buildBirthDateCollectionRedirect(safeReturnTo));
+            return;
+        }
+
+        if (hasCompletedOnboardingFromProfile(user.profile ?? null)) return;
+
         const destination = safeReturnTo
             ? `/onboarding?returnTo=${encodeURIComponent(safeReturnTo)}`
             : '/onboarding';

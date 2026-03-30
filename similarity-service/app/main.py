@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import asyncio
 import logging
+import os
 import time
 
 from .models import (
@@ -19,6 +21,9 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Maximum entries allowed per /similarity request to bound memory/time
+MAX_SIMILARITY_ENTRIES = int(os.getenv('MAX_SIMILARITY_ENTRIES', '500'))
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -40,6 +45,17 @@ app.add_middleware(
 
 # Initialize similarity service
 similarity_service = SimilarityService()
+
+
+@app.on_event("startup")
+async def warmup_models():
+    """Pre-load the embedding model at startup to avoid first-request latency."""
+    logger.info("Warming up embedding model...")
+    try:
+        await asyncio.to_thread(similarity_service.get_embeddings, ["warmup"], "query")
+        logger.info("Embedding model warmed up successfully.")
+    except Exception as e:
+        logger.warning(f"Model warmup failed (will lazy-load on first request): {e}")
 
 
 @app.get("/")
@@ -97,6 +113,12 @@ async def find_similar_entries(request: SimilarityRequest) -> SimilarityResponse
             detail="Query cannot be empty"
         )
 
+    if len(request.entries) > MAX_SIMILARITY_ENTRIES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many entries ({len(request.entries)}). Maximum is {MAX_SIMILARITY_ENTRIES}."
+        )
+
     if not request.entries:
         return SimilarityResponse(relevant_entries=[])
 
@@ -107,8 +129,9 @@ async def find_similar_entries(request: SimilarityRequest) -> SimilarityResponse
         return SimilarityResponse(relevant_entries=[])
 
     try:
-        # Find similar entries
-        relevant_entries = similarity_service.find_similar_entries(
+        # Run sync model inference in a thread to avoid blocking the event loop
+        relevant_entries = await asyncio.to_thread(
+            similarity_service.find_similar_entries,
             query=request.query,
             entries=valid_entries,
             top_k=request.top_k,
@@ -176,11 +199,12 @@ async def embed_texts(request: EmbedRequest) -> EmbedResponse:
         )
 
     try:
-        embeddings = similarity_service.get_embeddings(
+        embeddings = await asyncio.to_thread(
+            similarity_service.get_embeddings,
             valid_texts,
-            mode=request.mode,
-            normalize=request.normalize,
-            pad_to_dims=request.pad_to,
+            request.mode,
+            request.normalize,
+            request.pad_to,
         )
         dimensions = int(embeddings.shape[1]) if embeddings.ndim == 2 and embeddings.shape[0] > 0 else 0
         return EmbedResponse(
@@ -209,10 +233,11 @@ async def rerank_candidates(request: RerankRequest) -> RerankResponse:
         return RerankResponse(results=[])
 
     try:
-        ranked = similarity_service.rerank_candidates(
-            query=request.query,
-            candidates=[candidate.model_dump() for candidate in request.candidates],
-            top_k=request.top_k,
+        ranked = await asyncio.to_thread(
+            similarity_service.rerank_candidates,
+            request.query,
+            [candidate.model_dump() for candidate in request.candidates],
+            request.top_k,
         )
         return RerankResponse(
             results=[

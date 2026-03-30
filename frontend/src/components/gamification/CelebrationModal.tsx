@@ -43,8 +43,18 @@ export default function CelebrationModal() {
     return (
         <>
             <Confetti />
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={dismissCelebration}>
-                <div className="glass-card p-8 rounded-3xl text-center max-w-sm animate-celebration" onClick={(e) => e.stopPropagation()}>
+            <div
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                onClick={dismissCelebration}
+                onKeyDown={(e) => { if (e.key === 'Escape') dismissCelebration(); }}
+            >
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Celebration"
+                    className="workspace-panel p-8 rounded-3xl text-center max-w-sm animate-celebration"
+                    onClick={(e) => e.stopPropagation()}
+                >
                     {celebrationType === 'badge' && newBadge && (
                         <>
                             <div className="mb-4 flex items-center justify-center text-primary animate-bounce">
@@ -53,7 +63,7 @@ export default function CelebrationModal() {
                                     return <BadgeIcon size={56} aria-hidden="true" />;
                                 })()}
                             </div>
-                            <h2 className="text-2xl font-bold text-white mb-2">Badge Unlocked!</h2>
+                            <h2 className="text-2xl font-bold text-ink mb-2">Badge Unlocked!</h2>
                             <p className="text-xl text-primary mb-2">{newBadge.name}</p>
                             <p className="text-ink-secondary mb-6">{newBadge.description}</p>
                         </>
@@ -64,7 +74,7 @@ export default function CelebrationModal() {
                             <div className="mb-4 flex items-center justify-center text-primary">
                                 <FiAward size={56} aria-hidden="true" />
                             </div>
-                            <h2 className="text-2xl font-bold text-white mb-2">Level Up!</h2>
+                            <h2 className="text-2xl font-bold text-ink mb-2">Level Up!</h2>
                             <p className="text-5xl font-bold text-primary mb-2">{stats?.level}</p>
                             <p className="text-ink-secondary mb-6">You're building a deeper memory-and-signal practice.</p>
                         </>
@@ -75,7 +85,7 @@ export default function CelebrationModal() {
                             <div className="mb-4 flex items-center justify-center text-primary">
                                 <FiTrendingUp size={56} aria-hidden="true" />
                             </div>
-                            <h2 className="text-2xl font-bold text-white mb-2">Streak Milestone!</h2>
+                            <h2 className="text-2xl font-bold text-ink mb-2">Streak Milestone!</h2>
                             <p className="text-5xl font-bold text-primary mb-2">{stats?.currentStreak} Days</p>
                             <p className="text-ink-secondary mb-6">Keep the momentum going!</p>
                         </>

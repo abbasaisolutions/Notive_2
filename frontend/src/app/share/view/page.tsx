@@ -2,10 +2,12 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
+import NotiveLogo from '@/components/ui/NotiveLogo';
 import { useSearchParams } from 'next/navigation';
 import { API_URL } from '@/constants/config';
 import { sanitizeHtml } from '@/utils/sanitize-html';
 import { AppPanel, TagPill } from '@/components/ui/surface';
+import { Spinner } from '@/components/ui';
 
 interface SharedUser {
     name?: string | null;
@@ -73,7 +75,7 @@ function SharedPageContent() {
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                <Spinner size="md" />
             </div>
         );
     }
@@ -98,9 +100,7 @@ function SharedPageContent() {
             <div className="border-b border-white/10 bg-surface-1/80 backdrop-blur-md sticky top-0 z-50">
                 <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                            Notive.
-                        </h1>
+                        <NotiveLogo size="xs" />
                         <TagPill tone="muted">Shared Memory</TagPill>
                     </div>
 
@@ -171,7 +171,7 @@ function SharedPageContent() {
 
 export default function SharedPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Spinner size="md" /></div>}>
             <SharedPageContent />
         </Suspense>
     );

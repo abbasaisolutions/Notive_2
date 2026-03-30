@@ -27,15 +27,45 @@ const PASSWORD_POLICY_MESSAGE = 'Password must be at least 8 characters and incl
 const hasStrongPassword = (value: string): boolean =>
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
 
+const parseBirthDate = (value: unknown): Date | null => {
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    let parsed: Date;
+
+    if (dateOnlyMatch) {
+        const [, year, month, day] = dateOnlyMatch;
+        parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    } else {
+        const raw = new Date(trimmed);
+        if (Number.isNaN(raw.getTime())) {
+            return null;
+        }
+        parsed = new Date(Date.UTC(raw.getUTCFullYear(), raw.getUTCMonth(), raw.getUTCDate()));
+    }
+
+    if (Number.isNaN(parsed.getTime()) || parsed.getTime() > Date.now()) {
+        return null;
+    }
+
+    return parsed;
+};
+
 // --- REGISTER ---
 export const register = async (req: Request, res: Response) => {
     try {
-        const { email, password, name } = req.body;
+        const { email, password, name, birthDate } = req.body;
         const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+        const parsedBirthDate = parseBirthDate(birthDate);
 
         // Validate input
         if (!normalizedEmail || !password) {
             return res.status(400).json({ message: 'Email and password are required' });
+        }
+        if (!parsedBirthDate) {
+            return res.status(400).json({ message: 'Birth date is required' });
         }
         if (!hasStrongPassword(password)) {
             return res.status(400).json({ message: PASSWORD_POLICY_MESSAGE });
@@ -56,7 +86,15 @@ export const register = async (req: Request, res: Response) => {
                 email: normalizedEmail,
                 password: hashedPassword,
                 name: name || null,
+                profile: {
+                    create: {
+                        birthDate: parsedBirthDate,
+                        lifeGoals: [],
+                        outputGoals: [],
+                    },
+                },
             },
+            include: { profile: true },
         });
 
         // Generate tokens
@@ -88,7 +126,7 @@ export const register = async (req: Request, res: Response) => {
                 role: user.role,
                 hasPassword: Boolean(user.password),
                 createdAt: user.createdAt,
-                profile: null,
+                profile: user.profile,
             },
         });
     } catch (error) {
@@ -102,6 +140,7 @@ export const login = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
         const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+        const isDevelopment = process.env.NODE_ENV !== 'production';
 
         // Validate input
         if (!normalizedEmail || !password) {
@@ -114,6 +153,14 @@ export const login = async (req: Request, res: Response) => {
             include: { profile: true },
         });
         if (!user) {
+            if (isDevelopment) {
+                const userCount = await prisma.user.count();
+                if (userCount === 0) {
+                    return res.status(401).json({
+                        message: 'No local accounts exist yet. Create one from Register or seed an admin user first.',
+                    });
+                }
+            }
             return res.status(401).json({ message: 'Invalid credentials' });
         }
         if (user.isBanned) {

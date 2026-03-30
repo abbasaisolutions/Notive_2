@@ -1,8 +1,9 @@
 import { hasCompletedOnboardingFromProfile } from '@/utils/onboarding';
-import { sanitizeReturnTo } from '@/utils/redirect';
+import { unwrapSetupReturnTo } from '@/utils/redirect';
 
 type AuthRouteUser = {
     profile?: {
+        birthDate?: string | null;
         primaryGoal?: string | null;
         focusArea?: string | null;
         starterPrompt?: string | null;
@@ -14,11 +15,33 @@ type AuthRouteUser = {
     } | null;
 } | null | undefined;
 
+const hasBirthDate = (value: unknown): value is string =>
+    typeof value === 'string' && value.trim().length > 0;
+
+export function needsBirthDateCollection(user: AuthRouteUser): boolean {
+    return !hasBirthDate(user?.profile?.birthDate);
+}
+
+export function buildBirthDateCollectionRedirect(returnTo: string | null | undefined): string {
+    const safeReturnTo = unwrapSetupReturnTo(returnTo);
+
+    if (!safeReturnTo) {
+        return '/profile/complete';
+    }
+
+    return `/profile/complete?returnTo=${encodeURIComponent(safeReturnTo)}`;
+}
+
 export function resolvePostAuthDestination(
     user: AuthRouteUser,
     returnTo: string | null | undefined
 ): string {
-    const safeReturnTo = sanitizeReturnTo(returnTo);
+    const safeReturnTo = unwrapSetupReturnTo(returnTo);
+
+    if (needsBirthDateCollection(user)) {
+        return buildBirthDateCollectionRedirect(safeReturnTo);
+    }
+
     const onboardingComplete = hasCompletedOnboardingFromProfile(user?.profile ?? null);
 
     if (!onboardingComplete) {
@@ -30,4 +53,3 @@ export function resolvePostAuthDestination(
 
     return safeReturnTo || '/dashboard';
 }
-

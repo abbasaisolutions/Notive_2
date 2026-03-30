@@ -10,6 +10,7 @@ import { API_URL, DEBOUNCE_DELAY } from '@/constants/config';
 import { getMoodEmoji } from '@/constants/moods';
 import useApi from '@/hooks/use-api';
 import { FiSearch, FiX, FiXCircle } from 'react-icons/fi';
+import { Spinner } from '@/components/ui';
 
 interface SearchResult {
     id: string;
@@ -114,7 +115,7 @@ export function SmartSearch() {
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => query && setShowResults(true)}
                     placeholder="Search your memory base semantically... (e.g., 'new city', 'team conflict')"
-                    className="w-full px-5 py-4 pl-14 pr-14 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                    className="workspace-input w-full px-5 py-4 pl-14 pr-14 rounded-2xl placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                 />
 
                 {/* Search Icon */}
@@ -127,14 +128,15 @@ export function SmartSearch() {
                 {/* Loading / Clear */}
                 <div className="absolute right-5 top-1/2 -translate-y-1/2">
                     {isSearching ? (
-                        <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+                        <Spinner size="sm" />
                     ) : query ? (
                         <button
                             onClick={() => {
                                 setQuery('');
                                 setShowResults(false);
                             }}
-                            className="text-ink-secondary hover:text-white transition-colors"
+                            aria-label="Clear search"
+                            className="text-ink-secondary hover:text-[rgb(var(--text-primary))] transition-colors"
                         >
                             <FiXCircle size={20} aria-hidden="true" />
                         </button>
@@ -144,14 +146,15 @@ export function SmartSearch() {
 
             {/* Search Results Dropdown */}
             {showResults && results.length > 0 && (
-                <div className="absolute top-full mt-2 w-full glass-card rounded-2xl p-4 z-50 max-h-[500px] overflow-y-auto">
+                <div className="absolute top-full mt-2 w-full workspace-panel rounded-2xl p-4 z-50 max-h-[500px] overflow-y-auto">
                     <div className="flex items-center justify-between mb-4 px-2">
                         <span className="text-sm text-ink-secondary">
                             Found {results.length} {results.length === 1 ? 'entry' : 'entries'}
                         </span>
                         <button
                             onClick={() => setShowResults(false)}
-                            className="text-ink-secondary hover:text-white transition-colors"
+                            aria-label="Close search results"
+                            className="text-ink-secondary hover:text-[rgb(var(--text-primary))] transition-colors"
                         >
                             <FiX size={16} aria-hidden="true" />
                         </button>
@@ -177,7 +180,7 @@ export function SmartSearch() {
                                         {/* Title */}
                                         {result.title && (
                                             <h4
-                                                className="font-bold text-white mb-1 group-hover:text-primary transition-colors"
+                                                className="font-bold workspace-heading mb-1 group-hover:text-primary transition-colors"
                                             >
                                                 {highlightText(result.title, query)}
                                             </h4>
@@ -250,11 +253,11 @@ export function SmartSearch() {
 
             {/* No Results */}
             {showResults && query && !isSearching && results.length === 0 && (
-                <div className="absolute top-full mt-2 w-full glass-card rounded-2xl p-8 z-50 text-center">
+                <div className="absolute top-full mt-2 w-full workspace-panel rounded-2xl p-8 z-50 text-center">
                     <div className="mb-3 inline-flex items-center justify-center rounded-full bg-white/5 p-3 text-ink-secondary">
                         <FiSearch size={24} aria-hidden="true" />
                     </div>
-                    <h4 className="text-white font-bold mb-2">No matching moments yet</h4>
+                    <h4 className="workspace-heading font-bold mb-2">No matching moments yet</h4>
                     <p className="text-ink-secondary text-sm">
                         Try different keywords, people, themes, or a broader phrase
                     </p>

@@ -13,6 +13,7 @@ export interface EntryDraft {
     analysis?: {
         deterministic?: unknown;
         ai?: Record<string, unknown>;
+        voice?: Record<string, unknown>;
     };
     updatedAt: number;
     pendingSync: boolean;

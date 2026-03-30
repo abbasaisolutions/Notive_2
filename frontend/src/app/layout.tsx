@@ -7,8 +7,13 @@ import { AuthProvider } from "@/context/auth-context";
 import { SmartProvider } from "@/context/smart-context";
 import { GamificationProvider } from "@/context/gamification-context";
 import { ThemeProvider } from "@/context/theme-context";
+import { PushNotificationProvider } from "@/context/push-notification-context";
+import { ToastProvider, ToastContainer } from "@/context/toast-context";
+import ErrorBoundary from "@/components/error-boundary";
+import ReducedMotionProvider from "@/components/ReducedMotionProvider";
 import AppChrome from "@/components/layout/AppChrome";
 import RouteHeader from "@/components/layout/RouteHeader";
+import PageTransition from "@/components/layout/PageTransition";
 import OnboardingGuard from "@/components/onboarding/OnboardingGuard";
 import { NOTIVE_VOICE } from "@/content/notive-voice";
 import { getCredentialSsoClientId } from "@/utils/sso";
@@ -120,46 +125,57 @@ export default function RootLayout({
     return (
         <html lang="en">
             <body className={`${jakarta.variable} ${fraunces.variable} font-sans tracking-[0.005em]`}>
-                <GoogleProviderWrapper>
-                    <ThemeProvider>
-                        <AuthProvider>
-                            <GamificationProvider>
-                                <SmartProvider>
-                                    <OnboardingGuard />
-                                    <script
-                                        type="application/ld+json"
-                                        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-                                    />
-                                    <a href="#main-content" className="skip-link">
-                                        Skip to main content
-                                    </a>
-                                    <div className="flex min-h-screen relative overflow-hidden cosmic-bg">
-                                        <AppChrome />
-                                        <main
-                                            id="main-content"
-                                            className="flex-1 w-full relative z-10 app-shell spotlight-grid"
-                                            tabIndex={-1}
-                                            style={{ paddingBottom: 'var(--app-bottom-clearance, 0px)' }}
-                                        >
-                                            <Suspense fallback={null}>
-                                                <RouteHeader />
-                                            </Suspense>
-                                            {children}
-                                            <footer className="px-6 pb-8 pt-10 text-center text-xs text-ink-muted">
-                                                <p>{LEGAL_FOOTER_NOTICE}</p>
-                                                <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-[0.76rem]">
-                                                    <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
-                                                    <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
-                                                    <Link href={ACCOUNT_DELETION_PATH} className="hover:text-white transition-colors">Account deletion</Link>
+                <ErrorBoundary>
+                    <ReducedMotionProvider>
+                    <GoogleProviderWrapper>
+                        <ThemeProvider>
+                            <AuthProvider>
+                                <ToastProvider>
+                                    <PushNotificationProvider>
+                                        <GamificationProvider>
+                                            <SmartProvider>
+                                                <OnboardingGuard />
+                                                <script
+                                                    type="application/ld+json"
+                                                    dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+                                                />
+                                                <a href="#main-content" className="skip-link">
+                                                    Skip to main content
+                                                </a>
+                                                <div className="flex min-h-screen relative overflow-hidden cosmic-bg">
+                                                    <AppChrome />
+                                                    <main
+                                                        id="main-content"
+                                                        className="flex-1 w-full relative z-10 app-shell spotlight-grid"
+                                                        tabIndex={-1}
+                                                        style={{ paddingBottom: 'var(--app-bottom-clearance, 0px)' }}
+                                                    >
+                                                        <Suspense fallback={null}>
+                                                            <RouteHeader />
+                                                        </Suspense>
+                                                        <PageTransition>
+                                                            {children}
+                                                        </PageTransition>
+                                                        <footer className="app-footer-copy type-micro px-6 pb-8 pt-10 text-center">
+                                                            <p>{LEGAL_FOOTER_NOTICE}</p>
+                                                            <div className="type-micro mt-2 flex flex-wrap items-center justify-center gap-3">
+                                                                <Link href="/privacy" className="app-footer-link transition-colors">Privacy</Link>
+                                                                <Link href="/terms" className="app-footer-link transition-colors">Terms</Link>
+                                                                <Link href={ACCOUNT_DELETION_PATH} className="app-footer-link transition-colors">Account deletion</Link>
+                                                            </div>
+                                                        </footer>
+                                                    </main>
                                                 </div>
-                                            </footer>
-                                        </main>
-                                    </div>
-                                </SmartProvider>
-                            </GamificationProvider>
-                        </AuthProvider>
-                    </ThemeProvider>
-                </GoogleProviderWrapper>
+                                                <ToastContainer />
+                                            </SmartProvider>
+                                        </GamificationProvider>
+                                    </PushNotificationProvider>
+                                </ToastProvider>
+                            </AuthProvider>
+                        </ThemeProvider>
+                    </GoogleProviderWrapper>
+                    </ReducedMotionProvider>
+                </ErrorBoundary>
             </body>
         </html>
     );

@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { getMoodColor, getMoodEmoji, normalizeMood } from '@/constants/moods';
-import { FiBookOpen, FiCpu } from 'react-icons/fi';
+import { FiBookOpen } from 'react-icons/fi';
+import { EmptyState } from '@/components/ui';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import { buildTimelineMonthGroups } from '@/utils/timeline-groups';
 import { formatStoryConfidence, storyStatusClassName, storyStatusLabel, type StorySignal } from '@/utils/story-engine';
+import NotiveNoticedPanel, { type NotiveInsight } from './NotiveNoticedPanel';
 
 interface Entry {
     id: string;
@@ -22,6 +24,8 @@ interface Entry {
     coverImage?: string | null;
     skills?: string[];
     lessons?: string[];
+    reflection?: string | null;
+    notiveInsights?: NotiveInsight[] | null;
     storySignal?: StorySignal;
 }
 
@@ -48,19 +52,13 @@ export default function TimelineView({ entries, seasonAnchorsByMonthKey = {} }: 
 
     if (entries.length === 0) {
         return (
-            <div className="bento-box p-10 text-center">
-                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/15 bg-white/[0.03]">
-                    <FiCpu size={26} className="text-ink-secondary" aria-hidden="true" />
-                </div>
-                <h3 className="text-xl font-semibold text-white">No memories yet</h3>
-                <p className="mt-1 text-sm text-ink-secondary">Create your first entry to start your timeline.</p>
-                <Link
-                    href={appendReturnTo('/entry/new?mode=quick', currentReturnTo)}
-                    className="mt-5 inline-flex items-center gap-2 rounded-xl border border-primary/35 bg-primary/12 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary transition-colors hover:bg-primary/20"
-                >
-                    Quick Capture
-                </Link>
-            </div>
+            <EmptyState
+                doodle="sprout"
+                doodleAccent="sage"
+                title="No memories yet"
+                subtitle="Create your first entry to start your timeline."
+                action={{ label: 'Quick Capture', href: appendReturnTo('/entry/new?mode=quick', currentReturnTo) }}
+            />
         );
     }
 
@@ -85,11 +83,11 @@ export default function TimelineView({ entries, seasonAnchorsByMonthKey = {} }: 
                             data-timeline-month-key={group.key}
                             className="sticky top-4 z-20 mb-5 pl-11 md:top-6 md:mb-6 md:flex md:justify-center md:pl-0"
                         >
-                            <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-white/15 bg-surface-1/85 px-3 py-2 shadow-lg shadow-black/20 backdrop-blur-xl">
-                                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-white">
+                            <div className="inline-flex flex-wrap items-center gap-2 rounded-full workspace-soft-panel px-3 py-2 shadow-lg shadow-black/20 backdrop-blur-xl">
+                                <span className="text-xs font-semibold uppercase tracking-[0.16em] workspace-heading">
                                     {group.label}
                                 </span>
-                                <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-ink-secondary">
+                                <span className="workspace-pill rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-ink-secondary">
                                     {group.count}
                                 </span>
                                 {season && (
@@ -109,11 +107,7 @@ export default function TimelineView({ entries, seasonAnchorsByMonthKey = {} }: 
                                     ? normalizedMood.charAt(0).toUpperCase() + normalizedMood.slice(1)
                                     : null;
                                 const source = entry.source || 'NOTIVE';
-                                const sourceBadgeStyle = source === 'INSTAGRAM'
-                                    ? 'text-white border-white/20 bg-white/[0.05]'
-                                    : source === 'FACEBOOK'
-                                        ? 'text-white border-white/20 bg-white/[0.05]'
-                                        : 'text-white border-white/20 bg-white/[0.05]';
+                                const sourceBadgeStyle = 'workspace-pill text-ink-secondary';
                                 const wordCount = entry.content.trim().split(/\s+/).filter(Boolean).length;
                                 const readMinutes = Math.max(1, Math.round(wordCount / 180));
                                 const storySignal = entry.storySignal;
@@ -134,14 +128,14 @@ export default function TimelineView({ entries, seasonAnchorsByMonthKey = {} }: 
 
                                         <div className="flex-1 md:w-1/2 pl-11 md:pl-0">
                                             <Link href={appendReturnTo(`/entry/view?id=${entry.id}`, currentReturnTo)} className="block group">
-                                                <div className="bento-box p-5 md:p-6 border-white/15">
+                                                <div className="workspace-panel rounded-[2rem] p-5 md:p-6">
                                                     <div className="flex items-start justify-between gap-3 mb-3">
                                                         <span className="text-xs text-ink-muted uppercase tracking-[0.16em] font-semibold">
                                                             {formatDate(entry.createdAt)}
                                                         </span>
                                                         <div className="flex items-center gap-2">
                                                             {entry.lifeArea && (
-                                                                <span className="text-xs font-semibold px-2 py-1 rounded-full border uppercase tracking-wider border-white/20 bg-white/[0.05] text-white">
+                                                                <span className="workspace-pill text-xs font-semibold px-2 py-1 rounded-full uppercase tracking-wider text-ink-secondary">
                                                                     {entry.lifeArea}
                                                                 </span>
                                                             )}
@@ -173,7 +167,7 @@ export default function TimelineView({ entries, seasonAnchorsByMonthKey = {} }: 
                                                         </div>
                                                     </div>
 
-                                                    <h3 className="text-xl font-serif text-white mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                                                    <h3 className="text-xl font-serif workspace-heading mb-2 group-hover:text-primary transition-colors line-clamp-2">
                                                         {entry.title || 'Untitled Memory'}
                                                     </h3>
 
@@ -182,16 +176,16 @@ export default function TimelineView({ entries, seasonAnchorsByMonthKey = {} }: 
                                                     </p>
 
                                                     <div className="mb-3 flex flex-wrap gap-2">
-                                                        <span className="text-xs font-semibold text-ink-secondary border border-white/15 bg-white/[0.03] px-2 py-1 rounded-full uppercase tracking-wider">
+                                                        <span className="workspace-pill text-xs font-semibold text-ink-secondary px-2 py-1 rounded-full uppercase tracking-wider">
                                                             <span className="inline-flex items-center gap-1">
                                                                 <FiBookOpen size={10} aria-hidden="true" /> {readMinutes}m
                                                             </span>
                                                         </span>
-                                                        <span className="text-xs font-semibold text-ink-secondary border border-white/15 bg-white/[0.03] px-2 py-1 rounded-full uppercase tracking-wider">
+                                                        <span className="workspace-pill text-xs font-semibold text-ink-secondary px-2 py-1 rounded-full uppercase tracking-wider">
                                                             #{wordCount} words
                                                         </span>
                                                         {storySignal && (
-                                                            <span className="text-xs font-semibold text-ink-secondary border border-white/15 bg-white/[0.03] px-2 py-1 rounded-full uppercase tracking-wider">
+                                                            <span className="workspace-pill text-xs font-semibold text-ink-secondary px-2 py-1 rounded-full uppercase tracking-wider">
                                                                 {storySignal.completenessScore}% ready / {formatStoryConfidence(storySignal.confidence)} confidence
                                                             </span>
                                                         )}
@@ -209,6 +203,18 @@ export default function TimelineView({ entries, seasonAnchorsByMonthKey = {} }: 
                                                             </span>
                                                         ))}
                                                     </div>
+
+                                                    {(entry.notiveInsights?.length || entry.reflection || (entry.skills?.length ?? 0) > 0 || (entry.lessons?.length ?? 0) > 0 || entry.storySignal) && (
+                                                        <NotiveNoticedPanel
+                                                            skills={entry.skills}
+                                                            lessons={entry.lessons}
+                                                            reflection={entry.reflection}
+                                                            notiveInsights={entry.notiveInsights}
+                                                            storySignal={entry.storySignal}
+                                                            mood={entry.mood}
+                                                            lifeArea={entry.lifeArea}
+                                                        />
+                                                    )}
                                                 </div>
                                             </Link>
                                         </div>

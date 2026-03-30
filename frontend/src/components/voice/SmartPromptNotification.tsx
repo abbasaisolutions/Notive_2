@@ -225,7 +225,7 @@ export default function SmartPromptNotification() {
 
     return (
         <div className="fixed top-20 right-6 z-40 max-w-sm animate-slide-in-right">
-            <div className="glass-card rounded-2xl p-4 shadow-2xl border border-white/10">
+            <div className="workspace-soft-panel rounded-2xl p-4 shadow-2xl">
                 {/* Icon */}
                 <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0">
@@ -267,7 +267,8 @@ export default function SmartPromptNotification() {
                     {/* Close button */}
                     <button
                         onClick={handleDismiss}
-                        className="text-ink-secondary hover:text-white transition-colors"
+                        aria-label="Dismiss prompt"
+                        className="min-w-[44px] min-h-[44px] flex items-center justify-center text-ink-secondary hover:text-white transition-colors"
                     >
                         <FiX size={18} aria-hidden="true" />
                     </button>

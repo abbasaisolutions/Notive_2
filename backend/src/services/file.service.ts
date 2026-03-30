@@ -140,8 +140,21 @@ const storage = isS3Configured
     : localStorage;
 
 // File filter (Allowed: images and audio)
+export const allowedUploadMimeTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'audio/mpeg',
+    'audio/wav',
+    'audio/webm',
+    'audio/mp4',
+];
+
+export const DEFAULT_UPLOAD_LIMIT_BYTES = 50 * 1024 * 1024;
+
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'audio/mpeg', 'audio/wav', 'audio/webm', 'audio/mp4'];
+    const allowedTypes = allowedUploadMimeTypes;
     if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {
@@ -149,13 +162,15 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     }
 };
 
-export const upload = multer({
+export const createUpload = (fileSize = DEFAULT_UPLOAD_LIMIT_BYTES) => multer({
     storage: storage,
     fileFilter: fileFilter,
     limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB limit (increased for audio)
+        fileSize,
     },
 });
+
+export const upload = createUpload();
 
 export class LocalFileService {
     static getFileUrl(req: Request, filename: string): string {

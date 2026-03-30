@@ -23,8 +23,8 @@ export function TagInput({
 
     return (
         <div className="space-y-2">
-            <label className="text-xs text-ink-muted uppercase tracking-widest font-bold ml-1">{label}</label>
-            <div className="w-full rounded-[1.2rem] border border-white/10 bg-white/[0.03] px-3 py-3 space-y-3">
+            <label className="workspace-field-label ml-1">{label}</label>
+            <div className="workspace-soft-panel w-full rounded-[1.2rem] px-3 py-3 space-y-3">
                 {values.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                         {values.map((item) => (
@@ -36,7 +36,7 @@ export function TagInput({
                                 <button
                                     type="button"
                                     onClick={() => onRemove(item)}
-                                    className="text-primary/80 hover:text-white transition-colors"
+                                    className="text-primary/80 hover:text-primary transition-colors"
                                     aria-label={`Remove ${item}`}
                                 >
                                     x
@@ -51,11 +51,11 @@ export function TagInput({
                     onChange={(event) => onDraftChange(event.target.value)}
                     onKeyDown={handleKeyDown}
                     onBlur={onAdd}
-                    className="w-full bg-transparent px-2 py-1 text-white placeholder-ink-muted focus:outline-none"
+                    className="workspace-input-plain w-full px-2 py-1 focus:outline-none"
                     placeholder={placeholder}
                 />
             </div>
-            {helper && <p className="text-xs text-ink-muted ml-1">{helper}</p>}
+            {helper && <p className="workspace-field-helper ml-1">{helper}</p>}
         </div>
     );
 }
@@ -72,20 +72,20 @@ export function TextField({
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
-    type?: 'text' | 'email' | 'url' | 'password' | 'tel';
+    type?: 'text' | 'email' | 'url' | 'password' | 'tel' | 'date';
     helper?: string;
 }) {
     return (
         <div className="space-y-2">
-            <label className="text-xs text-ink-muted uppercase tracking-widest font-bold ml-1">{label}</label>
+            <label className="workspace-field-label ml-1">{label}</label>
             <input
                 type={type}
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
-                className="w-full rounded-[1.2rem] border border-white/10 bg-white/[0.03] px-5 py-4 text-white placeholder-ink-muted focus:outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all"
+                className="workspace-input w-full rounded-[1.2rem] px-5 py-4 focus:outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all"
                 placeholder={placeholder}
             />
-            {helper && <p className="text-xs text-ink-muted ml-1">{helper}</p>}
+            {helper && <p className="workspace-field-helper ml-1">{helper}</p>}
         </div>
     );
 }
@@ -107,15 +107,15 @@ export function TextAreaField({
 }) {
     return (
         <div className="space-y-2">
-            <label className="text-xs text-ink-muted uppercase tracking-widest font-bold ml-1">{label}</label>
+            <label className="workspace-field-label ml-1">{label}</label>
             <textarea
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
-                className="w-full resize-none rounded-[1.2rem] border border-white/10 bg-white/[0.03] px-5 py-4 text-white placeholder-ink-muted focus:outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all"
+                className="workspace-input w-full resize-none rounded-[1.2rem] px-5 py-4 focus:outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all"
                 placeholder={placeholder}
                 style={{ minHeight }}
             />
-            {helper && <p className="text-xs text-ink-muted ml-1">{helper}</p>}
+            {helper && <p className="workspace-field-helper ml-1">{helper}</p>}
         </div>
     );
 }
@@ -137,11 +137,11 @@ export function SelectField({
 }) {
     return (
         <div className="space-y-2">
-            <label className="text-xs text-ink-muted uppercase tracking-widest font-bold ml-1">{label}</label>
+            <label className="workspace-field-label ml-1">{label}</label>
             <select
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
-                className="w-full rounded-[1.2rem] border border-white/10 bg-white/[0.03] px-4 py-4 text-white focus:outline-none focus:border-primary/40"
+                className="workspace-input w-full rounded-[1.2rem] px-4 py-4 focus:outline-none focus:border-primary/40"
             >
                 <option value="">{emptyLabel}</option>
                 {options.map((option) => (
@@ -150,7 +150,7 @@ export function SelectField({
                     </option>
                 ))}
             </select>
-            {helper && <p className="text-xs text-ink-muted ml-1">{helper}</p>}
+            {helper && <p className="workspace-field-helper ml-1">{helper}</p>}
         </div>
     );
 }
@@ -160,8 +160,8 @@ export function NoticeBanner({ notice }: { notice: Notice }) {
         <div
             className={`rounded-[1.4rem] border px-5 py-4 ${
                 notice.type === 'success'
-                    ? 'border-primary/25 bg-primary/10 text-white'
-                    : 'border-white/10 bg-white/[0.03] text-white'
+                    ? 'border-primary/25 bg-primary/10 text-[rgb(var(--text-primary))]'
+                    : 'workspace-soft-panel text-[rgb(var(--text-primary))]'
             }`}
         >
             <div className="flex items-start gap-3">

@@ -265,7 +265,7 @@ export default function ProgressivePersonalizationPrompt() {
         <>
             {notice && (
                 <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[65]">
-                    <div className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-2 text-xs text-white shadow-xl">
+                    <div className="workspace-pill rounded-xl px-4 py-2 text-xs text-ink-secondary shadow-xl">
                         {notice}
                     </div>
                 </div>
@@ -273,18 +273,18 @@ export default function ProgressivePersonalizationPrompt() {
 
             {isVisible && question && (
                 <div className="fixed left-4 right-4 bottom-24 md:right-6 md:left-auto md:bottom-8 md:max-w-sm z-[60] animate-slide-up">
-                    <div className="glass-card rounded-2xl p-4 border border-white/10 shadow-2xl">
+                    <div className="workspace-soft-panel rounded-2xl p-4 shadow-2xl">
                         <div className="flex items-start justify-between gap-3">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.18em] text-primary/80">{promptPresentation?.eyebrow || 'Help Notive know you'}</p>
-                                <h3 className="text-sm font-semibold text-white mt-1">{promptPresentation?.title || question.prompt}</h3>
+                                <h3 className="text-sm font-semibold workspace-heading mt-1">{promptPresentation?.title || question.prompt}</h3>
                                 <p className="text-xs text-ink-secondary mt-1">{promptPresentation?.helper || question.prompt}</p>
                                 <p className="text-xs leading-5 text-ink-muted mt-2">{promptPresentation?.benefit || question.helper}</p>
                             </div>
                             <button
                                 type="button"
                                 onClick={handleLater}
-                                className="text-ink-secondary hover:text-white text-sm transition-colors"
+                                className="text-ink-secondary hover:text-[rgb(var(--text-primary))] text-sm transition-colors"
                                 aria-label="Dismiss prompt for now"
                             >
                                 x
@@ -304,7 +304,7 @@ export default function ProgressivePersonalizationPrompt() {
                                     type="button"
                                     onClick={() => handleAnswer(option.value)}
                                     disabled={isSubmitting}
-                                    className="w-full text-left rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white hover:bg-white/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                    className="workspace-pill w-full text-left rounded-lg px-3 py-2 text-sm workspace-heading hover:bg-white/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                                 >
                                     {option.label}
                                 </button>
@@ -315,14 +315,14 @@ export default function ProgressivePersonalizationPrompt() {
                             <button
                                 type="button"
                                 onClick={handleLater}
-                                className="text-xs text-ink-secondary hover:text-white transition-colors"
+                                className="text-xs text-ink-secondary hover:text-[rgb(var(--text-primary))] transition-colors"
                             >
                                 {promptPresentation?.laterLabel || 'Later'}
                             </button>
                             <button
                                 type="button"
                                 onClick={handleOpenSetup}
-                                className="text-xs text-primary hover:text-white transition-colors"
+                                className="text-xs text-primary hover:text-[rgb(var(--text-primary))] transition-colors"
                             >
                                 {promptPresentation?.setupLabel || 'Open all settings'}
                             </button>

@@ -83,7 +83,7 @@ export default function ActivityHeatmap({
     const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
     const getCellClass = (count: number): string => {
-        if (count === 0) return 'border border-white/5 bg-white/[0.03]';
+        if (count === 0) return 'border border-[rgba(var(--paper-border),0.88)] bg-white/60';
         if (count === 1) return 'border border-primary/25 bg-primary/20';
         if (count === 2) return 'border border-primary/35 bg-primary/35';
         if (count === 3) return 'border border-primary/45 bg-primary/55';
@@ -91,18 +91,18 @@ export default function ActivityHeatmap({
     };
 
     return (
-        <div className="glass-card p-6 rounded-2xl">
+        <div className="workspace-panel rounded-2xl p-6">
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h3 className="text-lg font-bold text-white">Capture Activity</h3>
+                    <h3 className="workspace-heading text-lg font-bold">Capture Activity</h3>
                     <p className="text-xs text-ink-muted">
                         Consistency map for the last {weeks} weeks{onDaySelect ? ' - tap a day to open the notes' : ''}
                     </p>
                 </div>
                 {selectedDay && (
-                    <div className="rounded-xl border border-white/15 bg-white/[0.03] px-3 py-2 text-right">
+                    <div className="workspace-soft-panel rounded-xl px-3 py-2 text-right">
                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Focused Day</p>
-                        <p className="text-sm font-semibold text-white">{formatShortDate(selectedDay.date)}</p>
+                        <p className="workspace-heading text-sm font-semibold">{formatShortDate(selectedDay.date)}</p>
                         <p className="text-xs text-ink-secondary">
                             {selectedDay.count} {selectedDay.count === 1 ? 'entry' : 'entries'}
                         </p>
@@ -111,21 +111,21 @@ export default function ActivityHeatmap({
             </div>
 
             <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-2">
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                <div className="workspace-soft-panel rounded-xl px-3 py-2">
                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Active Days</p>
-                    <p className="text-lg font-semibold text-white">{activeDays}</p>
+                    <p className="workspace-heading text-lg font-semibold">{activeDays}</p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                <div className="workspace-soft-panel rounded-xl px-3 py-2">
                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Entries</p>
-                    <p className="text-lg font-semibold text-white">{totalEntries}</p>
+                    <p className="workspace-heading text-lg font-semibold">{totalEntries}</p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                <div className="workspace-soft-panel rounded-xl px-3 py-2">
                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Peak Day</p>
-                    <p className="text-lg font-semibold text-white">{peakCount}</p>
+                    <p className="workspace-heading text-lg font-semibold">{peakCount}</p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                <div className="workspace-soft-panel rounded-xl px-3 py-2">
                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Best Streak</p>
-                    <p className="text-lg font-semibold text-white">{longestStreak}d</p>
+                    <p className="workspace-heading text-lg font-semibold">{longestStreak}d</p>
                 </div>
             </div>
 
@@ -159,7 +159,7 @@ export default function ActivityHeatmap({
                                             onDaySelect?.(day);
                                         }}
                                         className={`h-3.5 w-3.5 rounded-[3px] transition-transform hover:scale-125 focus-visible:scale-125 ${
-                                            selectedDate === day.date ? 'ring-2 ring-white/80 ring-offset-1 ring-offset-black/80' : ''
+                                            selectedDate === day.date ? 'ring-2 ring-primary/70 ring-offset-1 ring-offset-[rgb(var(--paper-soft))]' : ''
                                         } ${getCellClass(day.count)} ${day.count > 0 && onDaySelect ? 'cursor-pointer' : ''}`}
                                         title={`${formatShortDate(day.date)}: ${day.count} entries`}
                                         aria-label={`${formatShortDate(day.date)} ${day.count} entries`}
@@ -184,7 +184,7 @@ export default function ActivityHeatmap({
                     <span>High</span>
                 </div>
                 {selectedDay && (
-                    <span className="rounded-full border border-white/15 bg-white/[0.03] px-2.5 py-1">
+                    <span className="workspace-pill-muted rounded-full px-2.5 py-1">
                         {selectedDay.count === 0
                             ? `No entries on ${formatShortDate(selectedDay.date)}`
                             : `${selectedDay.count} ${selectedDay.count === 1 ? 'entry' : 'entries'} on ${formatShortDate(selectedDay.date)}`}

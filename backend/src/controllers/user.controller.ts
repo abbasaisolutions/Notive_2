@@ -44,6 +44,37 @@ const sanitizeOptionalDate = (value: unknown): Date | null | undefined => {
     return parsed;
 };
 
+const sanitizeOptionalBirthDate = (value: unknown): Date | null | undefined => {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    if (typeof value !== 'string') {
+        throw new Error('Invalid birth date value');
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    let parsed: Date;
+
+    if (dateOnlyMatch) {
+        const [, year, month, day] = dateOnlyMatch;
+        parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    } else {
+        const raw = new Date(trimmed);
+        if (Number.isNaN(raw.getTime())) {
+            throw new Error('Invalid birth date value');
+        }
+        parsed = new Date(Date.UTC(raw.getUTCFullYear(), raw.getUTCMonth(), raw.getUTCDate()));
+    }
+
+    if (Number.isNaN(parsed.getTime()) || parsed.getTime() > Date.now()) {
+        throw new Error('Invalid birth date value');
+    }
+
+    return parsed;
+};
+
 const sanitizeOptionalHttpUrl = (value: unknown, maxLength = 2000): string | null | undefined => {
     const sanitized = sanitizeOptionalString(value, maxLength);
     if (sanitized === undefined || sanitized === null) {
@@ -622,6 +653,13 @@ export const patchProfileBasics = async (req: Request, res: Response) => {
         const safeOccupation = sanitizeOptionalString(req.body.occupation, 160);
         const safeWebsite = sanitizeOptionalHttpUrl(req.body.website, 2000);
         const safeLifeGoals = sanitizeStringArray(req.body.lifeGoals, 20, 120);
+        let safeBirthDate: Date | null | undefined;
+
+        try {
+            safeBirthDate = sanitizeOptionalBirthDate(req.body.birthDate);
+        } catch {
+            return res.status(400).json({ message: 'Invalid birth date' });
+        }
 
         if (req.body.avatarUrl !== undefined && safeAvatarUrl === undefined) {
             return res.status(400).json({ message: 'Invalid avatar URL' });
@@ -642,6 +680,7 @@ export const patchProfileBasics = async (req: Request, res: Response) => {
                 location: safeLocation,
                 occupation: safeOccupation,
                 website: safeWebsite,
+                birthDate: safeBirthDate,
                 ...(safeLifeGoals !== undefined ? { lifeGoals: safeLifeGoals } : {}),
             },
         });
@@ -770,6 +809,7 @@ export const updateProfile = async (req: Request, res: Response) => {
             importPreference,
             personalizationSignals,
             onboardingCompletedAt,
+            birthDate,
         } = req.body;
 
         if (email !== undefined) {
@@ -792,10 +832,16 @@ export const updateProfile = async (req: Request, res: Response) => {
         const safeImportPreference = sanitizeOptionalString(importPreference, 60);
         const safePersonalizationSignals = sanitizeOptionalJsonObject(personalizationSignals);
         let safeOnboardingCompletedAt: Date | null | undefined;
+        let safeBirthDate: Date | null | undefined;
         try {
             safeOnboardingCompletedAt = sanitizeOptionalDate(onboardingCompletedAt);
         } catch {
             return res.status(400).json({ message: 'Invalid onboarding completion date' });
+        }
+        try {
+            safeBirthDate = sanitizeOptionalBirthDate(birthDate);
+        } catch {
+            return res.status(400).json({ message: 'Invalid birth date' });
         }
 
         if (avatarUrl !== undefined && safeAvatarUrl === undefined) {
@@ -821,6 +867,7 @@ export const updateProfile = async (req: Request, res: Response) => {
             location: safeLocation,
             occupation: safeOccupation,
             website: safeWebsite,
+            birthDate: safeBirthDate,
             primaryGoal: safePrimaryGoal,
             focusArea: safeFocusArea,
             experienceLevel: safeExperienceLevel,
@@ -848,6 +895,7 @@ export const updateProfile = async (req: Request, res: Response) => {
             safeLocation,
             safeOccupation,
             safeWebsite,
+            safeBirthDate,
             safeLifeGoals,
             safePrimaryGoal,
             safeFocusArea,

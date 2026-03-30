@@ -115,11 +115,21 @@ export default function TemplatesModal({ isOpen, onClose, onSelect }: TemplatesM
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="glass-card p-6 rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={onClose}
+            onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+        >
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="templates-modal-title"
+                className="workspace-panel p-6 rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-white">Choose a Template</h2>
-                    <button onClick={onClose} className="p-2 rounded-lg text-ink-secondary hover:text-white hover:bg-white/10 transition-all">
+                    <h2 id="templates-modal-title" className="text-xl font-bold workspace-heading">Choose a Template</h2>
+                    <button onClick={onClose} aria-label="Close templates" className="p-2 rounded-lg text-ink-secondary hover:text-white hover:bg-white/10 transition-all">
                         <FiX size={20} aria-hidden="true" />
                     </button>
                 </div>

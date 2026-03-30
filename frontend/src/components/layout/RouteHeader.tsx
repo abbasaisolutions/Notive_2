@@ -20,29 +20,32 @@ export default function RouteHeader() {
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div className="min-w-0 flex-1">
                         <nav aria-label="Breadcrumb" className="min-w-0">
-                        <ol className="flex items-center gap-1.5 text-xs text-ink-muted">
-                            {routeMeta.breadcrumbs.map((crumb, index) => {
-                                const isLast = index === routeMeta.breadcrumbs.length - 1;
-                                return (
-                                    <li key={`${crumb.label}-${index}`} className="flex items-center gap-1.5 min-w-0">
-                                        {crumb.href && !isLast ? (
-                                            <Link href={crumb.href} className="truncate hover:text-white transition-colors">
-                                                {crumb.label}
-                                            </Link>
-                                        ) : (
-                                            <span aria-current={isLast ? 'page' : undefined} className={`truncate ${isLast ? 'text-white font-semibold' : ''}`}>
-                                                {crumb.label}
-                                            </span>
-                                        )}
-                                        {!isLast && <span aria-hidden="true">/</span>}
-                                    </li>
-                                );
-                            })}
-                        </ol>
+                            <ol className="type-micro flex items-center gap-1.5 text-muted">
+                                {routeMeta.breadcrumbs.map((crumb, index) => {
+                                    const isLast = index === routeMeta.breadcrumbs.length - 1;
+                                    return (
+                                        <li key={`${crumb.label}-${index}`} className="flex min-w-0 items-center gap-1.5">
+                                            {crumb.href && !isLast ? (
+                                                <Link href={crumb.href} className="truncate text-soft transition-colors hover:text-strong">
+                                                    {crumb.label}
+                                                </Link>
+                                            ) : (
+                                                <span
+                                                    aria-current={isLast ? 'page' : undefined}
+                                                    className={`truncate ${isLast ? 'font-semibold text-strong' : 'text-muted'}`}
+                                                >
+                                                    {crumb.label}
+                                                </span>
+                                            )}
+                                            {!isLast && <span aria-hidden="true">/</span>}
+                                        </li>
+                                    );
+                                })}
+                            </ol>
                         </nav>
                         <div className="mt-2 min-w-0">
-                            <h1 className="text-lg font-semibold text-white md:text-[1.35rem]">{routeMeta.title}</h1>
-                            <p className="mt-1 text-sm text-ink-secondary line-clamp-1 md:line-clamp-2">{routeMeta.description}</p>
+                            <h1 className="type-page-title text-strong">{routeMeta.title}</h1>
+                            <p className="type-body-sm mt-1 line-clamp-1 text-default md:line-clamp-2">{routeMeta.description}</p>
                         </div>
                     </div>
 
@@ -50,7 +53,7 @@ export default function RouteHeader() {
                         {routeMeta.secondaryAction && (
                             <Link
                                 href={appendReturnTo(routeMeta.secondaryAction.href, currentReturnTo)}
-                                className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.08]"
+                                className="type-label-sm rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-soft transition-colors hover:bg-white/[0.08] hover:text-strong"
                             >
                                 {routeMeta.secondaryAction.shortLabel || routeMeta.secondaryAction.label}
                             </Link>
@@ -58,7 +61,7 @@ export default function RouteHeader() {
                         {routeMeta.primaryAction && (
                             <Link
                                 href={appendReturnTo(routeMeta.primaryAction.href, currentReturnTo)}
-                                className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-primary transition-colors hover:bg-primary/20"
+                                className="type-label-sm rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-accent transition-colors hover:bg-primary/20 hover:text-strong"
                             >
                                 {routeMeta.primaryAction.shortLabel || routeMeta.primaryAction.label}
                             </Link>

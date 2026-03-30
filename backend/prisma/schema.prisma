@@ -42,6 +42,14 @@ enum EmbeddingJobStatus {
   FAILED
 }
 
+enum VoiceTranscriptionJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
 enum AccountDeletionRequestStatus {
   PENDING
   FULFILLED
@@ -80,6 +88,8 @@ model User {
   entryEmbeddingChunks EntryEmbeddingChunk[]
   entryEmbeddingFacets EntryEmbeddingFacet[]
   embeddingJobs EmbeddingJob[]
+  voiceTranscriptionJobs VoiceTranscriptionJob[]
+  voiceLexiconItems VoiceLexiconItem[]
   personalizationEvents PersonalizationEvent[]
   accountDeletionRequests AccountDeletionRequest[]
   
@@ -93,6 +103,14 @@ model User {
   googleFitConnection GoogleFitConnection?
   healthContexts      HealthContext[]
   healthInsights      HealthInsight[]
+  dashboardInsights   DashboardInsight[]
+
+  // Device Context & Integrations
+  deviceSignals       DeviceSignal[]
+  spotifyConnection   SpotifyConnection?
+  
+  // Push Notifications
+  deviceTokens        DeviceToken[]
 }
 
 model RefreshToken {
@@ -128,6 +146,7 @@ model Entry {
   entryEmbeddingChunks EntryEmbeddingChunk[]
   entryEmbeddingFacets EntryEmbeddingFacet[]
   embeddingJobs EmbeddingJob[]
+  voiceTranscriptionJobs VoiceTranscriptionJob[]
   
   // Phase 2: Insights & Sharing
   lessons     String[]
@@ -138,8 +157,14 @@ model Entry {
   
   // Phase 3: Social & Extensions
   source      EntrySource @default(NOTIVE)
-  externalId  String?     
+  externalId  String?
   sourceLink  String?
+
+  // Device context: location captured at entry time
+  locationLat  Float?
+  locationLng  Float?
+  locationName String?  @db.VarChar(200)
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   deletedAt   DateTime?
@@ -296,6 +321,66 @@ model EmbeddingJob {
   @@index([status, runAfter, createdAt])
   @@index([userId, status, runAfter])
   @@index([entryId, status])
+}
+
+model VoiceTranscriptionJob {
+  id                 String                     @id @default(cuid())
+  entryId            String?
+  userId             String
+  audioUrl           String                     @db.Text
+  fileName           String?                    @db.VarChar(255)
+  mimeType           String                     @db.VarChar(80)
+  languageMode       String                     @db.VarChar(32)
+  candidateLanguages String[]                  @default([])
+  recordingDurationMs Int?
+  hintText           String?                    @db.Text
+  entryContext       String?                    @db.Text
+  payload            Json
+  transcript         Json?
+  captureMeta        Json?
+  status             VoiceTranscriptionJobStatus @default(PENDING)
+  provider           String?                    @db.VarChar(64)
+  model              String?                    @db.VarChar(128)
+  detectedLanguage   String?                    @db.VarChar(32)
+  attemptCount       Int                        @default(0)
+  maxAttempts        Int                        @default(4)
+  runAfter           DateTime                   @default(now())
+  startedAt          DateTime?
+  lockedAt           DateTime?
+  lockedBy           String?                    @db.VarChar(128)
+  lastError          String?                    @db.Text
+  completedAt        DateTime?
+  canceledAt         DateTime?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  entry Entry? @relation(fields: [entryId], references: [id], onDelete: SetNull)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, runAfter, createdAt])
+  @@index([userId, status, createdAt])
+  @@index([entryId, createdAt])
+}
+
+model VoiceLexiconItem {
+  id         String   @id @default(cuid())
+  userId     String
+  canonical  String   @db.VarChar(120)
+  normalized String   @db.VarChar(120)
+  aliases    String[] @default([])
+  locale     String?  @db.VarChar(32)
+  itemType   String?  @db.VarChar(40)
+  boost      Float    @default(0.6)
+  usageCount Int      @default(0)
+  lastUsedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, normalized])
+  @@index([userId, locale, usageCount])
+  @@index([userId, updatedAt])
 }
 
 enum EntrySource {
@@ -466,4 +551,80 @@ model HealthInsight {
   generatedAt DateTime @default(now())
   
   @@index([userId, type])
+}
+
+// Dashboard Insights — LLM-generated personal insights for the dashboard
+model DashboardInsight {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      String   // contradiction, hidden_pattern, growth_signal, blind_spot, evolution
+  title         String
+  body          String   @db.Text
+  evidence      String?  @db.Text
+  entryIds      String[] // referenced entry IDs
+  qualityScore  Float    @default(0)
+  userReaction  String?  // expanded, dismissed, wrote_entry, null
+  llmModel      String?  // model used for generation
+  generatedAt   DateTime @default(now())
+  expiresAt     DateTime
+
+  @@index([userId, category, generatedAt])
+  @@index([userId, expiresAt])
+}
+
+// ── Device Context Signals ──────────────────────────────────
+// Unified table for all device-level daily signals:
+// location, calendar, spotify, screen_time, app_usage, notification_pressure
+
+model DeviceSignal {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime @db.Date
+  signalType  String   @db.VarChar(40)  // location_summary, calendar, spotify, screen_time, app_session, notification, wellness_checkin
+  data        Json                       // flexible payload per signal type
+  source      String   @default("AUTO") @db.VarChar(20) // AUTO, SELF_REPORT, API
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, date, signalType])
+  @@index([userId, date])
+  @@index([userId, signalType, date])
+}
+
+// Spotify OAuth Connection
+model SpotifyConnection {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken  String    @db.Text
+  refreshToken String    @db.Text
+  expiresAt    DateTime
+  scopes       String[]
+  displayName  String?
+  connectedAt  DateTime  @default(now())
+  lastSyncAt   DateTime?
+  updatedAt    DateTime  @updatedAt
+}
+
+// Device Tokens for Push Notifications
+model DeviceToken {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token         String   @db.Text
+  platform      String   @db.VarChar(32)  // 'android', 'ios', 'web'
+  deviceId      String?  @db.VarChar(255) // Hardware device identifier
+  deviceName    String?  @db.VarChar(255) // User-friendly device name
+  appVersion    String?  @db.VarChar(32)  // App version when token was registered
+  osVersion     String?  @db.VarChar(32)  // OS version
+  isActive      Boolean  @default(true)
+  lastUsedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, token])
+  @@index([userId, platform, isActive])
+  @@index([userId, lastUsedAt])
 }

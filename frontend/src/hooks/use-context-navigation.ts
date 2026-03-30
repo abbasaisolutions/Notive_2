@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { sanitizeReturnTo } from '@/utils/redirect';
+import { unwrapSetupReturnTo } from '@/utils/redirect';
 import { appendReturnTo, buildCurrentReturnTo, canUseHistoryBack } from '@/utils/navigation';
 
 export function useContextNavigation(
@@ -17,7 +17,7 @@ export function useContextNavigation(
         [pathname, search]
     );
     const explicitReturnTo = useMemo(
-        () => sanitizeReturnTo(new URLSearchParams(search).get('returnTo')),
+        () => unwrapSetupReturnTo(new URLSearchParams(search).get('returnTo')),
         [search]
     );
     const backHref = explicitReturnTo || fallbackHref;

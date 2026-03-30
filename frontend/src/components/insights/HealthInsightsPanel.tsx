@@ -108,7 +108,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
 
     if (isLoading) {
         return (
-            <div className="mt-8 glass-card p-6 rounded-2xl animate-pulse">
+            <div className="workspace-panel mt-8 rounded-2xl p-6 animate-pulse">
                 <div className="h-6 bg-white/10 rounded w-1/3 mb-4" />
                 <div className="h-4 bg-white/10 rounded w-2/3 mb-2" />
                 <div className="h-4 bg-white/10 rounded w-1/2" />
@@ -128,7 +128,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-8 glass-card p-6 rounded-2xl relative overflow-hidden"
+                className="workspace-panel relative mt-8 overflow-hidden rounded-2xl p-6"
             >
                 <div className="health-glow absolute right-0 top-0 h-32 w-32 rounded-full blur-[60px]" />
                 
@@ -137,7 +137,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                         <FiActivity className="h-5 w-5 text-ink-secondary" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-white">Body & Mood</h3>
+                        <h3 className="workspace-heading text-lg font-semibold">Body & Mood</h3>
                         <p className="health-copy text-xs">See body and mood together</p>
                     </div>
                 </div>
@@ -152,7 +152,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                 </div>
 
                 {healthData.connectAvailable === false ? (
-                    <div className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm text-ink-secondary">
+                    <div className="workspace-soft-panel w-full rounded-xl px-4 py-3 text-center text-sm text-ink-secondary">
                         Unavailable in this environment
                     </div>
                 ) : (
@@ -179,7 +179,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-8 glass-card p-6 md:p-8 rounded-2xl relative overflow-hidden"
+            className="workspace-panel relative mt-8 overflow-hidden rounded-2xl p-6 md:p-8"
         >
             {/* Subtle neutral background */}
             <div className="health-glow absolute right-0 top-0 h-40 w-40 rounded-full blur-[80px]" />
@@ -191,7 +191,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                         <FiCpu className="h-5 w-5 text-ink-secondary" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-white">Body & Mood</h3>
+                        <h3 className="workspace-heading text-lg font-semibold">Body & Mood</h3>
                         <p className="health-kicker">
                             {stats?.daysWithData || 0} days synced
                         </p>
@@ -208,7 +208,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
                 <div className="grid grid-cols-3 gap-3 mb-6">
                     <div className="health-stat-card rounded-xl p-4 text-center">
                         <FiMoon className="mx-auto mb-2 h-5 w-5 text-ink-secondary" />
-                        <p className="text-xl font-semibold text-white">
+                        <p className="workspace-heading text-xl font-semibold">
                             {stats.avgSleepHours?.toFixed(1) || '—'}
                         </p>
                         <p className="health-kicker">
@@ -219,7 +219,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
 
                     <div className="health-stat-card rounded-xl p-4 text-center">
                         <FiActivity className="mx-auto mb-2 h-5 w-5 text-ink-secondary" />
-                        <p className="text-xl font-semibold text-white">
+                        <p className="workspace-heading text-xl font-semibold">
                             {stats.avgSteps ? (stats.avgSteps / 1000).toFixed(1) + 'k' : '—'}
                         </p>
                         <p className="health-kicker">
@@ -230,7 +230,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
 
                     <div className="health-stat-card rounded-xl p-4 text-center">
                         <FiHeart className="mx-auto mb-2 h-5 w-5 text-ink-secondary" />
-                        <p className="text-xl font-semibold text-white">
+                        <p className="workspace-heading text-xl font-semibold">
                             {stats.avgHeartRate || '—'}
                         </p>
                         <p className="health-kicker">
@@ -291,7 +291,7 @@ export default function HealthInsightsPanel({ period = 'month' }: Props) {
 
             {/* Recommendations - Neutral */}
             {healthData.recommendations && healthData.recommendations.length > 0 && (
-                <div className="border-t border-white/10 pt-4">
+                <div className="border-t border-[rgba(var(--paper-border),0.92)] pt-4">
                     <div className="flex items-center gap-2 mb-3">
                         <FiSun className="w-4 h-4 text-amber-400/70" />
                         <span className="text-xs font-medium uppercase tracking-wider text-ink-secondary">

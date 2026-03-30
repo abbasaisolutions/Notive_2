@@ -1,83 +1,495 @@
+/* FINAL DASHBOARD — "One calm page" notebook experience
+   Zone 1 hero with sprout doodle, tight Zone 2 capture, minimal Zone 3 glance + sub-tabs.
+   Matches logo + generated images exactly. Almost zero scrolling on mobile.
+   Every teen gets one grounded next move immediately. */
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useSmartContext } from '@/context/smart-context';
-import StreakCounter from '@/components/gamification/StreakCounter';
-import EntryCard from '@/components/ui/EntryCard';
+import { FiBookOpen, FiClock, FiEdit3, FiGrid, FiMic } from 'react-icons/fi';
 import useApi from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
-import { getOnboardingState, getOnboardingStateFromProfile, getRecommendedPrompt, OnboardingState } from '@/utils/onboarding';
+import {
+    getOnboardingState,
+    getOnboardingStateFromProfile,
+    getRecommendedPrompt,
+    OnboardingState,
+} from '@/utils/onboarding';
 import { progressivePersonalizationService } from '@/services/progressive-personalization.service';
-import { buildHomeActionContent } from '@/services/home-action.service';
-import { NOTIVE_VOICE } from '@/content/notive-voice';
-import { SmartSearch } from '@/components/search/SmartSearch';
-import { FiCompass, FiCpu, FiLayers, FiPlus, FiRepeat, FiTrendingUp } from 'react-icons/fi';
+import { buildHomeActionContent, type HomeActionScenario } from '@/services/home-action.service';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
+import ActionBriefPanel from '@/components/action/ActionBriefPanel';
 import BridgeCard from '@/components/action/BridgeCard';
-import type { StudentActionResponse } from '@/components/action/types';
-import SafetyBanner from '@/components/safety/SafetyBanner';
+import type { StudentActionResponse, StudentActionBrief, StudentSafetyCard, StudentRisk } from '@/components/action/types';
 import useTelemetry from '@/hooks/use-telemetry';
+import { useGamification } from '@/context/gamification-context';
+import DashboardFocusCard from '@/components/dashboard/DashboardFocusCard';
+import FloatingCapture from '@/components/dashboard/FloatingCapture';
+import DailyGentleReflectionCard from '@/components/dashboard/DailyGentleReflectionCard';
+import MoodSparkline, { hasMeaningfulMoodHistory } from '@/components/dashboard/MoodSparkline';
+import {
+    NotebookDoodle,
+    type NotebookAccentName,
+    type NotebookDoodleName,
+} from '@/components/dashboard/NotebookDoodles';
+import {
+    buildGentleReflectionDraft,
+    type GentleReflectionDraft,
+    type GentleReflectionEntry as Entry,
+    type GentleReflectionResurfacedMoment as ResurfacedMoment,
+    type GentleReflectionThemeCluster as ThemeCluster,
+} from '@/services/gentle-reflection.service';
+import {
+    GENTLE_REFLECTION_ID_PARAM,
+    GENTLE_REFLECTION_SOURCE,
+    GENTLE_REFLECTION_TAGS_PARAM,
+    isGentleReflectionEnabled,
+    markGentleReflectionAccepted,
+    markGentleReflectionDismissed,
+    markGentleReflectionShown,
+    shouldPresentGentleReflection,
+} from '@/utils/gentle-reflection';
+import { deriveWriterDNA } from '@/services/writer-dna.service';
+import { getInsightTier, Gate, WhatsComingCard, EmptyDashboard } from '@/components/dashboard/ColdStartGate';
+import QuickPulseStrip from '@/components/dashboard/QuickPulseStrip';
+import PrimeTimePrediction from '@/components/dashboard/PrimeTimePrediction';
+import WritingRhythmCalendar from '@/components/dashboard/WritingRhythmCalendar';
+import EmotionalFingerprint from '@/components/dashboard/EmotionalFingerprint';
+import ResilienceCard from '@/components/dashboard/ResilienceCard';
+import ReflectionDepthMeter from '@/components/dashboard/ReflectionDepthMeter';
+import PatternDiscoveryFeed from '@/components/dashboard/PatternDiscoveryFeed';
+import HeroInsightCard from '@/components/dashboard/HeroInsightCard';
+import DeviceContextStrip from '@/components/dashboard/DeviceContextStrip';
+import DashboardNoticeCard from '@/components/dashboard/DashboardNoticeCard';
+import WellnessCheckin from '@/components/dashboard/WellnessCheckin';
+import type { WellnessData } from '@/components/dashboard/WellnessCheckin';
+import JournalIntelligenceSection from '@/components/dashboard/JournalIntelligenceSection';
+import { Surface } from '@/components/ui/surface';
+import DashboardNotebookView from '@/components/dashboard/DashboardNotebookView';
+import { Spinner } from '@/components/ui';
 
-
-interface Entry {
-    id: string;
-    title: string | null;
-    content: string;
-    mood: string | null;
-    tags: string[];
-    coverImage: string | null;
-    audioUrl?: string | null;
-    createdAt: string;
-}
-
-interface ResurfacedMoment {
-    sourceEntry: {
-        id: string;
-        title: string | null;
-        createdAt: string;
-    };
-    matchedEntry: {
-        id: string;
-        title: string | null;
-        contentPreview: string;
-        mood: string | null;
-        createdAt: string;
-    };
-    relevance: number;
-    matchReasons: string[];
-}
-
-interface ThemeCluster {
-    id: string;
+type DashboardAction = {
     label: string;
-    summary: string;
+    href?: string;
+    onClick?: () => void;
+    type?: 'button';
+    tone?: 'primary' | 'secondary';
+};
+
+type DashboardFocusConfig = {
+    eyebrow: string;
+    title: string;
+    body: string;
+    evidence?: string | null;
+    evidenceFallback?: string | null;
+    panels?: Array<{ label: string; value: string }>;
+    primaryAction?: DashboardAction | null;
+    secondaryAction?: DashboardAction | null;
+    accent: NotebookAccentName;
+    doodle?: NotebookDoodleName | null;
+};
+
+type DashboardTab = 'recent' | 'moments' | 'patterns';
+
+type DeviceContextSummary = {
+    location?: { placeName: string; visitCount: number } | null;
+    spotify?: { mood: string; topGenre: string; tracksPlayed: number } | null;
+    screenTime?: { feeling: string; level: number } | null;
+    appSession?: { totalMinutes: number; sessions: number } | null;
+    wellness?: { energyLevel: number; stressLevel: number; socialBattery: number } | null;
+};
+
+type DashboardPageJournalIntel = {
+    vocabulary: { totalUniqueWords: number; richness: number; readingGradeLevel: number; avgWordsPerEntry: number; emotionWordCount: number; emotionWords: string[]; rarityScore: number; recentNewWords: string[]; growthRate: number };
+    lifeBalance: { areas: Array<{ area: string; score: number; entryCount: number; dominantMood: string | null; recentTrend: 'up' | 'stable' | 'down' }>; balanceScore: number; dominantArea: string; neglectedArea: string | null };
+    peopleMap: { people: Array<{ name: string; count: number; avgMoodWhenMentioned: number; sentiment: 'positive' | 'neutral' | 'negative' | 'mixed'; recentMention: string; contexts: string[] }>; totalPeopleMentioned: number; socialDiversity: number };
+    growthLanguage: { totalGrowthPhrases: number; growthDensity: number; topPhrases: Array<{ phrase: string; count: number }>; recentTrend: 'increasing' | 'stable' | 'decreasing'; mindsetRatio: number; fixedMindsetCount: number; growthMindsetCount: number };
+    emotionalRange: { uniqueEmotions: number; emotionList: string[]; rangeScore: number; dominantEmotion: string; rarestEmotion: string | null; emotionFrequency: Array<{ emotion: string; count: number; percentage: number }>; complexityScore: number };
+    gratitude: { totalExpressions: number; avgPerWeek: number; streak: number; topThemes: string[]; recentTrend: 'growing' | 'stable' | 'fading'; depthScore: number };
+    selfTalk: { growthStatements: number; fixedStatements: number; ratio: number; label: string; topGrowthPhrases: string[]; topFixedPhrases: string[] };
+    writingVoice: { avgSentenceLength: number; avgParagraphLength: number; readingLevel: string; readingGrade: number; questionFrequency: number; exclamationFrequency: number; firstPersonRatio: number; tenseDistribution: { past: number; present: number; future: number } };
     entryCount: number;
-    dominantMood: string | null;
-    topThemes: string[];
-    averageSimilarity: number;
-    representativeEntries: Array<{
+};
+
+type DashboardWeeklyDigest = {
+    title: string;
+    editorial: string;
+    highlights: Array<{ category: string; insight: string }>;
+    generatedAt: string;
+};
+
+type DashboardSupportMap = {
+    summary: string;
+    basedOnEntries: number;
+    generatedAt: string;
+    anchors: Array<{
         id: string;
-        title: string | null;
-        contentPreview: string;
-        createdAt: string;
-        mood: string | null;
+        label: string;
+        type: 'person' | 'place' | 'routine' | 'group';
+        strength: number;
+        supportCount: number;
+        tensionCount: number;
+        whyItHelps: string;
+        reconnectSuggestion: string;
+        lastSeen: string;
     }>;
-}
+};
+
+const MOOD_EMOJI: Record<string, string> = {
+    happy: '😊', calm: '😌', sad: '😔', anxious: '😟',
+    frustrated: '😤', thoughtful: '🤔', motivated: '⚡', tired: '😴', grateful: '🙏',
+};
+
+const SCENARIO_VISUALS: Record<HomeActionScenario, { accent: NotebookAccentName; doodle: NotebookDoodleName }> = {
+    support: { accent: 'amber', doodle: 'knot' },
+    school: { accent: 'sage', doodle: 'ladder' },
+    conflict: { accent: 'lilac', doodle: 'knot' },
+    future: { accent: 'apricot', doodle: 'star' },
+    energy: { accent: 'sage', doodle: 'sprout' },
+    general: { accent: 'sky', doodle: 'walker' },
+};
+
+const SUPPORT_PATTERN = /\b(friend|fight|argument|drama|parent|family|roommate|text|conversation|left out|awkward)\b/i;
+const MOON_PATTERN = /\b(night|late|sleep|tired|quiet|alone|overthink|brain dump)\b/i;
+const TAB_ORDER: DashboardTab[] = ['recent', 'moments', 'patterns'];
+const TAB_LABELS: Record<DashboardTab, string> = {
+    recent: 'Recent notes',
+    moments: 'Moments',
+    patterns: 'Patterns',
+};
+
+const countWordsThisWeek = (entries: Entry[]) => {
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+
+    return entries.reduce((total, entry) => {
+        const createdAt = new Date(entry.createdAt);
+        if (createdAt < weekStart) return total;
+        return total + String(entry.content || '').split(/\s+/).filter(Boolean).length;
+    }, 0);
+};
+
+const getDominantWritingWindow = (entries: Entry[]) => {
+    if (entries.length < 3) return null;
+
+    const windows = [
+        { key: 'morning', label: 'morning', match: (hour: number) => hour >= 5 && hour < 12 },
+        { key: 'afternoon', label: 'afternoon', match: (hour: number) => hour >= 12 && hour < 17 },
+        { key: 'evening', label: 'evening', match: (hour: number) => hour >= 17 && hour < 22 },
+        { key: 'night', label: 'night', match: (hour: number) => hour < 5 || hour >= 22 },
+    ] as const;
+
+    const counts = windows.map((window) => ({
+        ...window,
+        count: entries.reduce((total, entry) => {
+            const hour = new Date(entry.createdAt).getHours();
+            return window.match(hour) ? total + 1 : total;
+        }, 0),
+    }));
+
+    const strongest = counts.sort((left, right) => right.count - left.count)[0];
+    if (!strongest || strongest.count < 2) return null;
+
+    return {
+        label: strongest.label,
+        count: strongest.count,
+    };
+};
+
+const compactText = (value: string | null | undefined, maxLength = 110) => {
+    const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return '';
+    if (normalized.length <= maxLength) return normalized;
+    return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+};
+
+const firstSentence = (value: string | null | undefined, maxLength = 120) => {
+    const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return '';
+    const match = normalized.match(/^.*?[.!?](?:\s|$)/);
+    const sentence = match ? match[0].trim() : normalized;
+    return compactText(sentence, maxLength);
+};
+
+const toTitleCase = (value: string | null | undefined) =>
+    String(value || '')
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+
+const formatTraitLabel = (value: string | null | undefined) =>
+    toTitleCase(String(value || '').replace(/[_-]+/g, ' ').toLowerCase());
+
+const hasAnyDeviceSignals = (signals: DeviceContextSummary | null) =>
+    !!signals && Object.values(signals).some((value) => value);
+
+const WEAK_SUPPORT_PANEL_WORDS = new Set([
+    'what',
+    'why',
+    'how',
+    'when',
+    'where',
+    'who',
+    'thing',
+    'things',
+    'something',
+    'anything',
+    'everything',
+    'nothing',
+    'happen',
+    'happened',
+    'happening',
+    'going',
+    'doing',
+    'did',
+    'feel',
+    'feeling',
+    'think',
+    'thinking',
+    'today',
+    'life',
+    'live',
+    'writing',
+    'journal',
+]);
+
+const looksTooThinForSupportPanel = (value: string) => {
+    const normalized = value.replace(/\s+/g, ' ').trim().toLowerCase();
+    if (!normalized) return true;
+
+    const stripped = normalized.replace(/\bstill helps\b$/, '').trim();
+    const words = stripped.split(/\s+/).filter(Boolean);
+
+    if (stripped.length < 8 || words.length < 2) return true;
+    if (words.every((word) => WEAK_SUPPORT_PANEL_WORDS.has(word))) return true;
+
+    return false;
+};
+
+
+const getGentleReflectionVisual = (reflection: GentleReflectionDraft): { accent: NotebookAccentName; doodle: NotebookDoodleName } => {
+    const sample = `${reflection.contextLabel} ${reflection.title} ${reflection.body} ${reflection.prompt} ${reflection.strengthLabel || ''}`;
+    if (SUPPORT_PATTERN.test(sample)) return { accent: 'lilac', doodle: 'knot' };
+    if (MOON_PATTERN.test(sample)) return { accent: 'sky', doodle: 'moon' };
+    if (/\b(follow-through|consistency|finish|build|project)\b/i.test(sample)) return { accent: 'sage', doodle: 'ladder' };
+    if (/\b(courage|leadership|try|brave)\b/i.test(sample)) return { accent: 'apricot', doodle: 'star' };
+    return { accent: 'sage', doodle: 'sprout' };
+};
+
+const buildSafetyFocus = (input: {
+    risk: StudentRisk;
+    safetyCard: StudentSafetyCard | null;
+}): DashboardFocusConfig => {
+    const { risk, safetyCard } = input;
+    const label = risk.level === 'red' ? 'Safety' : 'Support first';
+    const primaryLabel = safetyCard?.primaryActionLabel || 'Get help now';
+
+    return {
+        eyebrow: label,
+        title: safetyCard?.headline || 'This moment needs more support than reflection.',
+        body: firstSentence(safetyCard?.body, 128) || 'Pause the usual reflection loop and put a real person or resource in the picture.',
+        evidenceFallback: 'Based on your latest note.',
+        panels: [
+            {
+                label: 'Next move',
+                value: primaryLabel,
+            },
+            ...(safetyCard?.trustedContactName
+                ? [{
+                    label: 'Visible support',
+                    value: `${safetyCard.trustedContactChannel === 'call' ? 'Call' : safetyCard.trustedContactChannel === 'in_person' ? 'Talk to' : 'Text'} ${safetyCard.trustedContactName}`,
+                }]
+                : []),
+        ],
+        primaryAction: safetyCard
+            ? {
+                label: primaryLabel,
+                href: safetyCard.primaryActionHref,
+            }
+            : null,
+        secondaryAction: safetyCard?.secondaryActionHref && safetyCard.secondaryActionLabel
+            ? {
+                label: safetyCard.secondaryActionLabel,
+                href: safetyCard.secondaryActionHref,
+                tone: 'secondary',
+            }
+            : null,
+        accent: 'amber',
+        doodle: null,
+    };
+};
+
+const buildActionFocus = (input: {
+    brief: StudentActionBrief | null;
+    homeAction: ReturnType<typeof buildHomeActionContent>;
+    recommendedHref: string;
+    timelineHref: string;
+    guideHref: string;
+    onPrimary: () => void;
+}): DashboardFocusConfig => {
+    const { brief, homeAction, recommendedHref, timelineHref, guideHref, onPrimary } = input;
+    const visual = SCENARIO_VISUALS[homeAction.scenario];
+    const nextStep = brief?.nextMove?.description
+        || brief?.nextMove?.label
+        || homeAction.prompt;
+
+    const keepLabelValue = brief?.keep?.label
+        ? compactText(toTitleCase(brief.keep.label), 64)
+        : '';
+    const secondPanelValue = keepLabelValue && !looksTooThinForSupportPanel(keepLabelValue)
+        ? keepLabelValue
+        : brief?.keep?.evidence
+            ? firstSentence(brief.keep.evidence, 88)
+            : brief?.whatHelpedBefore?.summary
+                ? compactText(brief.whatHelpedBefore.summary, 88)
+                : brief?.reachOut?.label
+                    ? compactText(brief.reachOut.label, 64)
+                    : '';
+
+    return {
+        eyebrow: 'One Thing',
+        title: compactText(brief?.headline || homeAction.title, 72),
+        body: firstSentence(brief?.pattern || homeAction.body, 136),
+        evidence: firstSentence(homeAction.evidence, 120),
+        evidenceFallback: 'Based on your last 3 notes.',
+        panels: [
+            {
+                label: 'Next step',
+                value: compactText(nextStep, 92),
+            },
+            ...(secondPanelValue
+                ? [{
+                    label: brief?.keep?.label ? 'Growing' : brief?.whatHelpedBefore ? 'Helped before' : 'Reach out',
+                    value: secondPanelValue,
+                }]
+                : []),
+        ],
+        primaryAction: {
+            label: homeAction.primaryCtaLabel,
+            href: recommendedHref,
+            onClick: onPrimary,
+        },
+        secondaryAction: {
+            label: 'More options',
+            href: brief?.reachOut ? guideHref : timelineHref,
+            tone: 'secondary',
+        },
+        accent: visual.accent,
+        doodle: visual.doodle,
+    };
+};
+
+const buildGentleReflectionFocus = (input: {
+    reflection: GentleReflectionDraft;
+    journalHref: string;
+    onAccept: () => void;
+    onDismiss: () => void;
+}): DashboardFocusConfig => {
+    const { reflection, journalHref, onAccept, onDismiss } = input;
+    const visual = getGentleReflectionVisual(reflection);
+
+    return {
+        eyebrow: 'Gentle Reflection',
+        title: compactText(reflection.title, 76),
+        body: firstSentence(reflection.body, 132),
+        evidence: firstSentence(reflection.evidence, 116),
+        evidenceFallback: 'Based on your recent notes.',
+        panels: [
+            {
+                label: 'Today’s nudge',
+                value: compactText(reflection.prompt, 94),
+            },
+            ...(reflection.strengthLabel
+                ? [{
+                    label: 'Hidden strength',
+                    value: compactText(reflection.strengthLabel, 56),
+                }]
+                : []),
+        ],
+        primaryAction: {
+            label: 'Journal now',
+            href: journalHref,
+            onClick: onAccept,
+        },
+        secondaryAction: {
+            label: 'Not now',
+            onClick: onDismiss,
+            type: 'button',
+            tone: 'secondary',
+        },
+        accent: visual.accent,
+        doodle: visual.doodle,
+    };
+};
+
+const buildStarterFocus = (input: {
+    homeAction: ReturnType<typeof buildHomeActionContent>;
+    newEntryHref: string;
+    guideHref: string;
+}): DashboardFocusConfig => ({
+    eyebrow: 'Start light',
+    title: 'One honest note is enough.',
+    body: compactText(input.homeAction.intro || 'You do not need a full story to begin.', 128),
+    evidenceFallback: 'A gentle place to start based on your setup so far.',
+    panels: [
+        {
+            label: 'Starter prompt',
+            value: compactText(input.homeAction.prompt, 92),
+        },
+    ],
+    primaryAction: {
+        label: 'Write now',
+        href: input.newEntryHref,
+    },
+    secondaryAction: {
+        label: 'More options',
+        href: input.guideHref,
+        tone: 'secondary',
+    },
+    accent: 'sky',
+    doodle: 'moon',
+});
 
 export default function DashboardPage() {
     const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
-    const { simulateEvent } = useSmartContext();
     const { apiFetch } = useApi();
     const { trackEvent } = useTelemetry();
+    const { stats: gamificationStats, isLoading: gamificationLoading } = useGamification();
     const [entries, setEntries] = useState<Entry[]>([]);
     const [resurfacedMoments, setResurfacedMoments] = useState<ResurfacedMoment[]>([]);
     const [themeClusters, setThemeClusters] = useState<ThemeCluster[]>([]);
+    const [activeTab, setActiveTab] = useState<DashboardTab>('recent');
     const [isLoading, setIsLoading] = useState(true);
+    const [dashboardInsightsLoaded, setDashboardInsightsLoaded] = useState(false);
+    const [journalIntelLoaded, setJournalIntelLoaded] = useState(false);
+    const [deviceSignalsLoaded, setDeviceSignalsLoaded] = useState(false);
     const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
     const [todayAction, setTodayAction] = useState<StudentActionResponse | null>(null);
-    const [showExploreDeck, setShowExploreDeck] = useState(false);
+    const [gentleReflection, setGentleReflection] = useState<GentleReflectionDraft | null>(null);
+    const [gentleReflectionsEnabled, setGentleReflectionsEnabled] = useState(false);
+    const [dashboardInsights, setDashboardInsights] = useState<{
+        emotionalFingerprint: { axes: Array<{ emotion: string; score: number; entryCount: number }>; summary: string; uniqueness: number } | null;
+        resilience: { currentRecovery: number | null; previousRecovery: number | null; trend: 'improving' | 'stable' | 'declining' | 'insufficient_data'; narrative: string; dipCount: number } | null;
+        reflectionDepth: { level: 0 | 1 | 2 | 3 | 4; levelLabel: string; score: number; progressToNext: number } | null;
+        correlations: Array<{ topic: string; avgMoodWhenPresent: number; avgMoodWhenAbsent: number; delta: number; occurrences: number; direction: 'lifter' | 'drain' }>;
+        contradictions: Array<{ entryId: string; entryTitle: string | null; entryDate: string; statedMood: string; detectedSentiment: string; divergenceScore: number; description: string }>;
+        triggerMap: Array<{ entity: string; direction: 'lifter' | 'drain'; avgMoodDelta: number; occurrences: number }>;
+        vocabularyExpansion: { newWords: string[]; growthRate: number; totalUniqueWords: number } | null;
+    } | null>(null);
+    const [heroInsight, setHeroInsight] = useState<{
+        id?: string; category: string; title: string; body: string;
+        evidence: string | null; entryIds: string[]; qualityScore: number;
+    } | null>(null);
+    const [heroInsightLoading, setHeroInsightLoading] = useState(false);
+    const [journalIntel, setJournalIntel] = useState<DashboardPageJournalIntel | null>(null);
+    const [weeklyDigest, setWeeklyDigest] = useState<DashboardWeeklyDigest | null>(null);
+    const [supportMap, setSupportMap] = useState<DashboardSupportMap | null>(null);
+    const [deviceSignals, setDeviceSignals] = useState<DeviceContextSummary | null>(null);
+    const [wellnessSubmitted, setWellnessSubmitted] = useState(false);
 
     useEffect(() => {
         const fromProfile = getOnboardingStateFromProfile(user?.profile);
@@ -90,30 +502,48 @@ export default function DashboardPage() {
     }, [user]);
 
     useEffect(() => {
+        setGentleReflectionsEnabled(isGentleReflectionEnabled(user?.profile?.personalizationSignals));
+    }, [user?.profile?.personalizationSignals]);
+
+    useEffect(() => {
         const controller = new AbortController();
         let mounted = true;
+        const deferredTasks: ReturnType<typeof setTimeout>[] = [];
+
+        const scheduleDeferred = (delayMs: number, task: () => void) => {
+            const timer = setTimeout(() => {
+                if (!mounted || controller.signal.aborted) return;
+                task();
+            }, delayMs);
+            deferredTasks.push(timer);
+        };
 
         const fetchEntries = async () => {
             setIsLoading(true);
+            setEntries([]);
+            setResurfacedMoments([]);
+            setThemeClusters([]);
+            setTodayAction(null);
+            setDashboardInsights(null);
+            setJournalIntel(null);
+            setWeeklyDigest(null);
+            setSupportMap(null);
+            setHeroInsight(null);
+            setDeviceSignals(null);
+            setWellnessSubmitted(false);
             try {
+                let fetchedEntriesCount = 0;
                 const [entriesResponse, resurfacedResponse, clustersResponse, actionResponse] = await Promise.all([
-                    apiFetch(`${API_URL}/entries`, {
-                        signal: controller.signal,
-                    }),
-                    apiFetch(`${API_URL}/entries/resurfaced?limit=3`, {
-                        signal: controller.signal,
-                    }).catch(() => null),
-                    apiFetch(`${API_URL}/entries/theme-clusters?limit=4`, {
-                        signal: controller.signal,
-                    }).catch(() => null),
-                    apiFetch(`${API_URL}/ai/action/today`, {
-                        signal: controller.signal,
-                    }).catch(() => null),
+                    apiFetch(`${API_URL}/entries`, { signal: controller.signal }),
+                    apiFetch(`${API_URL}/entries/resurfaced?limit=3`, { signal: controller.signal }).catch(() => null),
+                    apiFetch(`${API_URL}/entries/theme-clusters?limit=4`, { signal: controller.signal }).catch(() => null),
+                    apiFetch(`${API_URL}/ai/action/today`, { signal: controller.signal }).catch(() => null),
                 ]);
 
                 if (mounted && entriesResponse.ok) {
                     const data = await entriesResponse.json();
                     setEntries(data.entries);
+                    fetchedEntriesCount = Array.isArray(data?.entries) ? data.entries.length : 0;
                 }
 
                 if (mounted && resurfacedResponse?.ok) {
@@ -136,9 +566,107 @@ export default function DashboardPage() {
                 } else if (mounted) {
                     setTodayAction(null);
                 }
+
+                const entryCount = fetchedEntriesCount;
+
+                // Fetch dashboard insights (non-blocking, secondary call)
+                if (entryCount >= 3) {
+                    setDashboardInsightsLoaded(false);
+                    scheduleDeferred(120, () => {
+                        apiFetch(`${API_URL}/analytics/dashboard-insights`, { signal: controller.signal })
+                            .then(async (r) => {
+                                if (!mounted || !r.ok) return;
+                                const data = await r.json().catch(() => null);
+                                if (mounted && data) setDashboardInsights(data);
+                            })
+                            .catch(() => { /* non-critical */ })
+                            .finally(() => {
+                                if (mounted) setDashboardInsightsLoaded(true);
+                            });
+                    });
+                } else if (mounted) {
+                    setDashboardInsightsLoaded(true);
+                }
+
+                // Fetch LLM hero insight only after enough notes exist and core context is on screen.
+                if (entryCount >= 5) {
+                    scheduleDeferred(280, () => {
+                        setHeroInsightLoading(true);
+                        apiFetch(`${API_URL}/ai/dashboard-insight`, { signal: controller.signal })
+                            .then(async (r) => {
+                                if (!mounted || !r.ok) return;
+                                const data = await r.json().catch(() => null);
+                                if (mounted && data?.insight) setHeroInsight(data.insight);
+                            })
+                            .catch(() => { /* non-critical */ })
+                            .finally(() => { if (mounted) setHeroInsightLoading(false); });
+                    });
+                } else if (mounted) {
+                    setHeroInsightLoading(false);
+                }
+
+                // Journal intelligence and deeper synthesis arrive after the core notebook is visible.
+                if (entryCount >= 3) {
+                    setJournalIntelLoaded(false);
+                    scheduleDeferred(220, () => {
+                        apiFetch(`${API_URL}/analytics/journal-intelligence`, { signal: controller.signal })
+                            .then(async (r) => {
+                                if (!mounted || !r.ok) return;
+                                const data = await r.json().catch(() => null);
+                                if (mounted && data?.intelligence) setJournalIntel(data.intelligence);
+                            })
+                            .catch(() => { /* non-critical */ })
+                            .finally(() => {
+                                if (mounted) setJournalIntelLoaded(true);
+                            });
+                    });
+
+                    scheduleDeferred(360, () => {
+                        apiFetch(`${API_URL}/ai/weekly-digest`, { signal: controller.signal })
+                            .then(async (r) => {
+                                if (!mounted || !r.ok) return;
+                                const data = await r.json().catch(() => null);
+                                if (mounted && data?.digest) setWeeklyDigest(data.digest);
+                            })
+                            .catch(() => { /* non-critical */ });
+                    });
+
+                    scheduleDeferred(460, () => {
+                        apiFetch(`${API_URL}/ai/support-map?period=month`, { signal: controller.signal })
+                            .then(async (r) => {
+                                if (!mounted || !r.ok) return;
+                                const data = await r.json().catch(() => null);
+                                if (mounted && Array.isArray(data?.anchors)) {
+                                    setSupportMap(data as DashboardSupportMap);
+                                }
+                            })
+                            .catch(() => { /* non-critical */ });
+                    });
+                } else if (mounted) {
+                    setJournalIntelLoaded(true);
+                }
+
+                // Fetch latest device signals (non-blocking)
+                setDeviceSignalsLoaded(false);
+                scheduleDeferred(80, () => {
+                    apiFetch(`${API_URL}/device/latest`, { signal: controller.signal })
+                        .then(async (r) => {
+                            if (!mounted || !r.ok) return;
+                            const data = await r.json().catch(() => null);
+                            if (mounted && data?.signals) {
+                                const nextSignals = data.signals as DeviceContextSummary;
+                                setDeviceSignals(hasAnyDeviceSignals(nextSignals) ? nextSignals : null);
+                                if (nextSignals?.wellness) setWellnessSubmitted(true);
+                            }
+                        })
+                        .catch(() => { /* non-critical */ })
+                        .finally(() => {
+                            if (mounted) setDeviceSignalsLoaded(true);
+                        });
+                    });
             } catch (error) {
                 if (controller.signal.aborted) return;
-                console.error('Failed to fetch entries:', error);
+                console.error('Failed to fetch dashboard context:', error);
             } finally {
                 if (mounted) {
                     setIsLoading(false);
@@ -153,18 +681,102 @@ export default function DashboardPage() {
         return () => {
             mounted = false;
             controller.abort();
+            deferredTasks.forEach((timer) => clearTimeout(timer));
         };
     }, [user, apiFetch]);
+
+    useEffect(() => {
+        if (!user?.id || isLoading || !gentleReflectionsEnabled) {
+            setGentleReflection(null);
+            return;
+        }
+
+        const nextReflection = buildGentleReflectionDraft({
+            entries,
+            resurfacedMoments,
+            themeClusters,
+        });
+
+        if (!nextReflection) {
+            setGentleReflection(null);
+            return;
+        }
+
+        if (!shouldPresentGentleReflection({
+            userId: user.id,
+            promptSignature: nextReflection.id,
+            enabled: gentleReflectionsEnabled,
+        })) {
+            setGentleReflection(null);
+            return;
+        }
+
+        markGentleReflectionShown(user.id, nextReflection.id);
+        setGentleReflection(nextReflection);
+        void trackEvent({
+            eventType: 'gentle_reflection_shown',
+            value: nextReflection.id,
+            metadata: {
+                sourceMode: 'journal_only',
+                context: nextReflection.contextLabel,
+                strength: nextReflection.strengthLabel || null,
+            },
+        });
+    }, [entries, gentleReflectionsEnabled, isLoading, resurfacedMoments, themeClusters, trackEvent, user?.id]);
+
+    // Keep hooks above early returns so React sees the same order on every render.
+    const streak = gamificationLoading ? null : (gamificationStats?.currentStreak ?? null);
+    const totalWords = gamificationLoading ? null : (gamificationStats?.totalWords ?? null);
+    const writerDNA = useMemo(() => deriveWriterDNA({
+        entries: entries.map((e) => ({ mood: e.mood, createdAt: e.createdAt, contentLength: e.content?.length ?? 0 })),
+        themeClusters: themeClusters.map((t) => ({ label: t.label, dominantMood: t.dominantMood, entryCount: t.entryCount })),
+        totalWords: totalWords ?? 0,
+        currentStreak: streak ?? 0,
+    }), [entries, themeClusters, totalWords, streak]);
+
+    if (authLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <Spinner size="md" />
+            </div>
+        );
+    }
+
+    if (!isAuthenticated) {
+        return null;
+    }
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen pb-32 md:pb-20">
+                <main className="mx-auto w-full max-w-4xl px-4 py-6 md:px-6 md:py-10 lg:ml-0 lg:mr-auto">
+                    <DashboardNoticeCard
+                        eyebrow="Loading"
+                        title="Pulling your notes together."
+                        body="Notive is syncing your latest writing so the dashboard starts from real signals, not placeholders."
+                    />
+                </main>
+            </div>
+        );
+    }
+
+    const safeUser = user!;
+    const firstName = safeUser.name ? safeUser.name.split(' ')[0] : 'there';
+    const todayLabel = new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+    });
+
+    const insightTier = getInsightTier(entries.length);
 
     const profileRecommendedPrompt = progressivePersonalizationService.getPromptSuggestionForProfile(user?.profile);
     const fallbackRecommendedPrompt = onboarding?.starterPrompt?.trim() || profileRecommendedPrompt || getRecommendedPrompt(onboarding);
     const dashboardReturnTo = buildCurrentReturnTo('/dashboard', '');
     const newEntryHref = appendReturnTo('/entry/new?mode=quick', dashboardReturnTo);
+    const voiceEntryHref = appendReturnTo('/entry/new?mode=quick&source=dashboard_voice', dashboardReturnTo);
     const guideHref = appendReturnTo('/chat', dashboardReturnTo);
-    const portfolioHref = appendReturnTo('/portfolio', dashboardReturnTo);
-    const resumeHref = appendReturnTo('/portfolio?view=export&pack=resume', dashboardReturnTo);
-    const statementHref = appendReturnTo('/portfolio?view=export&pack=statement', dashboardReturnTo);
-    const interviewHref = appendReturnTo('/portfolio?view=interview', dashboardReturnTo);
+    const portfolioHref = appendReturnTo('/portfolio?view=growth', dashboardReturnTo);
     const timelineHref = appendReturnTo('/timeline', dashboardReturnTo);
     const onboardingTrackLabel = onboarding?.track === 'career'
         ? 'Career Growth'
@@ -173,12 +785,49 @@ export default function DashboardPage() {
             : onboarding?.track === 'both'
                 ? 'Life + Career Growth'
                 : 'Personal Reflection';
-    const statusValue = onboarding?.completed ? 'Ready' : 'Setup';
-    const statusLabel = 'Status';
+    const profileLocation = safeUser.profile?.location?.trim() || null;
+    const experienceLevelLabel = onboarding?.experienceLevel === 'student'
+        ? 'Student'
+        : onboarding?.experienceLevel === 'early-career'
+            ? 'Early career'
+            : onboarding?.experienceLevel === 'professional'
+                ? 'Professional'
+                : onboarding?.experienceLevel === 'lifelong-learner'
+                    ? 'Lifelong learner'
+                    : null;
+    const focusAreaLabel = safeUser.profile?.focusArea === 'career'
+        ? 'School / Work'
+        : safeUser.profile?.focusArea === 'life'
+            ? 'Life'
+            : safeUser.profile?.focusArea === 'both'
+                ? 'Life + work'
+                : onboarding?.track === 'career'
+                    ? 'School / Work'
+                    : onboarding?.track === 'life'
+                        ? 'Life'
+                        : onboarding?.track === 'both'
+                            ? 'Life + work'
+                            : null;
+    const primaryGoalLabel = safeUser.profile?.primaryGoal === 'clarity'
+        ? 'Clear mind'
+        : safeUser.profile?.primaryGoal === 'memory'
+            ? 'Remember life'
+            : safeUser.profile?.primaryGoal === 'growth'
+                ? 'Grow'
+                : safeUser.profile?.primaryGoal === 'productivity'
+                    ? 'Get things done'
+                    : onboarding?.goal === 'clarity'
+                        ? 'Clear mind'
+                        : onboarding?.goal === 'memory'
+                            ? 'Remember life'
+                            : onboarding?.goal === 'growth'
+                                ? 'Grow'
+                                : onboarding?.goal === 'productivity'
+                                    ? 'Get things done'
+                                    : null;
+    const profileTags = [experienceLevelLabel, focusAreaLabel, primaryGoalLabel].filter(Boolean).slice(0, 3) as string[];
     const todayBrief = todayAction?.brief || null;
     const todayBridge = todayAction?.bridge || null;
-    const todaySupportMemory = todayBrief?.reachOut?.supportMemory || todayBridge?.supportMemory || null;
-    const todayFallbackSupport = todayBrief?.reachOut?.fallbackSupport || todayBridge?.fallbackSupport || null;
     const openDashboardEntryHref = (entryId: string) => appendReturnTo(`/entry/view?id=${entryId}`, dashboardReturnTo);
     const latestEntry = entries[0] || null;
     const homeAction = buildHomeActionContent({
@@ -188,15 +837,13 @@ export default function DashboardPage() {
         fallbackPrompt: fallbackRecommendedPrompt,
     });
     const recommendedHref = appendReturnTo(`/entry/new?mode=quick&prompt=${encodeURIComponent(homeAction.prompt)}&source=dashboard_one_thing`, dashboardReturnTo);
-    const hasExploreDeck = Boolean(
-        todayBridge
-        || todaySupportMemory
-        || todayFallbackSupport
-        || todayBrief?.whatHelpedBefore
-        || (todayAction?.highlights?.length || 0) > 0
-        || resurfacedMoments.length > 0
-        || themeClusters.length > 0
-    );
+    const gentleJournalHref = gentleReflection
+        ? appendReturnTo(
+            `/entry/new?mode=quick&prompt=${encodeURIComponent(gentleReflection.prompt)}&source=${GENTLE_REFLECTION_SOURCE}&${GENTLE_REFLECTION_ID_PARAM}=${encodeURIComponent(gentleReflection.id)}&${GENTLE_REFLECTION_TAGS_PARAM}=${encodeURIComponent(gentleReflection.seedTags.join(','))}`,
+            dashboardReturnTo
+        )
+        : null;
+
     const handleDashboardBridgeCopy = (recipient: string) => {
         void trackEvent({
             eventType: 'student_bridge_copied',
@@ -208,20 +855,34 @@ export default function DashboardPage() {
             },
         });
     };
-    const handleToggleExploreDeck = () => {
-        const nextValue = !showExploreDeck;
-        setShowExploreDeck(nextValue);
+
+    const handleAcceptGentleReflection = () => {
+        if (!user?.id || !gentleReflection) return;
+        markGentleReflectionAccepted(user.id, gentleReflection.id);
+        setGentleReflection(null);
         void trackEvent({
-            eventType: 'dashboard_explore_toggled',
-            value: nextValue ? 'opened' : 'closed',
+            eventType: 'gentle_reflection_accepted',
+            value: gentleReflection.id,
             metadata: {
-                hasBridge: Boolean(todayBridge),
-                hasSupportContext: Boolean(todaySupportMemory || todayFallbackSupport),
-                resurfacedCount: resurfacedMoments.length,
-                clusterCount: themeClusters.length,
+                context: gentleReflection.contextLabel,
+                strength: gentleReflection.strengthLabel || null,
             },
         });
     };
+
+    const handleDismissGentleReflection = () => {
+        if (!user?.id || !gentleReflection) return;
+        markGentleReflectionDismissed(user.id, gentleReflection.id);
+        setGentleReflection(null);
+        void trackEvent({
+            eventType: 'gentle_reflection_dismissed',
+            value: gentleReflection.id,
+            metadata: {
+                context: gentleReflection.contextLabel,
+            },
+        });
+    };
+
     const handleStartOneThing = () => {
         void trackEvent({
             eventType: 'dashboard_primary_cta',
@@ -236,503 +897,473 @@ export default function DashboardPage() {
         });
     };
 
+    let focusCard: DashboardFocusConfig;
+    if (todayAction && (todayAction.risk.level === 'orange' || todayAction.risk.level === 'red')) {
+        focusCard = buildSafetyFocus({
+            risk: todayAction.risk,
+            safetyCard: todayAction.safetyCard,
+        });
+    } else if (todayBrief) {
+        focusCard = buildActionFocus({
+            brief: todayBrief,
+            homeAction,
+            recommendedHref,
+            timelineHref,
+            guideHref,
+            onPrimary: handleStartOneThing,
+        });
+    } else if (gentleReflection && gentleJournalHref) {
+        focusCard = buildGentleReflectionFocus({
+            reflection: gentleReflection,
+            journalHref: gentleJournalHref,
+            onAccept: handleAcceptGentleReflection,
+            onDismiss: handleDismissGentleReflection,
+        });
+    } else {
+        focusCard = buildStarterFocus({
+            homeAction,
+            newEntryHref,
+            guideHref,
+        });
+    }
 
-    if (authLoading) {
+    // ── Then → Now (requires 90+ days of data) ──
+    const oldestEntry = entries.length > 0 ? entries[entries.length - 1] : null;
+    const daysSinceFirst = oldestEntry
+        ? Math.floor((Date.now() - new Date(oldestEntry.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+    const showThenNow = daysSinceFirst >= 90 && themeClusters.length >= 2;
+    const showMoodHistory = hasMeaningfulMoodHistory(entries);
+    const hasHeroInsight = !!heroInsight;
+    const hasDeviceSignals = hasAnyDeviceSignals(deviceSignals);
+    const hasResilienceSignals = !!(dashboardInsights?.resilience || dashboardInsights?.reflectionDepth);
+    const hasPatternDiscovery = !!dashboardInsights && (
+        dashboardInsights.correlations.length > 0
+        || dashboardInsights.contradictions.length > 0
+        || dashboardInsights.triggerMap.length > 0
+    );
+
+    if (process.env.NEXT_PUBLIC_DASHBOARD_REFINED !== '0') {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-            </div>
+            <DashboardNotebookView
+                firstName={firstName}
+                todayLabel={todayLabel}
+                locationLabel={profileLocation}
+                userBirthDate={safeUser.profile?.birthDate ? String(safeUser.profile.birthDate) : null}
+                profileTags={profileTags}
+                entries={entries}
+                themeClusters={themeClusters}
+                resurfacedMoments={resurfacedMoments}
+                totalWords={totalWords}
+                todayBrief={todayBrief}
+                focusCard={focusCard}
+                recommendedHref={recommendedHref}
+                openDashboardEntryHref={openDashboardEntryHref}
+                gentleReflection={gentleReflection}
+                gentleJournalHref={gentleJournalHref}
+                timelineHref={timelineHref}
+                portfolioHref={portfolioHref}
+                guideHref={guideHref}
+                dashboardReturnTo={dashboardReturnTo}
+                hasSafetyFocus={!!(todayAction && (todayAction.risk.level === 'orange' || todayAction.risk.level === 'red'))}
+                setGentleReflectionsEnabled={setGentleReflectionsEnabled}
+                setGentleReflection={setGentleReflection}
+                gentleReflectionsEnabled={gentleReflectionsEnabled}
+                handleAcceptGentleReflection={handleAcceptGentleReflection}
+                handleDismissGentleReflection={handleDismissGentleReflection}
+                todayBridge={todayBridge}
+                handleDashboardBridgeCopy={handleDashboardBridgeCopy}
+                showThenNow={showThenNow}
+                oldestEntry={oldestEntry}
+                daysSinceFirst={daysSinceFirst}
+                wellnessSubmitted={wellnessSubmitted}
+                deviceSignals={deviceSignals}
+                hasDeviceSignals={hasDeviceSignals}
+                writerDNA={writerDNA}
+                dashboardInsights={dashboardInsights}
+                journalIntel={journalIntel}
+                weeklyDigest={weeklyDigest}
+                supportMap={supportMap}
+                heroInsight={heroInsight}
+                heroInsightLoading={heroInsightLoading}
+                insightTier={insightTier}
+            />
         );
     }
 
-    if (!isAuthenticated) {
-        return null;
-    }
-    const safeUser = user!;
-    const firstName = safeUser.name ? safeUser.name.split(' ')[0] : 'there';
-    const isEmptyDashboard = !isLoading && entries.length === 0;
-
-    if (isEmptyDashboard) {
-        return (
-            <div className="min-h-screen flex relative page-transition">
-                <main className="flex-1 overflow-y-auto p-6 md:p-12 relative z-10">
-                    <div className="max-w-6xl mx-auto space-y-8">
-                        <div className="grid grid-cols-1 xl:grid-cols-[1.7fr_0.9fr] gap-8">
-                            <section className="bento-box p-10 md:p-12 flex flex-col justify-between gap-8">
-                                <div>
-                                    <div className="flex items-center gap-4 mb-4">
-                                        <span className="section-kicker">First Signal</span>
-                                        <StreakCounter />
-                                    </div>
-                                    <h1 className="text-4xl md:text-5xl font-serif mb-4 leading-tight">
-                                        Start with one note, <br />
-                                        {firstName}.
-                                    </h1>
-                                    <p className="zen-text text-lg max-w-xl">
-                                        One honest note is enough. Notive can help you find patterns and build your story after you save it.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-4">
-                                    <Link
-                                        href={recommendedHref}
-                                        className="primary-cta px-8 py-4 rounded-[1.5rem] font-semibold transition-all hover:scale-105 active:scale-95 flex items-center gap-3"
-                                    >
-                                        <FiPlus size={22} aria-hidden="true" />
-                                        Write Your First Note
-                                    </Link>
-                                </div>
-                            </section>
-
-                            <section className="space-y-4">
-                                <div className="bento-box p-8">
-                                    <p className="text-xs uppercase tracking-[0.18em] text-ink-muted mb-3">Starter Spark</p>
-                                    <p className="text-lg text-white font-serif leading-relaxed">{homeAction.prompt}</p>
-                                </div>
-
-                                <div className="bento-box p-8">
-                                    <div className="grid gap-4">
-                                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                                            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted mb-1">Focus</p>
-                                            <p className="text-sm text-white">{onboardingTrackLabel}</p>
-                                        </div>
-                                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                                            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted mb-1">Time</p>
-                                            <p className="text-sm text-white">Two to five minutes is enough to save something useful.</p>
-                                        </div>
-                                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                                            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted mb-1">After Save</p>
-                                            <p className="text-sm text-white">You can fix details later while Notive starts finding patterns in the note.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </section>
-                        </div>
-                    </div>
-                </main>
-            </div>
-        );
-    }
+    const handleWellnessSubmit = (data: WellnessData) => {
+        setWellnessSubmitted(true);
+        void apiFetch(`${API_URL}/device/wellness-checkin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        }).catch(() => {});
+        void trackEvent({ eventType: 'wellness_checkin_submitted', metadata: data as unknown as Record<string, string> });
+    };
 
     return (
-        <div className="min-h-screen flex relative page-transition">
+        <div className="min-h-screen pb-32 md:pb-20">
+            <main className="mx-auto w-full max-w-4xl px-4 py-6 md:px-6 md:py-10 space-y-4 lg:ml-0 lg:mr-auto">
 
-
-            <main className="flex-1 overflow-y-auto p-6 md:p-12 relative z-10">
-                <div className="max-w-6xl mx-auto space-y-6">
-
-                    <section className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-                        <div className="bento-box p-8 md:p-10">
-                            <div className="flex flex-wrap items-center gap-3">
-                                <span className="section-kicker">{NOTIVE_VOICE.surfaces.homeBase}</span>
-                                <StreakCounter />
-                                <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs uppercase tracking-[0.12em] text-ink-secondary">
-                                    {entries.length} notes
-                                </span>
-                                <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs uppercase tracking-[0.12em] text-ink-secondary">
-                                    {statusLabel}: {statusValue}
-                                </span>
-                            </div>
-
-                            <div className="mt-4 max-w-3xl">
-                                <h1 className="text-4xl font-serif leading-tight text-white md:text-5xl">
-                                    Welcome back, {firstName}.
-                                </h1>
-                                <p className="mt-4 text-base leading-8 text-ink-secondary md:text-lg">
-                                    {homeAction.intro}
-                                </p>
-                            </div>
-
-                            <div className="mt-6 rounded-[1.85rem] border border-primary/20 bg-[linear-gradient(135deg,rgba(45,84,198,0.18),rgba(8,12,22,0.82))] p-6 md:p-7">
-                                <p className="text-xs uppercase tracking-[0.14em] text-primary/80">One Thing</p>
-                                <h2 className="mt-3 text-2xl font-serif text-white md:text-[2rem]">{homeAction.title}</h2>
-                                <p className="mt-3 max-w-2xl text-sm leading-7 text-white/90 md:text-base">
-                                    {homeAction.body}
-                                </p>
-                                <div className="mt-5 flex flex-wrap gap-3">
-                                    <Link
-                                        href={recommendedHref}
-                                        onClick={handleStartOneThing}
-                                        className="primary-cta inline-flex items-center gap-3 rounded-[1.25rem] px-6 py-3 text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                    >
-                                        <FiPlus size={18} aria-hidden="true" />
-                                        {homeAction.primaryCtaLabel}
-                                    </Link>
-                                    <Link
-                                        href={timelineHref}
-                                        className="rounded-[1.25rem] border border-white/12 bg-white/[0.05] px-5 py-3 text-sm font-semibold text-white/85 transition-colors hover:bg-white/[0.10] hover:text-white"
-                                    >
-                                        Open Memories
-                                    </Link>
-                                </div>
-                                <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Why this is showing up</p>
-                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">{homeAction.evidence}</p>
-                                </div>
-                            </div>
-
-                            {todayAction && (
-                                <div className="mt-5">
-                                    <SafetyBanner risk={todayAction.risk} safetyCard={todayAction.safetyCard} surface="dashboard" compact />
-                                </div>
-                            )}
-                        </div>
-
-                        <aside className="grid gap-4">
-                            <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-6">
-                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Continue</p>
-                                {latestEntry ? (
-                                    <>
-                                        <h2 className="mt-2 text-lg font-semibold text-white">{latestEntry.title || 'Recent note'}</h2>
-                                        <p className="mt-2 text-sm leading-7 text-ink-secondary">{latestEntry.content.slice(0, 150)}{latestEntry.content.length > 150 ? '...' : ''}</p>
-                                        <div className="mt-4 flex flex-wrap gap-2">
-                                            <Link
-                                                href={appendReturnTo(`/entry/view?id=${latestEntry.id}`, dashboardReturnTo)}
-                                                className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary transition-colors hover:bg-white/[0.08] hover:text-white"
-                                            >
-                                                Open last note
-                                            </Link>
-                                            <Link
-                                                href={newEntryHref}
-                                                className="rounded-full border border-primary/30 bg-primary/12 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-primary transition-colors hover:bg-primary/20"
-                                            >
-                                                Write another
-                                            </Link>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <h2 className="mt-2 text-lg font-semibold text-white">Pick up gently</h2>
-                                        <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                            Keep the session light. Save one note now, then come back only when you want more depth.
-                                        </p>
-                                    </>
-                                )}
-                            </div>
-
-                            <div className="rounded-[1.75rem] border border-white/10 bg-black/20 p-6">
-                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Small Wins</p>
-                                <h2 className="mt-2 text-lg font-semibold text-white">{homeAction.smallWinTitle}</h2>
-                                <p className="mt-2 text-sm leading-7 text-ink-secondary">{homeAction.smallWinBody}</p>
-                            </div>
-
-                            {hasExploreDeck && (
-                                <button
-                                    type="button"
-                                    onClick={handleToggleExploreDeck}
-                                    className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5 text-left transition-colors hover:bg-white/[0.05]"
-                                >
-                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Explore</p>
-                                    <h2 className="mt-2 text-lg font-semibold text-white">
-                                        {showExploreDeck ? 'Hide the deeper tools for now' : 'Open more from your notes'}
-                                    </h2>
-                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                        {showExploreDeck
-                                            ? 'Go back to one clear next move.'
-                                            : 'Search, story tools, and deeper pattern views stay here when you want them.'}
-                                    </p>
-                                </button>
-                            )}
-                        </aside>
-                    </section>
-
-                    {hasExploreDeck && showExploreDeck && (
-                        <section className="rounded-[2rem] border border-white/10 bg-surface-2/30 p-5 md:p-6">
-                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                <div>
-                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Explore More</p>
-                                    <h2 className="mt-1 text-2xl font-serif text-white">Open the deeper tools only when you want them</h2>
-                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                        Search, reuse, and reflection live here so Home can stay focused on one next move.
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={handleToggleExploreDeck}
-                                    className="rounded-full border border-white/12 bg-white/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:bg-white/[0.08] hover:text-white"
-                                >
-                                    Close Explore
-                                </button>
-                            </div>
-
-                            <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)]">
-                                <div className="space-y-4">
-                                    {todayBridge && (
-                                        <BridgeCard
-                                            bridge={todayBridge}
-                                            surface="dashboard"
-                                            openEntryHref={openDashboardEntryHref}
-                                            onCopyDraft={() => handleDashboardBridgeCopy(todayBridge.recommendedRecipient)}
-                                        />
-                                    )}
-
-                                    {!todayBridge && (todaySupportMemory || todayFallbackSupport) && (
-                                        <div className="rounded-[1.6rem] border border-white/10 bg-[linear-gradient(135deg,rgba(92,76,28,0.18),rgba(8,12,22,0.78))] p-5">
-                                            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Support</p>
-                                            <h3 className="mt-2 text-lg font-semibold text-white">
-                                                {todaySupportMemory ? 'Someone steady has helped before' : 'Keep one support option nearby'}
-                                            </h3>
-                                            <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                                {todaySupportMemory?.summary || todayFallbackSupport?.rationale || 'A real person can stay visible in the background while you keep journaling.'}
-                                            </p>
-                                            <div className="mt-4 flex flex-wrap gap-2">
-                                                <Link
-                                                    href={guideHref}
-                                                    className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary transition-colors hover:bg-white/[0.08] hover:text-white"
-                                                >
-                                                    Open Guide
-                                                </Link>
-                                                <Link
-                                                    href={timelineHref}
-                                                    className="rounded-full border border-primary/30 bg-primary/12 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-primary transition-colors hover:bg-primary/20"
-                                                >
-                                                    Reopen timeline
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {todayAction && (todayBrief?.whatHelpedBefore || todayAction.highlights.length > 0) && (
-                                        <div className="rounded-[1.6rem] border border-white/10 bg-black/20 p-5">
-                                            <div className="flex items-center gap-3">
-                                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/30 bg-primary/12 text-primary">
-                                                    <FiRepeat size={18} aria-hidden="true" />
-                                                </span>
-                                                <div>
-                                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">What Helped Before</p>
-                                                    <h3 className="text-xl font-serif text-white">Reopen a steadier thread</h3>
-                                                </div>
-                                            </div>
-                                            {todayBrief?.whatHelpedBefore && (
-                                                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                                    <p className="text-sm leading-7 text-white/90">{todayBrief.whatHelpedBefore.summary}</p>
-                                                    {todayBrief.whatHelpedBefore.entryId && (
-                                                        <Link
-                                                            href={appendReturnTo(`/entry/view?id=${todayBrief.whatHelpedBefore.entryId}`, dashboardReturnTo)}
-                                                            className="mt-3 inline-flex rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary transition-colors hover:bg-white/[0.08] hover:text-white"
-                                                        >
-                                                            Open that note
-                                                        </Link>
-                                                    )}
-                                                </div>
-                                            )}
-                                            {todayAction.highlights.length > 0 && (
-                                                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                                                    {todayAction.highlights.slice(0, 2).map((highlight) => (
-                                                        <Link
-                                                            key={highlight.id}
-                                                            href={appendReturnTo(`/entry/view?id=${highlight.id}`, dashboardReturnTo)}
-                                                            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:bg-white/[0.06]"
-                                                        >
-                                                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">{highlight.createdAt}</p>
-                                                            <p className="mt-2 text-sm font-semibold text-white">{highlight.title || 'Untitled note'}</p>
-                                                            <p className="mt-2 text-sm leading-6 text-ink-secondary">{highlight.excerpt}</p>
-                                                        </Link>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div className="bento-box p-6">
-                                        <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Quick search</p>
-                                        <h2 className="mt-2 text-xl font-serif text-white">Find a note or topic fast</h2>
-                                        <div className="mt-4">
-                                            <SmartSearch />
-                                        </div>
-                                    </div>
-
-                                    <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-6">
-                                        <div className="flex items-start gap-3">
-                                            <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/30 bg-primary/12 text-primary">
-                                                <FiLayers size={18} aria-hidden="true" />
-                                            </span>
-                                            <div className="min-w-0">
-                                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Stories and outputs</p>
-                                                <h2 className="mt-2 text-lg font-semibold text-white">Reuse what your notes are already teaching you</h2>
-                                                <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                                    When you need them, stories, statements, and interview examples stay here instead of crowding your first decision.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="mt-4 flex flex-wrap gap-2">
-                                            <Link
-                                                href={portfolioHref}
-                                                className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.08]"
-                                            >
-                                                Open stories
-                                            </Link>
-                                            <Link
-                                                href={resumeHref}
-                                                className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.08]"
-                                            >
-                                                Resume
-                                            </Link>
-                                            <Link
-                                                href={statementHref}
-                                                className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.08]"
-                                            >
-                                                Statement
-                                            </Link>
-                                            <Link
-                                                href={interviewHref}
-                                                className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white hover:bg-white/[0.08]"
-                                            >
-                                                Interview
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {(resurfacedMoments.length > 0 || themeClusters.length > 0) && (
-                                <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-                                    {resurfacedMoments.length > 0 && (
-                                        <section className="bento-box p-6 space-y-4">
-                                            <div className="flex items-center gap-3">
-                                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/30 bg-primary/12 text-primary">
-                                                    <FiRepeat size={18} aria-hidden="true" />
-                                                </span>
-                                                <div>
-                                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Written Before</p>
-                                                    <h3 className="text-xl font-serif text-white">Past notes echoing back</h3>
-                                                </div>
-                                            </div>
-                                            <div className="grid gap-3">
-                                                {resurfacedMoments.map((moment) => (
-                                                    <div key={`${moment.sourceEntry.id}-${moment.matchedEntry.id}`} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                                        <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.12em] text-ink-muted">
-                                                            <span>{new Date(moment.sourceEntry.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                                            <span className="h-1 w-1 rounded-full bg-white/25" />
-                                                            <span>{Math.round(moment.relevance * 100)}% match</span>
-                                                        </div>
-                                                        <p className="mt-2 text-sm text-white">
-                                                            <span className="font-semibold">{moment.sourceEntry.title || 'Recent note'}</span>
-                                                            {' '}connects back to{' '}
-                                                            <Link href={appendReturnTo(`/entry/view?id=${moment.matchedEntry.id}`, dashboardReturnTo)} className="text-primary hover:text-white transition-colors">
-                                                                {moment.matchedEntry.title || 'an older note'}
-                                                            </Link>
-                                                        </p>
-                                                        <p className="mt-2 text-sm leading-6 text-ink-secondary">{moment.matchedEntry.contentPreview}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )}
-
-                                    {themeClusters.length > 0 && (
-                                        <section className="bento-box p-6 space-y-4">
-                                            <div className="flex items-center gap-3">
-                                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-secondary/30 bg-secondary/12 text-secondary">
-                                                    <FiLayers size={18} aria-hidden="true" />
-                                                </span>
-                                                <div>
-                                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Theme Clusters</p>
-                                                    <h3 className="text-xl font-serif text-white">Your archive is forming themes</h3>
-                                                </div>
-                                            </div>
-                                            <div className="grid gap-3">
-                                                {themeClusters.map((cluster) => (
-                                                    <div key={cluster.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                                        <div className="flex flex-wrap items-center gap-2">
-                                                            <span className="rounded-full border border-secondary/30 bg-secondary/10 px-2 py-1 text-xs uppercase tracking-[0.08em] text-secondary">
-                                                                {cluster.label}
-                                                            </span>
-                                                            <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-xs uppercase tracking-[0.08em] text-ink-secondary">
-                                                                {cluster.entryCount} notes
-                                                            </span>
-                                                        </div>
-                                                        <p className="mt-2 text-sm leading-6 text-ink-secondary">{cluster.summary}</p>
-                                                        <div className="mt-3 space-y-2">
-                                                            {cluster.representativeEntries.slice(0, 2).map((entry) => (
-                                                                <Link
-                                                                    key={entry.id}
-                                                                    href={appendReturnTo(`/entry/view?id=${entry.id}`, dashboardReturnTo)}
-                                                                    className="block rounded-xl border border-white/8 bg-black/20 px-3 py-2 transition-colors hover:border-white/15 hover:bg-black/30"
-                                                                >
-                                                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
-                                                                        {new Date(entry.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                                    </p>
-                                                                    <p className="mt-1 text-sm font-semibold text-white">{entry.title || 'Untitled note'}</p>
-                                                                    <p className="mt-1 text-xs leading-6 text-ink-secondary">{entry.contentPreview}</p>
-                                                                </Link>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="mt-6 rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-4">
-                                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                                    <div>
-                                        <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Writing sparks</p>
-                                        <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                            Use one quick nudge only when you want help getting started.
-                                        </p>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        <button
-                                            onClick={() => simulateEvent('A fresh workout finished. Reflect on the energy.')}
-                                            className="inline-flex items-center gap-2 rounded-full border border-secondary/25 bg-secondary/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-secondary transition-colors hover:bg-secondary/20"
-                                        >
-                                            <FiTrendingUp size={14} aria-hidden="true" />
-                                            Energy
-                                        </button>
-                                        <button
-                                            onClick={() => simulateEvent('Travel detected. What captured your eye?')}
-                                            className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
-                                        >
-                                            <FiCompass size={14} aria-hidden="true" />
-                                            Fresh place
-                                        </button>
-                                        <button
-                                            onClick={() => simulateEvent('4 hours of deep work detected. How is your focus?')}
-                                            className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-accent transition-colors hover:bg-accent/20"
-                                        >
-                                            <FiCpu size={14} aria-hidden="true" />
-                                            Focus
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                {/* ── Tier 0: Empty state ──────────────────────────── */}
+                {insightTier === 0 && (
+                    <>
+                        <section className="notebook-shell rounded-[2.25rem] px-5 py-5 md:px-7 md:py-6">
+                            <h1 className="notebook-title text-[23px] font-bold leading-tight">
+                                Start here, {firstName}.
+                            </h1>
+                            <p className="notebook-muted mt-2 text-sm font-serif">
+                                {todayLabel}
+                            </p>
                         </section>
-                    )}
+                        <EmptyDashboard writeHref={newEntryHref} />
+                    </>
+                )}
 
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between px-2">
-                            <h3 className="text-2xl font-serif">Recent notes</h3>
-                            <Link href={timelineHref} className="text-xs text-primary hover:text-white transition-colors tracking-widest font-bold uppercase">Open {NOTIVE_VOICE.surfaces.memoryAtlas}</Link>
-                        </div>
-
-                        {isLoading ? (
-                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                                {[1, 2, 3, 4].map((i) => (
-                                    <div key={i} className="bento-box h-64 p-8 flex flex-col gap-4">
-                                        <div className="h-8 w-3/4 rounded-lg bg-surface-2 animate-pulse" />
-                                        <div className="h-4 w-full rounded-lg bg-surface-2 animate-pulse" />
-                                        <div className="h-4 w-full rounded-lg bg-surface-2 animate-pulse" />
-                                        <div className="mt-auto h-10 w-32 rounded-xl bg-surface-2 animate-pulse" />
+                {/* ── Identity Card (tier 1+) ──────────────────────── */}
+                <Gate minTier={1} currentTier={insightTier}>
+                    <section className="notebook-shell rounded-[2.25rem] px-5 py-5 md:px-7 md:py-6">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                                <h1 className="notebook-title text-[23px] font-bold leading-tight">
+                                    {latestEntry ? `Hey ${firstName}.` : `Start here, ${firstName}.`}
+                                </h1>
+                                <p className="notebook-muted mt-2 text-sm font-serif">
+                                    {todayLabel}
+                                </p>
+                                <Gate minTier={2} currentTier={insightTier}>
+                                    <div className="mt-3 flex flex-wrap gap-1.5">
+                                        {writerDNA.traits.map((trait) => (
+                                            <span
+                                                key={trait.label}
+                                                className="notebook-chip rounded-full px-2.5 py-1 text-xs font-medium"
+                                                title={trait.description}
+                                            >
+                                                {formatTraitLabel(trait.label)}
+                                            </span>
+                                        ))}
                                     </div>
-                                ))}
+                                    <p className="notebook-copy mt-3 text-sm italic font-serif">
+                                        &ldquo;{writerDNA.archetype.oneLiner}&rdquo;
+                                    </p>
+                                </Gate>
+                            </div>
+                            <Gate minTier={2} currentTier={insightTier}>
+                                <NotebookDoodle
+                                    name={writerDNA.archetype.doodle}
+                                    accent={writerDNA.archetype.accent}
+                                    className="hidden shrink-0 sm:block"
+                                />
+                            </Gate>
+                        </div>
+                    </section>
+                </Gate>
+
+                {/* ── Hero Insight Card (tier 3+, LLM-powered) ───── */}
+                <Gate minTier={3} currentTier={insightTier}>
+                    <HeroInsightCard
+                        insight={heroInsight}
+                        loading={heroInsightLoading}
+                        onFeedback={(reaction) => {
+                            if (!heroInsight?.id) return;
+                            void apiFetch(`${API_URL}/ai/insight-feedback`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ insightId: heroInsight.id, reaction }),
+                            }).catch(() => {});
+                        }}
+                    />
+                </Gate>
+                {insightTier >= 3 && !heroInsightLoading && !hasHeroInsight && (
+                    <DashboardNoticeCard
+                        compact
+                        eyebrow="Still learning"
+                        title="Daily insight is warming up."
+                        body="Once Notive can compare a few connected note patterns, this space starts showing its magic."
+                    />
+                )}
+
+                {/* ── Device Context Strip (any tier, if signals exist) ── */}
+                <Gate minTier={1} currentTier={insightTier}>
+                    {hasDeviceSignals ? (
+                        <DeviceContextStrip signals={deviceSignals!} />
+                    ) : deviceSignalsLoaded ? (
+                        <DashboardNoticeCard
+                            compact
+                            eyebrow="Context"
+                            title="This strip wakes up after a quick check-in."
+                            body="Add one wellness check-in or connect a device source to see today around your writing."
+                        />
+                    ) : null}
+                </Gate>
+
+                {/* ── Quick Pulse Strip (tier 3+) ──────────────────── */}
+                <Gate minTier={3} currentTier={insightTier}>
+                    <QuickPulseStrip
+                        entries={entries}
+                        streak={streak}
+                        totalWords={totalWords}
+                    />
+                </Gate>
+
+                {/* ── Mood sparkline (tier 2+) ─────────────────────── */}
+                <Gate minTier={2} currentTier={insightTier}>
+                    {showMoodHistory && (
+                        <MoodSparkline entries={entries} />
+                    )}
+                </Gate>
+
+                {/* ── Focus card (tier 1+) ─────────────────────────── */}
+                <Gate minTier={1} currentTier={insightTier}>
+                    <DashboardFocusCard
+                        eyebrow={focusCard.eyebrow}
+                        title={focusCard.title}
+                        body={focusCard.body}
+                        evidence={focusCard.evidence}
+                        evidenceFallback={focusCard.evidenceFallback}
+                        panels={focusCard.panels}
+                        primaryAction={focusCard.primaryAction}
+                        secondaryAction={focusCard.secondaryAction}
+                        accent={focusCard.accent}
+                        doodle={focusCard.doodle}
+                    />
+                </Gate>
+
+                {/* ── Prime Time + Writing Rhythm (tier 4+) ────────── */}
+                <Gate minTier={4} currentTier={insightTier}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <PrimeTimePrediction entries={entries} />
+                        <WritingRhythmCalendar entries={entries} />
+                    </div>
+                </Gate>
+
+                {/* ── Writing Rhythm fallback for tier 3 ───────────── */}
+                {insightTier === 3 && (
+                    <WritingRhythmCalendar entries={entries} />
+                )}
+
+                {/* ── Emotional Fingerprint (tier 3+) ──────────────── */}
+                <Gate minTier={3} currentTier={insightTier}>
+                    {dashboardInsights?.emotionalFingerprint ? (
+                        <EmotionalFingerprint
+                            axes={dashboardInsights.emotionalFingerprint.axes}
+                            summary={dashboardInsights.emotionalFingerprint.summary}
+                        />
+                    ) : dashboardInsightsLoaded ? (
+                        <DashboardNoticeCard
+                            compact
+                            eyebrow="Emotion map"
+                            title="This chart appears after a few more analyzed notes."
+                            body="Keep naming feelings in your notes and Notive will start sketching the emotional fingerprint here."
+                        />
+                    ) : null}
+                </Gate>
+
+                {/* ── Journal Intelligence — compact pills, expand on tap ── */}
+                {journalIntel && (
+                    <Gate minTier={3} currentTier={insightTier}>
+                        <JournalIntelligenceSection intel={journalIntel} />
+                    </Gate>
+                )}
+
+                {/* ── Wellness Check-in (tier 2+) ─────────────────── */}
+                <Gate minTier={2} currentTier={insightTier}>
+                    <WellnessCheckin
+                        onSubmit={handleWellnessSubmit}
+                        submitted={wellnessSubmitted}
+                    />
+                </Gate>
+
+                {/* ── Resilience + Depth (tier 4+, side by side) ───── */}
+                <Gate minTier={4} currentTier={insightTier}>
+                    {hasResilienceSignals ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {dashboardInsights?.resilience && (
+                                <ResilienceCard
+                                    currentRecovery={dashboardInsights.resilience.currentRecovery}
+                                    previousRecovery={dashboardInsights.resilience.previousRecovery}
+                                    trend={dashboardInsights.resilience.trend}
+                                    narrative={dashboardInsights.resilience.narrative}
+                                    dipCount={dashboardInsights.resilience.dipCount}
+                                />
+                            )}
+                            {dashboardInsights?.reflectionDepth && (
+                                <ReflectionDepthMeter
+                                    level={dashboardInsights.reflectionDepth.level}
+                                    levelLabel={dashboardInsights.reflectionDepth.levelLabel}
+                                    score={dashboardInsights.reflectionDepth.score}
+                                    progressToNext={dashboardInsights.reflectionDepth.progressToNext}
+                                />
+                            )}
+                        </div>
+                    ) : dashboardInsightsLoaded ? (
+                        <DashboardNoticeCard
+                            compact
+                            eyebrow="Comparisons"
+                            title="Resilience and depth show up after a longer stretch of notes."
+                            body="A few more weeks of writing gives Notive enough contrast to show recovery and reflection shifts cleanly."
+                        />
+                    ) : null}
+                </Gate>
+
+                {/* ── Pattern Discovery Feed (tier 5+) ─────────────── */}
+                <Gate minTier={5} currentTier={insightTier}>
+                    {hasPatternDiscovery ? (
+                        <PatternDiscoveryFeed
+                            correlations={dashboardInsights?.correlations ?? []}
+                            contradictions={dashboardInsights?.contradictions ?? []}
+                            triggerMap={dashboardInsights?.triggerMap ?? []}
+                        />
+                    ) : dashboardInsightsLoaded ? (
+                        <DashboardNoticeCard
+                            compact
+                            eyebrow="Pattern feed"
+                            title="This feed needs repeated patterns before it speaks up."
+                            body="Once themes, mood shifts, or recurring people keep showing up, Notive will start calling them out here."
+                        />
+                    ) : null}
+                </Gate>
+
+                {/* ── What's Coming (tier 1, low entry count) ──────── */}
+                {insightTier <= 2 && entries.length > 0 && (
+                    <WhatsComingCard entryCount={entries.length} />
+                )}
+
+                {/* ── Recent entries (tier 1+) ─────────────────────── */}
+                <Gate minTier={1} currentTier={insightTier}>
+                    <section className="notebook-card rounded-[1.75rem] p-5">
+                        <p className="section-label mb-3">Recent</p>
+                        {entries.length === 0 ? (
+                            <div className="text-center py-5">
+                                <NotebookDoodle name="sprout" accent="sage" className="mx-auto mb-2" />
+                                <p className="notebook-copy text-sm">Your first note starts here.</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                                {entries.slice(0, 4).map((entry, index) => (
-                                    <EntryCard key={entry.id} entry={entry} delay={index * 0.08} />
+                            <div className="space-y-2">
+                                {entries.slice(0, 3).map((entry) => (
+                                    <Link
+                                        key={entry.id}
+                                        href={openDashboardEntryHref(entry.id)}
+                                        className="notebook-card-soft flex items-start gap-2 rounded-xl p-3 transition-opacity hover:opacity-80"
+                                    >
+                                        <span className="text-sm mt-0.5 shrink-0" aria-hidden="true">
+                                            {MOOD_EMOJI[entry.mood ?? ''] ?? '✦'}
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium truncate" style={{ color: 'rgb(var(--paper-ink, var(--text-strong)))' }}>
+                                                {entry.title || 'Untitled'}
+                                            </p>
+                                            <p className="notebook-muted mt-0.5 line-clamp-1 text-[0.83rem]">
+                                                {compactText(entry.content, 72)}
+                                            </p>
+                                        </div>
+                                    </Link>
                                 ))}
+                                {entries.length > 3 && (
+                                    <Link href={timelineHref} className="notebook-muted block text-xs text-center pt-1 hover:opacity-70">
+                                        See all {entries.length} notes →
+                                    </Link>
+                                )}
                             </div>
                         )}
-                    </div>
+                    </section>
+                </Gate>
+
+                {/* ── Flip Back — resurfaced moment ──────────────────── */}
+                {resurfacedMoments.length > 0 && (() => {
+                    const moment = resurfacedMoments[0];
+                    const entryDate = new Date(moment.matchedEntry.createdAt);
+                    const monthsAgo = Math.max(1, Math.round((Date.now() - entryDate.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+                    const timeLabel = monthsAgo === 1 ? '1 month ago' : `${monthsAgo} months ago`;
+                    return (
+                        <section key={moment.matchedEntry.id} className="notebook-card-soft rounded-[1.75rem] p-5">
+                            <p className="notebook-kicker mb-2">
+                                <span style={{ fontStyle: 'italic', fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                                    {timeLabel}…
+                                </span>
+                            </p>
+                            <Link
+                                href={openDashboardEntryHref(moment.matchedEntry.id)}
+                                className="block hover:opacity-80 transition-opacity"
+                            >
+                                <p className="text-sm font-medium" style={{ color: 'rgb(var(--paper-ink, var(--text-strong)))' }}>
+                                    {moment.matchedEntry.title || 'Untitled'}
+                                </p>
+                                <p
+                                    className="notebook-copy mt-1 line-clamp-2 text-[0.9rem]"
+                                    style={{ color: 'rgb(var(--paper-ink-soft, var(--text-secondary)))' }}
+                                >
+                                    {compactText(moment.matchedEntry.contentPreview, 140)}
+                                </p>
+                            </Link>
+                            <Link
+                                href={appendReturnTo(`/entry/new?source=flip_back&ref=${moment.matchedEntry.id}`, dashboardReturnTo)}
+                                className="notebook-secondary-cta mt-3 inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs"
+                            >
+                                Write back to yourself →
+                            </Link>
+                        </section>
+                    );
+                })()}
+
+                {/* ── Bridge card (if elevated risk) ─────────────────── */}
+                {todayBridge && (
+                    <BridgeCard
+                        bridge={todayBridge}
+                        surface="dashboard"
+                        openEntryHref={openDashboardEntryHref}
+                        onCopyDraft={() => handleDashboardBridgeCopy(todayBridge.recommendedRecipient)}
+                        variant="notebook"
+                    />
+                )}
+
+                {/* ── Then → Now (90+ day users) ─────────────────────── */}
+                {showThenNow && (
+                    <section className="notebook-card rounded-[1.75rem] p-5">
+                        <p className="section-label mb-3" style={{ fontStyle: 'italic', fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                            Then → Now
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="notebook-card-soft rounded-xl p-3">
+                                <p className="notebook-muted text-xs mb-1">
+                                    {new Date(oldestEntry!.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                                </p>
+                                <p className="text-sm" style={{ color: 'rgb(var(--paper-ink, var(--text-strong)))' }}>
+                                    {themeClusters[themeClusters.length - 1]?.label ?? 'Finding your way'}
+                                </p>
+                            </div>
+                            <div className="notebook-card-soft rounded-xl p-3">
+                                <p className="notebook-muted text-xs mb-1">Now</p>
+                                <p className="text-sm" style={{ color: 'rgb(var(--paper-ink, var(--text-strong)))' }}>
+                                    {themeClusters[0]?.label ?? 'Clearer ground'}
+                                </p>
+                            </div>
+                        </div>
+                        <p className="notebook-muted text-xs mt-3">
+                            {daysSinceFirst} days journaling · {themeClusters.length} recurring themes
+                        </p>
+                    </section>
+                )}
+
+                {/* ── Bottom nav links ────────────────────────────────── */}
+                <div className="flex items-center justify-center gap-5 pt-2 pb-1">
+                    <Link href={guideHref} className="notebook-muted text-sm hover:opacity-80 transition-opacity">
+                        Guide
+                    </Link>
+                    <span className="notebook-muted text-xs opacity-40">·</span>
+                    <Link href={timelineHref} className="notebook-muted text-sm hover:opacity-80 transition-opacity">
+                        Memories
+                    </Link>
+                    <span className="notebook-muted text-xs opacity-40">·</span>
+                    <Link href={portfolioHref} className="notebook-muted text-sm hover:opacity-80 transition-opacity">
+                        Stories
+                    </Link>
                 </div>
+
             </main>
+
+            {/* ── Floating capture pill ───────────────────────────────── */}
+            <FloatingCapture writeHref={newEntryHref} voiceHref={voiceEntryHref} />
         </div>
     );
 }
-
-

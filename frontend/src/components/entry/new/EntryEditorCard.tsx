@@ -1,12 +1,13 @@
 'use client';
 
-import React, { RefObject } from 'react';
+import React, { RefObject, useState, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { FiImage, FiMic, FiSquare } from 'react-icons/fi';
+import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
     ssr: false,
-    loading: () => <div className="glass-card rounded-2xl h-[300px] animate-pulse" />,
+    loading: () => <div className="workspace-soft-panel rounded-2xl h-[300px] animate-pulse" />,
 });
 
 type UploadResult = {
@@ -17,8 +18,11 @@ type UploadResult = {
 
 type EntryEditorCardProps = {
     isRecording: boolean;
+    isVoiceProcessing?: boolean;
     isVoiceSupported: boolean;
     voiceError: string | null;
+    voiceReviewRequired?: boolean;
+    voiceStatusMessage?: string | null;
     interimText: string;
     onStartRecording: () => void;
     onStopRecording: () => void;
@@ -36,10 +40,12 @@ type EntryEditorCardProps = {
     autoFocus?: boolean;
     minimalEditor?: boolean;
     showImageUpload?: boolean;
+    showFormattingToolbar?: boolean;
 };
 
 export default function EntryEditorCard({
     isRecording,
+    isVoiceProcessing = false,
     isVoiceSupported,
     voiceError,
     interimText,
@@ -53,168 +59,227 @@ export default function EntryEditorCard({
     onInsertUploadedImage,
     onDismissUploaded,
     audioUrl,
+    voiceReviewRequired = false,
+    voiceStatusMessage = null,
     content,
     editorPlaceholder,
     onEditorChange,
     autoFocus = false,
     minimalEditor = false,
     showImageUpload = true,
+    showFormattingToolbar = false,
 }: EntryEditorCardProps) {
-    const recordingLabel = isRecording ? 'Listening' : 'Voice On';
+    const [isTypingActive, setIsTypingActive] = useState(false);
+    const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const handleEditorChangeInternal = (text: string, html: string) => {
+        setIsTypingActive(true);
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = setTimeout(() => setIsTypingActive(false), 1600);
+        onEditorChange(text, html);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+        };
+    }, []);
+
+    const hasContent = content.trim().length > 0;
+    const interimWords = interimText.trim().split(/\s+/).filter(Boolean);
+    const utilityPanelClass = 'workspace-soft-panel';
+    const mutedTextClass = 'text-muted';
+    const bodyTextClass = 'text-default';
 
     return (
-        <div className="relative mb-6 group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="relative glass-card rounded-[2rem] p-8 border border-white/10 shadow-2xl">
-                <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+        <div className="mb-6">
+            {!minimalEditor && (
+                <div className="mb-3 flex flex-wrap items-end justify-between gap-3 px-1">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.15em] text-ink-muted">
-                            {minimalEditor ? 'Quick Note' : 'Write'}
+                        <p className="type-overline text-muted">Draft space</p>
+                        <p className="type-body-sm mt-1 text-default">
+                            Start with the messy version. Details and polish can come after the thought is down.
                         </p>
-                        <h3 className="text-base font-semibold text-white">
-                            {minimalEditor ? 'One thought, quick save' : 'Voice or typing'}
-                        </h3>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span
-                            className={`rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.1em] ${
-                                isRecording
-                                    ? 'border-white/15 bg-white/[0.04] text-white'
-                                    : 'border-white/15 bg-white/[0.03] text-ink-secondary'
-                            }`}
-                        >
-                            {recordingLabel}
-                        </span>
-                        {queueCount > 0 && (
-                            <span className="rounded-full border border-zinc-400/35 bg-zinc-500/12 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-zinc-200">
-                                Queue {queueCount}
-                            </span>
-                        )}
+                    <p className="type-overline text-muted">
+                        Autosaves while you write
+                    </p>
+                </div>
+            )}
+
+            {/* Editor — with quill watermark + typing glow */}
+            <div className={`relative transition-all duration-700 ${isTypingActive && !minimalEditor ? 'entry-typing-glow' : ''}`}>
+                {/* Quill watermark — faint ghost doodle, appears once user has written something */}
+                {hasContent && !minimalEditor && (
+                    <div
+                        className="pointer-events-none absolute bottom-5 right-5 z-0 select-none ink-quill-float"
+                        aria-hidden="true"
+                    >
+                        <NotebookDoodle name="quill" accent="sage" size={68} />
+                    </div>
+                )}
+                <TiptapEditor
+                    onChange={handleEditorChangeInternal}
+                    placeholder={editorPlaceholder}
+                    content={content}
+                    showToolbar={showFormattingToolbar && !minimalEditor}
+                    autoFocus={autoFocus}
+                    variant={minimalEditor ? 'glass' : 'paper'}
+                    maxWords={500}
+                />
+            </div>
+
+            {/* Voice feedback: error or review badge */}
+            {voiceError && (
+                <p className="workspace-soft-panel type-micro mx-auto mt-3 max-w-xs rounded-lg px-2 py-1 text-center text-default">
+                    {voiceError}
+                </p>
+            )}
+            {voiceReviewRequired && !voiceError && (
+                <p className="type-micro mx-auto mt-3 max-w-xs rounded-lg border border-amber-500/35 bg-amber-500/10 px-2 py-1 text-center text-amber-700 dark:text-amber-300">
+                    Check transcript. A few words may need a quick pass.
+                </p>
+            )}
+            {voiceStatusMessage && !voiceError && (
+                <p className="workspace-soft-panel type-micro mx-auto mt-3 max-w-xs rounded-lg px-2 py-1 text-center text-default">
+                    {voiceStatusMessage}
+                </p>
+            )}
+
+            {/* Live transcription preview — word-by-word stagger with mic arcs */}
+            {interimText && (
+                <div className={`mt-3 rounded-2xl border p-3 voice-interim-card ${utilityPanelClass}`}>
+                    <div className="flex items-start gap-3">
+                        {/* Animated mic arc rings */}
+                        <div className="recording-arc-container mt-0.5 flex-shrink-0">
+                            <span className="mic-arc-ring mic-arc-ring-1" />
+                            <span className="mic-arc-ring mic-arc-ring-2" />
+                            <span className="mic-arc-ring mic-arc-ring-3" />
+                            <FiMic size={11} className="relative z-10 text-[rgb(var(--paper-sage))]" aria-hidden="true" />
+                        </div>
+                        {/* Words fade in one by one */}
+                        <p className={`${bodyTextClass} type-body-sm font-serif italic leading-relaxed`}>
+                            {interimWords.map((word, i) => (
+                                <span
+                                    key={`${word}-${i}`}
+                                    className="word-appear-in mr-[0.25em]"
+                                    style={{ animationDelay: `${Math.min(i * 40, 500)}ms` }}
+                                >
+                                    {word}
+                                </span>
+                            ))}
+                        </p>
                     </div>
                 </div>
+            )}
 
-                <div className="flex flex-col items-center justify-center mb-7">
-                    <button
-                        onClick={isRecording ? onStopRecording : onStartRecording}
-                        disabled={!isVoiceSupported}
-                        className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${!isVoiceSupported
-                            ? 'bg-surface-2 text-ink-secondary cursor-not-allowed'
-                            : isRecording
-                                ? 'bg-primary scale-110 shadow-[0_0_40px_rgba(100,116,139,0.4)]'
-                                : 'bg-gradient-to-br from-primary to-secondary hover:shadow-[0_0_30px_rgba(148,163,184,0.45)] hover:scale-105'
-                            }`}
-                    >
-                        {isRecording ? (
-                            <div className="relative">
-                                <div className="absolute inset-0 animate-ping opacity-75 bg-white rounded-full"></div>
-                                <FiSquare size={28} className="relative z-10 text-white" aria-hidden="true" />
-                            </div>
-                        ) : (
-                            <FiMic size={32} className="text-white" aria-hidden="true" />
-                        )}
-                    </button>
+            {/* Audio player */}
+            {audioUrl && (
+                <div className={`mt-3 rounded-xl border p-3 ${utilityPanelClass}`}>
+                    <audio controls src={audioUrl} className="w-full h-9" />
+                </div>
+            )}
 
-                    <div className="mt-4 h-6 flex flex-col items-center">
-                        {isRecording ? (
-                            <div className="flex items-center gap-2">
-                                <span className="relative flex h-3 w-3">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white/60 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-primary/80"></span>
-                                </span>
-                                <span className="text-ink-secondary text-sm font-medium tracking-wide uppercase">Listening</span>
-                            </div>
-                        ) : (
-                            <span className="text-ink-muted text-sm font-medium">Tap to dictate</span>
-                        )}
-                    </div>
-                    {voiceError && (
-                        <p className="mt-2 text-xs text-zinc-300 text-center max-w-xs rounded-lg border border-zinc-500/20 bg-zinc-500/10 px-2 py-1">
-                            {voiceError}
+            {/* Upload queue */}
+            {(queueCount > 0 || recentUploads.length > 0) && (
+                <div className={`mt-3 rounded-xl border p-3 ${utilityPanelClass}`}>
+                    {queueCount > 0 && (
+                        <p className={`type-overline mb-2 ${mutedTextClass}`}>
+                            {queueCount} waiting to upload
                         </p>
+                    )}
+                    {recentUploads.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                            {recentUploads.map(upload => (
+                                <div key={upload.id} className={`flex items-center gap-2 rounded-lg border px-2 py-1 ${utilityPanelClass}`}>
+                                    <span className={`type-micro max-w-[120px] truncate ${mutedTextClass}`}>{upload.fileName}</span>
+                                    <button
+                                        onClick={() => onInsertUploadedImage(upload.url, upload.id)}
+                                        className="type-label-sm text-soft hover:text-strong"
+                                    >
+                                        Insert
+                                    </button>
+                                    <button
+                                        onClick={() => onDismissUploaded(upload.id)}
+                                        className="type-label-sm text-muted hover:text-default"
+                                    >
+                                        Hide
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Bottom toolbar: image + voice */}
+            <div className={`mt-4 flex items-center justify-between rounded-2xl border px-3 py-3 ${utilityPanelClass}`}>
+                <div className="flex items-center gap-2">
+                    {showImageUpload && (
+                        <>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept="image/*"
+                                onChange={onImageUpload}
+                            />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
+                                className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-muted transition-all hover:bg-white/10 hover:text-strong"
+                                title="Add image"
+                            >
+                                {isUploading ? (
+                                    <div className="w-5 h-5 border-2 border-ink-muted/50 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <FiImage size={18} aria-hidden="true" />
+                                )}
+                                <span className="type-label-sm">Image</span>
+                            </button>
+                        </>
                     )}
                 </div>
 
-                {showImageUpload && (
-                    <div className="flex justify-end mb-4 px-2">
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            className="hidden"
-                            accept="image/*"
-                            onChange={onImageUpload}
-                        />
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={isUploading}
-                            className="p-2 rounded-xl text-ink-secondary hover:text-white hover:bg-white/5 transition-all flex items-center gap-2 text-sm"
-                            title="Upload Image"
-                        >
-                            {isUploading ? (
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                                <FiImage size={20} aria-hidden="true" />
-                            )}
-                            <span>{isUploading ? 'Uploading' : 'Add Image'}</span>
-                        </button>
-                    </div>
-                )}
-
-                {(queueCount > 0 || recentUploads.length > 0) && (
-                    <div className="mb-4 mx-2 p-3 rounded-xl bg-white/5 border border-white/10">
-                        {queueCount > 0 && (
-                            <p className="text-xs uppercase tracking-[0.1em] text-ink-muted mb-2">
-                                {queueCount} waiting to upload again
-                            </p>
-                        )}
-                        {recentUploads.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                                {recentUploads.map(upload => (
-                                    <div key={upload.id} className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-2 py-1">
-                                        <span className="text-xs text-ink-muted truncate max-w-[120px]">{upload.fileName}</span>
-                                        <button
-                                            onClick={() => onInsertUploadedImage(upload.url, upload.id)}
-                                            className="text-xs uppercase tracking-[0.08em] text-ink-secondary hover:text-white font-medium"
-                                        >
-                                            Insert
-                                        </button>
-                                        <button
-                                            onClick={() => onDismissUploaded(upload.id)}
-                                            className="text-xs uppercase tracking-[0.08em] text-ink-muted hover:text-ink-secondary"
-                                        >
-                                            Hide
-                                        </button>
-                                    </div>
-                                ))}
+                {/* Voice button — mic arc rings when recording, otherwise standard */}
+                <button
+                    onClick={isRecording ? onStopRecording : onStartRecording}
+                    disabled={!isVoiceSupported || isVoiceProcessing}
+                    title={isRecording ? 'Stop recording' : isVoiceProcessing ? 'Processing...' : 'Record voice'}
+                    className={`flex items-center gap-2.5 rounded-full px-3 py-2 transition-all duration-300 ${!isVoiceSupported
+                        ? 'text-muted cursor-not-allowed opacity-50'
+                        : isRecording
+                            ? 'border border-[rgba(138,154,111,0.35)] bg-[rgba(138,154,111,0.08)] text-[rgb(var(--paper-sage))]'
+                            : isVoiceProcessing
+                                ? 'text-muted cursor-wait'
+                                : 'text-muted hover:bg-white/10 hover:text-strong'
+                    }`}
+                >
+                    {isRecording ? (
+                        <>
+                            {/* Animated arc rings replace the plain red ping */}
+                            <div className="recording-arc-container">
+                                <span className="mic-arc-ring mic-arc-ring-1" />
+                                <span className="mic-arc-ring mic-arc-ring-2" />
+                                <span className="mic-arc-ring mic-arc-ring-3" />
+                                <FiMic size={11} className="relative z-10" aria-hidden="true" />
                             </div>
-                        )}
-                    </div>
-                )}
-
-                {interimText && (
-                    <div className="mb-6 p-3 rounded-xl bg-white/5 border border-white/10 text-center">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-1">Live Words</p>
-                        <p className="text-ink-secondary italic text-base animate-pulse">"{interimText}"</p>
-                    </div>
-                )}
-
-                {audioUrl && (
-                    <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10">
-                        <p className="text-xs text-ink-muted mb-2 uppercase tracking-[0.12em]">Voice Clip</p>
-                        <audio controls src={audioUrl} className="w-full h-10" />
-                    </div>
-                )}
-
-                <div className="relative">
-                    <TiptapEditor
-                        onChange={onEditorChange}
-                        placeholder={editorPlaceholder}
-                        content={content}
-                        showToolbar={!minimalEditor}
-                        autoFocus={autoFocus}
-                    />
-                </div>
+                            <FiSquare size={14} aria-hidden="true" />
+                            <span className="type-label-sm">Stop</span>
+                        </>
+                    ) : isVoiceProcessing ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-ink-muted/50 border-t-transparent rounded-full animate-spin" />
+                            <span className="type-label-sm">Processing</span>
+                        </>
+                    ) : (
+                        <>
+                            <FiMic size={18} aria-hidden="true" />
+                            <span className="type-label-sm">Voice</span>
+                        </>
+                    )}
+                </button>
             </div>
         </div>
     );
 }
-

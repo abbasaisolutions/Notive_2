@@ -9,6 +9,7 @@ import embeddingService from '../services/embedding.service';
 import { sanitizeHtml } from '../utils/html';
 import { buildEntryStorySignal, deriveExperienceEvidence, OpportunityEntry } from '../services/opportunity.service';
 import studentActionService from '../services/student-action.service';
+import guidedReflectionService from '../services/guided-reflection.service';
 import {
     buildEntryListWhere,
     filterEntriesByTemporalContext,
@@ -93,10 +94,17 @@ const attachEntryStorySignal = <T extends {
     createdAt: Date;
     analysis: unknown;
 }>(entry: T) => {
-    const { analysis, reflection, ...responseEntry } = entry;
+    const { analysis, ...responseEntry } = entry;
+
+    const notiveInsights = (() => {
+        if (!analysis || typeof analysis !== 'object' || Array.isArray(analysis)) return undefined;
+        const a = analysis as Record<string, unknown>;
+        return Array.isArray(a.notiveInsights) ? a.notiveInsights : undefined;
+    })();
 
     return {
         ...responseEntry,
+        notiveInsights,
         storySignal: buildEntryStorySignal({
             id: entry.id,
             title: entry.title,
@@ -399,7 +407,7 @@ const mergeNlpInsightsIntoAnalysis = (
 export const createEntry = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
-        const { title, content, contentHtml, mood, tags, coverImage, audioUrl, chapterId, autoTag, analysis, category, lifeArea } = req.body;
+        const { title, content, contentHtml, mood, tags, coverImage, audioUrl, chapterId, autoTag, analysis, category, lifeArea, locationLat, locationLng, locationName } = req.body;
 
         if (!content) {
             return res.status(400).json({ message: 'Content is required' });
@@ -478,6 +486,9 @@ export const createEntry = async (req: Request, res: Response) => {
                 skills: growthSignals.skills,
                 lessons: growthSignals.lessons,
                 reflection: growthSignals.reflection,
+                locationLat: typeof locationLat === 'number' ? locationLat : null,
+                locationLng: typeof locationLng === 'number' ? locationLng : null,
+                locationName: typeof locationName === 'string' ? locationName || null : null,
                 userId,
             },
         });
@@ -540,6 +551,9 @@ export const createEntry = async (req: Request, res: Response) => {
         });
 
         const responseEntry = { ...entry, analysis: mergedAnalysis };
+
+        // Fire-and-forget: generate Notive Noticed insights in the background
+        guidedReflectionService.generateNotiveInsights(entry.id, userId).catch(() => {});
 
         return res.status(201).json({
             entry: attachEntryStorySignal(responseEntry),
@@ -741,7 +755,7 @@ export const updateEntry = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
         const { id } = req.params;
-        const { title, content, contentHtml, mood, tags, coverImage, audioUrl, chapterId, analysis, category, lifeArea } = req.body;
+        const { title, content, contentHtml, mood, tags, coverImage, audioUrl, chapterId, analysis, category, lifeArea, locationLat, locationLng, locationName } = req.body;
 
         // Check if entry exists and belongs to user
         const existing = await prisma.entry.findFirst({
@@ -827,6 +841,9 @@ export const updateEntry = async (req: Request, res: Response) => {
                 skills: growthSignals ? growthSignals.skills : existing.skills,
                 lessons: growthSignals ? growthSignals.lessons : existing.lessons,
                 reflection: growthSignals ? growthSignals.reflection : existing.reflection,
+                locationLat: locationLat !== undefined ? (typeof locationLat === 'number' ? locationLat : null) : existing.locationLat,
+                locationLng: locationLng !== undefined ? (typeof locationLng === 'number' ? locationLng : null) : existing.locationLng,
+                locationName: locationName !== undefined ? (typeof locationName === 'string' ? locationName || null : null) : existing.locationName,
             },
         });
 
@@ -890,6 +907,9 @@ export const updateEntry = async (req: Request, res: Response) => {
         });
 
         const responseEntry = { ...entry, analysis: mergedAnalysis };
+
+        // Fire-and-forget: regenerate Notive Noticed insights after content update
+        guidedReflectionService.generateNotiveInsights(entry.id, userId).catch(() => {});
 
         return res.status(200).json({
             entry: attachEntryStorySignal(responseEntry),

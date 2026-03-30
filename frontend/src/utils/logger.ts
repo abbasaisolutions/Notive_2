@@ -5,6 +5,9 @@
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
+// Alias for backward compatibility
+type LogFunction = (message: string, data?: any) => void;
+
 interface LoggerConfig {
     enabled: boolean;
     minLevel: LogLevel;

@@ -2,12 +2,12 @@ import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
     return {
-        name: 'Notive | Memory, Signal, and Story',
+        name: 'Notive | Save moments. See patterns. Build your story.',
         short_name: 'Notive',
-        description: 'Capture lived moments, read the patterns inside them, and turn them into usable stories.',
+        description: 'Save real moments, understand your patterns, and build your story for life, school, and work.',
         start_url: '/',
         display: 'standalone',
-        background_color: '#0c0f14',
+        background_color: '#f8f4ed',
         theme_color: '#64748b',
         icons: [
             {

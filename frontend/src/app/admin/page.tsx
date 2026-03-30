@@ -6,7 +6,10 @@ import { useAuth } from '@/context/auth-context';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
 import useApi from '@/hooks/use-api';
 import { ActionBar, AppPanel, EmptyState, SectionHeader, StatTile, TagPill } from '@/components/ui/surface';
+import AdminPerformanceOverview, { type AdminPerformanceOverviewData } from '@/components/admin/AdminPerformanceOverview';
+import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import { FiAlertCircle, FiLock, FiSearch, FiShield, FiX } from 'react-icons/fi';
+import { Spinner } from '@/components/ui';
 
 type TrackFilter = 'all' | 'personal' | 'professional' | 'blended' | 'unknown';
 type StageFilter = 'all' | 'not_started' | 'in_progress' | 'completed';
@@ -53,6 +56,8 @@ type EvidenceSummary = {
     usersReadyForExport: number;
     averageCompletenessScore: number;
 };
+
+type PerformanceOverview = AdminPerformanceOverviewData;
 
 type SupportIssue = {
     id: string;
@@ -200,9 +205,9 @@ function MetricBar({ label, value, gradient }: { label: string; value: number; g
         <div>
             <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-[0.12em] text-ink-muted">
                 <span>{label}</span>
-                <span className="text-white">{value}%</span>
+                <span className="workspace-heading">{value}%</span>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className="h-1.5 overflow-hidden rounded-full bg-ink-muted/20">
                 <div className="h-full rounded-full" style={{ width: `${value}%`, background: gradient }} />
             </div>
         </div>
@@ -215,6 +220,7 @@ export default function AdminPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [evidenceSummary, setEvidenceSummary] = useState<EvidenceSummary | null>(null);
+    const [performanceOverview, setPerformanceOverview] = useState<PerformanceOverview | null>(null);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -298,9 +304,20 @@ export default function AdminPage() {
         }
     };
 
+    const fetchPerformanceOverview = async () => {
+        try {
+            const response = await apiFetch('/admin/performance-overview');
+            if (response.ok) {
+                setPerformanceOverview(await response.json());
+            }
+        } catch (err) {
+            console.error('Failed to fetch performance overview:', err);
+        }
+    };
+
     useEffect(() => {
         if (user && !authLoading) {
-            Promise.all([fetchUsers(), fetchStats()]).finally(() => setIsLoading(false));
+            Promise.all([fetchUsers(), fetchStats(), fetchPerformanceOverview()]).finally(() => setIsLoading(false));
         }
     }, [user, authLoading, page, trackFilter, stageFilter, roleFilter, onlyNeedsSupport, completionLte]);
 
@@ -483,20 +500,24 @@ export default function AdminPage() {
     }, [selectedUserId]);
 
     if (authLoading || isLoading) {
-        return <div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>;
+        return (
+            <div className="admin-stage min-h-screen flex items-center justify-center">
+                <Spinner size="md" />
+            </div>
+        );
     }
 
     if (error === 'Admin access required') {
         return (
-            <div className="min-h-screen px-4 py-10">
+            <div className="admin-stage page-paper-canvas min-h-screen px-4 py-10">
                 <div className="mx-auto max-w-2xl">
                     <AppPanel className="space-y-5 text-center">
-                        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[2rem] border border-white/15 bg-white/[0.03]">
-                            <FiLock size={32} className="text-white" aria-hidden="true" />
+                        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[2rem] workspace-soft-panel">
+                            <FiLock size={32} className="text-ink-secondary" aria-hidden="true" />
                         </div>
                         <SectionHeader kicker="Admin" title="Access denied" description="You need admin access to open this page." className="justify-center text-center" />
                         <div className="flex justify-center">
-                            <Link href="/dashboard" className="rounded-xl border border-primary/30 bg-primary/15 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/25">Go to {NOTIVE_VOICE.surfaces.homeBase}</Link>
+                            <Link href="/dashboard" className="workspace-button-primary rounded-xl px-5 py-3 text-sm font-semibold">Go to {NOTIVE_VOICE.surfaces.homeBase}</Link>
                         </div>
                     </AppPanel>
                 </div>
@@ -505,17 +526,25 @@ export default function AdminPage() {
     }
 
     return (
-        <div className="min-h-screen px-4 py-6 pb-24 md:px-8 md:py-8">
+        <div className="admin-stage page-paper-canvas min-h-screen px-4 py-6 pb-24 md:px-8 md:py-8">
             <div className="mx-auto max-w-6xl space-y-6">
-                <AppPanel className="space-y-5">
+                <AppPanel className="admin-header-panel relative overflow-hidden space-y-5">
+                    <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-48 md:block">
+                        <div className="absolute right-6 top-5 opacity-75">
+                            <NotebookDoodle name="star" accent="amber" className="h-16 w-16 rotate-[8deg]" />
+                        </div>
+                        <div className="absolute bottom-4 right-16 opacity-55">
+                            <NotebookDoodle name="walker" accent="sky" className="h-14 w-14 -rotate-[10deg]" />
+                        </div>
+                    </div>
                     <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                         <SectionHeader kicker="Admin" title="Manage users" description="Check user activity, find people who need help, and manage accounts." />
-                        <ActionBar className="overflow-x-auto border-white/10 bg-black/20">
+                        <ActionBar className="overflow-x-auto">
                             <TagPill tone="primary" className="gap-1.5"><FiShield size={12} aria-hidden="true" />Admin tools</TagPill>
                             <TagPill tone="muted">Active filters {activeFilterCount}</TagPill>
                             <TagPill tone="muted">Results {users.length}</TagPill>
                             {onlyNeedsSupport && <TagPill>Help list &lt;= {completionLte}%</TagPill>}
-                            <Link href="/profile" className="rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white">Me</Link>
+                            <Link href="/profile" className="rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))]">Me</Link>
                         </ActionBar>
                     </div>
                     {stats && (
@@ -530,52 +559,56 @@ export default function AdminPage() {
                     )}
                 </AppPanel>
 
+                {performanceOverview && (
+                    <AdminPerformanceOverview overview={performanceOverview} />
+                )}
+
                 <AppPanel className="space-y-5">
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                         <SectionHeader kicker="Filters" title="Find the right users" description="Search by name or email, then narrow by track, setup stage, or who needs help." />
-                        <ActionBar className="border-white/10 bg-black/20">
+                        <ActionBar>
                             <TagPill tone="muted">Page {page} of {totalPages}</TagPill>
-                            <button type="button" onClick={clearFilters} className="rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-white">Clear Filters</button>
+                            <button type="button" onClick={clearFilters} className="rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))]">Clear Filters</button>
                         </ActionBar>
                     </div>
 
                     <form onSubmit={onSearchSubmit} className="flex flex-col gap-3 md:flex-row">
-                        <input type="text" placeholder="Search name or email" value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/35" />
-                        <button type="submit" className="rounded-xl border border-primary/30 bg-primary/15 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/25">Search</button>
+                        <input type="text" placeholder="Search name or email" value={search} onChange={(e) => setSearch(e.target.value)} className="workspace-input flex-1 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/35" />
+                        <button type="submit" className="rounded-xl border border-primary/30 bg-primary/15 px-6 py-3 text-sm font-semibold text-[rgb(var(--text-primary))] transition-colors hover:bg-primary/25">Search</button>
                     </form>
 
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_320px]">
                         <div className="space-y-2">
                             <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Track</p>
-                            <ActionBar className="border-white/10 bg-black/20">
+                            <ActionBar>
                                 {TRACK_OPTIONS.map((item) => (
-                                    <button key={item.id} type="button" onClick={() => { setTrackFilter(item.id); setPage(1); }} className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${trackFilter === item.id ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-white'}`}>{item.label}</button>
+                                    <button key={item.id} type="button" onClick={() => { setTrackFilter(item.id); setPage(1); }} className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${trackFilter === item.id ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-[rgb(var(--text-primary))]'}`}>{item.label}</button>
                                 ))}
                             </ActionBar>
                         </div>
                         <div className="space-y-2">
                             <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Stage</p>
-                            <ActionBar className="border-white/10 bg-black/20">
+                            <ActionBar>
                                 {STAGE_OPTIONS.map((item) => (
-                                    <button key={item.id} type="button" onClick={() => { setStageFilter(item.id); setPage(1); }} className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${stageFilter === item.id ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-white'}`}>{item.label}</button>
+                                    <button key={item.id} type="button" onClick={() => { setStageFilter(item.id); setPage(1); }} className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${stageFilter === item.id ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-[rgb(var(--text-primary))]'}`}>{item.label}</button>
                                 ))}
                             </ActionBar>
                         </div>
                         <div className="space-y-2">
                             <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Role</p>
-                            <ActionBar className="border-white/10 bg-black/20">
+                            <ActionBar>
                                 {visibleRoleOptions.map((item) => (
-                                    <button key={item.id} type="button" onClick={() => { setRoleFilter(item.id); setPage(1); }} className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${roleFilter === item.id ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-white'}`}>{item.label}</button>
+                                    <button key={item.id} type="button" onClick={() => { setRoleFilter(item.id); setPage(1); }} className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${roleFilter === item.id ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-[rgb(var(--text-primary))]'}`}>{item.label}</button>
                                 ))}
                             </ActionBar>
                         </div>
-                        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                        <div className="workspace-soft-panel rounded-2xl p-4">
                             <div className="flex items-center justify-between gap-3">
                                 <div>
-                                    <p className="text-sm font-semibold text-white">Help focus</p>
+                                    <p className="text-sm font-semibold workspace-heading">Help focus</p>
                                     <p className="mt-1 text-xs text-ink-secondary">Show users at or below this setup score.</p>
                                 </div>
-                                <button type="button" onClick={() => { setOnlyNeedsSupport((prev) => !prev); setPage(1); }} className={`relative h-7 w-12 rounded-full border transition-colors ${onlyNeedsSupport ? 'border-primary/35 bg-primary/15' : 'border-white/15 bg-white/[0.03]'}`} aria-pressed={onlyNeedsSupport}>
+                                <button type="button" onClick={() => { setOnlyNeedsSupport((prev) => !prev); setPage(1); }} className={`relative h-7 w-12 rounded-full border transition-colors ${onlyNeedsSupport ? 'border-primary/35 bg-primary/15' : 'border-ink-muted/20 bg-white/[0.03]'}`} aria-pressed={onlyNeedsSupport}>
                                     <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${onlyNeedsSupport ? 'left-6' : 'left-1'}`} />
                                 </button>
                             </div>
@@ -589,8 +622,8 @@ export default function AdminPage() {
                     </div>
 
                     {scanLimitReached && (
-                        <div className="flex items-start gap-3 rounded-2xl border border-white/12 bg-white/[0.03] p-4 text-sm text-white">
-                            <FiAlertCircle size={18} className="mt-0.5 text-white" aria-hidden="true" />
+                        <div className="flex items-start gap-3 rounded-2xl workspace-soft-panel p-4 text-sm workspace-heading">
+                            <FiAlertCircle size={18} className="mt-0.5 text-ink-secondary" aria-hidden="true" />
                             <p>Showing filtered results from the most recent 5000 users. Use more filters or search to narrow this list.</p>
                         </div>
                     )}
@@ -615,12 +648,40 @@ export default function AdminPage() {
                     <EmptyState title="No users match this view" description="Adjust filters or search to widen the admin queue." actionLabel="Open Admin" actionHref="/admin" />
                 ) : (
                     <AppPanel className="overflow-hidden p-0">
-                        <div className="border-b border-white/10 px-5 py-5 md:px-6">
+                        <div className="border-b border-ink-muted/15 px-5 py-5 md:px-6">
                             <SectionHeader kicker="Directory" title="User list" description="See activity, setup progress, story quality, and account actions in one table." />
                         </div>
-                        <div className="overflow-x-auto">
+
+                        {/* Mobile card view */}
+                        <div className="divide-y divide-ink-muted/10 md:hidden">
+                            {users.map((currentUser) => (
+                                <div key={currentUser.id} className="flex items-center gap-3 px-4 py-4">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/70 to-secondary/70 text-sm font-semibold text-[rgb(var(--text-primary))]">
+                                        {currentUser.name?.charAt(0) || currentUser.email.charAt(0)}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-semibold workspace-heading">{currentUser.name || 'No name'}</p>
+                                        <p className="truncate text-xs text-ink-muted">{currentUser.email}</p>
+                                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                            <TagPill tone={currentUser.isBanned ? 'muted' : 'primary'}>{currentUser.isBanned ? 'Banned' : 'Active'}</TagPill>
+                                            <TagPill tone={currentUser.role === 'USER' ? 'muted' : 'primary'}>{formatRole(currentUser.role)}</TagPill>
+                                            <TagPill tone="muted">{currentUser._count.entries} notes</TagPill>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => void fetchUserDetails(currentUser.id)}
+                                        className="shrink-0 rounded-xl border border-primary/25 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                                    >
+                                        Review
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Desktop table view */}
+                        <div className="hidden overflow-x-auto md:block">
                             <table className="min-w-full">
-                                <thead className="bg-white/[0.03]">
+                                <thead className="bg-[rgba(92,92,92,0.06)]">
                                     <tr>
                                         <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">User</th>
                                         <th className="hidden px-4 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted md:table-cell">Notes</th>
@@ -632,17 +693,17 @@ export default function AdminPage() {
                                 </thead>
                                 <tbody>
                                     {users.map((currentUser) => (
-                                        <tr key={currentUser.id} className="border-t border-white/8 align-top transition-colors hover:bg-white/[0.03]">
+                                        <tr key={currentUser.id} className="border-t border-ink-muted/10 align-top transition-colors hover:bg-[rgba(255,255,255,0.36)]">
                                             <td className="px-4 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/70 to-secondary/70 text-sm font-semibold text-white">{currentUser.name?.charAt(0) || currentUser.email.charAt(0)}</div>
+                                                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/70 to-secondary/70 text-sm font-semibold text-[rgb(var(--text-primary))]">{currentUser.name?.charAt(0) || currentUser.email.charAt(0)}</div>
                                                     <div className="space-y-1">
-                                                        <p className="text-sm font-semibold text-white">{currentUser.name || 'No name'}</p>
+                                                        <p className="text-sm font-semibold workspace-heading">{currentUser.name || 'No name'}</p>
                                                         <p className="text-sm text-ink-secondary">{currentUser.email}</p>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="hidden px-4 py-4 text-sm text-white md:table-cell">{currentUser._count.entries}</td>
+                                            <td className="hidden px-4 py-4 text-sm workspace-heading md:table-cell">{currentUser._count.entries}</td>
                                             <td className="hidden px-4 py-4 md:table-cell">
                                                 <TagPill tone={currentUser.role === 'USER' ? 'muted' : 'primary'}>{formatRole(currentUser.role)}</TagPill>
                                             </td>
@@ -682,26 +743,37 @@ export default function AdminPage() {
                 )}
 
                 {totalPages > 1 && (
-                    <ActionBar className="justify-center border-white/10 bg-black/20">
-                        <button onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1} className="rounded-xl px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+                    <ActionBar className="justify-center">
+                        <button onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1} className="rounded-xl px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))] disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
                         <TagPill tone="muted">Page {page} of {totalPages}</TagPill>
-                        <button onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages} className="rounded-xl px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+                        <button onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages} className="rounded-xl px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))] disabled:cursor-not-allowed disabled:opacity-50">Next</button>
                     </ActionBar>
                 )}
 
                 {selectedUserId && (
-                    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm md:items-center">
-                        <div className="w-full max-w-4xl overflow-hidden rounded-[2rem] border border-white/10 bg-surface-1 shadow-2xl shadow-black/30">
-                            <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-5 md:px-6">
+                    <div
+                        className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(58,58,58,0.24)] p-4 backdrop-blur-sm md:items-center"
+                        onClick={closeDetail}
+                        onKeyDown={(e) => { if (e.key === 'Escape') closeDetail(); }}
+                    >
+                        <div
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="User detail"
+                            className="w-full max-w-4xl overflow-hidden rounded-[2rem] workspace-panel shadow-2xl shadow-black/30"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-start justify-between gap-4 border-b border-ink-muted/15 px-5 py-5 md:px-6">
                                 <SectionHeader
                                     kicker="User Review"
                                     title={selectedUser?.name || selectedUser?.email || 'User details'}
                                     description={selectedUser ? `${selectedUser.email} · ${formatRole(selectedUser.role)}` : 'Loading account context'}
+                                    as="h2"
                                 />
                                 <button
                                     type="button"
                                     onClick={closeDetail}
-                                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/12 bg-white/[0.03] text-ink-secondary transition-colors hover:text-white"
+                                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl workspace-soft-panel text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))]"
                                     aria-label="Close user detail"
                                 >
                                     <FiX size={18} aria-hidden="true" />
@@ -710,23 +782,23 @@ export default function AdminPage() {
 
                             {isDetailLoading ? (
                                 <div className="flex min-h-[240px] items-center justify-center">
-                                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                                    <Spinner size="md" />
                                 </div>
                             ) : detailError ? (
                                 <div className="px-5 py-8 md:px-6">
                                     <AppPanel className="text-center">
-                                        <p className="text-sm text-white">{detailError}</p>
+                                        <p className="text-sm workspace-heading">{detailError}</p>
                                     </AppPanel>
                                 </div>
                             ) : selectedUser ? (
                                 <div className="max-h-[78vh] overflow-y-auto px-5 py-5 md:px-6">
                                     {detailNotice && (
-                                        <div className="mb-4 rounded-2xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-white">
+                                        <div className="mb-4 rounded-2xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm workspace-heading">
                                             {detailNotice}
                                         </div>
                                     )}
                                     {actionError && (
-                                        <div className="mb-4 rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-3 text-sm text-white">
+                                        <div className="mb-4 rounded-2xl workspace-soft-panel px-4 py-3 text-sm workspace-heading">
                                             {actionError}
                                         </div>
                                     )}
@@ -742,7 +814,7 @@ export default function AdminPage() {
                                                     </TagPill>
                                                     <TagPill>{formatRole(selectedUser.role)}</TagPill>
                                                 </div>
-                                                <p className="text-sm leading-7 text-white">{selectedUser.supportSummary.recommendedAction}</p>
+                                                <p className="text-sm leading-7 workspace-heading">{selectedUser.supportSummary.recommendedAction}</p>
                                                 <div className="grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-3">
                                                     <StatTile label="Notes" value={selectedUser._count.entries} hint="Saved notes" />
                                                     <StatTile label="Groups" value={selectedUser._count.chapters} hint="Created note groups" />
@@ -755,12 +827,12 @@ export default function AdminPage() {
                                                 <SectionHeader kicker="Help Checklist" title="Troubleshooting checklist" description="Use this to see if the user is stuck on setup, activity, import, or access." />
                                                 <div className="space-y-3">
                                                     {selectedUser.supportSummary.issues.map((issue) => (
-                                                        <div key={issue.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                        <div key={issue.id} className="rounded-2xl workspace-soft-panel p-4">
                                                             <div className="flex flex-wrap items-center gap-2">
                                                                 <TagPill tone={issue.severity === 'action' ? 'primary' : issue.severity === 'watch' ? 'default' : 'muted'}>
                                                                     {issue.severity}
                                                                 </TagPill>
-                                                                <p className="text-sm font-semibold text-white">{issue.title}</p>
+                                                                <p className="text-sm font-semibold workspace-heading">{issue.title}</p>
                                                             </div>
                                                             <p className="mt-2 text-sm leading-6 text-ink-secondary">{issue.detail}</p>
                                                         </div>
@@ -772,13 +844,13 @@ export default function AdminPage() {
                                                 <SectionHeader kicker="Recent Activity" title="Latest notes" description="Quick context for support without leaving this page." />
                                                 <div className="space-y-3">
                                                     {selectedUser.recentEntries.length > 0 ? selectedUser.recentEntries.map((entry) => (
-                                                        <div key={entry.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                        <div key={entry.id} className="rounded-2xl workspace-soft-panel p-4">
                                                             <div className="flex flex-wrap items-center gap-2">
                                                                 <TagPill tone="muted">{entry.source}</TagPill>
                                                                 {entry.mood && <TagPill>{entry.mood}</TagPill>}
                                                                 <span className="text-xs text-ink-muted">{formatDate(entry.createdAt)}</span>
                                                             </div>
-                                                            <p className="mt-2 text-sm font-semibold text-white">{entry.title || 'Untitled note'}</p>
+                                                            <p className="mt-2 text-sm font-semibold workspace-heading">{entry.title || 'Untitled note'}</p>
                                                         </div>
                                                     )) : (
                                                         <p className="text-sm text-ink-secondary">No recent notes yet.</p>
@@ -792,7 +864,7 @@ export default function AdminPage() {
                                                 <SectionHeader kicker="Admin Actions" title="Account controls" description="Super admins handle role changes. Admins can still review and manage normal user issues." />
                                                 <div className="space-y-3">
                                                     {selectedUser.supportSummary.permissions.canChangeRole ? (
-                                                        <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                        <div className="space-y-3 rounded-2xl workspace-soft-panel p-4">
                                                             <label className="block space-y-2">
                                                                 <span className="text-xs uppercase tracking-[0.12em] text-ink-muted">Role</span>
                                                                 <select
@@ -803,7 +875,7 @@ export default function AdminPage() {
                                                                         setActionError('');
                                                                     }}
                                                                     disabled={selectedUser.id === user?.id}
-                                                                    className="w-full rounded-xl border border-white/12 bg-black/20 px-3 py-3 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                                                    className="workspace-input w-full rounded-xl px-3 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
                                                                 >
                                                                     <option value="USER">User</option>
                                                                     <option value="ADMIN">Admin</option>
@@ -818,14 +890,14 @@ export default function AdminPage() {
                                                                     type="button"
                                                                     onClick={() => stageAdminAction({ type: 'role', label: 'Role change' })}
                                                                     disabled={!canStageRoleChange || isSubmittingAction}
-                                                                    className="rounded-xl border border-primary/25 bg-primary/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                    className="workspace-button-primary rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                                                                 >
                                                                     Review Role Change
                                                                 </button>
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-ink-secondary">
+                                                        <div className="rounded-2xl workspace-soft-panel p-4 text-sm text-ink-secondary">
                                                             Only super admins can change roles.
                                                         </div>
                                                     )}
@@ -835,28 +907,28 @@ export default function AdminPage() {
                                                             <button
                                                                 type="button"
                                                                 onClick={() => stageAdminAction({ type: 'ban', label: selectedUser.isBanned ? 'Access restore' : 'Account suspension' })}
-                                                                className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                                                                className="w-full rounded-xl workspace-button-outline px-4 py-3 text-sm font-semibold transition-colors"
                                                             >
                                                                 Review {selectedUser.isBanned ? 'Restore Access' : 'Suspend Account'}
                                                             </button>
                                                             <button
                                                                 type="button"
                                                                 onClick={() => stageAdminAction({ type: 'revoke', label: 'Session revocation' })}
-                                                                className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                                                                className="w-full rounded-xl workspace-button-outline px-4 py-3 text-sm font-semibold transition-colors"
                                                             >
                                                                 Review Session Revoke
                                                             </button>
                                                         </div>
                                                     ) : (
-                                                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-ink-secondary">
+                                                        <div className="rounded-2xl workspace-soft-panel p-4 text-sm text-ink-secondary">
                                                             This account cannot be suspended by your current role.
                                                         </div>
                                                     )}
 
                                                     {(selectedUser.supportSummary.permissions.canChangeRole || selectedUser.supportSummary.permissions.canBan) && (
-                                                        <div className="space-y-3 rounded-2xl border border-white/10 bg-black/20 p-4">
+                                                        <div className="space-y-3 rounded-2xl workspace-soft-panel p-4">
                                                             <div>
-                                                                <p className="text-sm font-semibold text-white">Reason and note</p>
+                                                                <p className="text-sm font-semibold workspace-heading">Reason and note</p>
                                                                 <p className="mt-1 text-xs text-ink-secondary">
                                                                     Add a reason for role changes, blocks, restores, and session resets. Notes are optional.
                                                                 </p>
@@ -867,7 +939,7 @@ export default function AdminPage() {
                                                                     value={actionReason}
                                                                     onChange={(event) => setActionReason(event.target.value)}
                                                                     rows={3}
-                                                                    className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-3 py-3 text-sm text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                                                    className="workspace-input w-full rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                                                                     placeholder="Say why this action is needed."
                                                                 />
                                                                 <p className={`text-xs ${actionReasonLength >= 8 ? 'text-ink-secondary' : 'text-primary'}`}>
@@ -880,7 +952,7 @@ export default function AdminPage() {
                                                                     value={supportNote}
                                                                     onChange={(event) => setSupportNote(event.target.value)}
                                                                     rows={2}
-                                                                    className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-3 py-3 text-sm text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                                                    className="workspace-input w-full rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                                                                     placeholder="Optional note for other admins later."
                                                                 />
                                                             </label>
@@ -890,10 +962,10 @@ export default function AdminPage() {
                                                     {pendingAction && (
                                                         <div className="space-y-3 rounded-2xl border border-primary/25 bg-primary/10 p-4">
                                                             <div>
-                                                                <p className="text-sm font-semibold text-white">Review before confirming</p>
-                                                                <p className="mt-1 text-sm text-white/80">{pendingActionSummary}</p>
+                                                                <p className="text-sm font-semibold workspace-heading">Review before confirming</p>
+                                                                <p className="mt-1 text-sm text-ink-secondary">{pendingActionSummary}</p>
                                                             </div>
-                                                            <div className="space-y-1 text-xs text-white/75">
+                                                            <div className="space-y-1 text-xs text-ink-muted">
                                                                 <p>Target: {selectedUser.email}</p>
                                                                 <p>Action: {pendingAction.label}</p>
                                                                 {pendingAction.type === 'role' && <p>New role: {formatRole(roleDraft)}</p>}
@@ -903,7 +975,7 @@ export default function AdminPage() {
                                                                     type="button"
                                                                     onClick={() => void executePendingAction()}
                                                                     disabled={isSubmittingAction}
-                                                                    className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                    className="rounded-xl workspace-button-outline px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                                                                 >
                                                                     {isSubmittingAction ? 'Saving...' : `Confirm ${pendingAction.label}`}
                                                                 </button>
@@ -914,7 +986,7 @@ export default function AdminPage() {
                                                                         setActionError('');
                                                                     }}
                                                                     disabled={isSubmittingAction}
-                                                                    className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                                                    className="rounded-xl border border-ink-muted/20 px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))] disabled:cursor-not-allowed disabled:opacity-50"
                                                                 >
                                                                     Cancel
                                                                 </button>
@@ -927,23 +999,23 @@ export default function AdminPage() {
                                             <AppPanel className="space-y-4">
                                                 <SectionHeader kicker="Identity" title="Account info" description="Helpful for login, setup, and import questions." />
                                                 <div className="space-y-3 text-sm text-ink-secondary">
-                                                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                    <div className="rounded-2xl workspace-soft-panel p-4">
                                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Created</p>
-                                                        <p className="mt-2 text-white">{formatDate(selectedUser.createdAt)}</p>
+                                                        <p className="mt-2 workspace-heading">{formatDate(selectedUser.createdAt)}</p>
                                                     </div>
-                                                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                    <div className="rounded-2xl workspace-soft-panel p-4">
                                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Profile</p>
-                                                        <p className="mt-2 text-white">{selectedUser.profile?.occupation || 'Occupation not set'}</p>
+                                                        <p className="mt-2 workspace-heading">{selectedUser.profile?.occupation || 'Occupation not set'}</p>
                                                         <p className="mt-1">{selectedUser.profile?.location || 'Location not set'}</p>
                                                     </div>
-                                                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                    <div className="rounded-2xl workspace-soft-panel p-4">
                                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Connections</p>
                                                         <div className="mt-2 flex flex-wrap gap-2">
                                                             {selectedUser.socialConnections.length > 0 ? selectedUser.socialConnections.map((connection) => (
                                                                 <TagPill key={`${selectedUser.id}-${connection.provider}`}>
                                                                     {connection.provider}
                                                                 </TagPill>
-                                                            )) : <span className="text-white">No linked providers</span>}
+                                                            )) : <span className="workspace-heading">No linked providers</span>}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -962,13 +1034,13 @@ export default function AdminPage() {
                                                             value={retrievalQuery}
                                                             onChange={(event) => setRetrievalQuery(event.target.value)}
                                                             placeholder="Try: grieving after losing a pet"
-                                                            className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                                            className="workspace-input w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                                                         />
                                                         <button
                                                             type="button"
                                                             onClick={() => void runRetrievalDebug()}
                                                             disabled={isRetrievalDebugLoading}
-                                                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/15 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/25 disabled:cursor-not-allowed disabled:opacity-50"
+                                                            className="workspace-button-primary inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                                                         >
                                                             <FiSearch size={16} aria-hidden="true" />
                                                             {isRetrievalDebugLoading ? 'Inspecting...' : 'Run Retrieval Debug'}
@@ -976,14 +1048,14 @@ export default function AdminPage() {
                                                     </div>
 
                                                     {retrievalDebugError && (
-                                                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white">
+                                                        <div className="rounded-2xl workspace-soft-panel px-4 py-3 text-sm workspace-heading">
                                                             {retrievalDebugError}
                                                         </div>
                                                     )}
 
                                                     {retrievalDebug && (
                                                         <div className="space-y-3">
-                                                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                            <div className="rounded-2xl workspace-soft-panel p-4">
                                                                 <div className="flex flex-wrap gap-2">
                                                                     <TagPill tone="primary">{retrievalDebug.searchMode}</TagPill>
                                                                     <TagPill>{retrievalDebug.debug.embeddingProvider}</TagPill>
@@ -994,24 +1066,24 @@ export default function AdminPage() {
                                                                     </TagPill>
                                                                 </div>
                                                                 <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-3 text-xs text-ink-secondary">
-                                                                    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                                                                    <div className="rounded-xl workspace-muted-panel px-3 py-2">
                                                                         <p className="uppercase tracking-[0.12em] text-ink-muted">Lexical</p>
-                                                                        <p className="mt-1 text-white">{retrievalDebug.debug.candidateCounts.lexical}</p>
+                                                                        <p className="mt-1 workspace-heading">{retrievalDebug.debug.candidateCounts.lexical}</p>
                                                                     </div>
-                                                                    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                                                                    <div className="rounded-xl workspace-muted-panel px-3 py-2">
                                                                         <p className="uppercase tracking-[0.12em] text-ink-muted">Dense</p>
-                                                                        <p className="mt-1 text-white">{retrievalDebug.debug.candidateCounts.dense}</p>
+                                                                        <p className="mt-1 workspace-heading">{retrievalDebug.debug.candidateCounts.dense}</p>
                                                                     </div>
-                                                                    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                                                                    <div className="rounded-xl workspace-muted-panel px-3 py-2">
                                                                         <p className="uppercase tracking-[0.12em] text-ink-muted">Rerank Pool</p>
-                                                                        <p className="mt-1 text-white">{retrievalDebug.debug.candidateCounts.rerankPool}</p>
+                                                                        <p className="mt-1 workspace-heading">{retrievalDebug.debug.candidateCounts.rerankPool}</p>
                                                                     </div>
                                                                 </div>
                                                             </div>
 
                                                             <div className="space-y-3">
                                                                 {retrievalDebug.results.map((result) => (
-                                                                    <div key={result.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                                    <div key={result.id} className="rounded-2xl workspace-soft-panel p-4">
                                                                         <div className="flex flex-wrap items-center gap-2">
                                                                             <TagPill tone="primary">{result.strategy}</TagPill>
                                                                             <TagPill>{Math.round(result.relevance * 100)}%</TagPill>
@@ -1020,7 +1092,7 @@ export default function AdminPage() {
                                                                                 {result.debug.rerankerUsed ? 'Reranked' : 'Not reranked'}
                                                                             </TagPill>
                                                                         </div>
-                                                                        <p className="mt-3 text-sm font-semibold text-white">{result.title || 'Untitled note'}</p>
+                                                                        <p className="mt-3 text-sm font-semibold workspace-heading">{result.title || 'Untitled note'}</p>
                                                                         <p className="mt-2 text-sm leading-6 text-ink-secondary">{result.content}</p>
                                                                         <div className="mt-3 flex flex-wrap gap-2">
                                                                             <TagPill tone="muted">Lexical {result.lexicalScore.toFixed(2)}</TagPill>
@@ -1042,12 +1114,12 @@ export default function AdminPage() {
                                                 <SectionHeader kicker="Recent App Activity" title="Telemetry trail" description="Helpful when a user says something broke but the issue may be the flow." />
                                                 <div className="space-y-3">
                                                     {selectedUser.recentTelemetry.length > 0 ? selectedUser.recentTelemetry.map((event) => (
-                                                        <div key={`${event.eventType}-${event.occurredAt}`} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                        <div key={`${event.eventType}-${event.occurredAt}`} className="rounded-2xl workspace-soft-panel p-4">
                                                             <div className="flex flex-wrap items-center gap-2">
                                                                 <TagPill tone="muted">{event.eventType}</TagPill>
                                                                 <span className="text-xs text-ink-muted">{formatDate(event.occurredAt)}</span>
                                                             </div>
-                                                            {event.pathname && <p className="mt-2 text-sm text-white">{event.pathname}</p>}
+                                                            {event.pathname && <p className="mt-2 text-sm workspace-heading">{event.pathname}</p>}
                                                             {event.field && <p className="mt-1 text-xs text-ink-secondary">Field: {event.field}</p>}
                                                         </div>
                                                     )) : (
@@ -1060,15 +1132,15 @@ export default function AdminPage() {
                                                 <SectionHeader kicker="Admin History" title="Admin actions" description="Recent admin changes on this account." />
                                                 <div className="space-y-3">
                                                     {selectedUser.recentAdminActions.length > 0 ? selectedUser.recentAdminActions.map((action) => (
-                                                        <div key={`${action.eventType}-${action.occurredAt}`} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                        <div key={`${action.eventType}-${action.occurredAt}`} className="rounded-2xl workspace-soft-panel p-4">
                                                             <div className="flex flex-wrap items-center gap-2">
                                                                 <TagPill tone="muted">{action.eventType.replace('ADMIN_', '').replaceAll('_', ' ')}</TagPill>
                                                                 <span className="text-xs text-ink-muted">{formatDate(action.occurredAt)}</span>
                                                             </div>
-                                                            {action.value && <p className="mt-2 text-sm text-white">Value: {action.value}</p>}
+                                                            {action.value && <p className="mt-2 text-sm workspace-heading">Value: {action.value}</p>}
                                                             {action.field && <p className="mt-1 text-xs text-ink-secondary">Field: {action.field}</p>}
                                                             {getAuditMetadataText(action.metadata, 'reason') && (
-                                                                <p className="mt-2 text-sm text-white">Reason: {getAuditMetadataText(action.metadata, 'reason')}</p>
+                                                                <p className="mt-2 text-sm workspace-heading">Reason: {getAuditMetadataText(action.metadata, 'reason')}</p>
                                                             )}
                                                             {getAuditMetadataText(action.metadata, 'supportNote') && (
                                                                 <p className="mt-1 text-xs text-ink-secondary">Note: {getAuditMetadataText(action.metadata, 'supportNote')}</p>

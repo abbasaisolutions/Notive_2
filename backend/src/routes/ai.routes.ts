@@ -13,6 +13,11 @@ import {
     previewActionBrief,
     updateOpportunityEvidence,
 } from '../controllers/ai.controller';
+import {
+    getHeroDashboardInsight,
+    getWeeklyDigest,
+    postInsightFeedback,
+} from '../controllers/insight-engine.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { securityConfig } from '../config/security';
 import { createRateLimiter } from '../middleware/rate-limit.middleware';
@@ -39,5 +44,10 @@ router.get('/opportunity/overview', authMiddleware, getOpportunityOverview);
 router.get('/opportunity/trends', authMiddleware, getOpportunityTrends);
 router.patch('/opportunity/entry/:entryId', authMiddleware, updateOpportunityEvidence);
 router.get('/opportunity/export', authMiddleware, aiLimiter, exportOpportunityPack);
+
+// Insight engine
+router.get('/dashboard-insight', authMiddleware, getHeroDashboardInsight);
+router.get('/weekly-digest', authMiddleware, aiLimiter, getWeeklyDigest);
+router.post('/insight-feedback', authMiddleware, postInsightFeedback);
 
 export default router;

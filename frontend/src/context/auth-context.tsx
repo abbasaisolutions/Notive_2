@@ -6,12 +6,14 @@ import secureStorage from '@/utils/secure-storage';
 import { API_URL } from '@/constants/config';
 import { clearOnboardingState } from '@/utils/onboarding';
 import type { CredentialSsoProvider } from '@/utils/sso';
+import { logoutNativeGoogleSession } from '@/utils/native-google-auth';
 
 interface UserProfile {
     bio?: string;
     location?: string;
     occupation?: string;
     website?: string;
+    birthDate?: string | null;
     lifeGoals?: string[];
     primaryGoal?: string | null;
     focusArea?: string | null;
@@ -44,10 +46,11 @@ interface AuthContextType {
     login: (email: string, password: string) => Promise<User>;
     loginWithSsoCredential: (provider: CredentialSsoProvider, credential: string) => Promise<User>;
     loginWithGoogleCredential: (credential: string) => Promise<User>;
-    register: (email: string, password: string, name?: string) => Promise<User>;
+    register: (email: string, password: string, name?: string, birthDate?: string) => Promise<User>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
     refreshSession: () => Promise<string | null>;
+    syncUser: (user: User | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -208,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const loginWithGoogleCredential = async (credential: string): Promise<User> =>
         loginWithSsoCredential('google', credential);
 
-    const register = async (email: string, password: string, name?: string): Promise<User> => {
+    const register = async (email: string, password: string, name?: string, birthDate?: string): Promise<User> => {
         const isNative = isNativePlatform();
         const response = await fetch(`${API_URL}/auth/register`, {
             method: 'POST',
@@ -217,7 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 ...(isNative ? { 'x-client-platform': 'mobile' } : {}),
             },
             credentials: 'include',
-            body: JSON.stringify({ email, password, name }),
+            body: JSON.stringify({ email, password, name, birthDate }),
         });
 
         const data = await response.json();
@@ -256,6 +259,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 headers,
                 body,
             });
+            if (isNative) {
+                await logoutNativeGoogleSession();
+            }
         } catch (error) {
             logger.error('Logout failed', error);
         } finally {
@@ -307,7 +313,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, accessToken, isLoading, login, loginWithSsoCredential, loginWithGoogleCredential, register, logout, refreshUser, refreshSession: performRefresh }}>
+        <AuthContext.Provider value={{ user, accessToken, isLoading, login, loginWithSsoCredential, loginWithGoogleCredential, register, logout, refreshUser, refreshSession: performRefresh, syncUser: setUser }}>
             {children}
         </AuthContext.Provider>
     );

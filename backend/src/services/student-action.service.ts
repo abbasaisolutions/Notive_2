@@ -156,6 +156,64 @@ const CONFLICT_PATTERN = /\b(friend|friendship|drama|fight|argument|bully|bullyi
 const FUTURE_PATTERN = /\b(future|college|career|major|resume|statement|interview|scholarship|path|direction)\b/i;
 const ENERGY_PATTERN = /\b(tired|exhausted|drained|burned out|burnt out|stressed|overwhelmed|anxious|panic|low energy)\b/i;
 const PERSONISH_SUPPORT_TYPES = new Set(['person', 'group']);
+const WEAK_KEEP_WORDS = new Set([
+    'what',
+    'why',
+    'how',
+    'when',
+    'where',
+    'who',
+    'thing',
+    'things',
+    'stuff',
+    'something',
+    'anything',
+    'everything',
+    'nothing',
+    'note',
+    'notes',
+    'entry',
+    'entries',
+    'journal',
+    'journaling',
+    'writing',
+    'happen',
+    'happened',
+    'happening',
+    'going',
+    'doing',
+    'did',
+    'feel',
+    'feeling',
+    'think',
+    'thinking',
+    'today',
+    'yesterday',
+    'tomorrow',
+    'hello',
+    'life',
+    'live',
+    'general',
+    'other',
+]);
+const DIRECT_KEEP_LABELS: Record<string, string> = {
+    journaling: 'Writing it out still helps',
+    writing: 'Writing it out still helps',
+    breathing: 'Breathing slowly still helps',
+    breathe: 'Breathing slowly still helps',
+    walking: 'Going for a walk still helps',
+    walk: 'Going for a walk still helps',
+    music: 'Music still helps',
+    prayer: 'Prayer still helps',
+    talking: 'Talking it through still helps',
+    rest: 'Rest still helps',
+    sleep: 'Getting rest still helps',
+    stretching: 'Stretching still helps',
+    exercise: 'Moving your body still helps',
+    movement: 'Moving your body still helps',
+    planning: 'Making a small plan still helps',
+    texting: 'Texting someone still helps',
+};
 
 const clip = (value: string, maxLength: number) => {
     const normalized = String(value || '').replace(/\s+/g, ' ').trim();
@@ -197,6 +255,54 @@ const asSentence = (value: string | null | undefined) => {
     const normalized = String(value || '').replace(/\s+/g, ' ').trim();
     if (!normalized) return '';
     return /[.!?]$/.test(normalized) ? normalized : `${normalized}.`;
+};
+
+const normalizeKeepCandidate = (value: string | null | undefined) =>
+    String(value || '')
+        .replace(/[_-]+/g, ' ')
+        .replace(/[“”"']/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, '');
+
+const isWeakKeepCandidate = (value: string | null | undefined) => {
+    const normalized = normalizeKeepCandidate(value).toLowerCase();
+    if (!normalized || !/[a-z]/.test(normalized)) return true;
+
+    const words = normalized.split(/\s+/).filter(Boolean);
+    if (words.length === 0) return true;
+    if (words.length === 1 && (words[0].length <= 2 || WEAK_KEEP_WORDS.has(words[0]))) return true;
+    if (words.every((word) => WEAK_KEEP_WORDS.has(word))) return true;
+
+    return false;
+};
+
+const getReadableTopics = (values: string[], limit = 2) =>
+    uniqueStrings(values, values.length)
+        .map((value) => normalizeKeepCandidate(value))
+        .filter((value) => {
+            if (!value) return false;
+            const words = value.toLowerCase().split(/\s+/).filter(Boolean);
+            if (words.length === 0) return false;
+            if (words.length === 1) {
+                return words[0].length > 3 && !WEAK_KEEP_WORDS.has(words[0]);
+            }
+            return !words.every((word) => WEAK_KEEP_WORDS.has(word));
+        })
+        .slice(0, limit);
+
+const formatKeepLabel = (value: string | null | undefined) => {
+    const normalized = normalizeKeepCandidate(value);
+    if (!normalized || isWeakKeepCandidate(normalized)) return '';
+
+    const normalizedLower = normalized.toLowerCase();
+    if (DIRECT_KEEP_LABELS[normalizedLower]) return DIRECT_KEEP_LABELS[normalizedLower];
+
+    const words = normalized.split(/\s+/).filter(Boolean);
+    if (words.length === 1) return '';
+
+    const sentenceCase = normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+    return clip(`${sentenceCase} still helps`, 64);
 };
 
 const joinSentences = (...parts: Array<string | null | undefined>) =>
@@ -490,7 +596,8 @@ const buildPatternLine = (input: {
     topTopics: string[];
     risk: StudentRisk;
 }) => {
-    const topicText = input.topTopics.length > 0 ? ` around ${input.topTopics.slice(0, 2).join(' and ')}` : '';
+    const readableTopics = getReadableTopics(input.topTopics, 2);
+    const topicText = readableTopics.length > 0 ? ` around ${readableTopics.join(' and ')}` : '';
 
     if (input.risk.level === 'red') return 'This looks like a safety-first moment, not something to solve with reflection alone.';
     if (input.risk.level === 'orange') return 'This looks heavier than a normal rough patch and may need real support, not just self-management.';
@@ -811,11 +918,15 @@ const buildReachOut = (
 };
 
 const buildKeep = (recurringSkills: string[], topSkills: string[], topLessons: string[], risk: StudentRisk): StudentActionBrief['keep'] => {
-    const skill = recurringSkills[0] || topSkills[0];
-    if (skill) {
+    const skillCandidates = uniqueStrings([...recurringSkills, ...topSkills], 8);
+    const keepLabel = skillCandidates
+        .map((candidate) => formatKeepLabel(candidate))
+        .find(Boolean);
+
+    if (keepLabel) {
         return {
-            label: skill,
-            evidence: 'This keeps showing up in your notes, even during heavier stretches.',
+            label: keepLabel,
+            evidence: 'That pattern keeps showing up in your notes, even during heavier stretches.',
         };
     }
     if (topLessons[0]) {

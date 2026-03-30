@@ -750,9 +750,34 @@ class ProgressivePersonalizationService {
 
     buildSyncPayload(input: BuildPatchInput): Record<string, unknown> {
         const profilePatch = this.buildProfilePatch(input);
+        const existingSignals = getSignalsObject(input.profile) || {};
+        const existingSettings = existingSignals.settings && typeof existingSignals.settings === 'object' && !Array.isArray(existingSignals.settings)
+            ? existingSignals.settings as Record<string, unknown>
+            : {};
+        const existingMetrics = existingSignals.metrics && typeof existingSignals.metrics === 'object' && !Array.isArray(existingSignals.metrics)
+            ? existingSignals.metrics as Record<string, unknown>
+            : {};
+        const nextSignals = this.buildSignalsPayload(input.state);
+        const nextSettings = nextSignals.settings && typeof nextSignals.settings === 'object' && !Array.isArray(nextSignals.settings)
+            ? nextSignals.settings as Record<string, unknown>
+            : {};
+        const nextMetrics = nextSignals.metrics && typeof nextSignals.metrics === 'object' && !Array.isArray(nextSignals.metrics)
+            ? nextSignals.metrics as Record<string, unknown>
+            : {};
         const nextPayload: Record<string, unknown> = {
             ...profilePatch,
-            personalizationSignals: this.buildSignalsPayload(input.state),
+            personalizationSignals: {
+                ...existingSignals,
+                ...nextSignals,
+                settings: {
+                    ...existingSettings,
+                    ...nextSettings,
+                },
+                metrics: {
+                    ...existingMetrics,
+                    ...nextMetrics,
+                },
+            },
         };
         return nextPayload;
     }

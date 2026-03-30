@@ -52,12 +52,23 @@ const defaultEmbeddingModel =
 export const aiRuntime = Object.freeze({
     llmVendor,
     chatModel: process.env.LLM_CHAT_MODEL || defaultChatModel,
+    fallbackModel: process.env.LLM_FALLBACK_MODEL || 'gpt-5-mini',
     sentimentModel: process.env.LLM_SENTIMENT_MODEL || defaultFastModel,
     promptModel: process.env.LLM_PROMPT_MODEL || defaultFastModel,
     taggingModel: process.env.LLM_TAGGING_MODEL || defaultFastModel,
     analysisModel: process.env.LLM_ANALYSIS_MODEL || defaultFastModel,
     healthModel: process.env.LLM_HEALTH_MODEL || defaultFastModel,
     evidenceModel: process.env.LLM_EVIDENCE_MODEL || process.env.OPPORTUNITY_EVIDENCE_MODEL || 'gpt-4o-mini',
+    voiceTranscriptionModel: process.env.VOICE_TRANSCRIBE_MODEL || 'gpt-4o-mini-transcribe',
+
+    // Insight engine — tiered models for cost optimization
+    // Nano: quality scoring, yes/no classification (~$0.10/1M tokens)
+    insightScoringModel: process.env.LLM_INSIGHT_SCORING_MODEL || 'gpt-4o-mini',
+    // Mini: insight generation, narratives (~$0.15/1M tokens)
+    insightGenerationModel: process.env.LLM_INSIGHT_GENERATION_MODEL || 'gpt-4o-mini',
+    // Standard: weekly deep dives, complex synthesis (only for premium/weekly)
+    insightDeepModel: process.env.LLM_INSIGHT_DEEP_MODEL || defaultChatModel,
+
     embeddingVendor,
     embeddingModel: process.env.EMBEDDING_MODEL || defaultEmbeddingModel,
     embeddingServiceUrl,
@@ -71,14 +82,23 @@ export const hasEmbeddingProvider = (): boolean => {
     return !!openAiClient;
 };
 
+export const getOpenAiClient = (): OpenAI | null => openAiClient;
+
 export const createLlmChatCompletion = async (
     params: ChatCompletionCreateParamsNonStreaming
 ): Promise<ChatCompletion | null> => {
     if (!hasLlmProvider() || !openAiClient) return null;
 
     switch (aiRuntime.llmVendor) {
-        case 'openai':
-            return openAiClient.chat.completions.create(params);
+        case 'openai': {
+            const response = await openAiClient.chat.completions.create(params);
+            if (response?.usage) {
+                console.log(
+                    `[LLM] model=${params.model} prompt_tokens=${response.usage.prompt_tokens} completion_tokens=${response.usage.completion_tokens} total_tokens=${response.usage.total_tokens}`
+                );
+            }
+            return response;
+        }
         default:
             return null;
     }

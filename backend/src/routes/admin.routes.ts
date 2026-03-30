@@ -3,6 +3,7 @@ import { authMiddleware } from '../middleware/auth.middleware';
 import { requireAdmin, requireSuperAdmin } from '../middleware/admin.middleware';
 import {
     getAllUsers,
+    getPerformanceOverview,
     getPlatformStats,
     getRetrievalDebug,
     getUserDetails,
@@ -21,6 +22,7 @@ router.use(requireAdmin);
 // Admin routes
 router.get('/users', getAllUsers);
 router.get('/stats', getPlatformStats);
+router.get('/performance-overview', getPerformanceOverview);
 router.get('/retrieval-debug', getRetrievalDebug);
 router.get('/users/:userId', getUserDetails);
 router.put('/users/:userId/role', updateUserRole);

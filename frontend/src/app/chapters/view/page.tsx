@@ -12,6 +12,7 @@ import { AppPanel, EmptyState, SectionHeader, StatTile, TagPill } from '@/compon
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import { writeWorkspaceResume } from '@/utils/workspace-resume';
 import { FiArrowLeft } from 'react-icons/fi';
+import { Spinner } from '@/components/ui';
 import { getChapterIconComponent } from '@/constants/chapter-icons';
 import { formatStoryConfidence, storyStatusClassName, storyStatusLabel, type StorySignal } from '@/utils/story-engine';
 
@@ -108,7 +109,7 @@ function ChapterDetailContent() {
     if (authLoading || isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin h-8 w-8 rounded-full border-4 border-primary border-t-transparent" />
+                <Spinner size="md" />
             </div>
         );
     }
@@ -149,6 +150,7 @@ function ChapterDetailContent() {
                                     kicker="Collection View"
                                     title={chapter.name}
                                     description={chapter.description || 'A focused stream of entries grouped into one collection.'}
+                                    as="h1"
                                 />
                             </div>
                         </div>
@@ -243,7 +245,7 @@ export default function ChapterDetailPage() {
         <Suspense
             fallback={(
                 <div className="min-h-screen flex items-center justify-center">
-                    <div className="animate-spin h-8 w-8 rounded-full border-4 border-primary border-t-transparent" />
+                    <Spinner size="md" />
                 </div>
             )}
         >

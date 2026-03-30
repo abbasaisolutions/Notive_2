@@ -3,6 +3,7 @@ import { createHash } from 'crypto';
 import prisma from '../config/prisma';
 import { buildProfileContextSummary } from '../services/profile-context.service';
 import { buildAnalyticsSummary, type AnalyticsPeriod } from '../services/analytics-summary.service';
+import { buildDashboardInsights, type InsightEntry, type InsightAnalysis } from '../services/dashboard-insights.service';
 import { evaluatePromptLearningModels } from '../services/prompt-learning-evaluation.service';
 import { buildPromptExperimentReport } from '../services/prompt-experiment-report.service';
 import { applyPromptPolicyPerformanceFeedback } from '../services/prompt-learning-policy-feedback.service';
@@ -525,6 +526,79 @@ export const getPromptExperimentReport = async (req: Request, res: Response) => 
     } catch (error) {
         console.error('Get prompt experiment report error:', error);
         return res.status(500).json({ message: 'Failed to fetch prompt experiment report' });
+    }
+};
+
+/**
+ * Get dashboard insights (emotional fingerprint, resilience, correlations, etc.)
+ * GET /api/v1/analytics/dashboard-insights
+ */
+export const getDashboardInsights = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+
+        const [entries, analyses] = await Promise.all([
+            prisma.entry.findMany({
+                where: { userId, deletedAt: null },
+                orderBy: { createdAt: 'desc' },
+                select: {
+                    id: true,
+                    title: true,
+                    content: true,
+                    mood: true,
+                    tags: true,
+                    skills: true,
+                    lessons: true,
+                    reflection: true,
+                    createdAt: true,
+                },
+            }),
+            prisma.entryAnalysis.findMany({
+                where: { userId },
+                select: {
+                    entryId: true,
+                    sentimentScore: true,
+                    sentimentLabel: true,
+                    emotions: true,
+                    entities: true,
+                    topics: true,
+                    keywords: true,
+                    suggestedMood: true,
+                    wordCount: true,
+                },
+            }),
+        ]);
+
+        const insightEntries: InsightEntry[] = entries.map((e) => ({
+            id: e.id,
+            title: e.title,
+            content: e.content,
+            mood: e.mood,
+            tags: e.tags || [],
+            skills: e.skills || [],
+            lessons: e.lessons || [],
+            reflection: (e as Record<string, unknown>).reflection as string | null ?? null,
+            createdAt: e.createdAt,
+        }));
+
+        const insightAnalyses: InsightAnalysis[] = analyses.map((a) => ({
+            entryId: a.entryId,
+            sentimentScore: a.sentimentScore,
+            sentimentLabel: a.sentimentLabel,
+            emotions: a.emotions as Record<string, number> | null,
+            entities: a.entities as string[] | null,
+            topics: a.topics || [],
+            keywords: a.keywords || [],
+            suggestedMood: a.suggestedMood,
+            wordCount: a.wordCount,
+        }));
+
+        const insights = buildDashboardInsights(insightEntries, insightAnalyses);
+
+        return res.json(insights);
+    } catch (error) {
+        console.error('Get dashboard insights error:', error);
+        return res.status(500).json({ message: 'Failed to fetch dashboard insights' });
     }
 };
 
