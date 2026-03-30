@@ -72,7 +72,7 @@ export default function SupportConstellation({
     const anchors = supportMap?.anchors || [];
     const [selectedId, setSelectedId] = useState<string | null>(anchors[0]?.id || null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
-    const { toast } = useToast();
+    const toast = useToast();
 
     useEffect(() => {
         setSelectedId((current) => (current && anchors.some((anchor) => anchor.id === current) ? current : anchors[0]?.id || null));

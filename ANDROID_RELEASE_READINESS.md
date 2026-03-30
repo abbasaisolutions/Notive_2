@@ -23,6 +23,26 @@ npm run android:build:debug
 npm run android:build:release
 ```
 
+## Android versioning
+
+Use one Android version scheme consistently for every release:
+
+- `versionName`: `major.minor`
+- `versionCode`: `major * 1000 + minor`
+
+Examples:
+
+- `1.100` -> `1100`
+- `1.101` -> `1101`
+- `2.0` -> `2000`
+
+Recommended rule:
+
+- Small releases: keep the same major and increment the minor value.
+- Big releases: increment the major value and reset the minor value to `0`.
+
+The source of truth lives in `frontend/android/gradle.properties` unless CI overrides `NOTIVE_VERSION_CODE` and `NOTIVE_VERSION_NAME`.
+
 ## External items still required
 
 ### 1. Google sign-in client IDs

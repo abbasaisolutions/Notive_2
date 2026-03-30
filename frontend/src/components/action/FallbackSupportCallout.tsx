@@ -24,7 +24,7 @@ export default function FallbackSupportCallout({
 }) {
     const [copied, setCopied] = useState(false);
     const [feedbackActionKind, setFeedbackActionKind] = useState<'copy' | 'text' | 'call' | 'email' | 'manual' | null>(null);
-    const { toast } = useToast();
+    const toast = useToast();
     const isNotebook = variant === 'notebook';
     const chipClass = 'inline-flex items-center rounded-full border px-2.5 py-1 text-xs uppercase tracking-[0.1em]';
 

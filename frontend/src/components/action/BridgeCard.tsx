@@ -56,7 +56,7 @@ export default function BridgeCard({
 }) {
     const [copied, setCopied] = useState(false);
     const [feedbackActionKind, setFeedbackActionKind] = useState<'copy' | 'text' | 'call' | 'email' | 'manual' | null>(null);
-    const { toast } = useToast();
+    const toast = useToast();
     const hasSupportContext = Boolean(bridge.supportMemory || bridge.fallbackSupport);
     const isNotebook = variant === 'notebook';
 

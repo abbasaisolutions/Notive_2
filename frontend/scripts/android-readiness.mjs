@@ -18,6 +18,7 @@ const launchBlockers = [];
 const envFilePath = fs.existsSync(path.join(projectRoot, '.env'))
     ? path.join(projectRoot, '.env')
     : path.join(projectRoot, '.env.example');
+const gradlePropertiesPath = path.join(androidRoot, 'gradle.properties');
 
 const parseEnv = (content) => {
     const env = {};
@@ -38,6 +39,9 @@ const parseEnv = (content) => {
 };
 
 const env = parseEnv(fs.readFileSync(envFilePath, 'utf8'));
+const gradleProperties = fs.existsSync(gradlePropertiesPath)
+    ? parseEnv(fs.readFileSync(gradlePropertiesPath, 'utf8'))
+    : {};
 
 const isMissing = (value) =>
     !value
@@ -56,6 +60,41 @@ const isLikelyLocalApiUrl = (value) =>
 const pushStatus = (label, value) => {
     statusLines.push(`${label}: ${value}`);
 };
+
+const resolveAndroidVersionConfig = () => {
+    const versionCodeRaw = (process.env.NOTIVE_VERSION_CODE || gradleProperties.NOTIVE_VERSION_CODE || '').trim();
+    const versionNameRaw = (process.env.NOTIVE_VERSION_NAME || gradleProperties.NOTIVE_VERSION_NAME || '').trim();
+
+    if (!versionCodeRaw || !versionNameRaw) {
+        blockers.push('Set `NOTIVE_VERSION_CODE` and `NOTIVE_VERSION_NAME` in `frontend/android/gradle.properties` or CI env vars. Android is otherwise falling back to versionCode `1` and versionName `1.0.0`.');
+        return;
+    }
+
+    if (!/^\d+$/.test(versionCodeRaw)) {
+        blockers.push('`NOTIVE_VERSION_CODE` must be an integer, for example `1100` for version `1.100`.');
+        return;
+    }
+
+    const versionMatch = versionNameRaw.match(/^(\d+)\.(\d+)$/);
+    if (!versionMatch) {
+        blockers.push('`NOTIVE_VERSION_NAME` must follow the `major.minor` format, for example `1.100` or `2.0`.');
+        return;
+    }
+
+    const major = Number.parseInt(versionMatch[1], 10);
+    const minor = Number.parseInt(versionMatch[2], 10);
+    const expectedVersionCode = (major * 1000) + minor;
+    const versionCode = Number.parseInt(versionCodeRaw, 10);
+
+    if (versionCode !== expectedVersionCode) {
+        blockers.push(`Android version mismatch: versionName \`${versionNameRaw}\` should map to versionCode \`${expectedVersionCode}\`, but the current value is \`${versionCodeRaw}\`.`);
+        return;
+    }
+
+    pushStatus('Android app version', `${versionNameRaw} (${versionCodeRaw})`);
+};
+
+resolveAndroidVersionConfig();
 
 const googleClientId = env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID || env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 if (isMissing(googleClientId) || !isGoogleClientId(googleClientId)) {
