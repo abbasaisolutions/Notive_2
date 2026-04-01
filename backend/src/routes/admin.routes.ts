@@ -5,7 +5,6 @@ import {
     getAllUsers,
     getPerformanceOverview,
     getPlatformStats,
-    getRetrievalDebug,
     getUserDetails,
     updateUserRole,
     toggleUserBan,
@@ -23,7 +22,6 @@ router.use(requireAdmin);
 router.get('/users', getAllUsers);
 router.get('/stats', getPlatformStats);
 router.get('/performance-overview', getPerformanceOverview);
-router.get('/retrieval-debug', getRetrievalDebug);
 router.get('/users/:userId', getUserDetails);
 router.put('/users/:userId/role', updateUserRole);
 router.put('/users/:userId/ban', toggleUserBan);

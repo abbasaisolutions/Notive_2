@@ -5,6 +5,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { FiBookOpen, FiClock, FiEdit3, FiGrid, FiMic } from 'react-icons/fi';
 import useApi from '@/hooks/use-api';
@@ -53,20 +54,23 @@ import {
 import { deriveWriterDNA } from '@/services/writer-dna.service';
 import { getInsightTier, Gate, WhatsComingCard, EmptyDashboard } from '@/components/dashboard/ColdStartGate';
 import QuickPulseStrip from '@/components/dashboard/QuickPulseStrip';
-import PrimeTimePrediction from '@/components/dashboard/PrimeTimePrediction';
-import WritingRhythmCalendar from '@/components/dashboard/WritingRhythmCalendar';
-import EmotionalFingerprint from '@/components/dashboard/EmotionalFingerprint';
-import ResilienceCard from '@/components/dashboard/ResilienceCard';
-import ReflectionDepthMeter from '@/components/dashboard/ReflectionDepthMeter';
-import PatternDiscoveryFeed from '@/components/dashboard/PatternDiscoveryFeed';
-import HeroInsightCard from '@/components/dashboard/HeroInsightCard';
+// Dead-branch visualization components — dynamic to exclude from initial bundle
+const PrimeTimePrediction = dynamic(() => import('@/components/dashboard/PrimeTimePrediction'));
+const WritingRhythmCalendar = dynamic(() => import('@/components/dashboard/WritingRhythmCalendar'));
+const EmotionalFingerprint = dynamic(() => import('@/components/dashboard/EmotionalFingerprint'));
+const ResilienceCard = dynamic(() => import('@/components/dashboard/ResilienceCard'));
+const ReflectionDepthMeter = dynamic(() => import('@/components/dashboard/ReflectionDepthMeter'));
+const PatternDiscoveryFeed = dynamic(() => import('@/components/dashboard/PatternDiscoveryFeed'));
+const HeroInsightCard = dynamic(() => import('@/components/dashboard/HeroInsightCard'));
 import DeviceContextStrip from '@/components/dashboard/DeviceContextStrip';
 import DashboardNoticeCard from '@/components/dashboard/DashboardNoticeCard';
-import WellnessCheckin from '@/components/dashboard/WellnessCheckin';
+const WellnessCheckin = dynamic(() => import('@/components/dashboard/WellnessCheckin'));
 import type { WellnessData } from '@/components/dashboard/WellnessCheckin';
-import JournalIntelligenceSection from '@/components/dashboard/JournalIntelligenceSection';
+const JournalIntelligenceSection = dynamic(() => import('@/components/dashboard/JournalIntelligenceSection'));
 import { Surface } from '@/components/ui/surface';
-import DashboardNotebookView from '@/components/dashboard/DashboardNotebookView';
+const DashboardNotebookView = dynamic(() => import('@/components/dashboard/DashboardNotebookView'), {
+    loading: () => <div className="flex min-h-[60vh] items-center justify-center"><Spinner /></div>,
+});
 import { Spinner } from '@/components/ui';
 
 type DashboardAction = {

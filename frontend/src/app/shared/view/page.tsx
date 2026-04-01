@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useApi } from '@/hooks/use-api';
+import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import { useToast } from '@/context/toast-context';
 import { API_URL } from '@/constants/config';
 
@@ -53,6 +54,7 @@ function SharedBundleViewContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const { apiFetch } = useApi();
+    const { isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const toast = useToast();
 
     const bundleId = searchParams.get('id');
@@ -62,8 +64,9 @@ function SharedBundleViewContent() {
     const [reaction, setReaction] = useState<string | null>(null);
     const [reactSending, setReactSending] = useState(false);
 
-    // Fetch bundle detail
+    // Fetch bundle detail — only after auth is confirmed
     useEffect(() => {
+        if (authLoading || !isAuthenticated) return;
         if (!bundleId) { setError('No bundle ID'); setLoading(false); return; }
         (async () => {
             try {
@@ -77,7 +80,7 @@ function SharedBundleViewContent() {
             }
             setLoading(false);
         })();
-    }, [bundleId, apiFetch]);
+    }, [bundleId, apiFetch, authLoading, isAuthenticated]);
 
     // React to bundle
     const handleReact = useCallback(async (value: string) => {
@@ -95,6 +98,14 @@ function SharedBundleViewContent() {
         } catch { toast.error('Something went wrong'); }
         setReactSending(false);
     }, [bundleId, reaction, reactSending, apiFetch, toast]);
+
+    if (authLoading || !isAuthenticated) {
+        return (
+            <div className="flex min-h-[50vh] items-center justify-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[rgba(107,143,113,0.3)] border-t-[rgb(107,143,113)]" />
+            </div>
+        );
+    }
 
     if (loading) {
         return (

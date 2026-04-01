@@ -1,5 +1,6 @@
 import { aiRuntime, createLlmChatCompletion, hasLlmProvider } from '../config/ai';
 import nlpService from './nlp.service';
+import { normalizeTag } from './tag-manager.service';
 
 interface TagSuggestion {
     name: string;
@@ -31,15 +32,6 @@ const STOPWORDS = new Set([
 
 /** Minimum character length for a tag to be valid */
 const MIN_TAG_LENGTH = 3;
-
-const normalizeTag = (tag: string) =>
-    tag
-        .replace(/^#+/, '')
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, ' ')
-        .replace(/[^a-z0-9\s-]/g, '')
-        .slice(0, 32);
 
 /** Returns true only for tags that are meaningful keywords (not stopwords, long enough) */
 const isValidTag = (normalized: string): boolean => {

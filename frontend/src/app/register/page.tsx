@@ -201,13 +201,13 @@ export default function RegisterPage() {
                                 </div>
                                 <div className="absolute inset-x-0 bottom-0 p-4">
                                     <div className="rounded-[1.4rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-4 backdrop-blur-sm">
-                                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                                        <p className="type-overline text-muted">
                                             Create account
                                         </p>
-                                        <h2 className="mt-2 text-2xl font-semibold leading-[1.08] tracking-[-0.04em] text-[rgb(39,35,31)]">
+                                        <h2 className="mt-2 text-2xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong">
                                             One note today. One clearer tomorrow.
                                         </h2>
-                                        <p className="mt-2 text-sm leading-6 text-[rgb(76,70,62)]">
+                                        <p className="mt-2 text-sm leading-6 text-default">
                                             Your first note does not need to be polished. It just needs to be true enough to start.
                                         </p>
                                     </div>
@@ -236,13 +236,13 @@ export default function RegisterPage() {
                             </div>
                             <div className="absolute inset-x-0 bottom-0 p-6">
                                 <div className="max-w-md rounded-[1.6rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-5 backdrop-blur-sm">
-                                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                                    <p className="type-overline text-muted">
                                         Quiet notebook
                                     </p>
-                                    <h2 className="mt-3 text-[2rem] font-semibold leading-[1.05] tracking-[-0.04em] text-[rgb(39,35,31)]">
+                                    <h2 className="mt-3 text-[2rem] font-semibold leading-[1.05] tracking-[-0.04em] text-strong">
                                         One note today. One clearer tomorrow.
                                     </h2>
-                                    <p className="mt-3 text-sm leading-7 text-[rgb(76,70,62)]">
+                                    <p className="mt-3 text-sm leading-7 text-default">
                                         Start by dropping what happened. Notive keeps the thread, offers one calm next step, and saves the part that helps you grow.
                                     </p>
                                 </div>
@@ -263,13 +263,13 @@ export default function RegisterPage() {
 
                         <div className="pr-12">
                             <NotiveLogo href="/" size="sm" />
-                            <p className="mt-6 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                            <p className="type-overline text-muted">
                                 Create account
                             </p>
-                            <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-[rgb(39,35,31)] md:text-[3rem]">
+                            <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong md:text-[3rem]">
                                 One note today. One clearer tomorrow.
                             </h1>
-                            <p className="mt-4 max-w-xl text-sm leading-7 text-[rgb(76,70,62)] md:text-base">
+                            <p className="mt-4 max-w-xl text-sm leading-7 text-default md:text-base">
                                 Open a private home for the moments, patterns, and story pieces you want to keep.
                             </p>
                         </div>
@@ -283,8 +283,8 @@ export default function RegisterPage() {
                         >
                             <div className="space-y-3">
                                 {SIGNUP_VALUE_POINTS.map((point) => (
-                                    <div key={point} className="flex items-start gap-3 text-sm leading-6 text-[rgb(76,70,62)]">
-                                        <span className="mt-2 inline-block h-1.5 w-1.5 rounded-full bg-[rgb(122,112,98)]" />
+                                    <div key={point} className="flex items-start gap-3 text-sm leading-6 text-default">
+                                        <span className="mt-2 inline-block h-1.5 w-1.5 rounded-full bg-[rgb(var(--paper-ink-soft))]" />
                                         <span>{point}</span>
                                     </div>
                                 ))}
@@ -298,8 +298,7 @@ export default function RegisterPage() {
                                     animate={{ opacity: 1, height: 'auto' }}
                                     role="alert"
                                     aria-live="assertive"
-                                    className="px-4 py-3 rounded-xl text-sm"
-                                    style={{ background: 'rgba(229, 213, 194, 0.52)', border: '1px solid rgba(160, 139, 118, 0.24)', color: 'rgb(63 57 51)' }}
+                                    className="px-4 py-3 rounded-xl text-sm bg-[rgba(var(--paper-apricot),0.32)] border border-[rgba(var(--paper-border),0.14)] text-strong"
                                 >
                                     {error}
                                 </motion.div>
@@ -359,7 +358,7 @@ export default function RegisterPage() {
                                     error={fieldErrors.birthDate}
                                     required
                                 />
-                                <p className="mt-2 text-xs leading-5 text-[rgb(126,117,103)]">
+                                <p className="mt-2 text-xs leading-5 text-muted">
                                     Shared with us privately. We'll use it for age-aware and seasonal personalization.
                                 </p>
                             </SlideUp>
@@ -473,8 +472,7 @@ export default function RegisterPage() {
                             </div>
                             <div className="relative flex justify-center text-xs uppercase tracking-[0.16em]">
                                 <span
-                                    className="px-4 text-xs font-semibold"
-                                    style={{ background: 'rgba(255,250,241,0.92)', color: 'rgb(126,117,103)' }}
+                                    className="px-4 text-xs font-semibold bg-[rgba(var(--bg-elevated),0.92)] text-muted"
                                 >
                                     Or sign up with
                                 </span>
@@ -490,23 +488,23 @@ export default function RegisterPage() {
                                 onSuccess={handleGoogleSuccess}
                                 onError={handleGoogleError}
                             />
-                            <p className="mt-3 text-center text-xs leading-5 text-[rgb(126,117,103)]">
+                            <p className="mt-3 text-center text-xs leading-5 text-muted">
                                 If Google does not share your birthday, we will ask for it right after sign-up.
                             </p>
                         </SlideUp>
 
                         <SlideUp delay={1}>
-                            <p className="text-center mt-6 text-sm" style={{ color: 'rgb(93 85 75)' }}>
+                            <p className="text-center mt-6 text-sm text-soft">
                                 Already have an account?{' '}
-                                <Link href={loginHref} className="font-semibold transition-colors hover:opacity-70" style={{ color: 'rgb(39 35 31)' }}>
+                                <Link href={loginHref} className="font-semibold text-strong transition-colors hover:opacity-70">
                                     Sign in
                                 </Link>
                             </p>
-                            <p className="mt-3 text-center text-xs leading-6" style={{ color: 'rgb(126 117 103)' }}>
+                            <p className="mt-3 text-center text-xs leading-6 text-muted">
                                 Need the details first? Read our{' '}
-                                <Link href="/terms" className="underline transition-colors hover:opacity-70" style={{ color: 'rgb(93 85 75)' }}>Terms</Link>
+                                <Link href="/terms" className="underline text-soft transition-colors hover:opacity-70">Terms</Link>
                                 {' '}and{' '}
-                                <Link href="/privacy" className="underline transition-colors hover:opacity-70" style={{ color: 'rgb(93 85 75)' }}>Privacy Policy</Link>.
+                                <Link href="/privacy" className="underline text-soft transition-colors hover:opacity-70">Privacy Policy</Link>.
                             </p>
                         </SlideUp>
                     </motion.div>
@@ -525,10 +523,10 @@ export default function RegisterPage() {
                         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.42))]" />
                         <div className="absolute inset-x-0 bottom-0 p-5">
                             <div className="rounded-[1.35rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-4 backdrop-blur-sm">
-                                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                                <p className="type-overline text-muted">
                                     Start a trusted notebook
                                 </p>
-                                <p className="mt-2 text-sm leading-7 text-[rgb(76,70,62)]">
+                                <p className="mt-2 text-sm leading-7 text-default">
                                     The notes you write here can quietly become story evidence for school, work, and the person you are becoming.
                                 </p>
                             </div>

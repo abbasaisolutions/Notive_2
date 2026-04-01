@@ -1,5 +1,6 @@
 import prisma from '../config/prisma';
 import semanticSearchService from './semantic-search.service';
+import { normalizeTag } from './tag-manager.service';
 
 export type PersonalizedValueSuggestion<T = string> = {
     value: T;
@@ -44,15 +45,6 @@ type SimilarEntryRecord = {
         color: string;
     } | null;
 };
-
-const normalizeTag = (value: string): string =>
-    value
-        .replace(/^#+/, '')
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, ' ')
-        .replace(/[^a-z0-9\s-]/g, '')
-        .slice(0, 32);
 
 const roundConfidence = (value: number) =>
     Number(Math.max(0, Math.min(0.98, value)).toFixed(3));

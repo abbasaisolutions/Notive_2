@@ -21,7 +21,7 @@ const voiceLimiter = createRateLimiter({
     windowMs: securityConfig.rateLimits.voiceTranscription.windowMs,
     max: securityConfig.rateLimits.voiceTranscription.max,
     message: 'Voice transcription requests are coming in too quickly. Please wait a moment and try again.',
-    keyGenerator: (req) => req.userId || req.ip || 'anonymous',
+    strategy: 'ip-and-user',
 });
 
 const legacyVoiceUpload = multer({

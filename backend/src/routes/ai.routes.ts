@@ -28,7 +28,7 @@ const aiLimiter = createRateLimiter({
     windowMs: securityConfig.rateLimits.ai.windowMs,
     max: securityConfig.rateLimits.ai.max,
     message: 'AI requests are coming in too quickly. Please wait a moment and try again.',
-    keyGenerator: (req) => req.userId || req.ip || 'anonymous',
+    strategy: 'ip-and-user',
 });
 
 

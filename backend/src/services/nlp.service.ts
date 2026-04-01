@@ -35,6 +35,8 @@ export interface AnalysisResult {
         outcome?: { text?: string; confidence?: number; source?: string } | null;
     };
     modelInfo?: Record<string, string>;
+    analysisLine?: string;
+    takeawayLine?: string;
     provider?: AnalysisProvider;
     memory?: AnalysisMemoryContext;
     suggestions?: EntryPersonalizationSuggestions;
@@ -496,12 +498,14 @@ export class NLPService {
                             "emotionalSummary": "string", // 1-sentence summary of the emotional state
                             "entities": [ { "text": "string", "type": "person" | "place" | "activity" | "thing" } ], // Max 5 entities
                             "topics": [ "string" ], // Max 5 main topics
-                            "suggestedMood": "string" // One word: happy, calm, sad, anxious, frustrated, thoughtful, motivated, tired, grateful, hopeful, overwhelmed, nostalgic, proud, lonely, curious, or relieved
+                            "suggestedMood": "string", // One word: happy, calm, sad, anxious, frustrated, thoughtful, motivated, tired, grateful, hopeful, overwhelmed, nostalgic, proud, lonely, curious, or relieved
+                            "analysisLine": "string", // 1 short sentence (max 80 chars): a specific observation, trend, or key point about this entry that is worth noticing. Be concrete, not generic. Example: "You mention your sister every time stress comes up"
+                            "takeawayLine": "string" // 1 short sentence (max 80 chars): a lesson learned, skill practiced, or personal growth takeaway from this entry. Frame it as something the student did or can build on. Example: "You paused before reacting — that's emotional regulation"
                         }`
                     },
                     { role: 'user', content },
                 ],
-                max_tokens: 200,
+                max_tokens: 300,
                 temperature: 0.3,
             });
 
@@ -531,6 +535,8 @@ export class NLPService {
                 highlights: aiData.highlights || [],
                 evidence: aiData.evidence || undefined,
                 modelInfo: aiData.modelInfo || undefined,
+                analysisLine: typeof aiData.analysisLine === 'string' ? aiData.analysisLine.slice(0, 100) : undefined,
+                takeawayLine: typeof aiData.takeawayLine === 'string' ? aiData.takeawayLine.slice(0, 100) : undefined,
                 provider: 'llm',
             };
         } catch (error) {

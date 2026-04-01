@@ -1,10 +1,11 @@
 'use client';
 
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import ConstellationView from '@/components/timeline/ConstellationView';
+const ConstellationView = dynamic(() => import('@/components/timeline/ConstellationView'), { ssr: false });
 import TimelineView from '@/components/timeline/TimelineView';
 import ShareMemorySheet from '@/components/share/ShareMemorySheet';
 import type { ShareableEntry } from '@/components/share/ShareMemorySheet';
@@ -50,6 +51,8 @@ interface Entry {
     lessons?: string[];
     reflection?: string | null;
     notiveInsights?: NotiveInsight[] | null;
+    analysisLine?: string;
+    takeawayLine?: string;
     topEmotions?: { emotion: string; intensity: number }[];
     depthLevel?: 0 | 1 | 2 | 3 | 4;
     depthLabel?: string;
@@ -505,6 +508,7 @@ function TimelinePageContent() {
     const [isMobileTimelineRailVisible, setIsMobileTimelineRailVisible] = useState(false);
     const [mobileScrollDirection, setMobileScrollDirection] = useState<'up' | 'down'>('up');
     const [activeMonthLabel, setActiveMonthLabel] = useState<string | null>(null);
+    const [focusedEntryId, setFocusedEntryId] = useState<string | null>(null);
     const [pendingRestore, setPendingRestore] = useState<TimelineContextSnapshot | null>(null);
     const [recentFilterPresets, setRecentFilterPresets] = useState<TimelineFilterPreset[]>([]);
     const [isFilterStudioOpen, setIsFilterStudioOpen] = useState(false);
@@ -973,6 +977,38 @@ function TimelinePageContent() {
                 window.cancelAnimationFrame(animationFrameId);
             }
         };
+    }, [visibleEntries]);
+
+    // ── Scroll-based card focus highlight via IntersectionObserver ──
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const observer = new IntersectionObserver(
+            (observerEntries) => {
+                let bestId: string | null = null;
+                let bestDistance = Infinity;
+                const viewportCenter = window.innerHeight / 2;
+
+                for (const oe of observerEntries) {
+                    if (!oe.isIntersecting) continue;
+                    const rect = oe.boundingClientRect;
+                    const cardCenter = rect.top + rect.height / 2;
+                    const distance = Math.abs(cardCenter - viewportCenter);
+                    if (distance < bestDistance) {
+                        bestDistance = distance;
+                        bestId = (oe.target as HTMLElement).dataset.entryId ?? null;
+                    }
+                }
+
+                if (bestId) setFocusedEntryId(bestId);
+            },
+            { rootMargin: '-35% 0px -35% 0px', threshold: 0 }
+        );
+
+        const cards = document.querySelectorAll<HTMLElement>('[data-entry-id]');
+        cards.forEach((card) => observer.observe(card));
+
+        return () => observer.disconnect();
     }, [visibleEntries]);
 
     useEffect(() => {
@@ -1703,6 +1739,7 @@ function TimelinePageContent() {
                                 <div className="flex flex-1 flex-wrap items-center gap-1.5 overflow-hidden">
                                     <button
                                         type="button"
+                                        aria-pressed={surface === 'constellation'}
                                         onClick={() => switchSurface('constellation')}
                                         className={`workspace-pill inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85 ${
                                             surface === 'constellation' ? 'bg-primary/15 text-primary border-primary/30' : ''
@@ -1712,6 +1749,7 @@ function TimelinePageContent() {
                                     </button>
                                     <button
                                         type="button"
+                                        aria-pressed={surface === 'shared'}
                                         onClick={() => switchSurface('shared')}
                                         className={`workspace-pill relative inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85 ${
                                             surface === 'shared' ? 'bg-primary/15 text-primary border-primary/30' : ''
@@ -1726,6 +1764,7 @@ function TimelinePageContent() {
                                     </button>
                                     <button
                                         type="button"
+                                        aria-pressed={activeFilterChips.length > 0}
                                         onClick={openFilterStudio}
                                         className="workspace-pill inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85"
                                     >
@@ -1819,6 +1858,7 @@ function TimelinePageContent() {
                                             <button
                                                 key={chip.key}
                                                 type="button"
+                                                aria-label={`Clear filter: ${chip.label}`}
                                                 onClick={chip.onClear}
                                                 className="workspace-pill rounded-full px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.08em] transition hover:opacity-85"
                                             >
@@ -2138,6 +2178,7 @@ function TimelinePageContent() {
                                     tagCounts={tagCounts}
                                     seasonAnchorsByMonthKey={seasonAnchorsByMonthKey}
                                     onShareEntry={setShareEntryId}
+                                    focusedEntryId={focusedEntryId}
                                 />
                             </>
                         ) : surface === 'shared' ? (

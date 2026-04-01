@@ -62,6 +62,19 @@ const run = async () => {
         }
     });
 
+    await runCheck('assetlinks.json served correctly', async () => {
+        const body = await expectOk(`${FRONTEND_URL}/.well-known/assetlinks.json`);
+        const data = JSON.parse(body);
+        const entry = Array.isArray(data) ? data.find((e) => e?.target?.package_name === 'com.notive.app') : null;
+        assert.ok(entry, 'Expected assetlinks.json to include com.notive.app');
+        const fps = entry.target.sha256_cert_fingerprints || [];
+        assert.ok(fps.length > 0, 'Expected at least one SHA-256 fingerprint');
+        for (const fp of fps) {
+            assert.ok(!/REPLACE|PLACEHOLDER|TODO/i.test(fp), `Fingerprint looks like a placeholder: ${fp}`);
+            assert.match(fp, /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/i, `Malformed fingerprint: ${fp}`);
+        }
+    });
+
     await runCheck('backend root', async () => {
         const body = await expectOk(`${BACKEND_BASE_URL}/`);
         assert.match(body.toLowerCase(), /notive api is running/);
@@ -115,6 +128,35 @@ const run = async () => {
         const profilePayload = await profileResponse.json().catch(() => null);
         assert.equal(profileResponse.ok, true, `Expected /user/profile to succeed, received ${profileResponse.status}`);
         assert.equal(typeof profilePayload?.user?.email, 'string', 'Expected profile payload');
+
+        // Entry creation (create then delete to leave no trace)
+        const createResponse = await fetchWithTimeout(`${API_URL}/entries`, {
+            method: 'POST',
+            headers: { ...authHeaders, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: 'Smoke test entry — will be deleted', contentHtml: '<p>Smoke test entry — will be deleted</p>' }),
+        });
+        const createPayload = await createResponse.json().catch(() => null);
+        assert.equal(createResponse.ok, true, `Expected entry creation to succeed, received ${createResponse.status}: ${JSON.stringify(createPayload)}`);
+        const createdId = createPayload?.entry?.id || createPayload?.id;
+        assert.ok(createdId, 'Expected created entry to have an id');
+
+        if (createdId) {
+            const deleteResponse = await fetchWithTimeout(`${API_URL}/entries/${createdId}`, {
+                method: 'DELETE',
+                headers: authHeaders,
+            });
+            assert.equal(deleteResponse.ok, true, `Expected entry deletion to succeed, received ${deleteResponse.status}`);
+        }
+
+        // Device token registration (register then unregister)
+        const tokenPayload = { token: `smoke-test-${Date.now()}`, platform: 'web' };
+        const regResponse = await fetchWithTimeout(`${API_URL}/device/tokens`, {
+            method: 'POST',
+            headers: { ...authHeaders, 'Content-Type': 'application/json' },
+            body: JSON.stringify(tokenPayload),
+        });
+        const regBody = await regResponse.json().catch(() => null);
+        assert.equal(regResponse.ok, true, `Expected device token registration to succeed, received ${regResponse.status}: ${JSON.stringify(regBody)}`);
     });
 };
 

@@ -10,6 +10,7 @@ import searchController from '../controllers/search.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { securityConfig } from '../config/security';
 import { createRateLimiter } from '../middleware/rate-limit.middleware';
+import { validate, createEntrySchema, updateEntrySchema } from '../utils/validation';
 
 const router = Router();
 const searchLimiter = createRateLimiter({
@@ -17,7 +18,7 @@ const searchLimiter = createRateLimiter({
     windowMs: securityConfig.rateLimits.search.windowMs,
     max: securityConfig.rateLimits.search.max,
     message: 'Search requests are coming in too quickly. Please slow down and try again.',
-    keyGenerator: (req) => req.userId || req.ip || 'anonymous',
+    strategy: 'ip-and-user',
 });
 
 // All routes are protected
@@ -31,10 +32,10 @@ router.get('/resurfaced', searchLimiter, searchController.getResurfacedEntries);
 router.get('/theme-clusters', searchLimiter, searchController.getThemeClusters);
 router.get('/:id/related', searchLimiter, searchController.getRelatedEntries);
 
-router.post('/', createEntry);
+router.post('/', validate(createEntrySchema), createEntry);
 router.get('/', getEntries);
 router.get('/:id', getEntry);
-router.put('/:id', updateEntry);
+router.put('/:id', validate(updateEntrySchema), updateEntry);
 router.delete('/:id', deleteEntry);
 
 export default router;

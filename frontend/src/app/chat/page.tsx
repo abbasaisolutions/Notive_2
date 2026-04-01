@@ -383,7 +383,7 @@ export default function ChatPage() {
                 </AppPanel>
 
                 <AppPanel className="min-h-[60vh]">
-                    <div className="space-y-4">
+                    <div className="space-y-4" aria-live="polite" aria-atomic="false" aria-label="Conversation">
                         {showLensOptions && coachMode === 'guided' && guidedLenses.length > 0 && (
                             <div className="workspace-soft-panel rounded-2xl px-4 py-4">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-3">Reflection lens</p>
@@ -394,6 +394,7 @@ export default function ChatPage() {
                                             <button
                                                 key={lens.id}
                                                 type="button"
+                                                aria-pressed={active}
                                                 onClick={() => {
                                                     setSelectedLens(lens.id);
                                                     setShowLensOptions(false);
@@ -507,6 +508,7 @@ export default function ChatPage() {
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
+                            aria-label="Message to your guide"
                             placeholder={coachAvailable ? 'Ask about your notes, a feeling, or what to write next...' : 'Guide is unavailable right now.'}
                             rows={1}
                             disabled={!coachAvailable}

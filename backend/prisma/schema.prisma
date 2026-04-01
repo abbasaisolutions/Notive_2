@@ -98,11 +98,8 @@ model User {
   
   // Social Connections
   socialConnections SocialConnection[]
-  
-  // Google Fit Integration
-  googleFitConnection GoogleFitConnection?
-  healthContexts      HealthContext[]
-  healthInsights      HealthInsight[]
+
+  // Dashboard Insights
   dashboardInsights   DashboardInsight[]
 
   // Device Context & Integrations
@@ -116,6 +113,7 @@ model User {
   sentBundles         SharedMemoryBundle[]   @relation("sentBundles")
   receivedBundles     SharedMemoryRecipient[] @relation("receivedBundles")
   inAppNotifications  InAppNotification[]
+  reminders           Reminder[]
 }
 
 model RefreshToken {
@@ -497,66 +495,6 @@ model SocialConnection {
   @@unique([userId, provider])
 }
 
-// Google Fit Connection - Separate from main Google Auth
-model GoogleFitConnection {
-  id           String    @id @default(cuid())
-  userId       String    @unique
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessToken  String    @db.Text
-  refreshToken String    @db.Text
-  expiresAt    DateTime
-  scopes       String[]  // Granted scopes for audit
-  connectedAt  DateTime  @default(now())
-  lastSyncAt   DateTime?
-  updatedAt    DateTime  @updatedAt
-}
-
-// Daily Health Context - Aggregated health data per day
-model HealthContext {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date          DateTime @db.Date
-  
-  // Sleep data
-  sleepMinutes  Int?     // Total sleep duration in minutes
-  sleepQuality  String?  // 'poor', 'fair', 'good', 'excellent' (derived from sleep stages)
-  
-  // Activity data
-  steps         Int?
-  activeMinutes Int?     // Minutes of moderate/vigorous activity
-  caloriesBurned Int?
-  
-  // Heart rate (optional)
-  avgHeartRate  Int?
-  restingHeartRate Int?
-  
-  // Metadata
-  syncedAt      DateTime @default(now())
-  source        String   @default("GOOGLE_FIT")
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  @@unique([userId, date])
-  @@index([userId, date])
-}
-
-// Health Insights - AI-generated correlations
-model HealthInsight {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type        String   // 'sleep_mood', 'activity_mood', 'pattern', 'weekly_summary'
-  title       String
-  description String   @db.Text
-  data        Json?    // Additional structured data (charts, stats)
-  period      String   // 'day', 'week', 'month'
-  generatedAt DateTime @default(now())
-  
-  @@index([userId, type])
-}
-
 // Dashboard Insights — LLM-generated personal insights for the dashboard
 model DashboardInsight {
   id            String   @id @default(cuid())
@@ -708,4 +646,20 @@ model InAppNotification {
 
   @@index([userId, readAt, createdAt])
   @@index([userId, type, createdAt])
+}
+
+// ── Journal Reminders ─────────────────────────────────────
+
+model Reminder {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  time      String   @db.VarChar(5) // "HH:MM" 24-hour local time
+  days      Int[]    // 0=Sun 1=Mon ... 6=Sat; empty = every day
+  timezone  String   @default("UTC") @db.VarChar(64)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, enabled])
 }

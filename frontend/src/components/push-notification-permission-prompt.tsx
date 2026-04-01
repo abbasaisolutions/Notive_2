@@ -52,11 +52,11 @@ export function PushNotificationPermissionPrompt() {
 
     return (
         <div className="fixed bottom-20 right-4 max-w-xs z-40 animate-in slide-in-from-bottom-4">
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 p-4">
+            <div className="workspace-panel rounded-xl shadow-lg p-4">
                 <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 mt-0.5">
                         <svg
-                            className="h-5 w-5 text-blue-500"
+                            className="h-5 w-5 text-primary"
                             fill="currentColor"
                             viewBox="0 0 20 20"
                         >
@@ -64,22 +64,22 @@ export function PushNotificationPermissionPrompt() {
                         </svg>
                     </div>
                     <div className="flex-1">
-                        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        <h3 className="text-sm font-semibold text-strong">
                             Enable notifications
                         </h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        <p className="text-sm text-soft mt-1">
                             Get real-time updates and insights on your mobile device
                         </p>
                         <div className="flex gap-2 mt-3">
                             <button
                                 onClick={handleRequestPermission}
-                                className="flex-1 px-3 py-1.5 text-sm font-medium rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+                                className="flex-1 px-3 py-1.5 text-sm font-medium rounded-md workspace-button-primary transition-colors"
                             >
                                 Enable
                             </button>
                             <button
                                 onClick={handleDismiss}
-                                className="flex-1 px-3 py-1.5 text-sm font-medium rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                                className="flex-1 px-3 py-1.5 text-sm font-medium rounded-md workspace-button-secondary transition-colors"
                             >
                                 Later
                             </button>

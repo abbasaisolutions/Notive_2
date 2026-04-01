@@ -1,10 +1,12 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { App } from '@capacitor/app';
 import logger from '@/utils/logger';
 import { useApi } from '@/hooks/use-api';
+import { isNativePlatform, getNativePlatform } from '@/utils/platform';
 
 export interface DeviceToken {
     id: string;
@@ -38,19 +40,9 @@ interface PushContextType {
 
 const PushContext = createContext<PushContextType | undefined>(undefined);
 
-const isNativePlatform = () => {
-    if (typeof window === 'undefined') return false;
-    const cap = (window as any).Capacitor;
-    if (cap?.isNativePlatform) return cap.isNativePlatform();
-    if (cap?.getPlatform) {
-        const platform = cap.getPlatform();
-        return platform === 'ios' || platform === 'android';
-    }
-    return false;
-};
-
 export function PushNotificationProvider({ children }: { children: ReactNode }) {
     const { apiFetch } = useApi();
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(true);
     const [isSupported, setIsSupported] = useState(false);
     const [isPermissionGranted, setIsPermissionGranted] = useState(false);
@@ -148,12 +140,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
     };
 
     const getPlatform = (): 'android' | 'ios' | 'web' => {
-        const cap = (window as any).Capacitor;
-        if (cap?.getPlatform) {
-            const platform = cap.getPlatform();
-            return platform === 'ios' ? 'ios' : 'android';
-        }
-        return 'android';
+        return getNativePlatform();
     };
 
     const requestPermission = async (): Promise<boolean> => {
@@ -255,8 +242,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         // Handle deep linking or navigation based on notification data
         const data = notification.notification?.data || notification.data;
         if (data?.link) {
-            // Navigate to the specified link
-            window.location.hash = data.link;
+            router.push(data.link);
         }
     };
 

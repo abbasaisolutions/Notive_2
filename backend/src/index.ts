@@ -1,5 +1,7 @@
 import 'dotenv/config';
 import { serverLogger } from './utils/server-logger';
+import prisma from './config/prisma';
+import { initRedis, closeRedis } from './config/redis';
 
 const parsePort = (value: string | undefined, fallback: number) => {
     const parsed = Number.parseInt(String(value || ''), 10);
@@ -26,16 +28,19 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const bootstrap = async () => {
     try {
+        // Initialize Redis first
+        await initRedis();
+
         const [
             { default: app },
             { default: embeddingService },
             { default: voiceTranscriptionJobService },
-            { healthCronService },
+            { ReminderService },
         ] = await Promise.all([
             import('./app'),
             import('./services/embedding.service'),
             import('./services/voice-transcription-job.service'),
-            import('./services/health-cron.service'),
+            import('./services/reminder.service'),
         ]);
 
         const server = app.listen(port, host, () => {
@@ -45,12 +50,14 @@ const bootstrap = async () => {
                 nodeEnv: process.env.NODE_ENV || 'development',
             });
 
-            if (process.env.ENABLE_HEALTH_CRON !== 'false') {
-                void healthCronService.start();
-            }
-
             embeddingService.startJobWorker();
             voiceTranscriptionJobService.startJobWorker();
+
+            // Reminder scheduler: check for due reminders every minute
+            const reminderService = new ReminderService(prisma);
+            setInterval(() => {
+                void reminderService.dispatchDueReminders().catch(() => {});
+            }, 60_000);
         });
 
         server.on('error', (error: Error) => {

@@ -9,7 +9,6 @@ import { engagementService } from '@/services/engagement.service';
 import useTelemetry from '@/hooks/use-telemetry';
 import { normalizePromptBehaviorProfile, promptLearningService } from '@/services/prompt-learning.service';
 import { FiMic, FiX } from 'react-icons/fi';
-import type { HealthContextSummary } from '@/types/health';
 
 const ENTRY_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 
@@ -40,24 +39,6 @@ export default function SmartPromptNotification() {
         if (!user || !accessToken) return;
 
         let hideTimeout: number | null = null;
-
-        const fetchHealthContext = async (): Promise<HealthContextSummary | null> => {
-            try {
-                const response = await fetch(`${API_URL}/health/context/today`, {
-                    headers: { Authorization: `Bearer ${accessToken}` },
-                });
-
-                if (!response.ok) {
-                    return null;
-                }
-
-                const data = await response.json();
-                return data.context ?? null;
-            } catch (error) {
-                console.error('Failed to fetch health prompt context:', error);
-                return null;
-            }
-        };
 
         const fetchBehaviorProfile = async () => {
             try {
@@ -98,15 +79,14 @@ export default function SmartPromptNotification() {
                 if (timeSinceLastEntry < ENTRY_COOLDOWN_MS) return;
             }
 
-            const [healthContext, remoteBehavior] = await Promise.all([
-                fetchHealthContext(),
+            const [remoteBehavior] = await Promise.all([
                 fetchBehaviorProfile(),
             ]);
             const behavior = remoteBehavior || promptLearningService.getBehaviorProfileOrEmpty(user.id);
 
             // Generate context-aware prompt
             const promptData = await contextService.generatePrompt({
-                healthContext,
+                healthContext: null,
                 profile: user.profile,
                 behavior,
             });

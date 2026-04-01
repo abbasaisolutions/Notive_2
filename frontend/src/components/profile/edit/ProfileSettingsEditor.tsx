@@ -22,6 +22,7 @@ import { PreferencesSection } from './PreferencesSection';
 import { PrivacySection } from './PrivacySection';
 import { ProfileSection } from './ProfileSection';
 import { SecuritySection } from './SecuritySection';
+import RemindersSection from './RemindersSection';
 import { mergeGentleReflectionSetting, isGentleReflectionEnabled } from '@/utils/gentle-reflection';
 import {
     addTag,
@@ -213,7 +214,9 @@ export function ProfileSettingsEditor() {
             ? 'Shape prompts, goals, and starter guidance without opening the rest of settings.'
             : activeTab === 'security'
                 ? 'Handle sign-in, password, and account protection in one guarded place.'
-                : 'Manage what signals we track, how we export your data, and support settings.';
+                : activeTab === 'reminders'
+                    ? 'Set a daily nudge to reflect. Delivered as a push notification on your device.'
+                    : 'Manage what signals we track, how we export your data, and support settings.';
     const dirtyByTab: Record<EditableTab, boolean> = {
         profile: profileDirty,
         preferences: preferencesDirty,
@@ -1302,6 +1305,12 @@ export function ProfileSettingsEditor() {
                             onSaveVoiceLexiconItem={handleSaveVoiceLexiconItem}
                             onDeleteVoiceLexiconItem={handleDeleteVoiceLexiconEntry}
                         />
+                    </SlideUp>
+                )}
+
+                {activeTab === 'reminders' && (
+                    <SlideUp>
+                        <RemindersSection />
                     </SlideUp>
                 )}
             </FadeIn>

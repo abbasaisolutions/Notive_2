@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
-import { spawnSync } from 'child_process';
+import { spawn } from 'child_process';
 import prisma from '../config/prisma';
 import { Prisma, TagSource } from '@prisma/client';
 import { buildTagMetaList, syncEntryTags } from './tag-manager.service';
@@ -352,7 +352,7 @@ export class SocialImportService {
         const ext = path.extname(originalName).toLowerCase();
         const isZip = ext === '.zip' || (file.mimetype || '').includes('zip');
 
-        const { posts, archiveDir, cleanup } = this.parseArchive(provider, file.buffer, isZip);
+        const { posts, archiveDir, cleanup } = await this.parseArchive(provider, file.buffer, isZip);
         result.total = posts.length;
 
         const maxImport = 1000;
@@ -690,13 +690,13 @@ export class SocialImportService {
     /**
      * Parse a social archive (ZIP or JSON) and return normalized posts
      */
-    private parseArchive(provider: 'INSTAGRAM' | 'FACEBOOK', buffer: Buffer, isZip: boolean): ArchiveParseResult {
+    private async parseArchive(provider: 'INSTAGRAM' | 'FACEBOOK', buffer: Buffer, isZip: boolean): Promise<ArchiveParseResult> {
         let posts: ArchivePost[] = [];
         let archiveDir: string | null = null;
         let cleanup: (() => void) | undefined;
 
         if (isZip) {
-            const extracted = this.extractZipToTemp(buffer);
+            const extracted = await this.extractZipToTemp(buffer);
             archiveDir = extracted.dir;
             cleanup = extracted.cleanup;
 
@@ -967,28 +967,24 @@ export class SocialImportService {
         }
     }
 
-    private extractZipToTemp(buffer: Buffer): { dir: string; cleanup: () => void } {
+    private async extractZipToTemp(buffer: Buffer): Promise<{ dir: string; cleanup: () => void }> {
         const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notive-import-'));
         const zipPath = path.join(tempRoot, 'archive.zip');
         const extractDir = path.join(tempRoot, 'unzipped');
         fs.writeFileSync(zipPath, buffer);
 
-        if (process.platform === 'win32') {
-            const result = spawnSync('powershell', [
-                '-NoProfile',
-                '-NonInteractive',
-                '-Command',
-                `Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${extractDir}' -Force`,
-            ], { windowsHide: true });
+        const args = process.platform === 'win32'
+            ? { cmd: 'powershell', argv: ['-NoProfile', '-NonInteractive', '-Command', `Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${extractDir}' -Force`] }
+            : { cmd: 'unzip', argv: ['-o', zipPath, '-d', extractDir] };
 
-            if (result.status !== 0) {
-                throw new Error('Failed to unzip archive. Please extract and upload the JSON files.');
-            }
-        } else {
-            const result = spawnSync('unzip', ['-o', zipPath, '-d', extractDir]);
-            if (result.status !== 0) {
-                throw new Error('Failed to unzip archive. Please extract and upload the JSON files.');
-            }
+        const exitCode = await new Promise<number | null>((resolve, reject) => {
+            const child = spawn(args.cmd, args.argv, { windowsHide: true, stdio: 'ignore' });
+            child.on('error', reject);
+            child.on('close', resolve);
+        });
+
+        if (exitCode !== 0) {
+            throw new Error('Failed to unzip archive. Please extract and upload the JSON files.');
         }
 
         return {

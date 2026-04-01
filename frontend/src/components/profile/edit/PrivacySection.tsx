@@ -3,7 +3,6 @@
 import React from 'react';
 import Link from 'next/link';
 import { FiDownload, FiExternalLink, FiLink, FiMapPin, FiPlus, FiRefreshCw, FiShield, FiStar, FiTrash2 } from 'react-icons/fi';
-import GoogleFitConnection from '@/components/profile/GoogleFitConnection';
 import SpotifyConnection from '@/components/profile/SpotifyConnection';
 import { SelectField, TagInput, TextField } from './fields';
 import type { VoiceLexiconItem } from '@/services/voice-lexicon.service';
@@ -692,7 +691,6 @@ export function PrivacySection({
 
             {/* ── Connected Services ── */}
             <section className="grid gap-6 xl:grid-cols-2">
-                <GoogleFitConnection />
                 <SpotifyConnection />
             </section>
 

@@ -8,6 +8,8 @@
  * All metrics computed from existing Entry + EntryAnalysis data.
  */
 
+import { MOOD_SCORES } from '../utils/mood';
+
 // ── Types ────────────────────────────────────────────────────
 
 export type VocabularyProfile = {
@@ -191,13 +193,6 @@ const LIFE_AREA_KEYWORDS: Record<string, string[]> = {
     career: ['job', 'work', 'internship', 'resume', 'interview', 'career', 'boss', 'coworker', 'salary', 'promotion', 'application', 'linkedin', 'networking', 'skill'],
     romance: ['boyfriend', 'girlfriend', 'partner', 'date', 'dating', 'crush', 'relationship', 'love', 'breakup', 'broke up', 'ex', 'romantic', 'attraction', 'feelings for'],
     health: ['sleep', 'tired', 'sick', 'headache', 'anxiety', 'panic', 'doctor', 'hospital', 'medication', 'exercise', 'diet', 'nutrition', 'weight', 'energy', 'exhausted'],
-};
-
-const MOOD_SCORES: Record<string, number> = {
-    happy: 9, sad: 2, anxious: 3, calm: 7, frustrated: 2, grateful: 9,
-    motivated: 8, tired: 4, thoughtful: 6, neutral: 5, excited: 9,
-    hopeful: 8, proud: 8, lonely: 2, overwhelmed: 3, peaceful: 8,
-    nervous: 3, confident: 8, confused: 4, angry: 2,
 };
 
 const RARE_WORDS = new Set([

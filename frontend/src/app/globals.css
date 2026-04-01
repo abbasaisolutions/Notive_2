@@ -1084,6 +1084,25 @@
     from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+
+  /* Timeline card scroll-focus highlight — subtle breathing sage ring */
+  .timeline-card-focused {
+    animation: timeline-focus-breathe 2.4s ease-in-out infinite;
+    transform: translateY(-1px);
+  }
+
+  @keyframes timeline-focus-breathe {
+    0%, 100% {
+      box-shadow:
+        0 8px 24px rgba(92, 92, 92, 0.12),
+        0 0 0 1.5px rgba(138, 154, 111, 0.12);
+    }
+    50% {
+      box-shadow:
+        0 8px 24px rgba(92, 92, 92, 0.12),
+        0 0 0 1.5px rgba(138, 154, 111, 0.28);
+    }
+  }
   .stagger-child {
     animation: stagger-in 280ms ease-out both;
   }

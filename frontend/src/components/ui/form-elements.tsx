@@ -50,7 +50,7 @@ export function Input({ label, error, className, id, ...props }: InputProps) {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="mt-1.5 text-sm text-red-600/90 dark:text-red-400 overflow-hidden"
+                        className="mt-1.5 text-sm text-red-600/90 overflow-hidden"
                     >
                         {error}
                     </motion.p>

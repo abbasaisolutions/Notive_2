@@ -65,7 +65,7 @@ const inferSignalVisual = (value: string): SignalVisual => {
     if (text.includes('streak') || text.includes('momentum')) {
         return {
             icon: <FiActivity size={14} aria-hidden="true" />,
-            tone: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+            tone: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-700',
             label: 'Momentum',
             detail: value,
         };

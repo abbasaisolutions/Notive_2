@@ -512,6 +512,8 @@ export const analyzeEntry = async (req: Request, res: Response) => {
             suggestions: analysis.suggestions || null,
             modelInfo: analysis.modelInfo || null,
             provider: analysis.provider || null,
+            analysisLine: analysis.analysisLine || null,
+            takeawayLine: analysis.takeawayLine || null,
         };
 
         if (entryId) {

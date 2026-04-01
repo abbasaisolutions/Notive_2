@@ -70,13 +70,13 @@ export default function ForgotPasswordPage() {
 
                         <div className="pr-12">
                             <NotiveLogo href="/" size="sm" />
-                            <p className="mt-6 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                            <p className="type-overline text-muted">
                                 Password reset
                             </p>
-                            <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-[rgb(39,35,31)] md:text-[3rem]">
+                            <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong md:text-[3rem]">
                                 One note today. One clearer tomorrow.
                             </h1>
-                            <p className="mt-4 max-w-xl text-sm leading-7 text-[rgb(76,70,62)] md:text-base">
+                            <p className="mt-4 max-w-xl text-sm leading-7 text-default md:text-base">
                                 Reset your password, then come back to the notes, patterns, and story pieces you are still building.
                             </p>
                         </div>
@@ -84,11 +84,11 @@ export default function ForgotPasswordPage() {
                         {!isSubmitted ? (
                             <form onSubmit={handleSubmit} className="mt-8 space-y-6">
                                 <div className="app-paper-soft rounded-[1.4rem] p-4 text-center">
-                                    <span className="mb-3 inline-flex rounded-full border border-[rgba(92,92,92,0.18)] bg-white/70 p-3 text-[rgb(58,58,58)]">
+                                    <span className="mb-3 inline-flex rounded-full border border-[rgba(var(--paper-border),0.18)] bg-white/70 p-3 text-strong">
                                         <FiLock size={24} aria-hidden="true" />
                                     </span>
-                                    <h2 className="text-xl font-semibold text-[rgb(58,58,58)]">Forgot your password?</h2>
-                                    <p className="mt-2 text-sm leading-7 text-[rgb(107,107,107)]">
+                                    <h2 className="text-xl font-semibold text-strong">Forgot your password?</h2>
+                                    <p className="mt-2 text-sm leading-7 text-soft">
                                         Enter your email and we will send you a reset link.
                                     </p>
                                 </div>
@@ -97,8 +97,7 @@ export default function ForgotPasswordPage() {
                                     <motion.div
                                         initial={{ opacity: 0, y: -10 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        className="rounded-xl px-4 py-3 text-sm"
-                                        style={{ background: 'rgba(229, 213, 194, 0.52)', border: '1px solid rgba(160, 139, 118, 0.24)', color: 'rgb(63 57 51)' }}
+                                        className="rounded-xl px-4 py-3 text-sm bg-[rgba(var(--paper-apricot),0.32)] border border-[rgba(var(--paper-border),0.14)] text-strong"
                                     >
                                         {error}
                                     </motion.div>
@@ -125,7 +124,7 @@ export default function ForgotPasswordPage() {
                                 <SlideUp delay={0.3} className="text-center">
                                     <Link
                                         href="/login"
-                                        className="inline-flex items-center justify-center gap-2 text-sm text-[rgb(93,85,75)] transition-colors hover:text-[rgb(63,57,51)]"
+                                        className="inline-flex items-center justify-center gap-2 text-sm text-soft transition-colors hover:text-strong"
                                     >
                                         <FiArrowLeft size={16} aria-hidden="true" />
                                         Back to sign in
@@ -139,17 +138,17 @@ export default function ForgotPasswordPage() {
                                 className="mt-8 space-y-6 text-center"
                             >
                                 <div className="app-paper-soft rounded-[1.5rem] p-6">
-                                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(92,92,92,0.18)] bg-white/72 text-[rgb(58,58,58)]">
+                                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(var(--paper-border),0.18)] bg-white/72 text-strong">
                                         <FiMail size={32} aria-hidden="true" />
                                     </div>
-                                    <h2 className="mt-4 text-2xl font-semibold text-[rgb(58,58,58)]">Check your email</h2>
-                                    <p className="mt-2 text-sm leading-7 text-[rgb(107,107,107)]">
-                                        If this email is in Notive, we sent a reset link to <span className="font-semibold text-[rgb(58,58,58)]">{email}</span>.
+                                    <h2 className="mt-4 text-2xl font-semibold text-strong">Check your email</h2>
+                                    <p className="mt-2 text-sm leading-7 text-soft">
+                                        If this email is in Notive, we sent a reset link to <span className="font-semibold text-strong">{email}</span>.
                                     </p>
                                 </div>
 
-                                <div className="app-paper-soft rounded-[1.2rem] p-4 text-left text-xs leading-6 text-[rgb(107,107,107)]">
-                                    <p><strong className="text-[rgb(58,58,58)]">Local setup:</strong> if email is mocked, check backend logs for the reset link.</p>
+                                <div className="app-paper-soft rounded-[1.2rem] p-4 text-left text-xs leading-6 text-soft">
+                                    <p><strong className="text-strong">Local setup:</strong> if email is mocked, check backend logs for the reset link.</p>
                                 </div>
 
                                 <Button
@@ -162,7 +161,7 @@ export default function ForgotPasswordPage() {
 
                                 <Link
                                     href="/login"
-                                    className="block text-sm text-[rgb(93,85,75)] transition-colors hover:text-[rgb(63,57,51)]"
+                                    className="block text-sm text-soft transition-colors hover:text-strong"
                                 >
                                     Return to sign in
                                 </Link>

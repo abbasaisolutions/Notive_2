@@ -131,24 +131,24 @@ export default function EntryEditorCard({
 
             {/* Voice feedback: error or review badge */}
             {voiceError && (
-                <p className="workspace-soft-panel type-micro mx-auto mt-3 max-w-xs rounded-lg px-2 py-1 text-center text-default">
+                <p role="alert" className="workspace-soft-panel type-micro mx-auto mt-3 max-w-xs rounded-lg px-2 py-1 text-center text-default">
                     {voiceError}
                 </p>
             )}
             {voiceReviewRequired && !voiceError && (
-                <p className="type-micro mx-auto mt-3 max-w-xs rounded-lg border border-amber-500/35 bg-amber-500/10 px-2 py-1 text-center text-amber-700 dark:text-amber-300">
+                <p aria-live="polite" className="type-micro mx-auto mt-3 max-w-xs rounded-lg border border-amber-500/35 bg-amber-500/10 px-2 py-1 text-center text-amber-700">
                     Check transcript. A few words may need a quick pass.
                 </p>
             )}
             {voiceStatusMessage && !voiceError && (
-                <p className="workspace-soft-panel type-micro mx-auto mt-3 max-w-xs rounded-lg px-2 py-1 text-center text-default">
+                <p aria-live="polite" className="workspace-soft-panel type-micro mx-auto mt-3 max-w-xs rounded-lg px-2 py-1 text-center text-default">
                     {voiceStatusMessage}
                 </p>
             )}
 
             {/* Live transcription preview — word-by-word stagger with mic arcs */}
             {interimText && (
-                <div className={`mt-3 rounded-2xl border p-3 voice-interim-card ${utilityPanelClass}`}>
+                <div aria-live="polite" aria-label="Live transcription" className={`mt-3 rounded-2xl border p-3 voice-interim-card ${utilityPanelClass}`}>
                     <div className="flex items-start gap-3">
                         {/* Animated mic arc rings */}
                         <div className="recording-arc-container mt-0.5 flex-shrink-0">
@@ -194,12 +194,14 @@ export default function EntryEditorCard({
                                 <div key={upload.id} className={`flex items-center gap-2 rounded-lg border px-2 py-1 ${utilityPanelClass}`}>
                                     <span className={`type-micro max-w-[120px] truncate ${mutedTextClass}`}>{upload.fileName}</span>
                                     <button
+                                        type="button"
                                         onClick={() => onInsertUploadedImage(upload.url, upload.id)}
                                         className="type-label-sm text-soft hover:text-strong"
                                     >
                                         Insert
                                     </button>
                                     <button
+                                        type="button"
                                         onClick={() => onDismissUploaded(upload.id)}
                                         className="type-label-sm text-muted hover:text-default"
                                     >

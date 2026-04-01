@@ -14,14 +14,14 @@ const importLimiter = createRateLimiter({
     windowMs: securityConfig.rateLimits.import.windowMs,
     max: securityConfig.rateLimits.import.max,
     message: 'Import actions are happening too quickly. Please wait a moment and try again.',
-    keyGenerator: (req) => req.userId || req.ip || 'anonymous',
+    strategy: 'ip-and-user',
 });
 const archiveUploadLimiter = createRateLimiter({
     keyPrefix: 'archive-upload',
     windowMs: securityConfig.rateLimits.archiveUpload.windowMs,
     max: securityConfig.rateLimits.archiveUpload.max,
     message: 'Archive uploads are temporarily limited. Please wait before uploading again.',
-    keyGenerator: (req) => req.userId || req.ip || 'anonymous',
+    strategy: 'ip-and-user',
 });
 
 const archiveUpload = multer({

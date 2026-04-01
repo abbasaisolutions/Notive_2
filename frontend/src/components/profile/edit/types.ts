@@ -2,7 +2,7 @@
 
 import type { PromptFrequency, StoredAnswer } from '@/services/progressive-personalization.service';
 import type { IconType } from 'react-icons';
-import { FiBox, FiShield, FiTarget, FiUser } from 'react-icons/fi';
+import { FiBell, FiBox, FiShield, FiTarget, FiUser } from 'react-icons/fi';
 
 export type { PromptFrequency, StoredAnswer } from '@/services/progressive-personalization.service';
 
@@ -60,14 +60,15 @@ export const TRUSTED_CONTACT_CHANNEL_OPTIONS: Array<{ value: TrustedContactChann
     { value: 'in_person', label: 'In person' },
 ];
 
-export type EditTab = 'profile' | 'preferences' | 'security' | 'privacy';
-export type EditableTab = Exclude<EditTab, 'security'>;
+export type EditTab = 'profile' | 'preferences' | 'security' | 'privacy' | 'reminders';
+export type EditableTab = Exclude<EditTab, 'security' | 'reminders'>;
 
 export const TAB_ITEMS: Array<{ id: EditTab; label: string; Icon: IconType }> = [
     { id: 'profile', label: 'About', Icon: FiUser },
     { id: 'preferences', label: 'Goals', Icon: FiTarget },
     { id: 'security', label: 'Security', Icon: FiShield },
     { id: 'privacy', label: 'Data', Icon: FiBox },
+    { id: 'reminders', label: 'Reminders', Icon: FiBell },
 ];
 
 export const EDITABLE_TABS: EditableTab[] = ['profile', 'preferences', 'privacy'];
@@ -77,6 +78,7 @@ export const LEGACY_TAB_MAP: Record<string, EditTab> = {
     preferences: 'preferences',
     security: 'security',
     privacy: 'privacy',
+    reminders: 'reminders',
     personalization: 'preferences',
     data: 'privacy',
 };

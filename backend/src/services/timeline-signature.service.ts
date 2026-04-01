@@ -1,3 +1,5 @@
+import { MOOD_ALIAS_MAP, normalizeMood } from '../utils/mood';
+
 export type TimelineSignatureEntry = {
     id: string;
     title: string | null;
@@ -138,31 +140,6 @@ const THEME_STOPWORDS = new Set([
     'journal',
 ]);
 
-const MOOD_ALIAS_MAP: Record<string, string> = {
-    angry: 'frustrated',
-    mad: 'frustrated',
-    furious: 'frustrated',
-    irritated: 'frustrated',
-    annoyed: 'frustrated',
-    upset: 'frustrated',
-    hopeful: 'motivated',
-    optimistic: 'motivated',
-    joy: 'happy',
-    joyful: 'happy',
-    happiness: 'happy',
-    sadness: 'sad',
-    lonely: 'sad',
-    loneliness: 'sad',
-    stress: 'anxious',
-    stressed: 'anxious',
-    worried: 'anxious',
-    nervous: 'anxious',
-    exhausted: 'tired',
-    fatigued: 'tired',
-    burnout: 'tired',
-    reflective: 'thoughtful',
-};
-
 const toTime = (value: Date | string) => new Date(value).getTime();
 
 const dayDiff = (left: Date | string, right: Date | string) =>
@@ -178,13 +155,6 @@ const formatDate = (value: Date | string) =>
 const formatMonthKey = (value: Date | string) => {
     const parsed = new Date(value);
     return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`;
-};
-
-const normalizeMood = (mood: string | null | undefined): string | null => {
-    if (!mood) return null;
-    const key = mood.trim().toLowerCase();
-    if (!key) return null;
-    return MOOD_ALIAS_MAP[key] || key;
 };
 
 const titleCase = (value: string) =>

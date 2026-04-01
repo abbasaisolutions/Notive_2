@@ -3,6 +3,8 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { App as CapacitorApp } from '@capacitor/app';
+import { Keyboard } from '@capacitor/keyboard';
+import { StatusBar, Style as StatusBarStyle } from '@capacitor/status-bar';
 import { useAuth } from '@/context/auth-context';
 import { useGamification } from '@/context/gamification-context';
 import ProgressivePersonalizationPrompt from '@/components/smart/ProgressivePersonalizationPrompt';
@@ -45,6 +47,7 @@ export default function AppChrome() {
         });
     }, [user, accessToken]);
 
+    // Deep link handler (native only)
     useEffect(() => {
         if (!isNativeCapacitorPlatform()) {
             return;
@@ -76,6 +79,53 @@ export default function AppChrome() {
             }
         };
     }, [router]);
+
+    // Android hardware back button handler (native only)
+    useEffect(() => {
+        if (!isNativeCapacitorPlatform()) {
+            return;
+        }
+
+        const HOME_ROUTES = new Set(['/', '/dashboard']);
+        let removed = false;
+        let removeListener: (() => Promise<void>) | null = null;
+
+        void CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+            if (canGoBack && !HOME_ROUTES.has(window.location.pathname)) {
+                router.back();
+            } else {
+                void CapacitorApp.minimizeApp();
+            }
+        }).then((listener) => {
+            if (removed) {
+                void listener.remove();
+                return;
+            }
+            removeListener = () => listener.remove();
+        }).catch(() => {
+            // No-op on web
+        });
+
+        return () => {
+            removed = true;
+            if (removeListener) {
+                void removeListener();
+            }
+        };
+    }, [router]);
+
+    // StatusBar + Keyboard configuration (native only)
+    useEffect(() => {
+        if (!isNativeCapacitorPlatform()) return;
+
+        // Paper-theme status bar: dark text on light background
+        void StatusBar.setStyle({ style: StatusBarStyle.Light }).catch(() => {});
+        void StatusBar.setBackgroundColor({ color: '#F8F4ED' }).catch(() => {});
+
+        // Keyboard: resize body so inputs are not obscured
+        void Keyboard.setResizeMode({ mode: 'body' as any }).catch(() => {});
+        void Keyboard.setScroll({ isDisabled: false }).catch(() => {});
+    }, []);
 
     return (
         <>

@@ -44,6 +44,8 @@ interface Entry {
     reflection?: string | null;
     notiveInsights?: NotiveInsight[] | null;
     storySignal?: StorySignal;
+    analysisLine?: string;
+    takeawayLine?: string;
     // Enrichment fields from API
     topEmotions?: TopEmotion[];
     depthLevel?: 0 | 1 | 2 | 3 | 4;
@@ -60,6 +62,7 @@ interface TimelineViewProps {
         entryCount: number;
     }>;
     onShareEntry?: (entryId: string) => void;
+    focusedEntryId?: string | null;
 }
 
 const formatDate = (value: string) =>
@@ -68,6 +71,29 @@ const formatDate = (value: string) =>
         day: 'numeric',
         year: 'numeric',
     });
+
+const formatTime = (value: string) =>
+    new Date(value).toLocaleTimeString(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+
+const getDayPart = (value: string): string => {
+    const hour = new Date(value).getHours();
+    if (hour >= 5 && hour <= 11) return 'Morning';
+    if (hour >= 12 && hour <= 16) return 'Afternoon';
+    if (hour >= 17 && hour <= 20) return 'Evening';
+    if (hour >= 21 && hour <= 23) return 'Night';
+    return 'Late Night';
+};
+
+const DAY_PART_PILL_STYLE: Record<string, string> = {
+    'Morning':    'bg-[rgba(234,216,189,0.35)] text-[rgba(163,125,71,0.85)]',
+    'Afternoon':  'bg-[rgba(138,154,111,0.12)] text-[rgba(110,124,90,0.85)]',
+    'Evening':    'bg-[rgba(216,199,232,0.25)] text-[rgba(148,130,168,0.85)]',
+    'Night':      'bg-[rgba(191,214,221,0.25)] text-[rgba(120,150,160,0.85)]',
+    'Late Night': 'bg-[rgba(191,214,221,0.3)] text-[rgba(110,140,150,0.85)]',
+};
 
 /* ─── Story completeness ring ──────────────────────────────
  *  Replaces the opaque text capsule ("Ready To Verify") with
@@ -216,7 +242,7 @@ function EmotionBars({ emotions }: { emotions: TopEmotion[] }) {
     );
 }
 
-export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByMonthKey = {}, onShareEntry }: TimelineViewProps) {
+export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByMonthKey = {}, onShareEntry, focusedEntryId }: TimelineViewProps) {
     const pathname = usePathname();
     const groupedEntries = useMemo(() => buildTimelineMonthGroups(entries), [entries]);
     const currentReturnTo = buildCurrentReturnTo(pathname, typeof window !== 'undefined' ? window.location.search : '');
@@ -291,6 +317,7 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                 return (
                                     <motion.article
                                         key={entry.id}
+                                        data-entry-id={entry.id}
                                         initial={{ opacity: 0, y: 16 }}
                                         whileInView={{ opacity: 1, y: 0 }}
                                         viewport={{ once: true, margin: '-80px' }}
@@ -306,12 +333,18 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                             <Link href={appendReturnTo(`/entry/view?id=${entry.id}`, currentReturnTo)} className="block group">
                                                 {/* ① Mood left-border accent */}
                                                 <div
-                                                    className="workspace-panel rounded-[1.25rem] p-3 border-l-[3px] transition-colors"
+                                                    className={`workspace-panel rounded-[1.25rem] p-3 border-l-[3px] transition-all duration-300${focusedEntryId === entry.id ? ' timeline-card-focused' : ''}`}
                                                     style={{ borderLeftColor: moodColor || 'rgba(141,123,105,0.2)' }}
                                                 >
                                                     <div className="flex items-start justify-between gap-2 mb-1">
-                                                        <span className="text-[0.65rem] text-ink-muted uppercase tracking-[0.16em] font-semibold">
-                                                            {formatDate(entry.createdAt)}
+                                                        <span className="text-[0.65rem] text-ink-muted uppercase tracking-[0.16em] font-semibold inline-flex items-center gap-1 flex-shrink min-w-0">
+                                                            <span className="whitespace-nowrap">{formatDate(entry.createdAt)}</span>
+                                                            <span className="text-ink-muted/40" aria-hidden="true">&middot;</span>
+                                                            <span className="whitespace-nowrap">{formatTime(entry.createdAt)}</span>
+                                                            <span className="text-ink-muted/40" aria-hidden="true">&middot;</span>
+                                                            <span className={`whitespace-nowrap rounded-full px-1.5 py-px ${DAY_PART_PILL_STYLE[getDayPart(entry.createdAt)] || ''}`}>
+                                                                {getDayPart(entry.createdAt)}
+                                                            </span>
                                                         </span>
                                                         <div className="flex items-center gap-1.5">
                                                             {storySignal && (
@@ -338,11 +371,11 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                                 <button
                                                                     type="button"
                                                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShareEntry(entry.id); }}
-                                                                    className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(var(--brand),0.06)] text-[rgb(107,143,113)] transition-colors hover:bg-[rgba(var(--brand),0.16)]"
+                                                                    className="inline-flex h-9 w-9 md:h-6 md:w-6 flex-shrink-0 items-center justify-center rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(var(--brand),0.06)] text-[rgb(107,143,113)] transition-colors hover:bg-[rgba(var(--brand),0.16)]"
                                                                     title="Share this memory"
                                                                     aria-label="Share this memory"
                                                                 >
-                                                                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                                                                    <svg width="15" height="15" viewBox="0 0 14 14" fill="none" aria-hidden="true" className="md:w-3 md:h-3">
                                                                         <path d="M2 7.5V11.5C2 12.05 2.45 12.5 3 12.5H11C11.55 12.5 12 12.05 12 11.5V7.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
                                                                         <path d="M7 1.5V9" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
                                                                         <path d="M4.5 4L7 1.5L9.5 4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
@@ -360,6 +393,24 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                         {entry.content}
                                                     </p>
 
+                                                    {/* Micro-insight: analysisLine + takeawayLine */}
+                                                    {(entry.analysisLine || entry.takeawayLine) && (
+                                                        <div className="mb-1.5 space-y-0.5">
+                                                            {entry.analysisLine && (
+                                                                <p className="text-[0.65rem] text-ink-muted leading-snug line-clamp-1 flex items-center gap-1 min-w-0">
+                                                                    <span className="shrink-0 text-[7px] uppercase tracking-[0.14em] font-semibold text-primary/60">Noticed</span>
+                                                                    <span className="truncate">{entry.analysisLine}</span>
+                                                                </p>
+                                                            )}
+                                                            {entry.takeawayLine && (
+                                                                <p className="text-[0.65rem] text-ink-muted leading-snug line-clamp-1 flex items-center gap-1 min-w-0">
+                                                                    <span className="shrink-0 text-[7px] uppercase tracking-[0.14em] font-semibold text-accent/70">Takeaway</span>
+                                                                    <span className="truncate">{entry.takeawayLine}</span>
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    )}
+
                                                     {/* ② Reflection Depth seed + ④ Emotion bars */}
                                                     <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
                                                         <DepthSeed level={depthLevel} />
@@ -371,13 +422,13 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                         )}
                                                     </div>
 
-                                                    {/* Tags — single line, compact, no-wrap */}
+                                                    {/* Tags — single line, compact, no-wrap, overflow hidden */}
                                                     {entryTags.length > 0 && (
-                                                        <div className="flex items-center gap-1 overflow-hidden mt-1.5">
+                                                        <div className="flex items-center gap-1 overflow-hidden mt-1.5 flex-nowrap">
                                                             {entryTags.slice(0, 2).map(tag => (
                                                                 <span
                                                                     key={tag}
-                                                                    className="text-[0.6rem] font-medium text-primary/75 bg-primary/8 border border-primary/20 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0"
+                                                                    className="text-[0.6rem] font-medium text-primary/75 bg-primary/8 border border-primary/20 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[6rem]"
                                                                 >
                                                                     #{tag}
                                                                 </span>

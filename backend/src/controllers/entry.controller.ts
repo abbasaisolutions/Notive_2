@@ -101,12 +101,29 @@ const attachEntryStorySignal = <T extends {
             ? (analysis as Record<string, unknown>)
             : null;
 
+    // AI insights may be nested under analysisObj.ai (from ai.controller.ts)
+    const aiObj: Record<string, unknown> | null =
+        analysisObj?.ai && typeof analysisObj.ai === 'object' && !Array.isArray(analysisObj.ai)
+            ? (analysisObj.ai as Record<string, unknown>)
+            : null;
+
     const notiveInsights = analysisObj && Array.isArray(analysisObj.notiveInsights)
         ? analysisObj.notiveInsights
         : undefined;
 
+    const analysisLine = (typeof aiObj?.analysisLine === 'string' && aiObj.analysisLine.trim())
+        ? aiObj.analysisLine as string
+        : (typeof analysisObj?.analysisLine === 'string' && analysisObj.analysisLine.trim())
+            ? analysisObj.analysisLine as string
+            : undefined;
+    const takeawayLine = (typeof aiObj?.takeawayLine === 'string' && aiObj.takeawayLine.trim())
+        ? aiObj.takeawayLine as string
+        : (typeof analysisObj?.takeawayLine === 'string' && analysisObj.takeawayLine.trim())
+            ? analysisObj.takeawayLine as string
+            : undefined;
+
     // Extract top emotions from analysis blob (Record<string, number>)
-    const rawEmotions = analysisObj?.emotions;
+    const rawEmotions = aiObj?.emotions ?? analysisObj?.emotions;
     const emotions: Record<string, number> | undefined =
         rawEmotions && typeof rawEmotions === 'object' && !Array.isArray(rawEmotions)
             ? (rawEmotions as Record<string, number>)
@@ -140,6 +157,8 @@ const attachEntryStorySignal = <T extends {
     return {
         ...responseEntry,
         notiveInsights,
+        analysisLine,
+        takeawayLine,
         topEmotions: topEmotions && topEmotions.length > 0 ? topEmotions : undefined,
         depthLevel,
         depthLabel: depthLabels[depthLevel],

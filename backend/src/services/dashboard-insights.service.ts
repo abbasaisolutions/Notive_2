@@ -11,6 +11,8 @@
  * - Vocabulary Expansion (emotional word growth)
  */
 
+import { MOOD_SCORES, MOOD_ALIAS_MAP } from '../utils/mood';
+
 // ── Types ────────────────────────────────────────────────────
 
 export type EmotionalFingerprint = {
@@ -117,23 +119,10 @@ export type InsightAnalysis = {
 
 // ── Constants ────────────────────────────────────────────────
 
-const MOOD_SCORES: Record<string, number> = {
-    happy: 9, sad: 2, anxious: 3, calm: 7,
-    frustrated: 2, grateful: 9, motivated: 8,
-    tired: 4, thoughtful: 6, neutral: 5,
-};
-
-const MOOD_ALIAS: Record<string, string> = {
-    angry: 'frustrated', mad: 'frustrated', hopeful: 'motivated',
-    joy: 'happy', joyful: 'happy', sadness: 'sad', lonely: 'sad',
-    stress: 'anxious', stressed: 'anxious', worried: 'anxious',
-    exhausted: 'tired', reflective: 'thoughtful',
-};
-
 const normMood = (m: string | null): string | null => {
     if (!m) return null;
     const k = m.trim().toLowerCase();
-    return MOOD_ALIAS[k] || k;
+    return MOOD_ALIAS_MAP[k] ?? k;
 };
 
 const moodScore = (m: string | null): number => {

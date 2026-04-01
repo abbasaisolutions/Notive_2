@@ -1,4 +1,6 @@
 // Centralized application configuration
+import { isNativePlatform } from '@/utils/platform';
+
 const LOCAL_API_URL = 'http://localhost:8000/api/v1';
 const CANONICAL_PRODUCTION_API_URL = 'https://notive2-production.up.railway.app/api/v1';
 const BROKEN_PRODUCTION_API_ALIASES = new Set([
@@ -14,19 +16,6 @@ const resolveConfiguredApiUrl = (value: string) => {
     return BROKEN_PRODUCTION_API_ALIASES.has(normalized)
         ? CANONICAL_PRODUCTION_API_URL
         : normalized;
-};
-
-const isNativePlatform = () => {
-    if (typeof window === 'undefined') return false;
-
-    const cap = (window as any).Capacitor;
-    if (cap?.isNativePlatform) return cap.isNativePlatform();
-    if (cap?.getPlatform) {
-        const platform = cap.getPlatform();
-        return platform === 'ios' || platform === 'android';
-    }
-
-    return false;
 };
 
 const isLocalHostname = (hostname: string) =>

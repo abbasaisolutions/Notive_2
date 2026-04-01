@@ -24,7 +24,7 @@ export function Spinner({
     };
 
     const variantClasses = {
-        primary: 'text-blue-500',
+        primary: 'text-primary',
         accent: 'text-sage-500',
         white: 'text-white',
     };

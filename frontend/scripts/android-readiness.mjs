@@ -167,11 +167,18 @@ if (!fs.existsSync(assetLinksPath)) {
             ? assetLinks.find((entry) => entry?.target?.package_name === APP_ID)
             : null;
         const fingerprints = appEntry?.target?.sha256_cert_fingerprints || [];
+        const SHA256_RE = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/i;
+        const PLACEHOLDER_RE = /REPLACE|PLACEHOLDER|TODO|EXAMPLE|00:00:00/i;
 
         if (!appEntry || !Array.isArray(fingerprints) || fingerprints.length === 0) {
             launchBlockers.push(`\`assetlinks.json\` does not include package \`${APP_ID}\` with SHA-256 fingerprints.`);
         } else {
-            pushStatus('Verified app links', `assetlinks.json present for ${APP_HOST}`);
+            const invalid = fingerprints.filter((fp) => !SHA256_RE.test(fp) || PLACEHOLDER_RE.test(fp));
+            if (invalid.length > 0) {
+                launchBlockers.push(`\`assetlinks.json\` contains placeholder or malformed fingerprints: ${invalid.join(', ')}. Replace with the real upload-keystore SHA-256 value.`);
+            } else {
+                pushStatus('Verified app links', `assetlinks.json present for ${APP_HOST}`);
+            }
         }
     } catch {
         launchBlockers.push('`frontend/public/.well-known/assetlinks.json` exists but could not be parsed.');

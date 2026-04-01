@@ -320,9 +320,7 @@ const getSignalReason = (prompt: PromptData): string => {
         case 'consistency_streak':
             return 'Why now: steady days show habits worth keeping.';
         default:
-            return prompt.source === 'health'
-                ? 'Why now: your device data suggests this moment may matter.'
-                : 'Why now: small notes are easiest to keep when you save them soon.';
+            return 'Why now: small notes are easiest to keep when you save them soon.';
     }
 };
 
@@ -360,9 +358,7 @@ const getStoryReason = (prompt: PromptData): string => {
         case 'consistency_streak':
             return 'Why now: a steady stretch can become a story you use later.';
         default:
-            return prompt.source === 'health'
-                ? 'Why now: device data can point to small moments worth keeping.'
-                : 'Why now: everyday moments can become useful stories later.';
+            return 'Why now: everyday moments can become useful stories later.';
     }
 };
 

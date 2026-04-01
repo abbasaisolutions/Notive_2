@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
+import { getRedisClient } from '../config/redis';
 import {
     isSpotifyConfigured,
     getSpotifyAuthUrl,
@@ -8,8 +9,6 @@ import {
     getSpotifyStatus,
     syncSpotifyForDate,
 } from '../services/spotify.service';
-
-const pendingStates = new Map<string, { userId: string; expiresAt: number }>();
 
 /**
  * GET /api/v1/device/spotify/status
@@ -36,13 +35,12 @@ export const initiateSpotifyConnect = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Spotify integration is not configured' });
         }
 
+        const redis = getRedisClient();
         const state = crypto.randomBytes(16).toString('hex');
-        pendingStates.set(state, { userId: req.userId, expiresAt: Date.now() + 5 * 60 * 1000 });
+        const stateKey = `spotify:state:${state}`;
 
-        // Clean expired states
-        for (const [key, val] of pendingStates) {
-            if (val.expiresAt < Date.now()) pendingStates.delete(key);
-        }
+        // Store state with 5-minute expiry
+        await redis.set(stateKey, JSON.stringify({ userId: req.userId }), { EX: 5 * 60 });
 
         const url = getSpotifyAuthUrl(state);
         return res.json({ url });
@@ -67,20 +65,24 @@ export const handleSpotifyCallback = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Missing code or state' });
         }
 
-        const pending = pendingStates.get(state);
-        if (!pending || pending.expiresAt < Date.now()) {
+        const redis = getRedisClient();
+        const stateKey = `spotify:state:${state}`;
+        const stateData = await redis.get(stateKey);
+
+        if (!stateData) {
             return res.status(400).json({ message: 'Invalid or expired state' });
         }
 
-        pendingStates.delete(state);
+        const { userId } = JSON.parse(stateData) as { userId: string };
+        await redis.del(stateKey);
 
-        const result = await exchangeSpotifyCode(pending.userId, code);
+        const result = await exchangeSpotifyCode(userId, code);
         if (!result.success) {
             return res.redirect('/profile?spotify=error');
         }
 
         // Trigger initial sync
-        void syncSpotifyForDate(pending.userId).catch(() => {});
+        void syncSpotifyForDate(userId).catch(() => {});
 
         return res.redirect('/profile?spotify=connected');
     } catch (error) {

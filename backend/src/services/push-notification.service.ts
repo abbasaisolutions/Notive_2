@@ -1,4 +1,6 @@
-import { PrismaClient, User } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { initializeApp, getApps, App, cert, applicationDefault } from 'firebase-admin/app';
+import { getMessaging, Message } from 'firebase-admin/messaging';
 
 interface PushNotificationPayload {
     title: string;
@@ -19,16 +21,60 @@ interface DeviceTokenInput {
     osVersion?: string;
 }
 
+// ── Firebase Admin Initialization ────────────────────────────────────────────
+// Initializes once on first use. No-ops when credentials are absent so
+// development still works without a service account file.
+
+let _firebaseApp: App | null = null;
+
+function getFirebaseApp(): App | null {
+    if (_firebaseApp) return _firebaseApp;
+
+    // Already initialized by another module (e.g. in tests)
+    if (getApps().length > 0) {
+        _firebaseApp = getApps()[0]!;
+        return _firebaseApp;
+    }
+
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+    const credentialFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+    try {
+        if (serviceAccountJson) {
+            const serviceAccount = JSON.parse(serviceAccountJson);
+            _firebaseApp = initializeApp({ credential: cert(serviceAccount) });
+        } else if (credentialFile) {
+            _firebaseApp = initializeApp({ credential: applicationDefault() });
+        } else {
+            return null;
+        }
+        return _firebaseApp;
+    } catch (err) {
+        console.error('[PushNotificationService] Firebase Admin init failed:', err);
+        return null;
+    }
+}
+
 /**
- * Service to handle push notifications
- * Manages device tokens and push notification delivery
+ * FCM error codes that mean the token is permanently invalid and should be
+ * deactivated automatically.
+ */
+const DEAD_TOKEN_CODES = new Set([
+    'messaging/registration-token-not-registered',
+    'messaging/invalid-registration-token',
+    'messaging/invalid-argument',
+]);
+
+/**
+ * Service to handle push notifications via Firebase Cloud Messaging (FCM).
+ * Falls back to a console mock when Firebase credentials are not configured.
  */
 export class PushNotificationService {
     constructor(private prisma: PrismaClient) {}
 
     /**
-     * Register a device token for a user
-     * Updates lastUsedAt if token already exists
+     * Register a device token for a user.
+     * Updates lastUsedAt if the token already exists.
      */
     async registerDeviceToken(
         userId: string,
@@ -70,7 +116,7 @@ export class PushNotificationService {
     }
 
     /**
-     * Unregister a device token
+     * Unregister a device token.
      */
     async unregisterDeviceToken(userId: string, tokenId: string): Promise<void> {
         const token = await this.prisma.deviceToken.findUnique({
@@ -87,20 +133,15 @@ export class PushNotificationService {
     }
 
     /**
-     * Get all active device tokens for a user
+     * Get all active device tokens for a user.
      */
     async getUserActiveTokens(userId: string, platform?: 'android' | 'ios' | 'web') {
-        const where: any = {
-            userId,
-            isActive: true,
-        };
-
-        if (platform) {
-            where.platform = platform;
-        }
-
-        return await this.prisma.deviceToken.findMany({
-            where,
+        return this.prisma.deviceToken.findMany({
+            where: {
+                userId,
+                isActive: true,
+                ...(platform ? { platform } : {}),
+            },
             select: {
                 id: true,
                 token: true,
@@ -114,7 +155,7 @@ export class PushNotificationService {
     }
 
     /**
-     * Mark a device token as inactive
+     * Mark a device token as inactive.
      */
     async markTokenInactive(tokenId: string): Promise<void> {
         await this.prisma.deviceToken.update({
@@ -124,86 +165,98 @@ export class PushNotificationService {
     }
 
     /**
-     * Send push notification to a user's devices
-     * In production, this would integrate with Firebase Cloud Messaging (FCM)
-     * or Apple Push Notification (APN)
+     * Send a push notification to all active devices for a user.
+     * Uses FCM when Firebase credentials are configured; logs to console otherwise.
      */
     async sendPushNotification(
         userId: string,
         payload: PushNotificationPayload,
         platform?: 'android' | 'ios'
-    ): Promise<{
-        sent: number;
-        failed: number;
-        failedTokens: string[];
-    }> {
+    ): Promise<{ sent: number; failed: number; failedTokens: string[] }> {
         const tokens = await this.getUserActiveTokens(userId, platform);
 
         if (tokens.length === 0) {
-            return {
-                sent: 0,
-                failed: 0,
-                failedTokens: [],
-            };
+            return { sent: 0, failed: 0, failedTokens: [] };
         }
 
+        const app = getFirebaseApp();
         let sent = 0;
         let failed = 0;
         const failedTokens: string[] = [];
 
         for (const deviceToken of tokens) {
             try {
-                // In production, would call FCM API or APN
-                // For now, mock the notification sending
-                await this.mockSendToDevice(deviceToken.token, deviceToken.platform, payload);
-                sent++;
+                if (app) {
+                    await this.sendViaFcm(app, deviceToken.token, payload);
+                } else {
+                    this.logMockSend(deviceToken.token, deviceToken.platform, payload);
+                }
 
-                // Update lastUsedAt
+                sent++;
                 await this.prisma.deviceToken.update({
                     where: { id: deviceToken.id },
                     data: { lastUsedAt: new Date() },
                 });
-            } catch (error) {
+            } catch (error: any) {
                 failed++;
                 failedTokens.push(deviceToken.id);
 
-                // In production, would mark token as inactive after repeated failures
-                console.error(`Failed to send push to token ${deviceToken.id}:`, error);
+                const errorCode: string = error?.errorInfo?.code ?? error?.code ?? '';
+                if (DEAD_TOKEN_CODES.has(errorCode)) {
+                    await this.markTokenInactive(deviceToken.id).catch(() => {});
+                }
+
+                console.error(`[PushNotificationService] Failed to send to token ${deviceToken.id}:`, error);
             }
         }
 
-        return {
-            sent,
-            failed,
-            failedTokens,
-        };
+        return { sent, failed, failedTokens };
     }
 
-    /**
-     * Mock push notification sending
-     * Replace with actual FCM/APN integration in production
-     */
-    private async mockSendToDevice(
-        token: string,
-        platform: string,
-        payload: PushNotificationPayload
-    ): Promise<void> {
+    /** Send a single message via Firebase Cloud Messaging. */
+    private async sendViaFcm(app: App, token: string, payload: PushNotificationPayload): Promise<void> {
+        const message: Message = {
+            token,
+            notification: {
+                title: payload.title,
+                body: payload.body,
+            },
+            data: payload.data ?? {},
+            android: {
+                notification: {
+                    sound: payload.sound ?? 'default',
+                    icon: payload.icon ?? 'ic_notification',
+                    channelId: 'notive_default',
+                },
+                priority: 'high',
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: payload.sound ?? 'default',
+                        badge: payload.badge ? Number(payload.badge) : undefined,
+                    },
+                },
+            },
+        };
+
+        await getMessaging(app).send(message);
+    }
+
+    /** Console mock used when Firebase credentials are absent (development). */
+    private logMockSend(token: string, platform: string, payload: PushNotificationPayload): void {
         console.log('---------------------------------------------------------');
-        console.log(`[Push Notification] Sending to ${platform.toUpperCase()}`);
+        console.log(`[PushNotificationService] MOCK send to ${platform.toUpperCase()}`);
         console.log(`Token: ${token.substring(0, 20)}...`);
         console.log(`Title: ${payload.title}`);
         console.log(`Body: ${payload.body}`);
-        if (payload.data) {
-            console.log(`Data:`, payload.data);
-        }
+        if (payload.data) console.log('Data:', payload.data);
+        console.log('Set FIREBASE_SERVICE_ACCOUNT env var to enable real FCM.');
         console.log('---------------------------------------------------------');
-
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     /**
-     * Cleanup inactive tokens older than 30 days
+     * Cleanup inactive tokens older than the given number of days.
      */
     async cleanupInactiveTokens(daysThreshold: number = 30): Promise<{ deletedCount: number }> {
         const cutoffDate = new Date();
@@ -212,14 +265,10 @@ export class PushNotificationService {
         const result = await this.prisma.deviceToken.deleteMany({
             where: {
                 isActive: false,
-                lastUsedAt: {
-                    lt: cutoffDate,
-                },
+                lastUsedAt: { lt: cutoffDate },
             },
         });
 
-        return {
-            deletedCount: result.count,
-        };
+        return { deletedCount: result.count };
     }
 }

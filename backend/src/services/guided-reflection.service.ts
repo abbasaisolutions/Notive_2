@@ -316,28 +316,74 @@ export type NotiveInsight = {
     doodle: NotiveDoodle;
 };
 
-const NOTIVE_INSIGHT_SCHEMA = `[
-  { "type": "thread", "text": "...", "doodle": "knot" },
-  { "type": "lesson", "text": "...", "doodle": "ladder" },
-  { "type": "strength", "text": "...", "doodle": "sprout" }
-]`;
+export type MemoryMicroInsight = {
+    analysisLine: string;
+    takeawayLine: string;
+};
+
+const NOTIVE_INSIGHT_SCHEMA = `{
+  "insights": [
+    { "type": "thread", "text": "...", "doodle": "knot" },
+    { "type": "lesson", "text": "...", "doodle": "ladder" },
+    { "type": "strength", "text": "...", "doodle": "sprout" }
+  ],
+  "analysisLine": "...",
+  "takeawayLine": "..."
+}`;
 
 const SAFE_DOODLES: NotiveDoodle[] = ['knot', 'ladder', 'sprout', 'steady-me', 'reach-someone', 'see-my-growth', 'shape-my-future'];
 
-function parseNotiveInsights(raw: string): NotiveInsight[] | null {
+type ParsedNotiveResult = {
+    insights: NotiveInsight[];
+    analysisLine: string | null;
+    takeawayLine: string | null;
+};
+
+function parseNotiveInsights(raw: string): ParsedNotiveResult | null {
     try {
-        const jsonMatch = raw.match(/\[[\s\S]*\]/);
-        if (!jsonMatch) return null;
-        const parsed = JSON.parse(jsonMatch[0]);
+        // Try parsing as the new { insights, analysisLine, takeawayLine } shape first
+        const jsonObjMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonObjMatch) {
+            const parsed = JSON.parse(jsonObjMatch[0]);
+            const insightsArr = Array.isArray(parsed.insights) ? parsed.insights : Array.isArray(parsed) ? parsed : null;
+            if (!insightsArr) return null;
+
+            const insights = insightsArr
+                .filter((item: Record<string, unknown>) => item && typeof item.text === 'string' && (item.text as string).trim().length > 0)
+                .slice(0, 3)
+                .map((item: Record<string, unknown>) => ({
+                    type: (['thread', 'lesson', 'strength'].includes(item.type as string) ? item.type : 'thread') as NotiveInsightType,
+                    text: String(item.text).trim(),
+                    doodle: (SAFE_DOODLES.includes(item.doodle as NotiveDoodle) ? item.doodle : 'sprout') as NotiveDoodle,
+                }));
+
+            if (insights.length === 0) return null;
+
+            const analysisLine = typeof parsed.analysisLine === 'string' && parsed.analysisLine.trim()
+                ? parsed.analysisLine.trim().slice(0, 100)
+                : null;
+            const takeawayLine = typeof parsed.takeawayLine === 'string' && parsed.takeawayLine.trim()
+                ? parsed.takeawayLine.trim().slice(0, 100)
+                : null;
+
+            return { insights, analysisLine, takeawayLine };
+        }
+
+        // Fallback: try parsing as bare array (legacy)
+        const jsonArrMatch = raw.match(/\[[\s\S]*\]/);
+        if (!jsonArrMatch) return null;
+        const parsed = JSON.parse(jsonArrMatch[0]);
         if (!Array.isArray(parsed)) return null;
-        return parsed
-            .filter((item) => item && typeof item.text === 'string' && item.text.trim().length > 0)
+        const insights = parsed
+            .filter((item: Record<string, unknown>) => item && typeof item.text === 'string' && (item.text as string).trim().length > 0)
             .slice(0, 3)
-            .map((item) => ({
-                type: ['thread', 'lesson', 'strength'].includes(item.type) ? item.type : 'thread',
+            .map((item: Record<string, unknown>) => ({
+                type: (['thread', 'lesson', 'strength'].includes(item.type as string) ? item.type : 'thread') as NotiveInsightType,
                 text: String(item.text).trim(),
-                doodle: SAFE_DOODLES.includes(item.doodle) ? item.doodle : 'sprout',
+                doodle: (SAFE_DOODLES.includes(item.doodle as NotiveDoodle) ? item.doodle : 'sprout') as NotiveDoodle,
             }));
+        if (insights.length === 0) return null;
+        return { insights, analysisLine: null, takeawayLine: null };
     } catch {
         return null;
     }
@@ -708,10 +754,14 @@ Surface 3 short, grounded insights (max 18 words each):
 - One real lesson learned from their own past notes
 - One quiet strength or skill showing up
 
+Also generate two micro-insight lines specific to THIS memory:
+- "analysisLine": One sentence (max 15 words) capturing the most important trend, pattern, or observation about THIS specific memory. Start with what you noticed — not generic advice. Good: "Third time this month stress peaks right before your Tuesday meetings." Bad: "You seem to have mixed feelings sometimes."
+- "takeawayLine": One sentence (max 15 words) framing a concrete lesson or skill the writer can carry into real life, professionally or personally. Start with an action verb. Good: "Naming your stress triggers is already a self-regulation skill." Bad: "Keep working on yourself."
+
 Always be calm, specific, non-clinical, and action-oriented.
 Pick one doodle per insight from: knot (tension/uncertainty), ladder (progress/lesson), sprout (growth/strength), steady-me (self-regulation), reach-someone (support/connection), see-my-growth (patterns), shape-my-future (future/stories).
 
-Output ONLY as JSON array of exactly 3 objects:
+Output ONLY valid JSON in this exact shape:
 ${NOTIVE_INSIGHT_SCHEMA}`;
 
         try {
@@ -719,25 +769,27 @@ ${NOTIVE_INSIGHT_SCHEMA}`;
                 model: aiRuntime.promptModel,
                 response_format: { type: 'json_object' },
                 messages: [{ role: 'system', content: 'You generate journal insights. Always respond with valid JSON only.' }, { role: 'user', content: prompt }],
-                max_tokens: 300,
+                max_tokens: 400,
                 temperature: 0.7,
             });
             const raw = result?.choices?.[0]?.message?.content || '';
-            const insights = parseNotiveInsights(raw);
-            if (!insights || insights.length === 0) return null;
+            const parsed = parseNotiveInsights(raw);
+            if (!parsed || parsed.insights.length === 0) return null;
 
-            // Persist insights back into analysis JSON (no schema change — analysis is Json?)
+            // Persist insights + micro-insight lines back into analysis JSON (no schema change — analysis is Json?)
             await prisma.entry.update({
                 where: { id: entryId },
                 data: {
                     analysis: {
                         ...(typeof entry.analysis === 'object' && entry.analysis !== null ? entry.analysis as object : {}),
-                        notiveInsights: insights,
+                        notiveInsights: parsed.insights,
+                        ...(parsed.analysisLine ? { analysisLine: parsed.analysisLine } : {}),
+                        ...(parsed.takeawayLine ? { takeawayLine: parsed.takeawayLine } : {}),
                     },
                 },
             });
 
-            return insights;
+            return parsed.insights;
         } catch (err) {
             console.error('generateNotiveInsights error:', err);
             return null;

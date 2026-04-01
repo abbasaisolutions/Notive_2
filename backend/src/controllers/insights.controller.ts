@@ -4,10 +4,6 @@
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
 import nlpService from '../services/nlp.service';
-import { healthInsightsService } from '../services/health-insights.service';
-import { healthSyncService } from '../services/health-sync.service';
-import { googleFitOAuthService } from '../services/googlefit-oauth.service';
-import { getHealthFeatureState } from '../services/health-feature.service';
 
 class InsightsController {
     constructor() {
@@ -117,12 +113,6 @@ class InsightsController {
             const userId = req.userId;
             const period = req.query.period as string || 'month';
             const periodDays = period === 'week' ? 7 : period === 'month' ? 30 : 365;
-            const healthState = await getHealthFeatureState();
-
-            // Check if user has Google Fit connected
-            const hasHealthData = healthState.available
-                ? await googleFitOAuthService.isConnected(userId)
-                : false;
 
             // Get base insights
             const now = new Date();
@@ -152,40 +142,14 @@ class InsightsController {
                 }))
             );
 
-            // Get health insights if available
-            let healthInsights = null;
-            let healthStats = null;
-
-            if (hasHealthData) {
-                try {
-                    healthInsights = await healthInsightsService.generateHealthMoodInsights(userId, periodDays);
-                    healthStats = await healthSyncService.getHealthStats(userId, periodDays);
-                } catch (error) {
-                    console.warn('Could not get health insights:', error);
-                }
-            }
-
-            // Build combined insights
+            // Build combined insights (no health data)
             const combinedInsights: string[] = [];
-            
+
             // Add mood trends
             if (nlpInsights.moodTrend === 'improving') {
                 combinedInsights.push('Your overall mood has been improving lately. Keep up whatever you\'re doing!');
             } else if (nlpInsights.moodTrend === 'declining') {
                 combinedInsights.push('Your mood has been trending down. Consider what factors might be contributing.');
-            }
-
-            // Add health correlations
-            if (healthInsights?.sleepMoodCorrelation) {
-                combinedInsights.push(healthInsights.sleepMoodCorrelation);
-            }
-            if (healthInsights?.activityMoodCorrelation) {
-                combinedInsights.push(healthInsights.activityMoodCorrelation);
-            }
-
-            // Add health-based recommendations
-            if (healthStats && healthStats.avgSleepHours !== null && healthStats.avgSleepHours < 6.5) {
-                combinedInsights.push('Your average sleep has been lower than recommended. Quality rest can significantly impact mood.');
             }
 
             return res.json({
@@ -194,20 +158,9 @@ class InsightsController {
                     entryCount: entries.length,
                     combinedInsights,
                 },
-                healthData: hasHealthData ? {
-                    connected: true,
-                    stats: healthStats,
-                    correlations: healthInsights ? {
-                        sleepMood: healthInsights.sleepMoodCorrelation,
-                        activityMood: healthInsights.activityMoodCorrelation,
-                    } : null,
-                    patterns: healthInsights?.patterns || [],
-                    recommendations: healthInsights?.recommendations || [],
-                } : {
+                healthData: {
                     connected: false,
-                    available: healthState.available,
-                    connectAvailable: healthState.connectAvailable,
-                    message: healthState.message || 'Connect Google Fit to see health-mood correlations',
+                    available: false,
                 },
                 period,
                 generatedAt: new Date().toISOString(),

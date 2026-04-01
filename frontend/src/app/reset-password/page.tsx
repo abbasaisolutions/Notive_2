@@ -106,13 +106,13 @@ function ResetPasswordPageContent() {
 
                         <div className="pr-12">
                             <NotiveLogo href="/" size="sm" />
-                            <p className="mt-6 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                            <p className="type-overline text-muted">
                                 Set new password
                             </p>
-                            <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-[rgb(39,35,31)] md:text-[3rem]">
+                            <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong md:text-[3rem]">
                                 One note today. One clearer tomorrow.
                             </h1>
-                            <p className="mt-4 max-w-xl text-sm leading-7 text-[rgb(76,70,62)] md:text-base">
+                            <p className="mt-4 max-w-xl text-sm leading-7 text-default md:text-base">
                                 Make a new password and step back into your notes with the same quiet notebook feeling.
                             </p>
                         </div>
@@ -120,11 +120,11 @@ function ResetPasswordPageContent() {
                         {!isSuccess ? (
                             <form onSubmit={handleSubmit} className="mt-8 space-y-6">
                                 <div className="app-paper-soft rounded-[1.4rem] p-4 text-center">
-                                    <span className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-[rgba(92,92,92,0.18)] bg-white/72 text-[rgb(58,58,58)]">
+                                    <span className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-[rgba(var(--paper-border),0.18)] bg-white/72 text-strong">
                                         <FiKey size={24} aria-hidden="true" />
                                     </span>
-                                    <h2 className="text-xl font-semibold text-[rgb(58,58,58)]">Choose a new password</h2>
-                                    <p className="mt-2 text-sm leading-7 text-[rgb(107,107,107)]">
+                                    <h2 className="text-xl font-semibold text-strong">Choose a new password</h2>
+                                    <p className="mt-2 text-sm leading-7 text-soft">
                                         Make a new password for your account.
                                     </p>
                                 </div>
@@ -133,8 +133,7 @@ function ResetPasswordPageContent() {
                                     <motion.div
                                         initial={{ opacity: 0, y: -10 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        className="rounded-xl px-4 py-3 text-sm"
-                                        style={{ background: 'rgba(229, 213, 194, 0.52)', border: '1px solid rgba(160, 139, 118, 0.24)', color: 'rgb(63 57 51)' }}
+                                        className="rounded-xl px-4 py-3 text-sm bg-[rgba(var(--paper-apricot),0.32)] border border-[rgba(var(--paper-border),0.14)] text-strong"
                                     >
                                         {error}
                                     </motion.div>
@@ -175,7 +174,7 @@ function ResetPasswordPageContent() {
                                 <SlideUp delay={0.4} className="text-center">
                                     <Link
                                         href="/login"
-                                        className="text-sm text-[rgb(93,85,75)] transition-colors hover:text-[rgb(63,57,51)]"
+                                        className="text-sm text-soft transition-colors hover:text-strong"
                                     >
                                         Return to sign in
                                     </Link>
@@ -188,11 +187,11 @@ function ResetPasswordPageContent() {
                                 className="mt-8 text-center"
                             >
                                 <div className="app-paper-soft rounded-[1.5rem] p-6">
-                                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(92,92,92,0.18)] bg-white/72 text-[rgb(58,58,58)]">
+                                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(var(--paper-border),0.18)] bg-white/72 text-strong">
                                         <FiCheckCircle size={34} aria-hidden="true" />
                                     </div>
-                                    <h2 className="mt-4 text-2xl font-semibold text-[rgb(58,58,58)]">Password changed</h2>
-                                    <p className="mt-2 text-sm leading-7 text-[rgb(107,107,107)]">
+                                    <h2 className="mt-4 text-2xl font-semibold text-strong">Password changed</h2>
+                                    <p className="mt-2 text-sm leading-7 text-soft">
                                         Your password was updated. Sending you to sign in...
                                     </p>
                                 </div>

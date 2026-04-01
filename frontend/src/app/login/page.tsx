@@ -150,13 +150,13 @@ export default function LoginPage() {
                                 </div>
                                 <div className="absolute inset-x-0 bottom-0 p-4">
                                     <div className="rounded-[1.4rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-4 backdrop-blur-sm">
-                                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                                        <p className="type-overline text-muted">
                                             Sign in
                                         </p>
-                                        <h2 className="mt-2 text-2xl font-semibold leading-[1.08] tracking-[-0.04em] text-[rgb(39,35,31)]">
+                                        <h2 className="mt-2 text-2xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong">
                                             Return to your notebook.
                                         </h2>
-                                        <p className="mt-2 text-sm leading-6 text-[rgb(76,70,62)]">
+                                        <p className="mt-2 text-sm leading-6 text-default">
                                             Pick up the calmer thread you already started.
                                         </p>
                                     </div>
@@ -185,13 +185,13 @@ export default function LoginPage() {
                             </div>
                             <div className="absolute inset-x-0 bottom-0 p-6">
                                 <div className="max-w-md rounded-[1.6rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-5 backdrop-blur-sm">
-                                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                                    <p className="type-overline text-muted">
                                         Return quietly
                                     </p>
-                                    <h2 className="mt-3 text-[2rem] font-semibold leading-[1.05] tracking-[-0.04em] text-[rgb(39,35,31)]">
+                                    <h2 className="mt-3 text-[2rem] font-semibold leading-[1.05] tracking-[-0.04em] text-strong">
                                         Sign in to your notebook.
                                     </h2>
-                                    <p className="mt-3 text-sm leading-7 text-[rgb(76,70,62)]">
+                                    <p className="mt-3 text-sm leading-7 text-default">
                                         Come back to the notes you kept, the patterns you noticed, and the next move that already feels more manageable.
                                     </p>
                                 </div>
@@ -212,13 +212,13 @@ export default function LoginPage() {
 
                         <div className="pr-12">
                             <NotiveLogo href="/" size="sm" />
-                            <p className="mt-6 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                            <p className="type-overline text-muted">
                                 Sign in
                             </p>
-                            <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-[rgb(39,35,31)] md:text-[3rem]">
+                            <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong md:text-[3rem]">
                                 One note today. One clearer tomorrow.
                             </h1>
-                            <p className="mt-4 max-w-xl text-sm leading-7 text-[rgb(76,70,62)] md:text-base">
+                            <p className="mt-4 max-w-xl text-sm leading-7 text-default md:text-base">
                                 Sign in to reopen your notes, revisit the patterns, and keep the next useful part of your story close.
                             </p>
                         </div>
@@ -232,8 +232,8 @@ export default function LoginPage() {
                         >
                             <div className="space-y-3">
                                 {TRUST_POINTS.map((point) => (
-                                    <div key={point} className="flex items-start gap-3 text-sm leading-6 text-[rgb(76,70,62)]">
-                                        <span className="mt-2 inline-block h-1.5 w-1.5 rounded-full bg-[rgb(122,112,98)]" />
+                                    <div key={point} className="flex items-start gap-3 text-sm leading-6 text-default">
+                                        <span className="mt-2 inline-block h-1.5 w-1.5 rounded-full bg-[rgb(var(--paper-ink-soft))]" />
                                         <span>{point}</span>
                                     </div>
                                 ))}
@@ -247,8 +247,7 @@ export default function LoginPage() {
                                     animate={{ opacity: 1, y: 0 }}
                                     role="status"
                                     aria-live="polite"
-                                    className="px-4 py-3 rounded-xl text-sm"
-                                    style={{ background: 'rgba(216, 226, 229, 0.52)', border: '1px solid rgba(137, 146, 151, 0.24)', color: 'rgb(63 57 51)' }}
+                                    className="px-4 py-3 rounded-xl text-sm bg-[rgba(var(--paper-sky),0.32)] border border-[rgba(var(--paper-border),0.14)] text-strong"
                                 >
                                     {notice}
                                 </motion.div>
@@ -259,8 +258,7 @@ export default function LoginPage() {
                                     animate={{ opacity: 1, y: 0 }}
                                     role="alert"
                                     aria-live="assertive"
-                                    className="px-4 py-3 rounded-xl text-sm"
-                                    style={{ background: 'rgba(229, 213, 194, 0.52)', border: '1px solid rgba(160, 139, 118, 0.24)', color: 'rgb(63 57 51)' }}
+                                    className="px-4 py-3 rounded-xl text-sm bg-[rgba(var(--paper-apricot),0.32)] border border-[rgba(var(--paper-border),0.14)] text-strong"
                                 >
                                     {error}
                                 </motion.div>
@@ -323,8 +321,7 @@ export default function LoginPage() {
                             </div>
                             <div className="relative flex justify-center text-xs uppercase tracking-[0.16em]">
                                 <span
-                                    className="px-4 text-xs font-semibold"
-                                    style={{ background: 'rgba(255,250,241,0.92)', color: 'rgb(126,117,103)' }}
+                                    className="px-4 text-xs font-semibold bg-[rgba(var(--bg-elevated),0.92)] text-muted"
                                 >
                                     Or continue with
                                 </span>
@@ -341,21 +338,20 @@ export default function LoginPage() {
                         </SlideUp>
 
                         <SlideUp delay={0.7}>
-                            <p className="text-center mt-6 text-sm" style={{ color: 'rgb(93 85 75)' }}>
+                            <p className="text-center mt-6 text-sm text-soft">
                                 Don&apos;t have an account?{' '}
                                 <Link
                                     href={registerHref}
-                                    className="font-semibold transition-colors hover:opacity-70"
-                                    style={{ color: 'rgb(39 35 31)' }}
+                                    className="font-semibold text-strong transition-colors hover:opacity-70"
                                 >
                                     Create one
                                 </Link>
                             </p>
-                            <p className="mt-3 text-center text-xs leading-6" style={{ color: 'rgb(126 117 103)' }}>
+                            <p className="mt-3 text-center text-xs leading-6 text-muted">
                                 By continuing, you agree to our{' '}
-                                <Link href="/terms" className="underline transition-colors hover:opacity-70" style={{ color: 'rgb(93 85 75)' }}>Terms</Link>
+                                <Link href="/terms" className="underline text-soft transition-colors hover:opacity-70">Terms</Link>
                                 {' '}and{' '}
-                                <Link href="/privacy" className="underline transition-colors hover:opacity-70" style={{ color: 'rgb(93 85 75)' }}>Privacy Policy</Link>.
+                                <Link href="/privacy" className="underline text-soft transition-colors hover:opacity-70">Privacy Policy</Link>.
                             </p>
                         </SlideUp>
                     </motion.div>
@@ -374,10 +370,10 @@ export default function LoginPage() {
                         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.42))]" />
                         <div className="absolute inset-x-0 bottom-0 p-5">
                             <div className="rounded-[1.35rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-4 backdrop-blur-sm">
-                                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                                <p className="type-overline text-muted">
                                     Keep growing
                                 </p>
-                                <p className="mt-2 text-sm leading-7 text-[rgb(76,70,62)]">
+                                <p className="mt-2 text-sm leading-7 text-default">
                                     Every honest note can come back later as self-advocacy, resilience, or one calmer next move.
                                 </p>
                             </div>

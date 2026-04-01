@@ -1,4 +1,5 @@
 import type { ProfileContextSummary } from './profile-context.service';
+import { MOOD_SCORES, MOOD_ALIAS_MAP, normalizeMood, getMoodScore } from '../utils/mood';
 
 export type AnalyticsPeriod = 'week' | 'month' | 'year';
 
@@ -156,44 +157,6 @@ const MOOD_COLORS: Record<string, string> = {
     neutral: '#6b7280',
 };
 
-const MOOD_SCORES: Record<string, number> = {
-    happy: 9,
-    sad: 2,
-    anxious: 3,
-    calm: 7,
-    frustrated: 2,
-    grateful: 9,
-    motivated: 8,
-    tired: 4,
-    thoughtful: 6,
-    neutral: 5,
-};
-
-const MOOD_ALIAS_MAP: Record<string, string> = {
-    angry: 'frustrated',
-    mad: 'frustrated',
-    furious: 'frustrated',
-    irritated: 'frustrated',
-    annoyed: 'frustrated',
-    upset: 'frustrated',
-    hopeful: 'motivated',
-    optimistic: 'motivated',
-    joy: 'happy',
-    joyful: 'happy',
-    happiness: 'happy',
-    sadness: 'sad',
-    lonely: 'sad',
-    loneliness: 'sad',
-    stress: 'anxious',
-    stressed: 'anxious',
-    worried: 'anxious',
-    nervous: 'anxious',
-    exhausted: 'tired',
-    fatigued: 'tired',
-    burnout: 'tired',
-    reflective: 'thoughtful',
-};
-
 const THEME_STOPWORDS = new Set([
     'and',
     'the',
@@ -211,19 +174,6 @@ const THEME_STOPWORDS = new Set([
     'entry',
     'journal',
 ]);
-
-const normalizeMood = (mood: string | null | undefined): string | null => {
-    if (!mood) return null;
-    const key = mood.trim().toLowerCase();
-    if (!key) return null;
-    return MOOD_ALIAS_MAP[key] || key;
-};
-
-const getMoodScore = (mood: string | null | undefined) => {
-    const normalized = normalizeMood(mood);
-    if (!normalized) return MOOD_SCORES.neutral;
-    return MOOD_SCORES[normalized] || MOOD_SCORES.neutral;
-};
 
 const getMoodColor = (mood: string | null | undefined) => {
     const normalized = normalizeMood(mood);

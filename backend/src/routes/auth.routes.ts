@@ -4,6 +4,7 @@ import { googleSignIn } from '../controllers/google.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { createRateLimiter } from '../middleware/rate-limit.middleware';
 import { securityConfig } from '../config/security';
+import { validate, registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '../utils/validation';
 
 const router = Router();
 const authAttemptLimiter = createRateLimiter({
@@ -20,13 +21,13 @@ const authRefreshLimiter = createRateLimiter({
 });
 
 // Public routes
-router.post('/register', authAttemptLimiter, register);
-router.post('/login', authAttemptLimiter, login);
+router.post('/register', authAttemptLimiter, validate(registerSchema), register);
+router.post('/login', authAttemptLimiter, validate(loginSchema), login);
 router.post('/sso/google/credential', authAttemptLimiter, googleSignIn);
 router.post('/refresh', authRefreshLimiter, refresh);
 router.post('/logout', authRefreshLimiter, logout);
-router.post('/forgot-password', authAttemptLimiter, forgotPassword);
-router.post('/reset-password', authAttemptLimiter, resetPassword);
+router.post('/forgot-password', authAttemptLimiter, validate(forgotPasswordSchema), forgotPassword);
+router.post('/reset-password', authAttemptLimiter, validate(resetPasswordSchema), resetPassword);
 
 // Protected routes
 router.get('/me', authMiddleware, getMe);
