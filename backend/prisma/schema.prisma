@@ -111,6 +111,11 @@ model User {
   
   // Push Notifications
   deviceTokens        DeviceToken[]
+
+  // Memory Sharing
+  sentBundles         SharedMemoryBundle[]   @relation("sentBundles")
+  receivedBundles     SharedMemoryRecipient[] @relation("receivedBundles")
+  inAppNotifications  InAppNotification[]
 }
 
 model RefreshToken {
@@ -128,7 +133,6 @@ model Entry {
   content     String   @db.Text
   contentHtml String?  @db.Text
   coverImage  String?
-  audioUrl    String?
   mood        String?
   tags        String[]
   analysis    Json?
@@ -140,6 +144,7 @@ model Entry {
   chapterId   String?
   chapter     Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
   shareLinks  ShareLink[]
+  sharedMemoryItems SharedMemoryItem[]
   entryTags   EntryTag[]
   analysisRecord EntryAnalysis?
   entryEmbeddings EntryEmbedding[]
@@ -327,7 +332,6 @@ model VoiceTranscriptionJob {
   id                 String                     @id @default(cuid())
   entryId            String?
   userId             String
-  audioUrl           String                     @db.Text
   fileName           String?                    @db.VarChar(255)
   mimeType           String                     @db.VarChar(80)
   languageMode       String                     @db.VarChar(32)
@@ -627,4 +631,81 @@ model DeviceToken {
   @@unique([userId, token])
   @@index([userId, platform, isActive])
   @@index([userId, lastUsedAt])
+}
+
+// ── Memory Sharing ──────────────────────────────────────
+
+enum SharedBundleStatus {
+  ACTIVE
+  REVOKED
+}
+
+model SharedMemoryBundle {
+  id        String              @id @default(cuid())
+  senderId  String
+  sender    User                @relation("sentBundles", fields: [senderId], references: [id], onDelete: Cascade)
+  message   String?             @db.Text
+  status    SharedBundleStatus  @default(ACTIVE)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  items      SharedMemoryItem[]
+  recipients SharedMemoryRecipient[]
+
+  @@index([senderId, createdAt])
+}
+
+model SharedMemoryItem {
+  id        String   @id @default(cuid())
+  bundleId  String
+  bundle    SharedMemoryBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  entryId   String
+  entry     Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  // Snapshot: frozen copy of the entry at share-time
+  snapshotTitle     String?
+  snapshotContent   String   @db.Text
+  snapshotMood      String?
+  snapshotTags      String[]
+  snapshotCoverImage String?
+  snapshotCreatedAt DateTime
+
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([bundleId, entryId])
+  @@index([bundleId, sortOrder])
+  @@index([entryId])
+}
+
+model SharedMemoryRecipient {
+  id          String    @id @default(cuid())
+  bundleId    String
+  bundle      SharedMemoryBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User      @relation("receivedBundles", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  readAt      DateTime?
+  reaction    String?   @db.VarChar(32)
+  createdAt   DateTime  @default(now())
+
+  @@unique([bundleId, recipientId])
+  @@index([recipientId, createdAt])
+}
+
+// ── In-App Notifications ────────────────────────────────
+
+model InAppNotification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    @db.VarChar(64)
+  title     String
+  body      String?   @db.Text
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@index([userId, type, createdAt])
 }

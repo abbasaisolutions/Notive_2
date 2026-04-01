@@ -124,10 +124,10 @@ export default function CompleteProfilePage() {
                                 Finish profile
                             </p>
                             <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-[rgb(39,35,31)] md:text-[3rem]">
-                                Add your date of birth to keep Notive personal and grounded.
+                                Share your date of birth so we can personalize your experience.
                             </h1>
                             <p className="mt-4 max-w-xl text-sm leading-7 text-[rgb(76,70,62)] md:text-base">
-                                We keep this private. It helps with age-aware guidance and seasonal context like school stage, timing, and reflection cues.
+                                Your date of birth stays between us. We'll tailor guidance with your school stage, seasonal timing, and reflection cues in mind.
                             </p>
                         </div>
 

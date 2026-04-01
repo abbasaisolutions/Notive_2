@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import voiceLexiconService from '../services/voice-lexicon.service';
 import voiceTranscriptionJobService from '../services/voice-transcription-job.service';
 import voiceTranscriptionService, { type VoiceLanguageMode } from '../services/voice-transcription.service';
-import { LocalFileService } from '../services/file.service';
 
 const ALLOWED_MIME_TYPES = new Set(['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/wav']);
 const MAX_SYNC_AUDIO_BYTES = 15 * 1024 * 1024;
@@ -88,15 +87,6 @@ const normalizeCaptureMeta = (value: unknown): Record<string, unknown> | null =>
     }
 
     return null;
-};
-
-const resolveUploadedAudioUrl = (req: Request, uploaded: Express.MulterFileWithLocation) => {
-    const location = uploaded.location || uploaded.path;
-    if (location && location.startsWith('http')) {
-        return location;
-    }
-
-    return LocalFileService.getFileUrl(req, uploaded.filename || uploaded.originalname);
 };
 
 export const transcribeVoice = async (req: Request, res: Response) => {
@@ -198,7 +188,7 @@ export const createVoiceTranscriptionJob = async (req: Request, res: Response) =
         const job = await voiceTranscriptionJobService.createJob({
             userId: req.userId,
             entryId: normalizeOptionalText(req.body?.entryId, 64),
-            audioUrl: resolveUploadedAudioUrl(req, uploaded),
+            audioBuffer: uploaded.buffer,
             fileName: uploaded.originalname || uploaded.filename || 'voice-note.webm',
             mimeType: uploaded.mimetype,
             languageMode: normalizeLanguageMode(req.body?.languageMode),

@@ -748,7 +748,7 @@ export default function DashboardPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen pb-32 md:pb-20">
+            <div className="min-h-screen pb-6 md:pb-20">
                 <main className="mx-auto w-full max-w-4xl px-4 py-6 md:px-6 md:py-10 lg:ml-0 lg:mr-auto">
                     <DashboardNoticeCard
                         eyebrow="Loading"

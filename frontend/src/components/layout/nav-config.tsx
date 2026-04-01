@@ -251,6 +251,7 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
             secondaryAction: { label: 'Open Memories', shortLabel: 'Memories', href: '/timeline' },
             visibleInfo: ['Note text', 'Feeling', 'Related notes'],
             journeyStage: 'capture',
+            headerMode: 'none',
         },
     },
     {

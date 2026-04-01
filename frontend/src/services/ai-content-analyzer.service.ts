@@ -115,23 +115,24 @@ class AIContentAnalyzerService {
         const tags = new Set<string>();
         const lowerContent = content.toLowerCase();
 
-        // Topic patterns
-        const topicPatterns = {
-            work: /\b(work|job|office|meeting|project|deadline|colleague|boss|client|presentation|conference)\b/gi,
-            family: /\b(family|mom|dad|mother|father|sister|brother|parents|kids|children|son|daughter|grandma|grandpa)\b/gi,
-            friends: /\b(friend|friends|buddy|pal|bestie|hang out|catch up)\b/gi,
-            health: /\b(health|exercise|workout|gym|run|running|yoga|meditation|diet|fitness|doctor|hospital)\b/gi,
-            travel: /\b(travel|trip|vacation|journey|flight|hotel|airport|destination|explore|adventure)\b/gi,
-            food: /\b(food|meal|dinner|lunch|breakfast|restaurant|cooking|recipe|eat|ate|delicious)\b/gi,
-            hobby: /\b(hobby|hobbies|reading|music|art|photography|painting|drawing|gaming|gardening)\b/gi,
-            learning: /\b(learn|learning|study|studying|course|class|book|reading|education|school|university)\b/gi,
-            relationship: /\b(relationship|dating|love|partner|boyfriend|girlfriend|spouse|marriage|anniversary)\b/gi,
-            career: /\b(career|promotion|interview|resume|job search|networking|professional)\b/gi,
-            finance: /\b(money|budget|savings|investment|expense|financial|bank|purchase|bought)\b/gi,
-            creativity: /\b(creative|creativity|write|writing|create|creating|design|idea|inspiration)\b/gi,
-            nature: /\b(nature|outdoors|hiking|camping|beach|mountain|forest|park|garden)\b/gi,
-            technology: /\b(tech|technology|computer|software|app|coding|programming|digital)\b/gi,
-            mindfulness: /\b(mindful|mindfulness|meditation|reflection|gratitude|peaceful|calm)\b/gi,
+        // Topic patterns — specific to student life situations
+        const topicPatterns: Record<string, RegExp> = {
+            'exam-pressure': /\b(exam|test|quiz|grade|assignment|homework|study|studying|finals|midterm|deadline)\b/gi,
+            'burnout': /\b(exhausted|drained|burnt out|burnout|overwhelmed|can'?t keep up|running on empty)\b/gi,
+            'self-doubt': /\b(doubt myself|not good enough|imposter|insecure|inadequate|unsure of myself|don'?t belong)\b/gi,
+            'procrastination': /\b(procrastinat|putting off|keep delaying|can'?t start|wasted time|distracted)\b/gi,
+            'friend-conflict': /\b(fight with|argument with|falling out|conflict with|friend.*upset|upset.*friend|lost a friend)\b/gi,
+            'parental-pressure': /\b(parents expect|mom.*disappointed|dad.*disappointed|family.*pressure|pressure from home|they want me to)\b/gi,
+            'late-night-grind': /\b(stayed up|up late|all night|midnight|2am|3am|couldn'?t sleep)\b/gi,
+            'rejection': /\b(rejected|rejection|didn'?t get in|turned down|didn'?t make it|not selected)\b/gi,
+            'breakthrough': /\b(finally got|it clicked|breakthrough|figured out|moment of clarity|realized i can)\b/gi,
+            'boundary-set': /\b(said no|set a boundary|stood up for|spoke up|didn'?t let them)\b/gi,
+            'gratitude': /\b(grateful|thankful|appreciate|blessed|lucky to have|means a lot)\b/gi,
+            'goal-setting': /\b(goal|plan for|working toward|aim to|by next month|want to achieve|commit to)\b/gi,
+            'job-hunt': /\b(internship|application|interview|resume|cv|applied for|job search|hiring|career fair)\b/gi,
+            'creative-work': /\b(art|design|writing|music|painting|sketch|compose|poem|creative project)\b/gi,
+            'health-habits': /\b(workout|gym|exercise|run|yoga|sleep schedule|eating better|mental health routine)\b/gi,
+            'homesick': /\b(miss home|homesick|miss my family|far from home|wish i was home)\b/gi,
         };
 
         // Check each pattern
@@ -141,15 +142,29 @@ class AIContentAnalyzerService {
             }
         }
 
-        // Extract hashtags if present
+        // Extract hashtags if present — filter out stopwords and short/generic tokens
+        const TAG_STOPWORDS = new Set([
+            'a','an','the','to','of','in','on','for','with','at','from','by','as','is','it',
+            'this','that','i','you','he','she','we','they','my','your','our','their','me',
+            'him','her','us','them','be','been','was','were','am','are','or','but','so',
+            'im','ive','id','ill','its','dont','didnt','wont','cant','not','no','yes',
+            'has','had','have','do','does','did','will','would','could','should','get','got',
+            'one','two','three','also','about','like','want','know','think','make','some',
+            'what','when','where','how','which','who','why','here','there','now','more',
+            'happy','sad','good','bad','okay','yeah','just','very','really','still',
+            'features','node','nodeo','things','thing','work','day','time','today',
+        ]);
         const hashtagMatches = content.match(/#(\w+)/g);
         if (hashtagMatches) {
-            hashtagMatches.forEach(tag => {
-                tags.add(tag.substring(1).toLowerCase());
+            hashtagMatches.forEach(ht => {
+                const tag = ht.substring(1).toLowerCase();
+                if (tag.length >= 4 && !TAG_STOPWORDS.has(tag)) {
+                    tags.add(tag);
+                }
             });
         }
 
-        return Array.from(tags).slice(0, 5); // Limit to 5 tags
+        return Array.from(tags).slice(0, 3); // Limit to 3 key tags
     }
 
     /**

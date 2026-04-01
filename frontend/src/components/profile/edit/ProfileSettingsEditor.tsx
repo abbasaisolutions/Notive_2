@@ -213,7 +213,7 @@ export function ProfileSettingsEditor() {
             ? 'Shape prompts, goals, and starter guidance without opening the rest of settings.'
             : activeTab === 'security'
                 ? 'Handle sign-in, password, and account protection in one guarded place.'
-                : 'Manage signals, exports, support anchors, and what Notive stores.';
+                : 'Manage what signals we track, how we export your data, and support settings.';
     const dirtyByTab: Record<EditableTab, boolean> = {
         profile: profileDirty,
         preferences: preferencesDirty,
@@ -244,19 +244,19 @@ export function ProfileSettingsEditor() {
                 id: 'goal',
                 label: 'Set a primary goal',
                 done: Boolean(preferencesDraft.primaryGoal),
-                hint: 'This helps Notive focus on the kind of help you want most.',
+                hint: 'This helps us focus on the kind of support you want most.',
             },
             {
                 id: 'focus',
                 label: 'Choose a focus area',
                 done: Boolean(preferencesDraft.focusArea),
-                hint: 'This tells Notive to focus on life, school, work, or both.',
+                hint: 'This tells us to focus on life, school, work, or both.',
             },
             {
                 id: 'experience',
                 label: 'Select an experience level',
                 done: Boolean(preferencesDraft.experienceLevel),
-                hint: 'This helps Notive meet you where you are.',
+                hint: 'This helps us meet you where you are.',
             },
             {
                 id: 'writing',

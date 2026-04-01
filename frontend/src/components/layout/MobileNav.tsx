@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '@/context/auth-context';
 import { useGamification } from '@/context/gamification-context';
 import { useTheme } from '@/context/theme-context';
+import { useNotificationCount } from '@/hooks/use-notification-count';
 import { FiMoreHorizontal } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
@@ -26,11 +27,11 @@ export default function MobileNav() {
     const { user, logout } = useAuth();
     const { stats } = useGamification();
     const { theme } = useTheme();
+    const { unreadCount: sharedUnread } = useNotificationCount();
     const navRef = useRef<HTMLElement | null>(null);
     const [isMoreOpen, setIsMoreOpen] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const [isCaptureOpen, setIsCaptureOpen] = useState(false);
-    const [capturePhase, setCapturePhase] = useState(0); // 0=pen, 1=mic
+    const [capturePhase, setCapturePhase] = useState(0); // 0=plus, 1=mic, 2=plus, 3=pen
     const isPaper = theme === 'paper';
     const workspaceMaturity = getWorkspaceMaturity({
         role: user?.role ?? null,
@@ -59,32 +60,19 @@ export default function MobileNav() {
 
     useEffect(() => {
         setIsMoreOpen(false);
-        setIsCaptureOpen(false);
     }, [pathname]);
 
-    // Alternate pen/mic on the capture button when not open
+    // Alternate icon on the capture FAB: + → mic → + → pen
     useEffect(() => {
-        if (isCaptureOpen) return;
-        const interval = setInterval(() => setCapturePhase(p => (p + 1) % 2), 2800);
+        const interval = setInterval(() => setCapturePhase(p => (p + 1) % 4), 1600);
         return () => clearInterval(interval);
-    }, [isCaptureOpen]);
+    }, []);
 
+    // Prefetch entry route so navigation is near-instant
     useEffect(() => {
-        if (!isCaptureOpen) return;
-        const handleOutside = (e: MouseEvent | TouchEvent) => {
-            const target = e.target as Node;
-            if (navRef.current && !navRef.current.contains(target)) {
-                setIsCaptureOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleOutside);
-        document.addEventListener('touchstart', handleOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleOutside);
-            document.removeEventListener('touchstart', handleOutside);
-        };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isCaptureOpen]);
+        router.prefetch(writeEntryHref);
+        router.prefetch(voiceEntryHref);
+    }, [router, writeEntryHref, voiceEntryHref]);
 
     useEffect(() => {
         if (!isMoreOpen) return;
@@ -180,7 +168,12 @@ export default function MobileNav() {
 
     const handleCaptureTap = () => {
         setIsMoreOpen(false);
-        setIsCaptureOpen((current) => !current);
+        // Mic phase → voice mode; all other phases → text mode
+        if (capturePhase === 1) {
+            router.push(voiceEntryHref);
+        } else {
+            router.push(writeEntryHref);
+        }
     };
 
     if (shouldHideGlobalNav(pathname)) {
@@ -275,86 +268,11 @@ export default function MobileNav() {
                         if (item.isMain) {
                             return (
                                 <div key={item.href} className="relative z-10 mx-1.5 flex flex-col items-center">
-                                    {/* Floating choice panel — slides up from above the button */}
-                                    <AnimatePresence>
-                                        {isCaptureOpen && (
-                                            <motion.div
-                                                initial={{ opacity: 0, y: 12, scale: 0.92, rotateX: -16 }}
-                                                animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
-                                                exit={{ opacity: 0, y: 12, scale: 0.92, rotateX: -12 }}
-                                                transition={{ duration: 0.28, ease: 'easeOut' }}
-                                                className="absolute bottom-full mb-3 w-[16.25rem] origin-bottom"
-                                                style={{ transformPerspective: 1200 }}
-                                            >
-                                                <div className="app-paper relative overflow-hidden rounded-[1.5rem] px-3 pb-3 pt-2.5 shadow-[0_10px_28px_rgba(138,154,111,0.22)]">
-                                                    <div
-                                                        className="pointer-events-none absolute inset-0 opacity-50"
-                                                        style={{
-                                                            backgroundImage: 'repeating-linear-gradient(180deg, transparent 0px, transparent 25px, rgba(92,92,92,0.08) 25px, rgba(92,92,92,0.08) 26px)',
-                                                        }}
-                                                    />
-                                                    <div className="pointer-events-none absolute right-0 top-0 h-8 w-8 border-l border-b border-[rgba(92,92,92,0.12)] bg-[linear-gradient(135deg,rgba(255,255,255,0.92)_0%,rgba(244,239,229,0.88)_100%)]" style={{ clipPath: 'polygon(100% 0, 0 0, 100% 100%)' }} />
-
-                                                    <div className="relative">
-                                                        <div className="flex items-center justify-between gap-3 border-b border-[rgba(92,92,92,0.14)] pb-2">
-                                                            <div>
-                                                                <p className="type-overline text-[rgb(107,107,107)]">Quick capture</p>
-                                                                <p className="mt-0.5 text-[0.72rem] text-[rgb(107,107,107)]">
-                                                                    Open one small page.
-                                                                </p>
-                                                            </div>
-                                                            <NotebookDoodle name="sprout" accent="sage" size={18} className="opacity-80" />
-                                                        </div>
-
-                                                        <div className="mt-3 grid grid-cols-2 gap-2.5">
-                                                            <Link
-                                                                href={writeEntryHref}
-                                                                onClick={() => setIsCaptureOpen(false)}
-                                                                aria-label="Write entry"
-                                                                className="group rounded-[1.1rem] border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.58)] px-3 py-3 text-left text-[rgb(var(--paper-ink))] transition-all hover:-translate-y-0.5 hover:bg-white/70"
-                                                            >
-                                                                <div className="flex items-center gap-2">
-                                                                    <NotebookDoodle name="pen" accent="sage" size={20} />
-                                                                    <span className="type-label-md font-semibold">Write</span>
-                                                                </div>
-                                                                <p className="mt-2 text-[0.68rem] leading-4 text-[rgb(107,107,107)]">
-                                                                    Drop what happened while it still feels true.
-                                                                </p>
-                                                            </Link>
-
-                                                            <Link
-                                                                href={voiceEntryHref}
-                                                                onClick={() => setIsCaptureOpen(false)}
-                                                                aria-label="Voice entry"
-                                                                className="group rounded-[1.1rem] border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.58)] px-3 py-3 text-left text-[rgb(var(--paper-ink))] transition-all hover:-translate-y-0.5 hover:bg-white/70"
-                                                            >
-                                                                <div className="flex items-center gap-2">
-                                                                    <NotebookDoodle name="mic" accent="sage" size={20} />
-                                                                    <span className="type-label-md font-semibold">Voice</span>
-                                                                </div>
-                                                                <p className="mt-2 text-[0.68rem] leading-4 text-[rgb(107,107,107)]">
-                                                                    Say the messy version first and sort it after.
-                                                                </p>
-                                                            </Link>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="pointer-events-none absolute left-1/2 top-full flex -translate-x-1/2 flex-col items-center">
-                                                    <div className="h-3 w-px bg-[rgba(92,92,92,0.22)]" />
-                                                    <div className="mt-0.5 h-2.5 w-8 rounded-b-full border border-t-0 border-[rgba(92,92,92,0.16)] bg-[rgba(248,244,237,0.92)]" />
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-
                                     <motion.button
                                         type="button"
                                         onClick={handleCaptureTap}
                                         whileTap={{ scale: 0.92 }}
-                                        aria-label={isCaptureOpen ? 'Close capture menu' : 'Quick Capture'}
-                                        aria-expanded={isCaptureOpen}
-                                        aria-haspopup="menu"
+                                        aria-label="Quick Capture"
                                         className="capture-fab relative flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-[1.7rem]"
                                     >
                                         {/* Multi-layer background for depth */}
@@ -370,48 +288,46 @@ export default function MobileNav() {
                                             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                                         />
 
-                                        <motion.div
-                                            animate={{ rotate: isCaptureOpen ? 90 : 0 }}
-                                            transition={{ duration: 0.28, ease: 'easeOut' }}
-                                            className="relative z-10 flex h-8 w-8 items-center justify-center"
-                                        >
-                                            {isCaptureOpen ? (
-                                                <div className="flex items-center gap-2">
-                                                    <NotebookDoodle name="pen" accent="sage" size={18} color="#FFFFFF" />
-                                                    <div className="h-5 w-px bg-white/50" style={{ transform: 'rotate(12deg)' }} />
-                                                    <NotebookDoodle name="mic" accent="sage" size={18} color="#FFFFFF" />
-                                                </div>
-                                            ) : (
-                                                <div className="relative flex items-center justify-center w-8 h-8">
-                                                    {/* Pen icon */}
+                                        <div className="relative z-10 flex h-8 w-8 items-center justify-center">
+                                            <AnimatePresence mode="wait">
+                                                {(capturePhase === 0 || capturePhase === 2) ? (
                                                     <motion.div
+                                                        key="plus"
+                                                        initial={{ opacity: 0, scale: 0.6 }}
+                                                        animate={{ opacity: 1, scale: 1 }}
+                                                        exit={{ opacity: 0, scale: 0.6 }}
+                                                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
                                                         className="absolute inset-0 flex items-center justify-center drop-shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
-                                                        initial={false}
-                                                        animate={{
-                                                            opacity: capturePhase === 0 ? 1 : 0,
-                                                            scale: capturePhase === 0 ? 1 : 0.4,
-                                                            rotate: capturePhase === 0 ? 0 : -30,
-                                                        }}
-                                                        transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
                                                     >
-                                                        <NotebookDoodle name="pen" accent="sage" size={26} color="#FFFFFF" />
+                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" color="#FFFFFF" className="drop-shadow-sm">
+                                                            <path d="M12 5v14M5 12h14" />
+                                                        </svg>
                                                     </motion.div>
-                                                    {/* Mic icon */}
+                                                ) : capturePhase === 1 ? (
                                                     <motion.div
+                                                        key="mic"
+                                                        initial={{ opacity: 0, scale: 0.6 }}
+                                                        animate={{ opacity: 1, scale: 1 }}
+                                                        exit={{ opacity: 0, scale: 0.6 }}
+                                                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
                                                         className="absolute inset-0 flex items-center justify-center drop-shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
-                                                        initial={false}
-                                                        animate={{
-                                                            opacity: capturePhase === 1 ? 1 : 0,
-                                                            scale: capturePhase === 1 ? 1 : 0.4,
-                                                            rotate: capturePhase === 1 ? 0 : 30,
-                                                        }}
-                                                        transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
                                                     >
-                                                        <NotebookDoodle name="mic" accent="sage" size={26} color="#FFFFFF" />
+                                                        <NotebookDoodle name="mic" accent="sage" size={22} color="#FFFFFF" />
                                                     </motion.div>
-                                                </div>
-                                            )}
-                                        </motion.div>
+                                                ) : (
+                                                    <motion.div
+                                                        key="pen"
+                                                        initial={{ opacity: 0, scale: 0.6 }}
+                                                        animate={{ opacity: 1, scale: 1 }}
+                                                        exit={{ opacity: 0, scale: 0.6 }}
+                                                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                                                        className="absolute inset-0 flex items-center justify-center drop-shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+                                                    >
+                                                        <NotebookDoodle name="pen" accent="sage" size={22} color="#FFFFFF" />
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
                                     </motion.button>
                                 </div>
                             );
@@ -424,11 +340,14 @@ export default function MobileNav() {
                                 aria-current={isActive ? 'page' : undefined}
                                 className={`relative z-10 flex min-h-[44px] flex-1 flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all ${isActive ? 'text-accent' : 'text-muted hover:text-strong'}`}
                             >
-                                <div className={`${isActive ? 'opacity-100 scale-110' : 'opacity-70'} transition-transform duration-200`}>
+                                <div className={`relative ${isActive ? 'opacity-100 scale-110' : 'opacity-70'} transition-transform duration-200`}>
                                     {React.cloneElement(item.icon as React.ReactElement, {
                                         size: 22,
                                         strokeWidth: isActive ? 2.5 : 2
                                     })}
+                                    {item.href === '/timeline' && sharedUnread > 0 && (
+                                        <span className="absolute -top-1 -right-1.5 h-2 w-2 rounded-full bg-[rgb(107,143,113)]" />
+                                    )}
                                 </div>
                                 <span className={`type-micro mt-0.5 ${isActive ? 'text-strong opacity-100' : 'opacity-75'}`}>
                                     {item.shortLabel || item.label}

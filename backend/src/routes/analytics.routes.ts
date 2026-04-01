@@ -11,6 +11,8 @@ import {
     getPromptLearningProfile,
     getStats,
     getSummary,
+    getTagMoodPatterns,
+    getTagThemes,
     getTimelineSummary,
     postTelemetryEvent,
 } from '../controllers/analytics.controller';
@@ -34,6 +36,8 @@ router.get('/prompt-learning/evaluation', getPromptLearningEvaluation);
 router.get('/prompt-learning/performance', getPromptLearningPolicyPerformance);
 router.post('/events', postTelemetryEvent);
 router.get('/dashboard-insights', getDashboardInsights);
+router.get('/tag-themes', getTagThemes);
+router.get('/tag-mood-patterns', getTagMoodPatterns);
 
 // Journal intelligence (deterministic KPIs)
 router.get('/journal-intelligence', getJournalIntelligence);

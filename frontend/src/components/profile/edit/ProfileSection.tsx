@@ -55,6 +55,7 @@ export function ProfileSection({
                             value={draft.website}
                             onChange={(value) => onChange((current) => ({ ...current, website: value }))}
                             placeholder="https://..."
+                            helper="Helps us understand what matters to you."
                         />
                         <TextField
                             label="Location"
@@ -67,13 +68,14 @@ export function ProfileSection({
                             value={draft.occupation}
                             onChange={(value) => onChange((current) => ({ ...current, occupation: value }))}
                             placeholder="Student, designer, engineer..."
+                            helper="Helps us tailor guidance for your school, work, or life focus."
                         />
                         <TextField
                             label="Date of birth"
                             type="date"
                             value={draft.birthDate}
                             onChange={(value) => onChange((current) => ({ ...current, birthDate: value }))}
-                            helper="Used privately for age-aware and seasonal personalization."
+                            helper="Stays between us — we'll use it for age-aware and seasonal personalization."
                         />
                         <div className="md:col-span-2">
                             <TextAreaField
@@ -81,7 +83,7 @@ export function ProfileSection({
                                 value={draft.bio}
                                 onChange={(value) => onChange((current) => ({ ...current, bio: value }))}
                                 placeholder="Write a short note about you, your goals, or your story."
-                                helper="Use this to help people understand you."
+                                helper="Used only to personalize your experience."
                                 minHeight={140}
                             />
                         </div>
@@ -91,7 +93,7 @@ export function ProfileSection({
                                 values={draft.lifeGoals}
                                 draft={lifeGoalsDraft}
                                 placeholder="Add a long-term goal and press Enter"
-                                helper="These goals help Notive understand what matters to you."
+                                helper="This helps us understand what drives your growth."
                                 onDraftChange={onLifeGoalsDraftChange}
                                 onAdd={onAddLifeGoal}
                                 onRemove={onRemoveLifeGoal}

@@ -13,7 +13,6 @@ import {
     transcribeVoice,
     upsertVoiceLexiconItem,
 } from '../controllers/voice.controller';
-import { createUpload } from '../services/file.service';
 
 const router = Router();
 
@@ -32,7 +31,12 @@ const legacyVoiceUpload = multer({
     },
 });
 
-const voiceJobUpload = createUpload(50 * 1024 * 1024);
+const voiceJobUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 50 * 1024 * 1024,
+    },
+});
 
 router.use(authMiddleware);
 

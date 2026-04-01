@@ -640,10 +640,10 @@ export const getPerformanceOverview = async (req: Request, res: Response) => {
                     reflection: { not: null },
                 },
             }),
-            prisma.entry.count({
+            prisma.voiceTranscriptionJob.count({
                 where: {
-                    deletedAt: null,
-                    audioUrl: { not: null },
+                    status: 'COMPLETED',
+                    entryId: { not: null },
                 },
             }),
             prisma.voiceTranscriptionJob.groupBy({

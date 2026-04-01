@@ -6,9 +6,11 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import ConstellationView from '@/components/timeline/ConstellationView';
 import TimelineView from '@/components/timeline/TimelineView';
+import ShareMemorySheet from '@/components/share/ShareMemorySheet';
+import type { ShareableEntry } from '@/components/share/ShareMemorySheet';
 import type { NotiveInsight } from '@/components/timeline/NotiveNoticedPanel';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
-import { ActionBar, TagPill } from '@/components/ui/surface';
+import { TagPill } from '@/components/ui/surface';
 import { ErrorState, EmptyState, Spinner } from '@/components/ui';
 import useApi from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
@@ -48,6 +50,10 @@ interface Entry {
     lessons?: string[];
     reflection?: string | null;
     notiveInsights?: NotiveInsight[] | null;
+    topEmotions?: { emotion: string; intensity: number }[];
+    depthLevel?: 0 | 1 | 2 | 3 | 4;
+    depthLabel?: string;
+    growthRatio?: number | null;
 }
 
 const formatTimelineDate = (value: string) => new Date(value).toLocaleDateString(undefined, {
@@ -57,8 +63,19 @@ const formatTimelineDate = (value: string) => new Date(value).toLocaleDateString
 });
 
 type SourceFilter = 'all' | 'notive' | 'instagram' | 'facebook';
-type TimelineSurface = 'timeline' | 'constellation';
+type TimelineSurface = 'timeline' | 'constellation' | 'shared';
 type QuickJumpMode = 'recent' | 'chapters' | 'dates';
+
+type SharedBundle = {
+    bundleId: string;
+    sender: { id: string; name: string | null; avatarUrl: string | null };
+    message: string | null;
+    itemCount: number;
+    firstItem: { title: string | null; contentPreview: string; mood: string | null } | null;
+    readAt: string | null;
+    reaction: string | null;
+    sharedAt: string;
+};
 type TimelineFilterState = {
     query: string;
     sourceFilter: SourceFilter;
@@ -158,7 +175,7 @@ const normalizeDayPartFilter = (value: string | null): string => {
 };
 
 const normalizeTimelineSurface = (value: string | null): TimelineSurface =>
-    value === 'constellation' ? 'constellation' : 'timeline';
+    value === 'constellation' ? 'constellation' : value === 'shared' ? 'shared' : 'timeline';
 
 const canUseLocalStorage = () => typeof window !== 'undefined' && !!window.localStorage;
 
@@ -319,6 +336,117 @@ function StoryArcMomentCard({
     );
 }
 
+/* ─── Shared With Me list (inline) ─────────────────────── */
+
+const MOOD_COLORS_SHARED: Record<string, string> = {
+    happy: '#F59E0B', excited: '#EF4444', calm: '#6B8F71',
+    thoughtful: '#6366F1', tired: '#94A3B8', sad: '#3B82F6',
+    anxious: '#F97316', frustrated: '#DC2626', grateful: '#10B981',
+    motivated: '#8B5CF6',
+};
+
+function SharedWithMeList({ bundles, loading, onRefresh }: {
+    bundles: SharedBundle[];
+    loading: boolean;
+    onRefresh: () => void;
+}) {
+    const router = useRouter();
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-16">
+                <Spinner size="md" />
+            </div>
+        );
+    }
+
+    if (bundles.length === 0) {
+        return (
+            <EmptyState
+                doodle="steady-me"
+                doodleAccent="sage"
+                title="Nothing shared yet"
+                subtitle="When someone shares their memories with you, they will appear here."
+            />
+        );
+    }
+
+    return (
+        <div className="space-y-3 py-4">
+            {bundles.map((b) => {
+                const senderName = b.sender.name || 'Someone';
+                const initial = senderName.charAt(0).toUpperCase();
+                const isUnread = !b.readAt;
+                const relTime = formatSharedRelTime(b.sharedAt);
+
+                return (
+                    <motion.button
+                        key={b.bundleId}
+                        type="button"
+                        onClick={() => router.push(`/shared/view?id=${b.bundleId}`)}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`block w-full rounded-2xl border p-4 text-left transition-colors ${
+                            isUnread
+                                ? 'border-[rgba(107,143,113,0.25)] bg-[rgba(107,143,113,0.04)]'
+                                : 'border-[rgba(92,92,92,0.12)] bg-white/60 hover:bg-white/80'
+                        }`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-sm font-bold text-[rgb(107,143,113)]">
+                                {initial}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                    {isUnread && <span className="h-2 w-2 shrink-0 rounded-full bg-[rgb(107,143,113)]" />}
+                                    <span className="truncate text-[0.82rem] font-semibold text-[rgb(var(--paper-ink))]">
+                                        {senderName}
+                                    </span>
+                                    <span className="ml-auto shrink-0 text-[0.65rem] text-[rgb(130,130,130)]">{relTime}</span>
+                                </div>
+                                <p className="mt-0.5 text-[0.75rem] text-[rgb(130,130,130)]">
+                                    {b.itemCount} {b.itemCount === 1 ? 'memory' : 'memories'} shared
+                                </p>
+                            </div>
+                        </div>
+                        {b.firstItem && (
+                            <div className="mt-2 rounded-xl border border-[rgba(92,92,92,0.08)] bg-[rgba(248,244,237,0.5)] px-3 py-2">
+                                <div className="flex items-center gap-1.5">
+                                    {b.firstItem.mood && (
+                                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: MOOD_COLORS_SHARED[b.firstItem.mood] || '#94A3B8' }} />
+                                    )}
+                                    <span className="truncate text-[0.72rem] font-medium text-[rgb(var(--paper-ink))]">
+                                        {b.firstItem.title || 'Untitled'}
+                                    </span>
+                                </div>
+                                <p className="mt-0.5 line-clamp-1 text-[0.68rem] text-[rgb(150,150,150)]">{b.firstItem.contentPreview}</p>
+                                {b.itemCount > 1 && (
+                                    <p className="mt-1 text-[0.65rem] font-medium text-[rgb(107,143,113)]">+{b.itemCount - 1} more</p>
+                                )}
+                            </div>
+                        )}
+                        {b.message && (
+                            <p className="mt-2 line-clamp-2 text-[0.72rem] italic text-[rgb(130,130,130)]">&ldquo;{b.message}&rdquo;</p>
+                        )}
+                    </motion.button>
+                );
+            })}
+        </div>
+    );
+}
+
+function formatSharedRelTime(dateString: string): string {
+    const diff = Date.now() - new Date(dateString).getTime();
+    const minutes = Math.floor(diff / 60_000);
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 function TimelinePageContent() {
     const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { apiFetch } = useApi();
@@ -372,6 +500,7 @@ function TimelinePageContent() {
         normalizeTimelineSurface(searchParams.get('view'))
     );
     const [lifeAreaOptions, setLifeAreaOptions] = useState<string[]>([]);
+    const [tagCounts, setTagCounts] = useState<Record<string, number>>({});
     const [timelineSummary, setTimelineSummary] = useState<TimelineSignatureSummary>(EMPTY_TIMELINE_SIGNATURE_SUMMARY);
     const [isMobileTimelineRailVisible, setIsMobileTimelineRailVisible] = useState(false);
     const [mobileScrollDirection, setMobileScrollDirection] = useState<'up' | 'down'>('up');
@@ -396,6 +525,13 @@ function TimelinePageContent() {
         );
     });
     const [quickJumpMode, setQuickJumpMode] = useState<QuickJumpMode>('chapters');
+
+    // ── Share state ──
+    const [shareEntryId, setShareEntryId] = useState<string | null>(null);
+    const [sharedBundles, setSharedBundles] = useState<SharedBundle[]>([]);
+    const [sharedLoading, setSharedLoading] = useState(false);
+    const [sharedUnreadCount, setSharedUnreadCount] = useState(0);
+
     const restoreInitRef = useRef(false);
     const entriesRef = useRef<Entry[]>([]);
     const hasMoreRef = useRef(false);
@@ -560,6 +696,18 @@ function TimelinePageContent() {
             setTotalEntries(resolvedTotal);
         }
         setLifeAreaOptions(resolvedLifeAreas);
+        const resolvedTagCounts = data?.facets?.tagCounts;
+        if (resolvedTagCounts && typeof resolvedTagCounts === 'object' && !Array.isArray(resolvedTagCounts)) {
+            setTagCounts(prev => {
+                if (replace) return resolvedTagCounts as Record<string, number>;
+                // Merge: use max count for each tag across pages
+                const merged = { ...prev };
+                for (const [tag, count] of Object.entries(resolvedTagCounts as Record<string, number>)) {
+                    merged[tag] = Math.max(merged[tag] || 0, count);
+                }
+                return merged;
+            });
+        }
         hasMoreRef.current = resolvedHasMore;
         nextPageRef.current = resolvedNextPage;
         setHasMore(resolvedHasMore);
@@ -580,6 +728,17 @@ function TimelinePageContent() {
         return () => window.clearTimeout(timer);
     }, [query]);
 
+    /* Sync the q= URL param after the debounced query settles (prevents
+       router.replace on every keystroke which steals focus on mobile). */
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        const current = params.get('q') || '';
+        if (current === debouncedQuery) return;
+        if (!debouncedQuery) { params.delete('q'); } else { params.set('q', debouncedQuery); }
+        const next = params.toString();
+        router.replace(next ? `${pathname}?${next}` : pathname);
+    }, [debouncedQuery, pathname, router, searchParams]);
+
     useEffect(() => {
         const controller = new AbortController();
         let mounted = true;
@@ -596,6 +755,7 @@ function TimelinePageContent() {
             setTotalEntries(0);
             setEntries([]);
             setLifeAreaOptions([]);
+            setTagCounts({});
             setTimelineSummary(EMPTY_TIMELINE_SIGNATURE_SUMMARY);
             try {
                 await Promise.all([
@@ -884,11 +1044,8 @@ function TimelinePageContent() {
         setDayPartFilter(normalizedDayPart);
 
         const params = new URLSearchParams(searchParams.toString());
-        if (!normalizedQuery) {
-            params.delete('q');
-        } else {
-            params.set('q', normalizedQuery);
-        }
+        /* q= URL param is synced via the debouncedQuery effect — skip it here
+           to avoid router.replace on every keystroke which steals mobile focus. */
 
         if (nextFilters.sourceFilter === 'all') {
             params.delete('source');
@@ -949,7 +1106,7 @@ function TimelinePageContent() {
     }, [pathname, router, searchParams]);
 
     const updateQuery = (nextQuery: string) => {
-        applyTimelineFilters({ ...currentFilters, query: nextQuery });
+        setQuery(nextQuery);
     };
 
     const updateSourceFilter = (nextFilter: SourceFilter) => {
@@ -1165,6 +1322,42 @@ function TimelinePageContent() {
         const next = params.toString();
         router.replace(next ? `${pathname}?${next}` : pathname);
     };
+
+    // ── Shared bundles fetch ──
+    const fetchSharedBundles = useCallback(async () => {
+        setSharedLoading(true);
+        try {
+            const r = await apiFetch(`${API_URL}/memory-share/received?limit=20`);
+            if (r.ok) {
+                const data = await r.json();
+                setSharedBundles(data.bundles ?? []);
+                setSharedUnreadCount(data.unreadCount ?? 0);
+            }
+        } catch { /* ignore */ }
+        setSharedLoading(false);
+    }, [apiFetch]);
+
+    useEffect(() => {
+        if (surface === 'shared') fetchSharedBundles();
+    }, [surface, fetchSharedBundles]);
+
+    // Initial unread count (for badge)
+    useEffect(() => {
+        apiFetch(`${API_URL}/memory-share/received?limit=1`)
+            .then(async (r) => { if (r.ok) { const d = await r.json(); setSharedUnreadCount(d.unreadCount ?? 0); } })
+            .catch(() => {});
+    }, [apiFetch]);
+
+    const shareEntry = useMemo<ShareableEntry | null>(() => {
+        if (!shareEntryId) return null;
+        const e = entries.find((entry) => entry.id === shareEntryId);
+        return e ? { id: e.id, title: e.title, content: e.content, mood: e.mood, createdAt: e.createdAt } : null;
+    }, [shareEntryId, entries]);
+
+    const shareAllEntries = useMemo<ShareableEntry[]>(
+        () => entries.map((e) => ({ id: e.id, title: e.title, content: e.content, mood: e.mood, createdAt: e.createdAt })),
+        [entries],
+    );
 
     const ensureTimelineMonthLoaded = useCallback(async (monthKey: string) => {
         const monthLoaded = () => entriesRef.current.some((entry) => buildTimelineMonthKey(entry.createdAt) === monthKey);
@@ -1422,7 +1615,7 @@ function TimelinePageContent() {
     }
 
     return (
-        <div className="min-h-screen px-4 md:px-8 py-6 md:py-10">
+        <div className="min-h-screen px-3 md:px-8 py-3 md:py-10">
             <AnimatePresence>
                 {isMobileTimelineRailVisible && visibleEntries.length > 0 && (
                     <motion.div
@@ -1485,85 +1678,79 @@ function TimelinePageContent() {
                 )}
             </AnimatePresence>
 
-            <div className="max-w-6xl mx-auto space-y-6">
-                <header className="space-y-3">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                        <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <span className="section-kicker !mb-0">{NOTIVE_VOICE.surfaces.memoryAtlas}</span>
-                                {featuredSeason && (
-                                    <span className="workspace-pill rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-ink-secondary">
-                                        {featuredSeason.title}
-                                    </span>
-                                )}
-                            </div>
-                            <div className="mt-1 flex flex-col gap-1 md:flex-row md:items-center md:gap-3">
-                                <h1 className="workspace-heading text-2xl font-serif md:text-[2rem]">
-                                    Memories
-                                </h1>
-                                <p className="text-sm text-ink-secondary">
-                                    {archiveMetaSummary}
-                                </p>
-                            </div>
+            <div className="max-w-6xl mx-auto space-y-3 md:space-y-6">
+                <header className="space-y-2 md:space-y-3">
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <p className="text-sm text-ink-secondary">
+                                {archiveMetaSummary}
+                            </p>
                         </div>
-
-                        <Link
-                            href={appendReturnTo('/entry/new?mode=quick', currentReturnTo)}
-                            className="primary-cta w-full rounded-[1rem] px-4 py-3 text-center text-sm font-semibold sm:w-auto"
-                        >
-                            Write
-                        </Link>
                     </div>
 
-                    <div className="workspace-soft-panel rounded-[1.4rem] p-3 md:p-4">
+                    <div className="workspace-soft-panel rounded-[1.4rem] p-2 md:p-4">
                         {!isControlDeckOpen ? (
-                            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex items-center gap-2">
                                 <button
                                     type="button"
                                     onClick={() => openControlDeck({ focusSearch: true, source: 'search' })}
-                                    className="workspace-muted-panel group flex w-full flex-1 items-center gap-3 rounded-[1.2rem] px-4 py-3 text-left transition hover:opacity-90"
+                                    className="workspace-muted-panel inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition hover:opacity-85"
+                                    aria-label="Search memories"
                                 >
-                                    <div className="workspace-pill-muted rounded-full p-2 text-ink-muted transition group-hover:text-[rgb(var(--text-primary))]">
-                                        <FiSearch size={14} aria-hidden="true" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="workspace-heading text-sm font-semibold">
-                                            {timelineSearchLead}
-                                        </p>
-                                        <p className="mt-0.5 truncate text-xs text-ink-secondary">
-                                            {timelineSearchHint}
-                                        </p>
-                                    </div>
+                                    <FiSearch size={16} aria-hidden="true" className="text-ink-muted" />
                                 </button>
 
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {surface !== 'timeline' && (
-                                        <button
-                                            type="button"
-                                            onClick={() => switchSurface('timeline')}
-                                            className="workspace-pill inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition hover:opacity-85"
-                                        >
-                                            Back to list
-                                        </button>
-                                    )}
+                                <div className="flex flex-1 flex-wrap items-center gap-1.5 overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => switchSurface('constellation')}
+                                        className={`workspace-pill inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85 ${
+                                            surface === 'constellation' ? 'bg-primary/15 text-primary border-primary/30' : ''
+                                        }`}
+                                    >
+                                        Map
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => switchSurface('shared')}
+                                        className={`workspace-pill relative inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85 ${
+                                            surface === 'shared' ? 'bg-primary/15 text-primary border-primary/30' : ''
+                                        }`}
+                                    >
+                                        Shared
+                                        {sharedUnreadCount > 0 && surface !== 'shared' && (
+                                            <span className="absolute -top-1 -right-1 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-[rgb(107,143,113)] px-0.5 text-[0.5rem] font-bold text-white">
+                                                {sharedUnreadCount}
+                                            </span>
+                                        )}
+                                    </button>
                                     <button
                                         type="button"
                                         onClick={openFilterStudio}
-                                        className="workspace-pill inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition hover:opacity-85"
+                                        className="workspace-pill inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85"
                                     >
-                                        <FiSliders size={14} aria-hidden="true" />
-                                        Filters and jumps
+                                        <FiSliders size={12} aria-hidden="true" />
+                                        Filters
                                         {activeFilterChips.length > 0 && (
-                                            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">
+                                            <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[0.6rem] text-primary">
                                                 {activeFilterChips.length}
                                             </span>
                                         )}
                                     </button>
+                                    {surface !== 'timeline' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => switchSurface('timeline')}
+                                            className="workspace-pill inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85"
+                                        >
+                                            Back to list
+                                        </button>
+                                    )}
                                     {timelineStats.hasActiveFilters && (
                                         <button
                                             type="button"
                                             onClick={clearAllFilters}
-                                            className="workspace-pill rounded-full px-3 py-2 text-xs uppercase tracking-[0.08em] text-ink-secondary transition hover:text-[rgb(var(--text-primary))]"
+                                            className="workspace-pill rounded-full px-2 py-1.5 text-[0.65rem] uppercase tracking-[0.08em] text-ink-secondary transition hover:text-[rgb(var(--text-primary))]"
                                         >
                                             Reset
                                         </button>
@@ -1572,8 +1759,8 @@ function TimelinePageContent() {
                             </div>
                         ) : (
                             <>
-                                <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-                                    <label className="relative block flex-1">
+                                <div className="flex items-center gap-2">
+                                    <label className="relative block flex-1 min-w-0">
                                         <FiSearch
                                             size={16}
                                             aria-hidden="true"
@@ -1586,102 +1773,54 @@ function TimelinePageContent() {
                                             value={query}
                                             onChange={(e) => updateQuery(e.target.value)}
                                             placeholder="Search notes, topics, or tags"
-                                            className="workspace-input w-full rounded-[1.2rem] py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/45"
+                                            className="workspace-input w-full rounded-[1.2rem] py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/45"
                                         />
                                     </label>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <ActionBar className="workspace-actionbar p-1.5">
-                                            <button
-                                                type="button"
-                                                onClick={() => switchSurface('timeline')}
-                                                aria-pressed={surface === 'timeline'}
-                                                className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors ${
-                                                    surface === 'timeline'
-                                                        ? 'bg-primary/15 text-primary'
-                                                        : 'text-ink-secondary hover:text-[rgb(var(--text-primary))]'
-                                                }`}
-                                            >
-                                                List
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => switchSurface('constellation')}
-                                                aria-pressed={surface === 'constellation'}
-                                                className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors ${
-                                                    surface === 'constellation'
-                                                        ? 'bg-primary/15 text-primary'
-                                                        : 'text-ink-secondary hover:text-[rgb(var(--text-primary))]'
-                                                }`}
-                                            >
-                                                Map
-                                            </button>
-                                        </ActionBar>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                if (isFilterStudioOpen) {
-                                                    closeControlDeck();
-                                                } else {
-                                                    setIsFilterStudioOpen(true);
-                                                }
-                                            }}
-                                            aria-expanded={isFilterStudioOpen}
-                                            aria-controls="timeline-filter-studio"
-                                            className="workspace-pill inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition hover:opacity-85"
-                                        >
-                                            <FiSliders size={14} aria-hidden="true" />
-                                            Filters and jumps
-                                            {activeFilterChips.length > 0 && (
-                                                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">
-                                                    {activeFilterChips.length}
-                                                </span>
-                                            )}
-                                            <FiChevronDown
-                                                size={14}
-                                                aria-hidden="true"
-                                                className={`transition-transform ${isFilterStudioOpen ? 'rotate-180' : ''}`}
-                                            />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={closeControlDeck}
-                                            className="workspace-button-outline rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
-                                        >
-                                            Close
-                                        </button>
-                                        {timelineStats.hasActiveFilters && (
-                                            <button
-                                                type="button"
-                                                onClick={clearAllFilters}
-                                                className="workspace-pill rounded-full px-3 py-2 text-xs uppercase tracking-[0.08em] text-ink-secondary transition hover:text-[rgb(var(--text-primary))]"
-                                            >
-                                                Reset
-                                            </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (isFilterStudioOpen) {
+                                                closeControlDeck();
+                                            } else {
+                                                setIsFilterStudioOpen(true);
+                                            }
+                                        }}
+                                        aria-expanded={isFilterStudioOpen}
+                                        aria-controls="timeline-filter-studio"
+                                        className="workspace-pill inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.1em] transition hover:opacity-85"
+                                    >
+                                        <FiSliders size={13} aria-hidden="true" />
+                                        Filters
+                                        {activeFilterChips.length > 0 && (
+                                            <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[0.6rem] text-primary">
+                                                {activeFilterChips.length}
+                                            </span>
                                         )}
-                                    </div>
+                                        <FiChevronDown
+                                            size={13}
+                                            aria-hidden="true"
+                                            className={`transition-transform ${isFilterStudioOpen ? 'rotate-180' : ''}`}
+                                        />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={closeControlDeck}
+                                        className="workspace-button-outline flex-shrink-0 rounded-full px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.1em]"
+                                    >
+                                        Close
+                                    </button>
                                 </div>
 
-                                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                                    <span className="workspace-pill-muted rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-ink-muted">
-                                        {timelineStats.hasActiveFilters ? 'Focused Slice' : 'Open Canvas'}
-                                    </span>
-                                    <span className="text-ink-secondary">
-                                        {timelineStats.hasActiveFilters
-                                            ? activeFilterSummary
-                                            : surface === 'timeline'
-                                                ? 'Read your notes in time order.'
-                                                : 'See related notes grouped together.'}
-                                    </span>
-                                </div>
-
-                                {activeFilterChips.length > 0 && (
-                                    <div className="mt-3 flex flex-wrap gap-2">
+                                {/* Active filter chips */}
+                                {timelineStats.hasActiveFilters && (
+                                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
                                         {collapsedFilterChips.map((chip) => (
                                             <button
                                                 key={chip.key}
                                                 type="button"
                                                 onClick={chip.onClear}
-                                                className="workspace-pill rounded-full px-3 py-1.5 text-xs uppercase tracking-[0.08em] transition hover:opacity-85"
+                                                className="workspace-pill rounded-full px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.08em] transition hover:opacity-85"
                                             >
                                                 {chip.label} ×
                                             </button>
@@ -1690,11 +1829,18 @@ function TimelinePageContent() {
                                             <button
                                                 type="button"
                                                 onClick={() => setIsFilterStudioOpen(true)}
-                                                className="workspace-button-outline rounded-full border-dashed px-3 py-1.5 text-xs uppercase tracking-[0.08em]"
+                                                className="workspace-button-outline rounded-full border-dashed px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.08em]"
                                             >
                                                 +{hiddenFilterChipCount} more
                                             </button>
                                         )}
+                                        <button
+                                            type="button"
+                                            onClick={clearAllFilters}
+                                            className="workspace-pill rounded-full px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.08em] text-ink-secondary transition hover:text-[rgb(var(--text-primary))]"
+                                        >
+                                            Reset
+                                        </button>
                                     </div>
                                 )}
 
@@ -1708,13 +1854,13 @@ function TimelinePageContent() {
                                             transition={{ duration: 0.22, ease: 'easeOut' }}
                                             className="overflow-hidden"
                                         >
-                                            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-                                                <label className="workspace-soft-panel rounded-2xl p-3">
-                                                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Source</span>
+                                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+                                                <label className="workspace-soft-panel rounded-xl p-2">
+                                                    <span className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">Source</span>
                                                     <select
                                                         value={sourceFilter}
                                                         onChange={(event) => updateSourceFilter(event.target.value as SourceFilter)}
-                                                        className="workspace-input mt-2 w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                                        className="workspace-input mt-1 w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/35"
                                                     >
                                                         {SOURCE_FILTER_OPTIONS.map((item) => (
                                                             <option key={item.key} value={item.key} className="bg-surface-1">
@@ -1724,12 +1870,12 @@ function TimelinePageContent() {
                                                     </select>
                                                 </label>
 
-                                                <label className="workspace-soft-panel rounded-2xl p-3">
-                                                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Life Area</span>
+                                                <label className="workspace-soft-panel rounded-xl p-2">
+                                                    <span className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">Life Area</span>
                                                     <select
                                                         value={lifeAreaFilter}
                                                         onChange={(event) => updateLifeAreaFilter(event.target.value)}
-                                                        className="workspace-input mt-2 w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                                        className="workspace-input mt-1 w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/35"
                                                     >
                                                         <option value="all" className="bg-surface-1">All Areas</option>
                                                         {lifeAreaOptions.map((area) => (
@@ -1740,32 +1886,32 @@ function TimelinePageContent() {
                                                     </select>
                                                 </label>
 
-                                                <label className="workspace-soft-panel rounded-2xl p-3">
-                                                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">From</span>
+                                                <label className="workspace-soft-panel rounded-xl p-2">
+                                                    <span className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">From</span>
                                                     <input
                                                         type="date"
                                                         value={startDateFilter}
                                                         onChange={(event) => updateStartDateFilter(event.target.value)}
-                                                        className="workspace-input mt-2 w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                                        className="workspace-input mt-1 w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/35"
                                                     />
                                                 </label>
 
-                                                <label className="workspace-soft-panel rounded-2xl p-3">
-                                                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">To</span>
+                                                <label className="workspace-soft-panel rounded-xl p-2">
+                                                    <span className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">To</span>
                                                     <input
                                                         type="date"
                                                         value={endDateFilter}
                                                         onChange={(event) => updateEndDateFilter(event.target.value)}
-                                                        className="workspace-input mt-2 w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                                        className="workspace-input mt-1 w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/35"
                                                     />
                                                 </label>
 
-                                                <label className="workspace-soft-panel rounded-2xl p-3">
-                                                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Weekday</span>
+                                                <label className="workspace-soft-panel rounded-xl p-2">
+                                                    <span className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">Weekday</span>
                                                     <select
                                                         value={weekdayFilter}
                                                         onChange={(event) => updateWeekdayFilter(event.target.value)}
-                                                        className="workspace-input mt-2 w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                                        className="workspace-input mt-1 w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/35"
                                                     >
                                                         <option value="" className="bg-surface-1">Any Day</option>
                                                         {WEEKDAY_FILTER_OPTIONS.map((day) => (
@@ -1776,12 +1922,12 @@ function TimelinePageContent() {
                                                     </select>
                                                 </label>
 
-                                                <label className="workspace-soft-panel rounded-2xl p-3">
-                                                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Time of Day</span>
+                                                <label className="workspace-soft-panel rounded-xl p-2">
+                                                    <span className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">Time of Day</span>
                                                     <select
                                                         value={dayPartFilter}
                                                         onChange={(event) => updateDayPartFilter(event.target.value)}
-                                                        className="workspace-input mt-2 w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+                                                        className="workspace-input mt-1 w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/35"
                                                     >
                                                         <option value="" className="bg-surface-1">Any Time</option>
                                                         {DAY_PART_FILTER_OPTIONS.map((part) => (
@@ -1986,9 +2132,19 @@ function TimelinePageContent() {
                         />
                     ) : (
                         surface === 'timeline' ? (
-                            <TimelineView
-                                entries={visibleEntries}
-                                seasonAnchorsByMonthKey={seasonAnchorsByMonthKey}
+                            <>
+                                <TimelineView
+                                    entries={visibleEntries}
+                                    tagCounts={tagCounts}
+                                    seasonAnchorsByMonthKey={seasonAnchorsByMonthKey}
+                                    onShareEntry={setShareEntryId}
+                                />
+                            </>
+                        ) : surface === 'shared' ? (
+                            <SharedWithMeList
+                                bundles={sharedBundles}
+                                loading={sharedLoading}
+                                onRefresh={fetchSharedBundles}
                             />
                         ) : (
                             <ConstellationView
@@ -2031,6 +2187,15 @@ function TimelinePageContent() {
                     )}
                 </section>
             </div>
+
+            {/* ── Share Memory Sheet ── */}
+            {shareEntry && (
+                <ShareMemorySheet
+                    initialEntry={shareEntry}
+                    allEntries={shareAllEntries}
+                    onClose={() => { setShareEntryId(null); fetchSharedBundles(); }}
+                />
+            )}
         </div>
     );
 }

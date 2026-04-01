@@ -672,6 +672,14 @@ function OnboardingPageContent() {
                             </div>
 
                             <div className="workspace-soft-panel type-micro mt-3 rounded-xl p-4 text-default space-y-1.5">
+                                <p className="font-semibold text-xs">Your journal stays private with us</p>
+                                <p className="text-xs opacity-80">
+                                    Notes are stored securely and encrypted. We never sell or share what you write.
+                                    Only you can see your entries.
+                                </p>
+                            </div>
+
+                            <div className="workspace-soft-panel type-micro mt-3 rounded-xl p-4 text-default space-y-1.5">
                                 <p className="font-semibold text-xs">Notive learns your patterns as you write</p>
                                 <p className="text-xs opacity-80">
                                     Vocabulary, emotional range, life balance, and growth language

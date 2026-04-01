@@ -13,6 +13,11 @@ export default function PrivacyPage() {
             ]}
             footer={LEGAL_COPYRIGHT_NOTICE}
         >
+            <div className="rounded-xl border p-4 mb-4 text-sm leading-7" style={{ borderColor: 'rgba(var(--paper-border), 0.5)', background: 'rgba(var(--paper-warm), 0.3)' }}>
+                <p className="font-semibold mb-1">In plain terms</p>
+                <p>Your notes and profile are stored in a secure database. They're encrypted in transit and at rest. We never sell your data or share it with advertisers. When you delete your account, everything is permanently removed within 30 days.</p>
+                <p className="mt-2">Manage or export what we store: <strong>Profile → Privacy &amp; Data</strong></p>
+            </div>
             <p>Notive collects account details and the entries or memories you provide to operate core features.</p>
             <p>We use your data to deliver capture, signal reading, synchronization, optional social import, and output generation functionality.</p>
             <p>You can export your data and request deletion from your profile settings, or through the public account deletion page if you cannot access the app.</p>

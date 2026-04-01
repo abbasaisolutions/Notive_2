@@ -263,7 +263,7 @@ export default function SpotifyConnection() {
 
                         <div className="health-quiet flex items-center gap-2 px-1 text-xs">
                             <FiShield className="w-3 h-3" />
-                            <span>Read-only access · Never shared · Disconnect anytime</span>
+                            <span>Read-only access · Never written back to Spotify · Stays private with us · Disconnect anytime</span>
                         </div>
 
                         {status?.message && (

@@ -578,17 +578,23 @@ class StructuredDataService {
         const tags = new Set<string>();
         const lowerContent = content.toLowerCase();
 
-        const tagPatterns = {
-            work: /\b(work|job|office|meeting|project|deadline)\b/i,
-            family: /\b(family|mom|dad|mother|father|sister|brother)\b/i,
-            health: /\b(health|exercise|workout|gym|yoga|meditation)\b/i,
-            travel: /\b(travel|trip|vacation|journey|adventure)\b/i,
-            creativity: /\b(creative|art|writing|music|painting)\b/i,
-            learning: /\b(learn|study|course|book|reading)\b/i,
-            social: /\b(friend|friends|party|gathering|dinner)\b/i,
-            reflection: /\b(reflect|thinking|realized|grateful|thankful)\b/i,
-            goals: /\b(goal|goals|achieve|plan|future)\b/i,
-            nature: /\b(nature|outdoor|park|beach|mountain|hiking)\b/i,
+        const tagPatterns: Record<string, RegExp> = {
+            'exam-pressure': /\b(exam|test|quiz|grade|assignment|homework|study|studying|finals|midterm)\b/i,
+            'burnout': /\b(tired|exhausted|drained|burnt out|burnout|overwhelmed|can't keep up)\b/i,
+            'self-doubt': /\b(doubt myself|not good enough|imposter|insecure|inadequate|unsure of myself)\b/i,
+            'procrastination': /\b(procrastinat|putting off|keep delaying|can't start|wasted time)\b/i,
+            'friend-conflict': /\b(fight with|argument with|falling out|conflict with|friend.*upset|upset.*friend)\b/i,
+            'parental-pressure': /\b(parents expect|mom.*disappointed|dad.*disappointed|family.*pressure|pressure from home)\b/i,
+            'late-night-grind': /\b(stayed up|up late|all night|midnight|2am|3am|couldn't sleep.*work)\b/i,
+            'rejection': /\b(rejected|rejection|didn't get in|turned down|didn't make it)\b/i,
+            'breakthrough': /\b(finally got|clicked|breakthrough|figured out|moment of clarity|realized i can)\b/i,
+            'boundary-set': /\b(said no|set a boundary|stood up for|spoke up|didn't let them)\b/i,
+            'gratitude': /\b(grateful|thankful|appreciate|blessed|lucky to have)\b/i,
+            'goal-setting': /\b(goal|plan for|working toward|aim to|by next|want to achieve)\b/i,
+            'job-hunt': /\b(internship|application|interview|resume|cv|applied for|job search|hiring)\b/i,
+            'creative-work': /\b(art|design|writing|music|painting|sketch|compose|poem|creative)\b/i,
+            'health-habits': /\b(workout|gym|exercise|run|yoga|sleep schedule|eating better|mental health)\b/i,
+            'homesick': /\b(miss home|homesick|miss my family|far from home)\b/i,
         };
 
         for (const [tag, pattern] of Object.entries(tagPatterns)) {
@@ -603,15 +609,9 @@ class StructuredDataService {
             if (growthPoints.some(g => g.category === 'personal')) tags.add('personal-growth');
         }
 
-        // Add canonical emotion tags from strongest signals.
-        if (emotions && emotions.length > 0) {
-            emotions
-                .filter(e => e.intensity >= 6)
-                .slice(0, 3)
-                .forEach(e => tags.add(e.emotion));
-        }
+        // Note: emotion names are intentionally excluded — mood is stored in Entry.mood.
 
-        return Array.from(tags).slice(0, 5);
+        return Array.from(tags).slice(0, 3);
     }
 
     /**

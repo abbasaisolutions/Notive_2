@@ -106,7 +106,7 @@ export default function EntryEditorCard({
     const bodyTextClass = 'text-default';
 
     return (
-        <div className="mb-6 editor-card-enter">
+        <div className="mb-6 paper-page-turn-enter">
             {/* Editor — with quill watermark + typing glow */}
             <div className={`relative transition-all duration-700 ${justCaptured ? 'voice-capture-complete' : isRecording ? 'voice-active-glow voice-ripple-ring' : isTypingActive && !minimalEditor ? 'entry-typing-glow' : ''}`}>
                 {/* Quill watermark — faint ghost doodle, appears once user has written something */}

@@ -1106,7 +1106,7 @@ function NewEntryPageContent() {
         // Small delay to let the page settle visually before starting mic
         const timer = setTimeout(() => {
             startRecording();
-        }, 350);
+        }, 150);
         return () => clearTimeout(timer);
     }, [searchParams, isVoiceSupported, isVoiceProcessing, isRecording, startRecording]);
 
@@ -1526,7 +1526,7 @@ function NewEntryPageContent() {
                 </>
             )}
 
-            <div className={`max-w-3xl mx-auto px-3 sm:px-4 pb-28 md:pb-8 relative z-10 ${isWhisperMode ? 'pt-12 md:pt-16' : 'pt-8'}`}>
+            <div className={`max-w-3xl mx-auto px-3 sm:px-4 pb-20 md:pb-8 relative z-10 ${isWhisperMode ? 'pt-12 md:pt-16' : 'pt-4 md:pt-8'}`}>
                 {isWhisperMode && (
                     <p className="mb-8 text-center font-serif text-xs uppercase tracking-[0.2em] text-[rgba(255,255,255,0.24)]">whisper mode</p>
                 )}
@@ -1748,7 +1748,7 @@ function NewEntryPageContent() {
             )}
 
             {!isRecording && (
-            <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[rgba(var(--paper-border),0.92)] bg-[rgba(255,255,255,0.92)] p-3 backdrop-blur-xl md:hidden">
+            <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[rgba(var(--paper-border),0.92)] bg-[rgba(255,255,255,0.92)] p-3 backdrop-blur-xl md:hidden" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0.75rem)' }}>
                 <div className="flex gap-2">
                     {isQuickMode && (
                         <button

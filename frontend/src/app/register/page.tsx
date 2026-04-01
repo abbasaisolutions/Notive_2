@@ -360,7 +360,7 @@ export default function RegisterPage() {
                                     required
                                 />
                                 <p className="mt-2 text-xs leading-5 text-[rgb(126,117,103)]">
-                                    Kept private. Used for age-aware and seasonal personalization.
+                                    Shared with us privately. We'll use it for age-aware and seasonal personalization.
                                 </p>
                             </SlideUp>
 
@@ -450,6 +450,14 @@ export default function RegisterPage() {
                                         {fieldErrors.policies}
                                     </p>
                                 )}
+                            </SlideUp>
+
+                            <SlideUp delay={0.65}>
+                                <div className="flex items-center justify-center gap-6 py-2 text-xs text-ink-muted">
+                                    <span className="flex items-center gap-1.5"><span>🔒</span> Encrypted &amp; secure</span>
+                                    <span className="flex items-center gap-1.5"><span>🚫</span> Never sold or shared</span>
+                                    <span className="flex items-center gap-1.5"><span>👁️</span> Only you see your notes</span>
+                                </div>
                             </SlideUp>
 
                             <SlideUp delay={0.7}>

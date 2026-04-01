@@ -189,7 +189,7 @@ export function PrivacySection({
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Pinned Anchors</p>
                                 <p className="workspace-heading mt-2 text-3xl font-serif">{pinnedCount}</p>
                                 <p className="mt-1 text-sm text-ink-secondary">
-                                    Kept visible for Bridge Builder and low-signal action support.
+                                    We use these contacts to suggest support in Bridge Builder when your notes feel unclear.
                                 </p>
                             </div>
                         </div>
@@ -200,7 +200,7 @@ export function PrivacySection({
                                 values={pinnedPeople}
                                 draft={pinnedPeopleDraft}
                                 placeholder="Add a trusted adult, friend, coach, or counselor"
-                                helper="Pin up to six people you would actually feel okay reaching out to."
+                                helper="Connect us with up to six people you trust—we may suggest them when reflection gets unclear."
                                 onDraftChange={onPinnedPeopleDraftChange}
                                 onAdd={onAddPinnedPerson}
                                 onRemove={onRemovePinnedPerson}
@@ -301,7 +301,7 @@ export function PrivacySection({
                                     onChange={(value) => onSafetyRegionChange(value as SafetyRegion)}
                                     options={SAFETY_REGION_OPTIONS}
                                     emptyLabel="Auto detect"
-                                    helper="Auto detects your location. Outside the U.S., Notive shows local emergency guidance instead of 988."
+                                    helper="We auto-detect your location to show emergency resources that match where you are."
                                 />
 
                                 <div className="workspace-muted-panel rounded-2xl p-4 text-sm leading-7 text-ink-secondary">
@@ -318,7 +318,7 @@ export function PrivacySection({
                             <div>
                                 <h4 className="workspace-heading text-lg font-serif">Saved trusted contacts</h4>
                                 <p className="text-sm text-ink-secondary">
-                                    Mark one primary contact so Notive knows who to surface first when a note feels heavy.
+                                    When you're feeling stuck or overwhelmed, we may suggest reaching out to someone who steadies you. Mark one as primary so we know who to surface first.
                                 </p>
                             </div>
 
@@ -733,7 +733,7 @@ export function PrivacySection({
 
                 <div className="health-quiet flex items-center gap-2 px-1 text-xs">
                     <FiShield className="w-3 h-3" />
-                    <span>All device context stays on your account. It is never shared, sold, or used for ads.</span>
+                    <span>All your data stays private with us. We never share it, sell it, or use it for ads.</span>
                 </div>
             </section>
         </div>

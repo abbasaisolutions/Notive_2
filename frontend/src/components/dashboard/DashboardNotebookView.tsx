@@ -680,8 +680,7 @@ export default function DashboardNotebookView({
         <div className="space-y-4">
             <div>
                 <p className="section-label">{focusCard.eyebrow}</p>
-                <h2 className="notebook-title mt-2 text-xl md:text-[1.55rem]">Treat this like a direction check, not a final verdict.</h2>
-                <p className="notebook-copy mt-3 text-[0.875rem] leading-7">{focusCard.title}</p>
+                <h2 className="notebook-title mt-2 text-xl md:text-[1.55rem]">{focusCard.title}</h2>
                 <p className="notebook-copy mt-2 text-[0.875rem] leading-7">{focusCard.body}</p>
             </div>
 
@@ -785,7 +784,13 @@ export default function DashboardNotebookView({
         <>
             {glanceStrip}
             <h2 className="notive-logo text-lg font-semibold leading-snug md:text-2xl">
-                One calm page for today&rsquo;s next move.
+                {moodShift?.type === 'shift'
+                    ? `Your mood moved from ${moodShift.from} to ${moodShift.to} lately.`
+                    : moodShift?.type === 'steady'
+                        ? `Holding steady at ${moodShift.mood} — that's worth noticing.`
+                        : notesThisWeek > 0
+                            ? `${notesThisWeek} ${notesThisWeek === 1 ? 'note' : 'notes'} this week${returningThemes > 0 ? `, ${returningThemes} returning ${returningThemes === 1 ? 'theme' : 'themes'}` : ''}.`
+                            : `Hey ${firstName ?? 'there'} — your notebook is ready.`}
             </h2>
 
             {welcomeNotebookBanner}
@@ -1011,7 +1016,7 @@ export default function DashboardNotebookView({
     );
 
     return (
-        <div className="page-paper-canvas min-h-screen pb-36 md:pb-20">
+        <div className="page-paper-canvas min-h-screen pb-6 md:pb-20">
             <main className="mx-auto w-full max-w-4xl px-4 py-4 md:px-6 md:py-10">
                 <div className="space-y-4 md:space-y-6">
 

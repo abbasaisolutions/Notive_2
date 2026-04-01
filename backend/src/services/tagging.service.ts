@@ -8,14 +8,29 @@ interface TagSuggestion {
 }
 
 const allowLLMTagging = process.env.USE_LLM_TAGGING === 'true' && hasLlmProvider();
-const llmTaggingMinLocalTags = Number.parseInt(process.env.LLM_TAGGING_MIN_LOCAL_TAGS || '3', 10) || 3;
+// LLM always augments NLP tags unless explicitly overridden by env var
+const llmTaggingMinLocalTags = Number.parseInt(process.env.LLM_TAGGING_MIN_LOCAL_TAGS || '10', 10) || 10;
 
 const STOPWORDS = new Set([
     'a', 'an', 'and', 'the', 'to', 'of', 'in', 'on', 'for', 'with', 'at', 'from', 'by', 'as',
     'is', 'it', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'we', 'they',
     'my', 'your', 'our', 'their', 'me', 'him', 'her', 'us', 'them', 'be', 'been', 'being',
     'was', 'were', 'am', 'are', 'or', 'but', 'so', 'if', 'then', 'than', 'too', 'very', 'just',
+    'im', 'ive', 'id', 'ill', 'its', 'dont', 'didnt', 'wont', 'cant', 'not', 'no', 'yes',
+    'has', 'had', 'have', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'shall',
+    'may', 'might', 'must', 'need', 'get', 'got', 'one', 'two', 'three', 'also', 'about',
+    'like', 'want', 'know', 'think', 'make', 'made', 'some', 'what', 'when', 'where', 'how',
+    'which', 'who', 'whom', 'why', 'here', 'there', 'now', 'more', 'much', 'many', 'any',
+    'each', 'every', 'all', 'both', 'few', 'other', 'such', 'only', 'own', 'same', 'into',
+    'over', 'after', 'before', 'between', 'under', 'again', 'still', 'really', 'even', 'back',
+    'come', 'came', 'went', 'going', 'doing', 'been', 'said', 'says', 'tell', 'told',
+    'through', 'down', 'out', 'off', 'up', 'way', 'thing', 'things', 'time', 'day', 'today',
+    'yesterday', 'week', 'feels', 'felt', 'feel', 'right', 'well', 'good', 'yeah', 'okay',
+    'features', 'node', 'nodeo', 'happy', 'just', 'something', 'anything', 'everything',
 ]);
+
+/** Minimum character length for a tag to be valid */
+const MIN_TAG_LENGTH = 3;
 
 const normalizeTag = (tag: string) =>
     tag
@@ -26,36 +41,42 @@ const normalizeTag = (tag: string) =>
         .replace(/[^a-z0-9\s-]/g, '')
         .slice(0, 32);
 
+/** Returns true only for tags that are meaningful keywords (not stopwords, long enough) */
+const isValidTag = (normalized: string): boolean => {
+    if (normalized.length < MIN_TAG_LENGTH) return false;
+    // Reject single-word tags that are stopwords
+    const parts = normalized.split(/[\s-]+/);
+    if (parts.every(p => STOPWORDS.has(p) || p.length < 2)) return false;
+    return true;
+};
+
 export class TaggingService {
     private collectDeterministicTags(text: string, analysis: Awaited<ReturnType<typeof nlpService.analyzeContent>>): Map<string, number> {
         const tags = new Map<string, number>();
 
         (analysis.topics || []).forEach(tag => {
             const normalized = normalizeTag(tag);
-            if (!normalized) return;
+            if (!normalized || !isValidTag(normalized)) return;
             tags.set(normalized, Math.max(tags.get(normalized) || 0, 0.8));
         });
 
         (analysis.keywords || []).forEach(tag => {
             const normalized = normalizeTag(tag);
-            if (!normalized) return;
+            if (!normalized || !isValidTag(normalized)) return;
             tags.set(normalized, Math.max(tags.get(normalized) || 0, 0.6));
         });
 
         (analysis.entities || []).forEach(entity => {
             const normalized = normalizeTag(entity.text);
-            if (!normalized) return;
+            if (!normalized || !isValidTag(normalized)) return;
             tags.set(normalized, Math.max(tags.get(normalized) || 0, 0.55));
         });
 
-        if (analysis.suggestedMood) {
-            const normalized = normalizeTag(analysis.suggestedMood);
-            if (normalized) tags.set(normalized, Math.max(tags.get(normalized) || 0, 0.5));
-        }
+        // Note: suggestedMood is intentionally excluded — mood is stored in Entry.mood already.
 
         (analysis.suggestions?.tags || []).forEach((tag) => {
             const normalized = normalizeTag(tag.value);
-            if (!normalized) return;
+            if (!normalized || !isValidTag(normalized)) return;
             tags.set(
                 normalized,
                 Math.max(tags.get(normalized) || 0, Math.min(0.82, Math.max(0.58, tag.confidence)))
@@ -65,7 +86,7 @@ export class TaggingService {
         const hashtagMatches = text.match(/#(\w+)/g) || [];
         hashtagMatches.forEach(tag => {
             const normalized = normalizeTag(tag);
-            if (!normalized) return;
+            if (!normalized || !isValidTag(normalized)) return;
             tags.set(normalized, Math.max(tags.get(normalized) || 0, 0.7));
         });
 
@@ -73,14 +94,16 @@ export class TaggingService {
             const tokens = text.toLowerCase().match(/\b[a-z']+\b/g) || [];
             const counts: Record<string, number> = {};
             tokens.forEach(token => {
-                if (token.length < 4 || STOPWORDS.has(token)) return;
+                if (token.length < 5 || STOPWORDS.has(token)) return;
                 counts[token] = (counts[token] || 0) + 1;
             });
 
             Object.entries(counts)
                 .sort((a, b) => b[1] - a[1])
-                .slice(0, 5)
-                .forEach(([word]) => tags.set(word, 0.4));
+                .slice(0, 3)
+                .forEach(([word]) => {
+                    if (isValidTag(word)) tags.set(word, 0.4);
+                });
         }
 
         return tags;
@@ -89,7 +112,7 @@ export class TaggingService {
     private mapTagScores(tags: Map<string, number>, source: 'nlp' | 'ai'): TagSuggestion[] {
         return Array.from(tags.entries())
             .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
+            .slice(0, 3)
             .map(([name, confidence]) => ({ name, confidence, source }));
     }
 
@@ -111,7 +134,7 @@ export class TaggingService {
 
         return Array.from(merged.values())
             .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
-            .slice(0, 5);
+            .slice(0, 3);
     }
 
     async suggestTagsFromAnalysis(
@@ -158,13 +181,17 @@ export class TaggingService {
                 messages: [
                     {
                         role: 'system',
-                        content: `You are an AI tagging assistant for a student personal journal (ages 15-22).
-                        Analyze the following journal entry and generate 3-5 relevant tags.
-                        Rules:
-                        1. Tags should be short (1-2 words).
-                        2. Respect negation (e.g., "I did not study" should NOT be tagged "Study").
-                        3. Focus on topics, activities, emotions, and locations.
-                        4. Return ONLY a JSON object with a "tags" key containing an array of strings, e.g., {"tags": ["Work", "Anxiety", "Cafe"]}.`
+                        content: `You are a journaling intelligence engine for students aged 15–24.
+Read this journal entry and extract 2–3 precise, specific tags that reflect the actual situation, challenge, or theme — NOT broad category labels.
+
+Rules:
+1. Be specific: "exam-pressure" not "school", "friend-conflict" not "social", "late-night-grind" not "work"
+2. Capture named challenges students face: "self-doubt", "parental-pressure", "rejection", "burnout", "procrastination"
+3. Capture growth moments: "breakthrough", "boundary-set", "apology-given", "lesson-learned"
+4. Use 1–2 word hyphenated lowercase tags only
+5. Do NOT output the mood itself (e.g. not "anxious", "happy") — mood is stored separately
+6. Respect negation: "I didn't study" → no "studying" tag
+7. Return ONLY valid JSON: {"tags": ["tag-one", "tag-two"]}`
                     },
                     { role: 'user', content: text },
                 ],
@@ -183,7 +210,7 @@ export class TaggingService {
                 tags = contentStr.replace(/[\[\]"]+/g, '').split(',').map(t => t.trim());
             }
 
-            return tags.slice(0, 5)
+            return tags.slice(0, 3)
                 .map((tag): TagSuggestion => ({
                     name: normalizeTag(tag),
                     confidence: 0.9,

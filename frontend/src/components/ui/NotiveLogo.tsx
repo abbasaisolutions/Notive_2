@@ -4,11 +4,11 @@ import Link from 'next/link';
 type LogoSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
 const SIZE_MAP: Record<LogoSize, { width: number; height: number }> = {
-    xs: { width: 80, height: 54 },
-    sm: { width: 110, height: 74 },
-    md: { width: 150, height: 101 },
-    lg: { width: 200, height: 134 },
-    xl: { width: 280, height: 188 },
+    xs: { width: 48, height: 64 },
+    sm: { width: 72, height: 96 },
+    md: { width: 100, height: 133 },
+    lg: { width: 140, height: 187 },
+    xl: { width: 190, height: 253 },
 };
 
 interface NotiveLogoProps {
@@ -22,11 +22,11 @@ export default function NotiveLogo({ size = 'md', href, className = '' }: Notive
 
     const img = (
         <Image
-            src="/images/notive-logo.png"
-            alt="Notive"
+            src="/images/notive-logo.jpeg"
+            alt="Notive — Capture Life Gently"
             width={width}
             height={height}
-            className={`object-contain ${className}`}
+            className={`rounded-xl object-contain ${className}`}
             priority
         />
     );

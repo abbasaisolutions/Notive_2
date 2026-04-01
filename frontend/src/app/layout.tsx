@@ -156,7 +156,7 @@ export default function RootLayout({
                                                         <PageTransition>
                                                             {children}
                                                         </PageTransition>
-                                                        <footer className="app-footer-copy type-micro px-6 pb-8 pt-10 text-center">
+                                                        <footer className="app-footer-copy type-micro px-6 pb-8 pt-10 text-center hidden lg:block">
                                                             <p>{LEGAL_FOOTER_NOTICE}</p>
                                                             <div className="type-micro mt-2 flex flex-wrap items-center justify-center gap-3">
                                                                 <Link href="/privacy" className="app-footer-link transition-colors">Privacy</Link>

@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { Prisma, VoiceTranscriptionJobStatus } from '@prisma/client';
 import prisma from '../config/prisma';
 import { serverLogger } from '../utils/server-logger';
@@ -13,7 +12,7 @@ import voiceTranscriptionService, {
 type CreateVoiceTranscriptionJobInput = {
     userId: string;
     entryId?: string | null;
-    audioUrl: string;
+    audioBuffer: Buffer;
     fileName?: string | null;
     mimeType: string;
     languageMode: VoiceLanguageMode;
@@ -26,7 +25,7 @@ type CreateVoiceTranscriptionJobInput = {
 };
 
 type VoiceTranscriptionJobPayload = {
-    audioUrl: string;
+    audioBufferBase64: string;
     fileName: string | null;
     mimeType: string;
     languageMode: VoiceLanguageMode;
@@ -42,7 +41,6 @@ type VoiceTranscriptionJobRecord = {
     id: string;
     userId: string;
     entryId: string | null;
-    audioUrl: string;
     fileName: string | null;
     mimeType: string;
     languageMode: string;
@@ -60,12 +58,10 @@ const parsePositiveInt = (value: string | undefined, fallback: number) => {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-const MAX_AUDIO_FETCH_BYTES = parsePositiveInt(process.env.VOICE_JOB_MAX_AUDIO_BYTES, 60 * 1024 * 1024);
 const VOICE_JOB_BATCH_SIZE = parsePositiveInt(process.env.VOICE_JOB_BATCH_SIZE, 2);
 const VOICE_JOB_POLL_MS = parsePositiveInt(process.env.VOICE_JOB_POLL_MS, 5000);
 const VOICE_JOB_MAX_ATTEMPTS = parsePositiveInt(process.env.VOICE_JOB_MAX_ATTEMPTS, 4);
 const VOICE_JOB_STALE_MINUTES = parsePositiveInt(process.env.VOICE_JOB_STALE_MINUTES, 12);
-const VOICE_AUDIO_FETCH_TIMEOUT_MS = parsePositiveInt(process.env.VOICE_AUDIO_FETCH_TIMEOUT_MS, 120000);
 const VOICE_JOB_WORKER_ID = `voice-worker-${process.pid}`;
 
 const normalizeOptionalText = (value: unknown, maxLength: number): string | null => {
@@ -221,14 +217,14 @@ const parseJobPayload = (payload: Prisma.JsonValue): VoiceTranscriptionJobPayloa
     }
 
     const record = payload as Record<string, unknown>;
-    if (typeof record.audioUrl !== 'string' || typeof record.mimeType !== 'string' || typeof record.languageMode !== 'string') {
+    if (typeof record.audioBufferBase64 !== 'string' || typeof record.mimeType !== 'string' || typeof record.languageMode !== 'string') {
         return null;
     }
 
     const languageMode = isVoiceLanguageMode(record.languageMode) ? record.languageMode : 'auto';
 
     return {
-        audioUrl: record.audioUrl,
+        audioBufferBase64: record.audioBufferBase64,
         fileName: typeof record.fileName === 'string' ? record.fileName : null,
         mimeType: record.mimeType,
         languageMode,
@@ -265,7 +261,7 @@ class VoiceTranscriptionJobService {
 
     async createJob(input: CreateVoiceTranscriptionJobInput) {
         const payload: VoiceTranscriptionJobPayload = {
-            audioUrl: input.audioUrl,
+            audioBufferBase64: input.audioBuffer.toString('base64'),
             fileName: normalizeOptionalText(input.fileName, 255),
             mimeType: input.mimeType,
             languageMode: input.languageMode,
@@ -282,7 +278,6 @@ class VoiceTranscriptionJobService {
             data: {
                 entryId: input.entryId || null,
                 userId: input.userId,
-                audioUrl: payload.audioUrl,
                 fileName: payload.fileName,
                 mimeType: payload.mimeType,
                 languageMode: payload.languageMode,
@@ -388,7 +383,6 @@ class VoiceTranscriptionJobService {
                 id: true,
                 userId: true,
                 entryId: true,
-                audioUrl: true,
                 fileName: true,
                 mimeType: true,
                 languageMode: true,
@@ -473,17 +467,6 @@ class VoiceTranscriptionJobService {
         });
     }
 
-    private async fetchAudioBuffer(audioUrl: string) {
-        const response = await axios.get<ArrayBuffer>(audioUrl, {
-            responseType: 'arraybuffer',
-            timeout: VOICE_AUDIO_FETCH_TIMEOUT_MS,
-            maxContentLength: MAX_AUDIO_FETCH_BYTES,
-            maxBodyLength: MAX_AUDIO_FETCH_BYTES,
-        });
-
-        return Buffer.from(response.data);
-    }
-
     private parseTranscript(value: Prisma.JsonValue): VoiceTranscriptionResult | null {
         if (!value || typeof value !== 'object' || Array.isArray(value)) {
             return null;
@@ -519,7 +502,6 @@ class VoiceTranscriptionJobService {
                 id: true,
                 title: true,
                 content: true,
-                audioUrl: true,
                 analysis: true,
             },
         });
@@ -610,11 +592,6 @@ class VoiceTranscriptionJobService {
                         contentHtml: null,
                     }
                     : {}),
-                ...(!entry.audioUrl && job.audioUrl
-                    ? {
-                        audioUrl: job.audioUrl,
-                    }
-                    : {}),
                 analysis: mergedAnalysis as Prisma.InputJsonValue,
             },
         });
@@ -644,10 +621,8 @@ class VoiceTranscriptionJobService {
         }
 
         try {
-            const [audioBuffer, lexiconHints] = await Promise.all([
-                this.fetchAudioBuffer(payload.audioUrl),
-                voiceLexiconService.getHintsForUser(job.userId, payload.candidateLanguages),
-            ]);
+            const audioBuffer = Buffer.from(payload.audioBufferBase64, 'base64');
+            const lexiconHints = await voiceLexiconService.getHintsForUser(job.userId, payload.candidateLanguages);
 
             const transcript = await voiceTranscriptionService.transcribe({
                 audioBuffer,
@@ -720,7 +695,6 @@ class VoiceTranscriptionJobService {
         return {
             id: job.id,
             entryId: job.entryId,
-            audioUrl: job.audioUrl,
             fileName: job.fileName,
             mimeType: job.mimeType,
             languageMode: job.languageMode,

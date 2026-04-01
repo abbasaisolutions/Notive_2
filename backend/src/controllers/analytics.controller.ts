@@ -602,3 +602,103 @@ export const getDashboardInsights = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * Get recurring tag themes from last 30 days
+ * Returns top tags by frequency with last-seen date for DashboardInsight use
+ */
+export const getTagThemes = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const entries = await prisma.entry.findMany({
+            where: { userId, deletedAt: null, createdAt: { gte: thirtyDaysAgo } },
+            select: { tags: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        const tagMap = new Map<string, { count: number; lastSeen: Date }>();
+
+        for (const entry of entries) {
+            for (const tag of entry.tags) {
+                const norm = tag.toLowerCase().trim();
+                if (!norm) continue;
+                const existing = tagMap.get(norm);
+                if (!existing) {
+                    tagMap.set(norm, { count: 1, lastSeen: entry.createdAt });
+                } else {
+                    existing.count += 1;
+                    if (entry.createdAt > existing.lastSeen) existing.lastSeen = entry.createdAt;
+                }
+            }
+        }
+
+        const themes = Array.from(tagMap.entries())
+            .map(([tag, { count, lastSeen }]) => ({ tag, count, lastSeen }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+
+        return res.json({ themes, periodDays: 30, totalEntries: entries.length });
+    } catch (error) {
+        console.error('Get tag themes error:', error);
+        return res.status(500).json({ message: 'Failed to fetch tag themes' });
+    }
+};
+
+/**
+ * Get mood-tag correlation patterns
+ * Finds tags where a specific mood dominates (≥50% of entries with that tag)
+ */
+export const getTagMoodPatterns = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const sixtyDaysAgo = new Date();
+        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+        const entries = await prisma.entry.findMany({
+            where: {
+                userId,
+                deletedAt: null,
+                createdAt: { gte: sixtyDaysAgo },
+                mood: { not: null },
+            },
+            select: { tags: true, mood: true },
+        });
+
+        // tag → mood → count
+        const tagMoodMap = new Map<string, Record<string, number>>();
+
+        for (const entry of entries) {
+            if (!entry.mood) continue;
+            for (const tag of entry.tags) {
+                const norm = tag.toLowerCase().trim();
+                if (!norm) continue;
+                if (!tagMoodMap.has(norm)) tagMoodMap.set(norm, {});
+                const moodCounts = tagMoodMap.get(norm)!;
+                moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
+            }
+        }
+
+        const patterns: { tag: string; dominantMood: string; percentage: number; entryCount: number }[] = [];
+
+        for (const [tag, moodCounts] of tagMoodMap.entries()) {
+            const total = Object.values(moodCounts).reduce((s, n) => s + n, 0);
+            if (total < 4) continue; // need at least 4 data points
+            const [dominantMood, dominantCount] = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
+            const percentage = Math.round((dominantCount / total) * 100);
+            if (percentage >= 50) {
+                patterns.push({ tag, dominantMood, percentage, entryCount: total });
+            }
+        }
+
+        patterns.sort((a, b) => b.entryCount - a.entryCount);
+
+        return res.json({ patterns: patterns.slice(0, 5), periodDays: 60 });
+    } catch (error) {
+        console.error('Get tag mood patterns error:', error);
+        return res.status(500).json({ message: 'Failed to fetch tag mood patterns' });
+    }
+};
+
+

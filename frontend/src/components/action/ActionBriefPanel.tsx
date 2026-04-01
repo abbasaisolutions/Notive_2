@@ -54,11 +54,8 @@ export default function ActionBriefPanel({
             <div>
                 <p className="section-label">Action brief</p>
                 <h3 className={`notebook-title mt-2 ${isCompactDashboard ? 'text-[1.02rem] leading-6 md:text-[1.15rem]' : 'text-xl md:text-[1.55rem]'}`}>
-                    Treat this like a direction check, not a final verdict.
-                </h3>
-                <p className={`notebook-copy mt-3 ${isCompactDashboard ? 'text-[0.82rem] leading-6' : 'text-[0.875rem] leading-7'}`}>
                     {brief.headline}
-                </p>
+                </h3>
                 <p className={`notebook-copy mt-2 ${isCompactDashboard ? 'text-[0.82rem] leading-6' : 'text-[0.875rem] leading-7'}`}>
                     {brief.pattern}
                 </p>

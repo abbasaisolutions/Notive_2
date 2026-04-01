@@ -10,15 +10,16 @@ import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { getMoodEmoji, normalizeMood } from '@/constants/moods';
 import { AppPanel, TagPill } from '@/components/ui/surface';
-import { ConfirmDialog, ErrorState, EmptyState, Spinner } from '@/components/ui';
+import { ConfirmDialog, ErrorState, Spinner } from '@/components/ui';
 import { formatStoryConfidence, storyFieldLabel, storyStatusClassName, storyStatusLabel, type StorySignal } from '@/utils/story-engine';
-import { FiArrowLeft, FiArrowRight, FiBriefcase, FiMic, FiUploadCloud } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiBriefcase, FiMic } from 'react-icons/fi';
 import ActionBriefPanel from '@/components/action/ActionBriefPanel';
 import BridgeCard from '@/components/action/BridgeCard';
 import SafetyBanner from '@/components/safety/SafetyBanner';
 import type { StudentActionResponse } from '@/components/action/types';
 import useTelemetry from '@/hooks/use-telemetry';
 import { useToast } from '@/context/toast-context';
+import ShareMemorySheet, { type ShareableEntry } from '@/components/share/ShareMemorySheet';
 
 
 interface Entry {
@@ -51,6 +52,14 @@ interface RelatedEntry {
     coverImage?: string | null;
 }
 
+const CARD_TAG_NOISE = new Set(['im','ive','id','ill','its','dont','didnt','wont','cant','not',
+    'has','had','have','does','did','just','like','also','some','both','this','that','what',
+    'when','where','good','okay','yeah','very','even','make','made','more','much','many','every',
+    'really','back','still','thing','things','day','today','time','week','feel','feels','felt',
+    'want','know','think','said','with','from','into','over','down','life','work','node','nodeo',
+    'features','nothing','something','everything']);
+const isCardTag = (t: string) => t.length >= 4 && !CARD_TAG_NOISE.has(t.toLowerCase().replace(/[^a-z0-9-]/g,''));
+
 function EntryDetailContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -65,6 +74,7 @@ function EntryDetailContent() {
     const [shareUrl, setShareUrl] = useState<string | null>(null);
     const [isCopied, setIsCopied] = useState(false);
     const [isSharing, setIsSharing] = useState(false);
+    const [showShareSheet, setShowShareSheet] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
@@ -321,49 +331,39 @@ function EntryDetailContent() {
     };
 
     return (
-        <div className="min-h-screen p-4 md:p-8">
+        <div className="min-h-screen p-3 md:p-6">
             <div className="fixed top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[150px] pointer-events-none" />
 
-            <div className="max-w-3xl mx-auto relative z-10">
-                <header className="workspace-panel mb-6 rounded-2xl p-4 md:p-5">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                            <button
-                                type="button"
-                                onClick={navigateBack}
-                                aria-label={backLabel}
-                                title={backLabel}
-                                className="workspace-button-outline rounded-xl p-2 transition-all"
-                            >
-                                <FiArrowLeft size={22} aria-hidden="true" />
-                            </button>
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Note</p>
-                                <p className="workspace-heading text-sm font-semibold">Read Note</p>
-                            </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <button
-                                onClick={handleShare}
-                                disabled={isSharing}
-                                className="workspace-button-outline rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-all"
-                            >
-                                {isCopied ? 'Copied' : isSharing ? 'Sharing' : 'Share'}
-                            </button>
-                            <Link
-                                href={withCurrentReturnTo(`/entry/edit?id=${id}`)}
-                                className="rounded-xl border border-primary/30 bg-primary/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-primary hover:bg-primary/25 transition-all"
-                            >
-                                Edit
-                            </Link>
-                            <button
-                                onClick={() => setShowDeleteConfirm(true)}
-                                className="workspace-button-outline rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-all"
-                                aria-label="Delete entry"
-                            >
-                                Delete
-                            </button>
-                        </div>
+            <div className="max-w-2xl mx-auto relative z-10">
+                <header className="mb-5 flex items-center justify-between gap-3">
+                    <button
+                        type="button"
+                        onClick={navigateBack}
+                        aria-label={backLabel}
+                        className="workspace-button-outline rounded-xl p-2 transition-all"
+                    >
+                        <FiArrowLeft size={20} aria-hidden="true" />
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setShowShareSheet(true)}
+                            className="workspace-pill rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] transition-all hover:opacity-85"
+                        >
+                            Share
+                        </button>
+                        <Link
+                            href={withCurrentReturnTo(`/entry/edit?id=${id}`)}
+                            className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-primary hover:bg-primary/25 transition-all"
+                        >
+                            Edit
+                        </Link>
+                        <button
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="workspace-pill rounded-full px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-ink-muted transition-all hover:text-[rgb(var(--text-primary))]"
+                        >
+                            Delete
+                        </button>
                     </div>
                 </header>
 
@@ -404,49 +404,27 @@ function EntryDetailContent() {
                     />
                 )}
 
-                <div className="mb-5 grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-2">
-                    <div className="workspace-soft-panel rounded-xl px-3 py-2">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Created</p>
-                        <p className="workspace-heading text-sm font-semibold">
-                            {createdAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                        </p>
-                    </div>
-                    <div className="workspace-soft-panel rounded-xl px-3 py-2">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Volume</p>
-                        <p className="workspace-heading text-sm font-semibold">{wordCount} words</p>
-                    </div>
-                    <div className="workspace-soft-panel rounded-xl px-3 py-2">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Time to Read</p>
-                        <p className="workspace-heading text-sm font-semibold">{readingTime} min</p>
-                    </div>
-                    <div className="workspace-soft-panel rounded-xl px-3 py-2">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Updated</p>
-                        <p className="workspace-heading text-sm font-semibold">
-                            {updatedAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="mb-6">
-                    <h1 className="workspace-heading mb-2 text-3xl font-bold md:text-4xl">{entry.title || 'Untitled Note'}</h1>
-                    <p className="text-ink-secondary text-sm">
-                        {createdAt.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                <div className="mb-3">
+                    <h1 className="workspace-heading mb-1.5 text-lg font-semibold md:text-xl">{entry.title || 'Untitled Note'}</h1>
+                    <p className="text-xs text-ink-muted uppercase tracking-[0.1em]">
+                        {createdAt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                        {' · '}{wordCount} words{' · '}{readingTime} min read
                     </p>
                 </div>
 
-                <div className="mb-6 flex flex-wrap gap-2">
-                    <span className="workspace-pill rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary">
+                <div className="mb-3 flex flex-wrap gap-1.5">
+                    <span className="workspace-pill rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-ink-secondary">
                         {sourceLabel}
                     </span>
                     {normalizedMood && (
-                        <span className="rounded-full border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-primary">
+                        <span className="rounded-full border border-primary/35 bg-primary/15 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-primary">
                             {getMoodEmoji(normalizedMood)} {normalizedMood}
                         </span>
                     )}
-                    {entry.tags.map((tag) => (
+                    {entry.tags.filter(isCardTag).slice(0, 3).map((tag) => (
                         <span
                             key={tag}
-                            className="workspace-pill rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary"
+                            className="workspace-pill rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-ink-secondary"
                         >
                             #{tag}
                         </span>
@@ -454,53 +432,41 @@ function EntryDetailContent() {
                 </div>
 
                 {storySignal && (
-                    <AppPanel className="mb-8 space-y-4" tone="soft">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                            <div className="space-y-3">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${storyStatusClassName[storySignal.status]}`}>
+                    <AppPanel className="mb-5 space-y-3" tone="soft">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="space-y-2">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.12em] ${storyStatusClassName[storySignal.status]}`}>
                                         {storyStatusLabel[storySignal.status]}
                                     </span>
                                     <TagPill>{storySignal.completenessScore}% ready</TagPill>
                                     <TagPill>{formatStoryConfidence(storySignal.confidence)} confidence</TagPill>
                                 </div>
-                                <div>
-                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Story Details</p>
-                                    <h2 className="workspace-heading mt-1 text-xl font-semibold">Turn this note into a story you can use</h2>
-                                    <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{storyMessage}</p>
-                                </div>
+                                <p className="text-xs text-ink-secondary">{storyMessage}</p>
                             </div>
 
-                            <div className="grid gap-2 sm:grid-cols-2 lg:w-[20rem] lg:grid-cols-1">
+                            <div className="flex flex-wrap gap-2">
                                 <Link
                                     href={storyPrimaryHref}
-                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-4 py-3 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
+                                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/12 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-primary transition-colors hover:bg-primary/20"
                                 >
-                                    <FiBriefcase size={14} aria-hidden="true" />
+                                    <FiBriefcase size={12} aria-hidden="true" />
                                     {storyPrimaryLabel}
                                 </Link>
                                 <Link
                                     href={storySecondaryHref}
-                                    className="workspace-button-outline inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.1em] transition-colors"
+                                    className="workspace-button-outline inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] transition-colors"
                                 >
-                                    {shouldOpenInterviewDeck || !isImportedEntry ? (
-                                        <FiArrowRight size={14} aria-hidden="true" />
-                                    ) : (
-                                        <FiUploadCloud size={14} aria-hidden="true" />
-                                    )}
                                     {storySecondaryLabel}
                                 </Link>
                             </div>
                         </div>
 
                         {storySignal.missingFields.length > 0 && (
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Missing parts</p>
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                    {storySignal.missingFields.map((field) => (
-                                        <TagPill key={field}>{storyFieldLabel[field]}</TagPill>
-                                    ))}
-                                </div>
+                            <div className="flex flex-wrap gap-1.5">
+                                {storySignal.missingFields.map((field) => (
+                                    <TagPill key={field}>{storyFieldLabel[field]}</TagPill>
+                                ))}
                             </div>
                         )}
                     </AppPanel>
@@ -554,7 +520,7 @@ function EntryDetailContent() {
                     </div>
                 )}
 
-                <div className="workspace-panel rounded-2xl p-6 md:p-8">
+                <div className="workspace-panel rounded-2xl p-4 md:p-6">
                     {safeHtml ? (
                         <div
                             className="prose max-w-none prose-headings:text-[rgb(var(--text-primary))] prose-p:text-ink-secondary prose-strong:text-[rgb(var(--text-primary))] prose-li:text-ink-secondary prose-a:text-primary prose-blockquote:text-ink-secondary"
@@ -566,61 +532,58 @@ function EntryDetailContent() {
                 </div>
 
                 {(isLoadingRelated || relatedEntries.length > 0) && (
-                    <AppPanel className="mt-8 space-y-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Related Entries</p>
-                                <h2 className="workspace-heading mt-1 text-xl font-semibold">Notes connected to this one</h2>
-                                <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                    Similar notes come from the new local retrieval layer, with optional reranking when the local service is available.
-                                </p>
-                            </div>
+                    <AppPanel className="mt-6 space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Related Notes</p>
                             {isLoadingRelated && (
-                                <span className="text-xs uppercase tracking-[0.12em] text-ink-muted">Loading related notes...</span>
+                                <span className="text-xs uppercase tracking-[0.1em] text-ink-muted">Loading...</span>
                             )}
                         </div>
 
                         {relatedEntries.length > 0 ? (
-                            <div className="grid gap-3 md:grid-cols-2">
+                            <div className="grid gap-2 md:grid-cols-2">
                                 {relatedEntries.map((relatedEntry) => (
                                     <Link
                                         key={relatedEntry.id}
                                         href={withCurrentReturnTo(`/entry/view?id=${relatedEntry.id}`)}
-                                        className="workspace-soft-panel rounded-2xl p-4 transition-colors"
+                                        className="workspace-soft-panel group rounded-xl p-3 transition-colors hover:bg-primary/5"
                                     >
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div>
-                                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
-                                                    {new Date(relatedEntry.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                </p>
-                                                <h3 className="workspace-heading mt-2 text-base font-semibold">{relatedEntry.title || 'Untitled Note'}</h3>
-                                            </div>
-                                            <FiArrowRight size={16} className="text-ink-muted" aria-hidden="true" />
+                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                            <p className="text-xs font-medium text-[rgb(var(--text-primary))] line-clamp-1">{relatedEntry.title || 'Untitled'}</p>
+                                            <FiArrowRight size={13} className="shrink-0 text-ink-muted group-hover:text-primary transition-colors" aria-hidden="true" />
                                         </div>
-
-                                        <p className="mt-3 text-sm leading-7 text-ink-secondary">{relatedEntry.contentPreview}</p>
-
-                                        <div className="mt-4 flex flex-wrap gap-2">
-                                            {relatedEntry.mood && (
-                                                <TagPill tone="primary">{getMoodEmoji(relatedEntry.mood)} {relatedEntry.mood}</TagPill>
-                                            )}
+                                        <p className="text-[0.7rem] leading-snug text-ink-muted line-clamp-2">{relatedEntry.contentPreview}</p>
+                                        <div className="mt-2 flex flex-wrap gap-1">
                                             <TagPill>{Math.round((relatedEntry.relevance || 0) * 100)}% match</TagPill>
-                                            {relatedEntry.matchReasons.slice(0, 2).map((reason) => (
-                                                <TagPill key={`${relatedEntry.id}-${reason}`}>{reason}</TagPill>
-                                            ))}
+                                            {relatedEntry.mood && <TagPill tone="primary">{getMoodEmoji(relatedEntry.mood)}</TagPill>}
                                         </div>
                                     </Link>
                                 ))}
                             </div>
-                        ) : !isLoadingRelated ? (
-                            <EmptyState
-                                title="No Related Notes"
-                                subtitle="This note doesn't have similar entries yet. Keep adding notes to build connections!"
-                            />
-                        ) : null}
+                        ) : !isLoadingRelated ? null : null}
                     </AppPanel>
                 )}
             </div>
+
+            {showShareSheet && entry && (
+                <ShareMemorySheet
+                    initialEntry={{
+                        id: entry.id,
+                        title: entry.title,
+                        content: entry.content,
+                        mood: entry.mood,
+                        createdAt: entry.createdAt,
+                    }}
+                    allEntries={[{
+                        id: entry.id,
+                        title: entry.title,
+                        content: entry.content,
+                        mood: entry.mood,
+                        createdAt: entry.createdAt,
+                    }]}
+                    onClose={() => setShowShareSheet(false)}
+                />
+            )}
         </div>
     );
 }

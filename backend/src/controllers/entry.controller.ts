@@ -96,15 +96,54 @@ const attachEntryStorySignal = <T extends {
 }>(entry: T) => {
     const { analysis, ...responseEntry } = entry;
 
-    const notiveInsights = (() => {
-        if (!analysis || typeof analysis !== 'object' || Array.isArray(analysis)) return undefined;
-        const a = analysis as Record<string, unknown>;
-        return Array.isArray(a.notiveInsights) ? a.notiveInsights : undefined;
-    })();
+    const analysisObj: Record<string, unknown> | null =
+        analysis && typeof analysis === 'object' && !Array.isArray(analysis)
+            ? (analysis as Record<string, unknown>)
+            : null;
+
+    const notiveInsights = analysisObj && Array.isArray(analysisObj.notiveInsights)
+        ? analysisObj.notiveInsights
+        : undefined;
+
+    // Extract top emotions from analysis blob (Record<string, number>)
+    const rawEmotions = analysisObj?.emotions;
+    const emotions: Record<string, number> | undefined =
+        rawEmotions && typeof rawEmotions === 'object' && !Array.isArray(rawEmotions)
+            ? (rawEmotions as Record<string, number>)
+            : undefined;
+    const topEmotions = emotions
+        ? Object.entries(emotions)
+            .filter(([, v]) => typeof v === 'number' && v > 0)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([emotion, intensity]) => ({ emotion, intensity }))
+        : undefined;
+
+    // Compute per-entry reflection depth level (0-4) from available signals
+    const hasReflection = Boolean(entry.reflection?.trim());
+    const hasLessons = (entry.lessons?.length ?? 0) > 0;
+    const hasSkills = (entry.skills?.length ?? 0) > 0;
+    const wordCount = entry.content.trim().split(/\s+/).filter(Boolean).length;
+    const depthSignals = (hasReflection ? 1 : 0) + (hasLessons ? 1 : 0) + (hasSkills ? 1 : 0) + (wordCount > 120 ? 1 : 0);
+    const depthLevel: 0 | 1 | 2 | 3 | 4 = depthSignals >= 4 ? 4 : depthSignals >= 3 ? 3 : depthSignals >= 2 ? 2 : depthSignals >= 1 ? 1 : 0;
+    const depthLabels = ['Surface', 'Noticing', 'Connecting', 'Pattern-finding', 'Integrating'];
+
+    // Growth language ratio: quick heuristic from content
+    const contentLower = entry.content.toLowerCase();
+    const growthPhrases = ['i learned', 'i realized', 'i grew', 'i improved', 'next time', 'i can', 'i will', 'going forward', 'progress', 'better at'];
+    const fixedPhrases = ['i can\'t', 'i\'m stuck', 'nothing works', 'i always fail', 'i never', 'impossible'];
+    const growthHits = growthPhrases.filter(p => contentLower.includes(p)).length;
+    const fixedHits = fixedPhrases.filter(p => contentLower.includes(p)).length;
+    const totalHits = growthHits + fixedHits;
+    const growthRatio = totalHits > 0 ? Math.round((growthHits / totalHits) * 100) : null;
 
     return {
         ...responseEntry,
         notiveInsights,
+        topEmotions: topEmotions && topEmotions.length > 0 ? topEmotions : undefined,
+        depthLevel,
+        depthLabel: depthLabels[depthLevel],
+        growthRatio,
         storySignal: buildEntryStorySignal({
             id: entry.id,
             title: entry.title,
@@ -407,7 +446,7 @@ const mergeNlpInsightsIntoAnalysis = (
 export const createEntry = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
-        const { title, content, contentHtml, mood, tags, coverImage, audioUrl, chapterId, autoTag, analysis, category, lifeArea, locationLat, locationLng, locationName } = req.body;
+        const { title, content, contentHtml, mood, tags, coverImage, chapterId, autoTag, analysis, category, lifeArea, locationLat, locationLng, locationName } = req.body;
 
         if (!content) {
             return res.status(400).json({ message: 'Content is required' });
@@ -476,7 +515,6 @@ export const createEntry = async (req: Request, res: Response) => {
                 mood: resolvedMood,
                 tags: finalTags,
                 coverImage: coverImage || null,
-                audioUrl: audioUrl || null,
                 chapterId: chapterId || null,
                 category: resolvedCategory as 'PERSONAL' | 'PROFESSIONAL',
                 lifeArea: resolvedLifeArea,
@@ -626,7 +664,6 @@ export const getEntries = async (req: Request, res: Response) => {
             reflection: true,
             analysis: true,
             coverImage: true,
-            audioUrl: true,
             createdAt: true,
             updatedAt: true,
         } as const;
@@ -699,6 +736,14 @@ export const getEntries = async (req: Request, res: Response) => {
                     .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
             )].sort((a, b) => a.localeCompare(b));
 
+        // Build tag frequency counts across all user entries (from current batch + prior pages)
+        const tagCounts: Record<string, number> = {};
+        for (const entry of filteredEntries) {
+            for (const tag of entry.tags) {
+                tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+            }
+        }
+
         return res.status(200).json({
             entries: entries.map((entry) => attachEntryStorySignal(entry)),
             pagination: {
@@ -709,6 +754,7 @@ export const getEntries = async (req: Request, res: Response) => {
             },
             facets: {
                 lifeAreas,
+                tagCounts,
             },
             filters: {
                 search,
@@ -755,7 +801,7 @@ export const updateEntry = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
         const { id } = req.params;
-        const { title, content, contentHtml, mood, tags, coverImage, audioUrl, chapterId, analysis, category, lifeArea, locationLat, locationLng, locationName } = req.body;
+        const { title, content, contentHtml, mood, tags, coverImage, chapterId, analysis, category, lifeArea, locationLat, locationLng, locationName } = req.body;
 
         // Check if entry exists and belongs to user
         const existing = await prisma.entry.findFirst({
@@ -827,7 +873,6 @@ export const updateEntry = async (req: Request, res: Response) => {
                 mood: resolvedMood,
                 tags: tagMeta ? tagMeta.map(t => t.name) : existing.tags,
                 coverImage: coverImage !== undefined ? coverImage : existing.coverImage,
-                audioUrl: audioUrl !== undefined ? audioUrl : existing.audioUrl,
                 chapterId: chapterId !== undefined ? chapterId : existing.chapterId,
                 category: resolvedCategory as 'PERSONAL' | 'PROFESSIONAL',
                 lifeArea: resolvedLifeArea,
