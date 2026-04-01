@@ -235,6 +235,7 @@ function NewEntryPageContent() {
     const [content, setContent] = useState('');
     const [contentHtml, setContentHtml] = useState('');
     const contentRef = useRef('');
+    const [promptHint, setPromptHint] = useState<string | null>(null);
 
     const [titleOverride, setTitleOverride] = useState('');
     const [moodOverride, setMoodOverride] = useState<string | null>(null);
@@ -578,7 +579,7 @@ function NewEntryPageContent() {
             : voiceText?.trim()
                 ? toVoiceCaptureState(buildBrowserFallbackTranscription(voiceText, DEFAULT_VOICE_LANGUAGE_MODE))
                 : null;
-        const seededText = stagedTranscript?.cleanTranscript || voiceText || promptText || '';
+        const seededText = stagedTranscript?.cleanTranscript || voiceText || '';
         const savedDraft = loadDraft();
         const restoredVoiceCapture = parseStoredVoiceCapture(savedDraft?.analysis?.voice);
         const restoredVoiceJob = parseStoredVoiceJob(savedDraft?.analysis?.voice, savedDraft?.audioUrl || audioParam || null);
@@ -646,6 +647,9 @@ function NewEntryPageContent() {
             }
 
             setContent(seededText);
+            if (promptText && !seededText) {
+                setPromptHint(promptText);
+            }
             setTagsOverride(gentleReflectionTags);
             setVoiceCapture(seededVoiceCapture);
             setVoiceJob(pendingVoiceJob || restoredVoiceJob);
@@ -1502,9 +1506,11 @@ function NewEntryPageContent() {
         : null;
     const editorPlaceholder = content.trim()
         ? 'Keep going...'
-        : isWhisperMode
-            ? 'What\u2019s on your mind tonight?'
-            : `Try this: ${starterPrompt.text}`;
+        : promptHint
+            ? promptHint
+            : isWhisperMode
+                ? 'What\u2019s on your mind tonight?'
+                : `Try this: ${starterPrompt.text}`;
 
     const handleCategorySelect = (nextCategory: EntryCategory) => {
         setCategory(nextCategory);

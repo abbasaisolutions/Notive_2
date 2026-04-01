@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -49,7 +49,7 @@ const avatarInitial = (name: string | null) => (name || '?').charAt(0).toUpperCa
 
 /* ─── Page ─────────────────────────────────────────────── */
 
-export default function SharedBundleViewPage() {
+function SharedBundleViewContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const { apiFetch } = useApi();
@@ -208,6 +208,20 @@ export default function SharedBundleViewPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function SharedBundleViewPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="flex min-h-[50vh] items-center justify-center">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-[rgba(107,143,113,0.3)] border-t-[rgb(107,143,113)]" />
+                </div>
+            }
+        >
+            <SharedBundleViewContent />
+        </Suspense>
     );
 }
 

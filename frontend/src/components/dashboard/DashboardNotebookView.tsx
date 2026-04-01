@@ -783,7 +783,7 @@ export default function DashboardNotebookView({
     const topPreviewContent = activeTab === 'today' ? (
         <>
             {glanceStrip}
-            <h2 className="notive-logo text-lg font-semibold leading-snug md:text-2xl">
+            <h2 className="notive-logo italic text-lg font-semibold leading-snug md:text-2xl">
                 {moodShift?.type === 'shift'
                     ? `Your mood moved from ${moodShift.from} to ${moodShift.to} lately.`
                     : moodShift?.type === 'steady'
@@ -890,7 +890,7 @@ export default function DashboardNotebookView({
             {glanceStrip}
             <div>
                 <p className="section-label">Recent notes</p>
-                <h2 className="notive-logo mt-2 text-lg font-semibold leading-snug md:text-2xl">
+                <h2 className="notive-logo italic mt-2 text-lg font-semibold leading-snug md:text-2xl">
                     Return to the notes, not the stats.
                 </h2>
                 <p className="mt-3 text-[0.875rem] leading-7 text-[rgb(107,107,107)]">
@@ -934,7 +934,7 @@ export default function DashboardNotebookView({
             {glanceStrip}
             <div>
                 <p className="section-label">Growth</p>
-                <h2 className="notive-logo mt-2 text-lg font-semibold leading-snug md:text-2xl">
+                <h2 className="notive-logo italic mt-2 text-lg font-semibold leading-snug md:text-2xl">
                     Your notebook is starting to show real shape.
                 </h2>
             </div>
@@ -988,7 +988,7 @@ export default function DashboardNotebookView({
             {glanceStrip}
             <div>
                 <p className="section-label">Patterns</p>
-                <h2 className="notive-logo mt-2 text-lg font-semibold leading-snug md:text-2xl">
+                <h2 className="notive-logo italic mt-2 text-lg font-semibold leading-snug md:text-2xl">
                     The quieter patterns are ready when you want them.
                 </h2>
             </div>

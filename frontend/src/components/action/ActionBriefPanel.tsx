@@ -53,10 +53,10 @@ export default function ActionBriefPanel({
         <div className={isCompactDashboard ? 'space-y-3' : 'space-y-4'}>
             <div>
                 <p className="section-label">Action brief</p>
-                <h3 className={`notebook-title mt-2 ${isCompactDashboard ? 'text-[1.02rem] leading-6 md:text-[1.15rem]' : 'text-xl md:text-[1.55rem]'}`}>
+                <h3 className={`notebook-title italic mt-2 ${isCompactDashboard ? 'text-[1.02rem] leading-6 md:text-[1.15rem]' : 'text-xl md:text-[1.55rem]'}`}>
                     {brief.headline}
                 </h3>
-                <p className={`notebook-copy mt-2 ${isCompactDashboard ? 'text-[0.82rem] leading-6' : 'text-[0.875rem] leading-7'}`}>
+                <p className={`notebook-copy italic mt-2 ${isCompactDashboard ? 'text-[0.82rem] leading-6' : 'text-[0.875rem] leading-7'}`}>
                     {brief.pattern}
                 </p>
             </div>
@@ -130,7 +130,7 @@ export default function ActionBriefPanel({
 
             <div className="app-paper-soft rounded-[1.25rem] p-4">
                 <p className="section-label">One clear next move</p>
-                <p className={`notebook-title mt-2 ${isCompactDashboard ? 'text-[1rem] leading-6' : 'text-lg'}`}>
+                <p className={`notebook-title italic mt-2 ${isCompactDashboard ? 'text-[1rem] leading-6' : 'text-lg'}`}>
                     {brief.nextMove?.label || 'Draft the first lines'}
                 </p>
                 <p className={`notebook-copy mt-2 ${isCompactDashboard ? 'text-[0.82rem] leading-6' : 'text-[0.875rem] leading-7'}`}>

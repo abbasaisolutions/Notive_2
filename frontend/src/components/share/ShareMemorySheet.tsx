@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { useApi } from '@/hooks/use-api';
 import { useToast } from '@/context/toast-context';
 import { API_URL } from '@/constants/config';
@@ -57,6 +58,7 @@ const slideVariants = {
 export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: ShareMemorySheetProps) {
     const { apiFetch } = useApi();
     const toast = useToast();
+    const [isMounted, setIsMounted] = useState(false);
 
     // Steps: 0 = select entries, 1 = pick recipients, 2 = confirm, 3 = done
     const [step, setStep] = useState(0);
@@ -89,6 +91,17 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
             .then(async (r) => { if (r.ok) { const d = await r.json(); setRecentUsers(d.users ?? []); } })
             .catch(() => {});
     }, [apiFetch]);
+
+    useEffect(() => {
+        setIsMounted(true);
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, []);
 
     // Debounced user search
     useEffect(() => {
@@ -324,7 +337,11 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
         true,
     ];
 
-    return (
+    if (!isMounted) {
+        return null;
+    }
+
+    return createPortal((
         <AnimatePresence>
             {/* Backdrop */}
             <motion.div
@@ -345,6 +362,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                 exit={{ opacity: 0, y: '100%' }}
                 transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
                 className="fixed inset-x-0 bottom-0 z-[100] max-h-[85vh] overflow-hidden rounded-t-[1.5rem] border-t border-[rgba(92,92,92,0.12)] bg-[rgb(var(--paper-bg))] shadow-xl md:inset-x-auto md:inset-y-0 md:m-auto md:max-h-[560px] md:max-w-lg md:rounded-[1.5rem] md:border"
+                style={{ bottom: 'var(--app-bottom-clearance, 0px)' }}
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
@@ -399,5 +417,5 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                 )}
             </motion.div>
         </AnimatePresence>
-    );
+    ), document.body);
 }
