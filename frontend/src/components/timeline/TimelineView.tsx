@@ -333,31 +333,32 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                             <Link href={appendReturnTo(`/entry/view?id=${entry.id}`, currentReturnTo)} className="block group">
                                                 {/* ① Mood left-border accent */}
                                                 <div
-                                                    className={`workspace-panel rounded-[1.25rem] p-3 border-l-[3px] transition-all duration-300${focusedEntryId === entry.id ? ' timeline-card-focused' : ''}`}
+                                                    className={`workspace-panel rounded-[1.25rem] p-2.5 min-[376px]:p-3 border-l-[3px] transition-all duration-300${focusedEntryId === entry.id ? ' timeline-card-focused' : ''}`}
                                                     style={{ borderLeftColor: moodColor || 'rgba(141,123,105,0.2)' }}
                                                 >
-                                                    <div className="flex items-start justify-between gap-2 mb-1">
-                                                        <span className="text-[0.65rem] text-ink-muted uppercase tracking-[0.16em] font-semibold inline-flex items-center gap-1 flex-shrink min-w-0">
+                                                    {/* Card header: date/time left, mood emoji right */}
+                                                    <div className="flex items-start justify-between gap-1.5 min-[376px]:gap-2 mb-1">
+                                                        <span className="text-[0.6rem] min-[376px]:text-[0.65rem] text-ink-muted uppercase tracking-[0.16em] font-semibold inline-flex items-center gap-1 min-w-0 flex-1">
                                                             <span className="whitespace-nowrap">{formatDate(entry.createdAt)}</span>
                                                             <span className="text-ink-muted/40" aria-hidden="true">&middot;</span>
                                                             <span className="whitespace-nowrap">{formatTime(entry.createdAt)}</span>
-                                                            <span className="text-ink-muted/40" aria-hidden="true">&middot;</span>
-                                                            <span className={`whitespace-nowrap rounded-full px-1.5 py-px ${DAY_PART_PILL_STYLE[getDayPart(entry.createdAt)] || ''}`}>
+                                                            <span className="hidden min-[376px]:inline text-ink-muted/40" aria-hidden="true">&middot;</span>
+                                                            <span className={`hidden min-[376px]:inline whitespace-nowrap rounded-full px-1.5 py-px ${DAY_PART_PILL_STYLE[getDayPart(entry.createdAt)] || ''}`}>
                                                                 {getDayPart(entry.createdAt)}
                                                             </span>
                                                         </span>
-                                                        <div className="flex items-center gap-1.5">
+                                                        <div className="flex items-center gap-1 min-[376px]:gap-1.5 flex-shrink-0">
                                                             {storySignal && (
                                                                 <StoryRing signal={storySignal} />
                                                             )}
                                                             {entry.category === 'PROFESSIONAL' && (
-                                                                <span className="text-[0.6rem] font-semibold text-secondary bg-secondary/15 border border-secondary/35 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                                                                <span className="text-[0.55rem] min-[376px]:text-[0.6rem] font-semibold text-secondary bg-secondary/15 border border-secondary/35 px-1 min-[376px]:px-1.5 py-0.5 rounded-full uppercase tracking-wider">
                                                                     Pro
                                                                 </span>
                                                             )}
                                                             {moodLabel && (
                                                                 <span
-                                                                    className="text-[0.6rem] font-semibold px-2 py-0.5 rounded-full border"
+                                                                    className="text-[0.6rem] font-semibold px-1.5 min-[376px]:px-2 py-0.5 rounded-full border flex-shrink-0"
                                                                     style={{
                                                                         color: moodColor,
                                                                         borderColor: `${moodColor}66`,
@@ -366,21 +367,6 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                                 >
                                                                     {getMoodEmoji(normalizedMood)}
                                                                 </span>
-                                                            )}
-                                                            {onShareEntry && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShareEntry(entry.id); }}
-                                                                    className="inline-flex h-9 w-9 md:h-6 md:w-6 flex-shrink-0 items-center justify-center rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(var(--brand),0.06)] text-[rgb(107,143,113)] transition-colors hover:bg-[rgba(var(--brand),0.16)]"
-                                                                    title="Share this memory"
-                                                                    aria-label="Share this memory"
-                                                                >
-                                                                    <svg width="15" height="15" viewBox="0 0 14 14" fill="none" aria-hidden="true" className="md:w-3 md:h-3">
-                                                                        <path d="M2 7.5V11.5C2 12.05 2.45 12.5 3 12.5H11C11.55 12.5 12 12.05 12 11.5V7.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
-                                                                        <path d="M7 1.5V9" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-                                                                        <path d="M4.5 4L7 1.5L9.5 4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
-                                                                    </svg>
-                                                                </button>
                                                             )}
                                                         </div>
                                                     </div>
@@ -422,48 +408,46 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                         )}
                                                     </div>
 
-                                                    {/* Tags — single line, compact, no-wrap, overflow hidden */}
-                                                    {entryTags.length > 0 && (
-                                                        <div className="flex items-center gap-1 overflow-hidden mt-1.5 flex-nowrap">
-                                                            {entryTags.slice(0, 2).map(tag => (
-                                                                <span
-                                                                    key={tag}
-                                                                    className="text-[0.6rem] font-medium text-primary/75 bg-primary/8 border border-primary/20 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[6rem]"
-                                                                >
-                                                                    #{tag}
-                                                                </span>
-                                                            ))}
-                                                            {entryTags.length > 2 && (
-                                                                <span className="text-[0.6rem] text-ink-muted whitespace-nowrap flex-shrink-0">
-                                                                    +{entryTags.length - 2}
-                                                                </span>
-                                                            )}
-                                                            {typeof growthRatio === 'number' && growthRatio > 0 && (
-                                                                <span
-                                                                    className="text-[0.6rem] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-0.5"
-                                                                    style={{ color: 'rgba(138,154,111,0.9)', backgroundColor: 'rgba(138,154,111,0.1)' }}
-                                                                >
-                                                                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 9V4M5 4C5 2.5 3.5 1 2 1M5 4C5 2.5 6.5 1 8 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
-                                                                    {growthRatio}%
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                    {/* Tags + Skills + Lessons — unified single scrollable row */}
+                                                    {(entryTags.length > 0 || displaySkills.length > 0 || displayLessons.length > 0) && (() => {
+                                                        const allPills: { key: string; label: string; type: 'tag' | 'skill' | 'lesson' }[] = [
+                                                            ...entryTags.map(t => ({ key: `t-${t}`, label: `#${t}`, type: 'tag' as const })),
+                                                            ...displaySkills.map(s => ({ key: `s-${s}`, label: `+${s}`, type: 'skill' as const })),
+                                                            ...displayLessons.map(l => ({ key: `l-${l}`, label: l, type: 'lesson' as const })),
+                                                        ];
+                                                        const visible = allPills.slice(0, 4);
+                                                        const overflowCount = allPills.length - visible.length;
 
-                                                    {(displaySkills.length > 0 || displayLessons.length > 0) && (
-                                                        <div className="flex flex-wrap gap-1 mt-1.5">
-                                                            {displaySkills.slice(0, 2).map(skill => (
-                                                                <span key={skill} className="text-[0.6rem] font-semibold text-success bg-success/15 border border-success/35 px-1.5 py-0.5 rounded-full">
-                                                                    +{skill}
-                                                                </span>
-                                                            ))}
-                                                            {displayLessons.slice(0, 1).map(lesson => (
-                                                                <span key={lesson} className="text-[0.6rem] font-semibold text-accent bg-accent/15 border border-accent/35 px-1.5 py-0.5 rounded-full">
-                                                                    {lesson}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                                        const pillClass = (type: 'tag' | 'skill' | 'lesson') => {
+                                                            if (type === 'skill') return 'text-[0.6rem] font-semibold text-success bg-success/15 border border-success/35 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0';
+                                                            if (type === 'lesson') return 'text-[0.6rem] font-semibold text-accent bg-accent/15 border border-accent/35 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0';
+                                                            return 'text-[0.6rem] font-medium text-primary/75 bg-primary/8 border border-primary/20 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[5rem] min-[376px]:max-w-[6rem]';
+                                                        };
+
+                                                        return (
+                                                            <div className="flex items-center gap-1 mt-1.5 overflow-x-auto flex-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                                                {visible.map(pill => (
+                                                                    <span key={pill.key} className={pillClass(pill.type)}>
+                                                                        {pill.label}
+                                                                    </span>
+                                                                ))}
+                                                                {overflowCount > 0 && (
+                                                                    <span className="text-[0.6rem] text-ink-muted whitespace-nowrap flex-shrink-0">
+                                                                        +{overflowCount}
+                                                                    </span>
+                                                                )}
+                                                                {typeof growthRatio === 'number' && growthRatio > 0 && (
+                                                                    <span
+                                                                        className="text-[0.6rem] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-0.5"
+                                                                        style={{ color: 'rgba(138,154,111,0.9)', backgroundColor: 'rgba(138,154,111,0.1)' }}
+                                                                    >
+                                                                        <svg width="8" height="8" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 9V4M5 4C5 2.5 3.5 1 2 1M5 4C5 2.5 6.5 1 8 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
+                                                                        {growthRatio}%
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
 
                                                     {/* ⑥ + ⑦ Notive Noticed panel (tiered reveal + evolving CTA inside) */}
                                                     {(entry.notiveInsights?.length || entry.reflection || (entry.skills?.length ?? 0) > 0 || (entry.lessons?.length ?? 0) > 0 || entry.storySignal) && (
@@ -478,6 +462,25 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                             tagCounts={tagCounts}
                                                             entryTags={entryTags}
                                                         />
+                                                    )}
+
+                                                    {/* Share button — bottom-right of card */}
+                                                    {onShareEntry && (
+                                                        <div className="flex justify-end mt-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShareEntry(entry.id); }}
+                                                                className="inline-flex h-7 w-7 md:h-6 md:w-6 flex-shrink-0 items-center justify-center rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(var(--brand),0.06)] text-[rgb(107,143,113)] transition-colors hover:bg-[rgba(var(--brand),0.16)]"
+                                                                title="Share this memory"
+                                                                aria-label="Share this memory"
+                                                            >
+                                                                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true" className="md:w-3 md:h-3">
+                                                                    <path d="M2 7.5V11.5C2 12.05 2.45 12.5 3 12.5H11C11.55 12.5 12 12.05 12 11.5V7.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+                                                                    <path d="M7 1.5V9" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                                                                    <path d="M4.5 4L7 1.5L9.5 4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </Link>

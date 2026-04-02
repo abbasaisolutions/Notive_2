@@ -20,6 +20,7 @@ import deviceRoutes from './routes/device.routes';
 import memoryShareRoutes from './routes/memory-share.routes';
 import notificationRoutes from './routes/notification.routes';
 import reminderRoutes from './routes/reminder.routes';
+import friendshipRoutes from './routes/friendship.routes';
 import { securityConfig } from './config/security';
 import { securityHeadersMiddleware } from './middleware/security.middleware';
 import { requestLoggingMiddleware } from './middleware/request-logging.middleware';
@@ -52,8 +53,17 @@ const allowedOriginPatterns = normalizeOriginList(process.env.CORS_ALLOWED_ORIGI
     .map(compileOriginPattern)
     .filter((pattern): pattern is RegExp => Boolean(pattern));
 
+// Capacitor serves the app from these origins on native devices.
+const CAPACITOR_ORIGINS = new Set([
+    'https://localhost',
+    'http://localhost',
+    'capacitor://localhost',
+]);
+
 const isAllowedOrigin = (origin: string) =>
-    allowedOrigins.includes(origin) || allowedOriginPatterns.some(pattern => pattern.test(origin));
+    CAPACITOR_ORIGINS.has(origin)
+    || allowedOrigins.includes(origin)
+    || allowedOriginPatterns.some(pattern => pattern.test(origin));
 
 app.disable('x-powered-by');
 app.set('trust proxy', securityConfig.trustProxy);
@@ -115,6 +125,7 @@ app.use('/api/v1/device', deviceRoutes);
 app.use('/api/v1/memory-share', memoryShareRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/reminders', reminderRoutes);
+app.use('/api/v1/friendships', friendshipRoutes);
 
 app.use((err: any, req: Request, res: Response, _next: any) => {
     serverLogger.error('http.request.failed', {

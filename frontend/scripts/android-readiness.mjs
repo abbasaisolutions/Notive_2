@@ -71,27 +71,22 @@ const resolveAndroidVersionConfig = () => {
     }
 
     if (!/^\d+$/.test(versionCodeRaw)) {
-        blockers.push('`NOTIVE_VERSION_CODE` must be an integer, for example `1100` for version `1.100`.');
+        blockers.push('`NOTIVE_VERSION_CODE` must be a positive integer, for example `17`.');
         return;
     }
 
-    const versionMatch = versionNameRaw.match(/^(\d+)\.(\d+)$/);
-    if (!versionMatch) {
-        blockers.push('`NOTIVE_VERSION_NAME` must follow the `major.minor` format, for example `1.100` or `2.0`.');
-        return;
-    }
-
-    const major = Number.parseInt(versionMatch[1], 10);
-    const minor = Number.parseInt(versionMatch[2], 10);
-    const expectedVersionCode = (major * 1000) + minor;
     const versionCode = Number.parseInt(versionCodeRaw, 10);
-
-    if (versionCode !== expectedVersionCode) {
-        blockers.push(`Android version mismatch: versionName \`${versionNameRaw}\` should map to versionCode \`${expectedVersionCode}\`, but the current value is \`${versionCodeRaw}\`.`);
+    if (versionCode < 1) {
+        blockers.push('`NOTIVE_VERSION_CODE` must be at least 1.');
         return;
     }
 
-    pushStatus('Android app version', `${versionNameRaw} (${versionCodeRaw})`);
+    if (!/^\d+\.\d+\.\d+$/.test(versionNameRaw)) {
+        blockers.push('`NOTIVE_VERSION_NAME` must follow SemVer `major.minor.patch` format, for example `1.2.0`.');
+        return;
+    }
+
+    pushStatus('Android app version', `${versionNameRaw} (${versionCode})`);
 };
 
 resolveAndroidVersionConfig();

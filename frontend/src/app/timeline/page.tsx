@@ -18,7 +18,7 @@ import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useTelemetry from '@/hooks/use-telemetry';
 import { getMoodEmoji } from '@/constants/moods';
-import { FiChevronDown, FiSearch, FiSliders } from 'react-icons/fi';
+import { FiArrowLeft, FiChevronDown, FiSearch, FiSliders } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo, buildSearchString } from '@/utils/navigation';
 import {
     buildSeasonAnchorMap,
@@ -1718,6 +1718,14 @@ function TimelinePageContent() {
                 <header className="space-y-2 md:space-y-3">
                     <div className="min-w-0">
                         <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => router.back()}
+                                className="workspace-button-outline inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl transition-all"
+                                aria-label="Go back"
+                            >
+                                <FiArrowLeft size={18} aria-hidden="true" />
+                            </button>
                             <p className="text-sm text-ink-secondary">
                                 {archiveMetaSummary}
                             </p>
@@ -1736,7 +1744,7 @@ function TimelinePageContent() {
                                     <FiSearch size={16} aria-hidden="true" className="text-ink-muted" />
                                 </button>
 
-                                <div className="flex flex-1 flex-wrap items-center gap-1.5 overflow-hidden">
+                                <div className="flex flex-1 flex-wrap items-center gap-1.5 overflow-visible">
                                     <button
                                         type="button"
                                         aria-pressed={surface === 'constellation'}

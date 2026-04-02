@@ -25,9 +25,18 @@ export const searchUsers = async (req: Request, res: Response) => {
             return res.json({ users: [] });
         }
 
+        // Exclude users who blocked me or whom I blocked
+        const blocks = await prisma.userBlock.findMany({
+            where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
+            select: { blockerId: true, blockedId: true },
+        });
+        const blockedIds = blocks.map((b) =>
+            b.blockerId === userId ? b.blockedId : b.blockerId,
+        );
+
         const users = await prisma.user.findMany({
             where: {
-                id: { not: userId },
+                id: { not: userId, notIn: blockedIds },
                 isBanned: false,
                 profile: { onboardingCompletedAt: { not: null } },
                 OR: [
@@ -141,6 +150,25 @@ export const createBundle = async (req: Request, res: Response) => {
 
         if (recipients.length !== recipientIds.length) {
             return res.status(400).json({ message: 'One or more recipients not found' });
+        }
+
+        // Verify all recipients are accepted friends
+        const friendships = await prisma.friendship.findMany({
+            where: {
+                status: 'ACCEPTED',
+                OR: [
+                    { requesterId: userId, addresseeId: { in: recipientIds } },
+                    { addresseeId: userId, requesterId: { in: recipientIds } },
+                ],
+            },
+            select: { requesterId: true, addresseeId: true },
+        });
+        const friendIds = new Set(
+            friendships.map((f) => (f.requesterId === userId ? f.addresseeId : f.requesterId)),
+        );
+        const nonFriends = recipientIds.filter((id: string) => !friendIds.has(id));
+        if (nonFriends.length > 0) {
+            return res.status(403).json({ message: 'You can only share memories with accepted friends' });
         }
 
         // Get sender name for notifications

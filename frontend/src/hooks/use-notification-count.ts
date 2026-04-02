@@ -1,15 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAuth } from '@/context/auth-context';
 import { useApi } from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
 
 /**
  * Polls the notification endpoint for unread count.
  * Returns `{ unreadCount, refresh }`.
- * Stops polling on 401 to prevent infinite re-render loops.
+ * Does not poll until the user is authenticated. Restarts cleanly when
+ * the auth state changes (e.g. initial load completes, login, logout).
  */
 export function useNotificationCount(intervalMs = 60_000) {
+    const { accessToken } = useAuth();
     const { apiFetch } = useApi();
     const [unreadCount, setUnreadCount] = useState(0);
     const timer = useRef<ReturnType<typeof setInterval>>();
@@ -29,7 +32,7 @@ export function useNotificationCount(intervalMs = 60_000) {
                 const data = await r.json();
                 setUnreadCount(data.unreadCount ?? data.total ?? 0);
             } else if (r.status === 401) {
-                // Auth is invalid — stop polling to avoid infinite loop
+                // Truly invalid auth — stop polling until accessToken changes
                 stoppedRef.current = true;
                 if (timer.current) clearInterval(timer.current);
             }
@@ -37,11 +40,19 @@ export function useNotificationCount(intervalMs = 60_000) {
     }, []);
 
     useEffect(() => {
+        if (!accessToken) {
+            // Not authenticated yet — clear badge and wait
+            setUnreadCount(0);
+            stoppedRef.current = false;
+            if (timer.current) clearInterval(timer.current);
+            return;
+        }
+        // Authenticated — start polling fresh
         stoppedRef.current = false;
         refresh();
         timer.current = setInterval(refresh, intervalMs);
         return () => { if (timer.current) clearInterval(timer.current); };
-    }, [refresh, intervalMs]);
+    }, [refresh, intervalMs, accessToken]);
 
     return { unreadCount, refresh };
 }

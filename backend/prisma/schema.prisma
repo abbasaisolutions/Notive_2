@@ -114,6 +114,12 @@ model User {
   receivedBundles     SharedMemoryRecipient[] @relation("receivedBundles")
   inAppNotifications  InAppNotification[]
   reminders           Reminder[]
+
+  // Friendships & Blocks
+  sentFriendRequests     Friendship[]  @relation("friendshipRequester")
+  receivedFriendRequests Friendship[]  @relation("friendshipAddressee")
+  blockedUsers           UserBlock[]   @relation("blocker")
+  blockedByUsers         UserBlock[]   @relation("blocked")
 }
 
 model RefreshToken {
@@ -662,4 +668,46 @@ model Reminder {
   updatedAt DateTime @updatedAt
 
   @@index([userId, enabled])
+}
+
+// ── Friendships ───────────────────────────────────────────
+// Bidirectional: once ACCEPTED both users can share with each other.
+// requesterId always < addresseeId is NOT enforced — we store the
+// direction so we know who initiated.
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model Friendship {
+  id           String           @id @default(cuid())
+  requesterId  String
+  requester    User             @relation("friendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId  String
+  addressee    User             @relation("friendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  status       FriendshipStatus @default(PENDING)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
+}
+
+// ── User Blocks ───────────────────────────────────────────
+// One-directional: blocker stops receiving anything from blocked user.
+// Also hides blocker from blocked user's search results.
+
+model UserBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blocker   User     @relation("blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User     @relation("blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
 }
