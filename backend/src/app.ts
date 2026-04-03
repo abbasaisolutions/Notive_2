@@ -29,16 +29,18 @@ import { serverLogger } from './utils/server-logger';
 const app: Express = express();
 const isProd = process.env.NODE_ENV === 'production';
 
+const normalizeOrigin = (value: string) => value.trim().replace(/\/$/, '').toLowerCase();
+
 const normalizeOriginList = (value: string | undefined) =>
     (value || '')
         .split(',')
-        .map(origin => origin.trim())
+        .map(origin => normalizeOrigin(origin))
         .filter(Boolean);
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const compileOriginPattern = (pattern: string) => {
-    const normalized = pattern.trim();
+    const normalized = normalizeOrigin(pattern);
     if (!normalized) return null;
 
     try {
@@ -53,17 +55,29 @@ const allowedOriginPatterns = normalizeOriginList(process.env.CORS_ALLOWED_ORIGI
     .map(compileOriginPattern)
     .filter((pattern): pattern is RegExp => Boolean(pattern));
 
-// Capacitor serves the app from these origins on native devices.
-const CAPACITOR_ORIGINS = new Set([
-    'https://localhost',
-    'http://localhost',
-    'capacitor://localhost',
-]);
+const LOCAL_ORIGIN_PROTOCOLS = new Set(['http:', 'https:', 'capacitor:', 'ionic:']);
+const LOCAL_ORIGIN_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0']);
 
-const isAllowedOrigin = (origin: string) =>
-    CAPACITOR_ORIGINS.has(origin)
-    || allowedOrigins.includes(origin)
-    || allowedOriginPatterns.some(pattern => pattern.test(origin));
+const isNativeLocalOrigin = (origin: string) => {
+    try {
+        const parsed = new URL(origin);
+        return LOCAL_ORIGIN_PROTOCOLS.has(parsed.protocol)
+            && (
+                LOCAL_ORIGIN_HOSTS.has(parsed.hostname)
+                || parsed.hostname.endsWith('.local')
+            );
+    } catch {
+        return false;
+    }
+};
+
+const isAllowedOrigin = (origin: string) => {
+    const normalizedOrigin = normalizeOrigin(origin);
+
+    return isNativeLocalOrigin(normalizedOrigin)
+        || allowedOrigins.includes(normalizedOrigin)
+        || allowedOriginPatterns.some(pattern => pattern.test(normalizedOrigin));
+};
 
 app.disable('x-powered-by');
 app.set('trust proxy', securityConfig.trustProxy);
@@ -91,11 +105,13 @@ app.use(cors({
             return;
         }
 
+        serverLogger.warn('cors.origin_blocked', { origin });
         const corsError = new Error('Origin not allowed by CORS') as Error & { status?: number };
         corsError.status = 403;
         callback(corsError);
     },
     credentials: true,
+    optionsSuccessStatus: 200,
 }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
