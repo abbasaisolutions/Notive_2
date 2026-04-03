@@ -22,124 +22,130 @@ export const createVoiceCaptureMonitor = async (
     stream: MediaStream,
     { onLevel }: VoiceCaptureMetricsOptions = {}
 ): Promise<VoiceCaptureMonitor | null> => {
-    const AudioContextCtor = getAudioContextCtor();
-    if (!AudioContextCtor) {
-        return null;
-    }
-
-    const audioContext = new AudioContextCtor();
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.15;
-
-    const source = audioContext.createMediaStreamSource(stream);
-    source.connect(analyser);
-
-    const samples = new Float32Array(analyser.fftSize);
-    let frameCount = 0;
-    let speechFrames = 0;
-    let clippedSamples = 0;
-    let totalSamples = 0;
-    let rmsAccumulator = 0;
-    let peakLevel = 0;
-    let animationFrame = 0;
-    let disposed = false;
-
-    const step = () => {
-        if (disposed) {
-            return;
+    try {
+        const AudioContextCtor = getAudioContextCtor();
+        if (!AudioContextCtor) {
+            return null;
         }
 
-        analyser.getFloatTimeDomainData(samples);
-        let sumSquares = 0;
-        let framePeak = 0;
+        const audioContext = new AudioContextCtor();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        analyser.smoothingTimeConstant = 0.15;
 
-        for (let index = 0; index < samples.length; index += 1) {
-            const sample = samples[index];
-            const absolute = Math.abs(sample);
-            sumSquares += sample * sample;
-            framePeak = Math.max(framePeak, absolute);
-            totalSamples += 1;
-            if (absolute >= 0.985) {
-                clippedSamples += 1;
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+
+        const samples = new Float32Array(analyser.fftSize);
+        let frameCount = 0;
+        let speechFrames = 0;
+        let clippedSamples = 0;
+        let totalSamples = 0;
+        let rmsAccumulator = 0;
+        let peakLevel = 0;
+        let animationFrame = 0;
+        let disposed = false;
+
+        const step = () => {
+            if (disposed) {
+                return;
             }
-        }
 
-        const rms = Math.sqrt(sumSquares / samples.length);
-        frameCount += 1;
-        rmsAccumulator += rms;
-        peakLevel = Math.max(peakLevel, framePeak);
-        if (rms >= 0.018) {
-            speechFrames += 1;
-        }
+            analyser.getFloatTimeDomainData(samples);
+            let sumSquares = 0;
+            let framePeak = 0;
 
-        onLevel?.(Math.min(1, rms * 4.5));
-        animationFrame = window.requestAnimationFrame(step);
-    };
+            for (let index = 0; index < samples.length; index += 1) {
+                const sample = samples[index];
+                const absolute = Math.abs(sample);
+                sumSquares += sample * sample;
+                framePeak = Math.max(framePeak, absolute);
+                totalSamples += 1;
+                if (absolute >= 0.985) {
+                    clippedSamples += 1;
+                }
+            }
 
-    step();
+            const rms = Math.sqrt(sumSquares / samples.length);
+            frameCount += 1;
+            rmsAccumulator += rms;
+            peakLevel = Math.max(peakLevel, framePeak);
+            if (rms >= 0.018) {
+                speechFrames += 1;
+            }
 
-    const finalize = async () => {
-        if (disposed) {
-            return null;
-        }
+            onLevel?.(Math.min(1, rms * 4.5));
+            animationFrame = window.requestAnimationFrame(step);
+        };
 
-        disposed = true;
-        window.cancelAnimationFrame(animationFrame);
-        onLevel?.(0);
+        step();
 
-        try {
-            source.disconnect();
-        } catch {
-            // Ignore disconnect errors during cleanup.
-        }
+        const finalize = async () => {
+            if (disposed) {
+                return null;
+            }
 
-        try {
-            analyser.disconnect();
-        } catch {
-            // Ignore disconnect errors during cleanup.
-        }
+            disposed = true;
+            window.cancelAnimationFrame(animationFrame);
+            onLevel?.(0);
 
-        if (audioContext.state !== 'closed') {
-            await audioContext.close().catch(() => undefined);
-        }
+            try {
+                source.disconnect();
+            } catch {
+                // Ignore disconnect errors during cleanup.
+            }
 
-        if (frameCount === 0 || totalSamples === 0) {
-            return null;
-        }
+            try {
+                analyser.disconnect();
+            } catch {
+                // Ignore disconnect errors during cleanup.
+            }
 
-        const averageLevel = rmsAccumulator / frameCount;
-        const speechRatio = speechFrames / frameCount;
-        const clippedRatio = clippedSamples / totalSamples;
-        const issues: string[] = [];
+            if (audioContext.state !== 'closed') {
+                await audioContext.close().catch(() => undefined);
+            }
 
-        if (speechRatio < 0.12) {
-            issues.push('limited_speech_detected');
-        }
-        if (averageLevel < 0.015) {
-            issues.push('input_too_quiet');
-        }
-        if (peakLevel > 0.985 || clippedRatio > 0.02) {
-            issues.push('possible_clipping');
-        }
+            if (frameCount === 0 || totalSamples === 0) {
+                return null;
+            }
+
+            const averageLevel = rmsAccumulator / frameCount;
+            const speechRatio = speechFrames / frameCount;
+            const clippedRatio = clippedSamples / totalSamples;
+            const issues: string[] = [];
+
+            if (speechRatio < 0.12) {
+                issues.push('limited_speech_detected');
+            }
+            if (averageLevel < 0.015) {
+                issues.push('input_too_quiet');
+            }
+            if (peakLevel > 0.985 || clippedRatio > 0.02) {
+                issues.push('possible_clipping');
+            }
+
+            return {
+                averageLevel: Number(averageLevel.toFixed(4)),
+                peakLevel: Number(peakLevel.toFixed(4)),
+                speechRatio: Number(speechRatio.toFixed(4)),
+                clippedRatio: Number(clippedRatio.toFixed(4)),
+                framesObserved: frameCount,
+                rating: issues.length >= 2 ? 'poor' : issues.length === 1 ? 'review' : 'good',
+                issues,
+            } satisfies VoiceCaptureQualityMetrics;
+        };
 
         return {
-            averageLevel: Number(averageLevel.toFixed(4)),
-            peakLevel: Number(peakLevel.toFixed(4)),
-            speechRatio: Number(speechRatio.toFixed(4)),
-            clippedRatio: Number(clippedRatio.toFixed(4)),
-            framesObserved: frameCount,
-            rating: issues.length >= 2 ? 'poor' : issues.length === 1 ? 'review' : 'good',
-            issues,
-        } satisfies VoiceCaptureQualityMetrics;
-    };
-
-    return {
-        stop: finalize,
-        dispose: () => {
-            void finalize();
-        },
-    };
+            stop: finalize,
+            dispose: () => {
+                void finalize();
+            },
+        };
+    } catch (error) {
+        console.warn('Voice capture metrics unavailable on this device', error);
+        onLevel?.(0);
+        return null;
+    }
 };
 
 export default createVoiceCaptureMonitor;

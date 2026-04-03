@@ -46,6 +46,12 @@ const VOICE_RECORDER_MIME_CANDIDATES = [
     'audio/mpeg',
 ] as const;
 
+const VOICE_AUDIO_CONSTRAINTS: MediaTrackConstraints = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+};
+
 const pickSupportedVoiceRecorderMimeType = (): string => {
     if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
         return '';
@@ -101,6 +107,74 @@ export const createVoiceMediaRecorder = (stream: MediaStream): MediaRecorder => 
     return mimeType
         ? new MediaRecorder(stream, { mimeType })
         : new MediaRecorder(stream);
+};
+
+const getVoiceStartErrorName = (error: unknown): string => {
+    if (!error || typeof error !== 'object') {
+        return '';
+    }
+
+    return typeof (error as { name?: unknown }).name === 'string'
+        ? String((error as { name?: unknown }).name)
+        : '';
+};
+
+const getVoiceStartErrorText = (error: unknown): string => {
+    if (!error || typeof error !== 'object') {
+        return '';
+    }
+
+    return typeof (error as { message?: unknown }).message === 'string'
+        ? String((error as { message?: unknown }).message).trim()
+        : '';
+};
+
+export const getVoiceStartErrorMessage = (error: unknown): string => {
+    const name = getVoiceStartErrorName(error);
+    const message = getVoiceStartErrorText(error);
+
+    switch (name) {
+        case 'NotAllowedError':
+        case 'PermissionDeniedError':
+        case 'SecurityError':
+            return 'Microphone access was denied. Allow mic access for Notive in Android settings and try again.';
+        case 'NotFoundError':
+        case 'DevicesNotFoundError':
+            return 'No microphone was found on this device.';
+        case 'NotReadableError':
+        case 'TrackStartError':
+            return 'The microphone is busy or unavailable right now. Close other apps using it and try again.';
+        case 'AbortError':
+            return 'Microphone startup was interrupted. Please try again.';
+        case 'OverconstrainedError':
+        case 'ConstraintNotSatisfiedError':
+            return 'This device rejected the preferred microphone settings. Try again and we will fall back to simpler audio capture.';
+        default:
+            if (/permission/i.test(message) && /denied|blocked|allow/i.test(message)) {
+                return 'Microphone access was denied. Allow mic access for Notive in Android settings and try again.';
+            }
+
+            return message || 'The mic did not start. Try again.';
+    }
+};
+
+export const requestVoiceRecordingStream = async (): Promise<MediaStream> => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Microphone access is not available on this device.');
+    }
+
+    try {
+        return await navigator.mediaDevices.getUserMedia({
+            audio: VOICE_AUDIO_CONSTRAINTS,
+        });
+    } catch (error) {
+        const errorName = getVoiceStartErrorName(error);
+        if (errorName !== 'OverconstrainedError' && errorName !== 'ConstraintNotSatisfiedError') {
+            throw error;
+        }
+    }
+
+    return navigator.mediaDevices.getUserMedia({ audio: true });
 };
 
 const appendSegment = (existing: string, next: string) => {

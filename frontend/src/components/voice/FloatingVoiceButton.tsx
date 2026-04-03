@@ -18,9 +18,11 @@ import {
 import {
     buildBrowserFallbackTranscription,
     createVoiceMediaRecorder,
+    getVoiceStartErrorMessage,
     getVoiceRecordingFilename,
     getSpeechPreviewLocale,
     normalizeRecordedAudioMimeType,
+    requestVoiceRecordingStream,
     stagePendingVoiceCapture,
 } from '@/utils/voice-capture';
 import createVoiceCaptureMonitor from '@/utils/voice-capture-metrics';
@@ -278,13 +280,7 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
 
         try {
             if (canRecordAudio) {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true,
-                    },
-                });
+                const stream = await requestVoiceRecordingStream();
                 mediaStreamRef.current = stream;
                 captureMonitorRef.current = await createVoiceCaptureMonitor(stream, {
                     onLevel: setAudioLevel,
@@ -337,7 +333,7 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
             console.error('Failed to start voice capture:', error);
             setIsRecording(false);
             setIsExpanded(false);
-            setVoiceError('Failed to start voice capture. Please try again.');
+            setVoiceError(getVoiceStartErrorMessage(error));
             cleanupAudioResources();
         }
     };

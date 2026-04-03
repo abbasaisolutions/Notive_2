@@ -32,10 +32,12 @@ import { Spinner } from '@/components/ui';
 import {
     buildBrowserFallbackTranscription,
     createVoiceMediaRecorder,
+    getVoiceStartErrorMessage,
     getVoiceRecordingFilename,
     getSpeechPreviewLocale,
     mergeVoiceCaptureState,
     normalizeRecordedAudioMimeType,
+    requestVoiceRecordingStream,
     takePendingVoiceCapture,
     toVoiceCaptureState,
     type VoiceCaptureState,
@@ -1021,13 +1023,7 @@ function NewEntryPageContent() {
 
         try {
             if (canRecordVoiceAudio) {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true,
-                    },
-                });
+                const stream = await requestVoiceRecordingStream();
                 mediaStreamRef.current = stream;
                 captureMonitorRef.current = await createVoiceCaptureMonitor(stream, {
                     onLevel: (level: number) => setAudioLevel(level),
@@ -1079,7 +1075,7 @@ function NewEntryPageContent() {
             });
         } catch (error) {
             console.error('Failed to start entry voice capture:', error);
-            setVoiceError('The mic did not start. Try again.');
+            setVoiceError(getVoiceStartErrorMessage(error));
             cleanupVoiceCapture();
         }
     }, [
