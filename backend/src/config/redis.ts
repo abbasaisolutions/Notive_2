@@ -2,6 +2,7 @@ import { createClient, RedisClientType } from 'redis';
 import { serverLogger } from '../utils/server-logger';
 
 let redisClient: RedisClientType | null = null;
+const REDIS_CONNECT_TIMEOUT_MS = 4000;
 
 const createFallbackClient = (): any => {
     const store = new Map<string, { value: string; expiresAt: number }>();
@@ -66,13 +67,21 @@ export const initRedis = async (): Promise<RedisClientType> => {
         return redisClient;
     }
 
-    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+    const redisUrl = (process.env.REDIS_URL || '').trim();
+
+    if (!redisUrl) {
+        serverLogger.warn('redis.unconfigured', {
+            message: 'REDIS_URL not set; using in-memory fallback client.',
+        });
+        redisClient = createFallbackClient();
+        return redisClient as RedisClientType;
+    }
 
     redisClient = createClient({
         url: redisUrl,
         socket: {
             connectTimeout: 5000,
-            reconnectStrategy: (retries) => Math.min(retries * 50, 500),
+            reconnectStrategy: (retries) => retries >= 2 ? false : Math.min(retries * 50, 250),
         },
     });
 
@@ -89,13 +98,21 @@ export const initRedis = async (): Promise<RedisClientType> => {
     });
 
     try {
-        await redisClient.connect();
+        await Promise.race([
+            redisClient.connect(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Redis connection timed out')), REDIS_CONNECT_TIMEOUT_MS)),
+        ]);
     } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
         serverLogger.warn('redis.connection_failed', {
             message: err.message,
             url: redisUrl,
         });
+        try {
+            redisClient.disconnect();
+        } catch {
+            // Ignore cleanup issues and fall back.
+        }
         // Continue gracefully — rate limiting will degrade to in-memory if Redis unavailable
         redisClient = createFallbackClient();
     }
