@@ -81,7 +81,10 @@ $env:JAVA_HOME = $supportedJavaHome
 $env:PATH = "$(Join-Path $supportedJavaHome 'bin');$env:PATH"
 $env:GRADLE_USER_HOME = $gradleUserHome
 $env:ANDROID_USER_HOME = $androidUserHome
-$env:ANDROID_SDK_HOME = $androidUserHome
+
+if (Test-Path Env:ANDROID_SDK_HOME) {
+    Remove-Item Env:ANDROID_SDK_HOME
+}
 
 if (-not (Test-Path $androidUserHome)) {
     New-Item -ItemType Directory -Path $androidUserHome | Out-Null
