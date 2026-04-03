@@ -104,6 +104,10 @@ app.use(cookieParser());
 // Local uploads remain available for local/dev deployments. Production should use object storage.
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+app.get('/healthz', (_req: Request, res: Response) => {
+    res.status(200).json({ status: 'ok' });
+});
+
 app.get('/', (_req: Request, res: Response) => {
     res.json({ message: 'Notive API is running', version: '0.1.0' });
 });

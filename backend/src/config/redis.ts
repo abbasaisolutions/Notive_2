@@ -3,53 +3,7 @@ import { serverLogger } from '../utils/server-logger';
 
 let redisClient: RedisClientType | null = null;
 
-export const initRedis = async (): Promise<RedisClientType> => {
-    if (redisClient && redisClient.isOpen) {
-        return redisClient;
-    }
-
-    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-
-    redisClient = createClient({
-        url: redisUrl,
-        socket: {
-            connectTimeout: 5000,
-            reconnectStrategy: (retries) => Math.min(retries * 50, 500),
-        },
-    });
-
-    redisClient.on('error', (err) => {
-        serverLogger.error('redis.connection_error', {
-            message: err.message,
-        });
-    });
-
-    redisClient.on('connect', () => {
-        serverLogger.info('redis.connected', {
-            url: redisUrl,
-        });
-    });
-
-    try {
-        await redisClient.connect();
-    } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        serverLogger.warn('redis.connection_failed', {
-            message: err.message,
-            url: redisUrl,
-        });
-        // Continue gracefully — rate limiting will degrade to in-memory if Redis unavailable
-        redisClient = null;
-    }
-
-    return redisClient || createFallbackClient();
-};
-
-/**
- * Fallback in-memory client when Redis is unavailable.
- * Provides same interface as redis client but operates in-memory.
- */
-function createFallbackClient(): any {
+const createFallbackClient = (): any => {
     const store = new Map<string, { value: string; expiresAt: number }>();
 
     const cleanup = setInterval(() => {
@@ -99,8 +53,59 @@ function createFallbackClient(): any {
             data.expiresAt = Date.now() + seconds * 1000;
             return 1;
         },
+        quit: async () => {
+            cleanup.unref();
+            clearInterval(cleanup);
+            store.clear();
+        },
     };
-}
+};
+
+export const initRedis = async (): Promise<RedisClientType> => {
+    if (redisClient && redisClient.isOpen) {
+        return redisClient;
+    }
+
+    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+
+    redisClient = createClient({
+        url: redisUrl,
+        socket: {
+            connectTimeout: 5000,
+            reconnectStrategy: (retries) => Math.min(retries * 50, 500),
+        },
+    });
+
+    redisClient.on('error', (err) => {
+        serverLogger.error('redis.connection_error', {
+            message: err.message,
+        });
+    });
+
+    redisClient.on('connect', () => {
+        serverLogger.info('redis.connected', {
+            url: redisUrl,
+        });
+    });
+
+    try {
+        await redisClient.connect();
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        serverLogger.warn('redis.connection_failed', {
+            message: err.message,
+            url: redisUrl,
+        });
+        // Continue gracefully — rate limiting will degrade to in-memory if Redis unavailable
+        redisClient = createFallbackClient();
+    }
+
+    if (!redisClient) {
+        redisClient = createFallbackClient();
+    }
+
+    return redisClient as RedisClientType;
+};
 
 export const getRedisClient = (): RedisClientType | any => {
     if (!redisClient) {
