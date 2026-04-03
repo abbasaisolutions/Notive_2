@@ -1,7 +1,5 @@
 import 'dotenv/config';
 import { serverLogger } from './utils/server-logger';
-import prisma from './config/prisma';
-import { initRedis, closeRedis } from './config/redis';
 
 const parsePort = (value: string | undefined, fallback: number) => {
     const parsed = Number.parseInt(String(value || ''), 10);
@@ -27,22 +25,35 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 const bootstrap = async () => {
-    try {
-        // Initialize Redis first
-        await initRedis();
+    let stage = 'bootstrap.start';
 
+    try {
+        stage = 'config.import';
         const [
-            { default: app },
-            { default: embeddingService },
-            { default: voiceTranscriptionJobService },
-            { ReminderService },
+            { default: prisma },
+            { initRedis },
         ] = await Promise.all([
-            import('./app'),
-            import('./services/embedding.service'),
-            import('./services/voice-transcription-job.service'),
-            import('./services/reminder.service'),
+            import('./config/prisma'),
+            import('./config/redis'),
         ]);
 
+        // Initialize Redis first
+        stage = 'redis.init';
+        await initRedis();
+
+        stage = 'app.import';
+        const { default: app } = await import('./app');
+
+        stage = 'embedding.import';
+        const { default: embeddingService } = await import('./services/embedding.service');
+
+        stage = 'voice.import';
+        const { default: voiceTranscriptionJobService } = await import('./services/voice-transcription-job.service');
+
+        stage = 'reminder.import';
+        const { ReminderService } = await import('./services/reminder.service');
+
+        stage = 'server.listen';
         const server = app.listen(port, host, () => {
             serverLogger.info('server.started', {
                 host,
@@ -72,6 +83,7 @@ const bootstrap = async () => {
     } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
         serverLogger.error('server.bootstrap_failed', {
+            stage,
             host,
             port,
             message: err.message,
