@@ -408,8 +408,9 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                         )}
                                                     </div>
 
-                                                    {/* Tags + Skills + Lessons — unified single scrollable row */}
-                                                    {(entryTags.length > 0 || displaySkills.length > 0 || displayLessons.length > 0) && (() => {
+                                                    {/* Tags + Skills + Lessons + Share — unified single row */}
+                                                    {(() => {
+                                                        const hasPills = entryTags.length > 0 || displaySkills.length > 0 || displayLessons.length > 0;
                                                         const allPills: { key: string; label: string; type: 'tag' | 'skill' | 'lesson' }[] = [
                                                             ...entryTags.map(t => ({ key: `t-${t}`, label: `#${t}`, type: 'tag' as const })),
                                                             ...displaySkills.map(s => ({ key: `s-${s}`, label: `+${s}`, type: 'skill' as const })),
@@ -423,6 +424,8 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                             if (type === 'lesson') return 'text-[0.6rem] font-semibold text-accent bg-accent/15 border border-accent/35 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0';
                                                             return 'text-[0.6rem] font-medium text-primary/75 bg-primary/8 border border-primary/20 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[5rem] min-[376px]:max-w-[6rem]';
                                                         };
+
+                                                        if (!hasPills && !onShareEntry) return null;
 
                                                         return (
                                                             <div className="flex items-center gap-1 mt-1.5 overflow-x-auto flex-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -445,6 +448,22 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                                         {growthRatio}%
                                                                     </span>
                                                                 )}
+                                                                {/* Share — pushed to far right, inline with tags */}
+                                                                {onShareEntry && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShareEntry(entry.id); }}
+                                                                        className="ml-auto flex-shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(var(--brand),0.06)] text-[rgb(107,143,113)] transition-colors hover:bg-[rgba(var(--brand),0.16)]"
+                                                                        title="Share this memory"
+                                                                        aria-label="Share this memory"
+                                                                    >
+                                                                        <svg width="10" height="10" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                                                                            <path d="M2 7.5V11.5C2 12.05 2.45 12.5 3 12.5H11C11.55 12.5 12 12.05 12 11.5V7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                                                                            <path d="M7 1.5V9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                                                                            <path d="M4.5 4L7 1.5L9.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                                                                        </svg>
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         );
                                                     })()}
@@ -462,25 +481,6 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                             tagCounts={tagCounts}
                                                             entryTags={entryTags}
                                                         />
-                                                    )}
-
-                                                    {/* Share button — bottom-right of card */}
-                                                    {onShareEntry && (
-                                                        <div className="flex justify-end mt-2">
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShareEntry(entry.id); }}
-                                                                className="inline-flex h-7 w-7 md:h-6 md:w-6 flex-shrink-0 items-center justify-center rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(var(--brand),0.06)] text-[rgb(107,143,113)] transition-colors hover:bg-[rgba(var(--brand),0.16)]"
-                                                                title="Share this memory"
-                                                                aria-label="Share this memory"
-                                                            >
-                                                                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true" className="md:w-3 md:h-3">
-                                                                    <path d="M2 7.5V11.5C2 12.05 2.45 12.5 3 12.5H11C11.55 12.5 12 12.05 12 11.5V7.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
-                                                                    <path d="M7 1.5V9" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-                                                                    <path d="M4.5 4L7 1.5L9.5 4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
-                                                                </svg>
-                                                            </button>
-                                                        </div>
                                                     )}
                                                 </div>
                                             </Link>

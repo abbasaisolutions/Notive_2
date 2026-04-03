@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -10,7 +10,6 @@ import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useApi from '@/hooks/use-api';
 import useContextNavigation from '@/hooks/use-context-navigation';
 import useEntryEdit from '@/hooks/use-entry-edit';
-import { useAuth } from '@/context/auth-context';
 import { EntryCategory, LIFE_AREA_OPTIONS, normalizeLifeArea } from '@/constants/life-areas';
 import type { IconType } from 'react-icons';
 import {
@@ -48,9 +47,7 @@ function EditEntryContent() {
     const fallbackHref = id ? `/entry/view?id=${id}` : '/timeline';
     const { backHref, backLabel, navigateBack } = useContextNavigation(fallbackHref, id ? 'entry details' : 'timeline');
     const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
-    const { logout } = useAuth();
     const { apiFetch } = useApi();
-    const [isSigningOut, setIsSigningOut] = useState(false);
 
     const {
         title,
@@ -114,17 +111,6 @@ function EditEntryContent() {
         );
     }
 
-    const handleSignOut = async () => {
-        if (isSigningOut) return;
-        setIsSigningOut(true);
-        try {
-            await logout();
-            router.replace('/login');
-        } finally {
-            setIsSigningOut(false);
-        }
-    };
-
     const availableLifeAreas = LIFE_AREA_OPTIONS.filter((item) => item.category === category);
     const handleCategorySelect = (nextCategory: EntryCategory) => {
         setCategory(nextCategory);
@@ -132,186 +118,148 @@ function EditEntryContent() {
     };
 
     return (
-        <div className="min-h-screen p-4 md:p-8">
-            <div className="fixed top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[150px] pointer-events-none" />
-
-            <div className="max-w-4xl mx-auto relative z-10">
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                        <button
-                            type="button"
-                            onClick={navigateBack}
-                            aria-label={backLabel}
-                            title={backLabel}
-                            className="p-2 rounded-lg text-ink-muted hover:text-[rgb(var(--text-primary))] hover:bg-white/10 transition-all"
-                        >
-                            <FiArrowLeft size={24} aria-hidden="true" />
-                        </button>
-                        <div>
-                            <h1 className="text-2xl font-bold workspace-heading">Edit Entry</h1>
-                            <div className="flex items-center gap-2">
-                                {lastSaved && <p className="text-xs text-ink-muted">Last saved: {lastSaved.toLocaleTimeString()}</p>}
-                                {isAutoSaving && <p className="text-xs text-primary animate-pulse">Saving...</p>}
-                                {hasUnsavedChanges && !isAutoSaving && <p className="text-xs text-ink-secondary">Unsaved changes</p>}
-                            </div>
-                        </div>
-                    </div>
+        <div className="min-h-screen p-3 md:p-6">
+            <div className="max-w-2xl mx-auto">
+                {/* ── Top bar ── */}
+                <div className="flex items-center justify-between mb-4">
+                    <button
+                        type="button"
+                        onClick={navigateBack}
+                        aria-label={backLabel}
+                        className="flex items-center gap-1.5 text-ink-muted hover:text-[rgb(var(--text-primary))] transition-colors"
+                    >
+                        <FiArrowLeft size={16} aria-hidden="true" />
+                        <span className="text-xs font-medium">Back</span>
+                    </button>
                     <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={handleSignOut}
-                            disabled={isSigningOut}
-                            className="workspace-button-outline px-3 py-2 rounded-xl text-xs uppercase tracking-widest text-ink-secondary hover:text-[rgb(var(--text-primary))] disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                            {isSigningOut ? 'Signing Out...' : 'Sign Out'}
-                        </button>
+                        <span className="text-[0.65rem] text-ink-muted">
+                            {isAutoSaving ? 'Saving…' : hasUnsavedChanges ? 'Unsaved' : lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                        </span>
                         <Button onClick={handleSave} isLoading={isSaving}>
-                            Save Changes
+                            Save
                         </Button>
                     </div>
                 </div>
 
                 {error && (
-                    <div className="mb-4 workspace-soft-panel text-ink-secondary px-4 py-3 rounded-xl text-sm">
+                    <div className="mb-3 workspace-soft-panel text-ink-secondary px-3 py-2 rounded-xl text-xs">
                         {error}
                     </div>
                 )}
 
-                <div className="mb-6">
-                    {coverImage ? (
-                        <div className="relative w-full h-48 md:h-64 rounded-2xl overflow-hidden group">
-                            <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
-                            <button
-                                onClick={() => setCoverImage(null)}
-                                aria-label="Remove cover image"
-                                className="absolute top-4 right-4 p-2 bg-[rgb(var(--surface-2))]/80 text-[rgb(var(--text-strong))] rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[rgb(var(--brand))]/70"
-                            >
-                                ×
-                            </button>
-                        </div>
-                    ) : (
-                        <label className="workspace-soft-panel w-full h-32 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all group hover:brightness-[1.05]">
-                            <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={isUploading} />
-                            {isUploading ? (
-                                <Spinner size="sm" />
-                            ) : (
-                                <span className="text-sm text-ink-muted group-hover:text-[rgb(var(--text-primary))] transition-colors">Add Cover Image</span>
-                            )}
-                        </label>
-                    )}
-                </div>
+                {/* ── Cover image ── */}
+                {coverImage ? (
+                    <div className="relative w-full h-36 rounded-2xl overflow-hidden group mb-3">
+                        <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+                        <button
+                            onClick={() => setCoverImage(null)}
+                            aria-label="Remove cover image"
+                            className="absolute top-2 right-2 px-2 py-1 rounded-lg bg-black/50 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            Remove
+                        </button>
+                    </div>
+                ) : (
+                    <label className="workspace-soft-panel w-full h-10 rounded-xl border border-dashed border-[rgba(141,123,105,0.25)] flex items-center justify-center gap-2 cursor-pointer transition-all hover:brightness-[1.04] mb-3">
+                        <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={isUploading} />
+                        {isUploading ? <Spinner size="sm" /> : <span className="text-xs text-ink-muted">+ Add cover image</span>}
+                    </label>
+                )}
 
+                {/* ── Title ── */}
                 <input
                     type="text"
-                    placeholder="Entry title (optional)"
+                    placeholder="Title"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full ink-title-input text-xl md:text-3xl font-bold font-serif focus:outline-none mb-6 bg-transparent"
+                    className="w-full ink-title-input text-xl font-bold font-serif focus:outline-none mb-3 bg-transparent"
                 />
 
-                <div className="mb-6 workspace-soft-panel rounded-2xl p-4">
-                    <div className="grid gap-4 md:grid-cols-3">
-                        <div>
-                            <label className="mb-2 block text-xs uppercase tracking-[0.1em] text-ink-muted">Category</label>
-                            <div className="flex gap-2">
-                                {(['PERSONAL', 'PROFESSIONAL'] as EntryCategory[]).map((option) => {
-                                    const active = category === option;
-                                    return (
-                                        <button
-                                            key={option}
-                                            type="button"
-                                            onClick={() => handleCategorySelect(option)}
-                                            className={`rounded-xl border px-3 py-2 text-xs uppercase tracking-[0.08em] transition ${
-                                                active
-                                                    ? 'border-primary/45 bg-primary/15 text-primary'
-                                                    : 'workspace-button-outline text-ink-secondary hover:text-[rgb(var(--text-primary))]'
-                                            }`}
-                                        >
-                                            {option === 'PERSONAL' ? 'Personal' : 'Professional'}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="mb-2 block text-xs uppercase tracking-[0.1em] text-ink-muted">Life Area</label>
-                            <select
-                                value={lifeArea}
-                                onChange={(event) => setLifeArea(normalizeLifeArea(event.target.value, category))}
-                                className="w-full workspace-input rounded-xl px-3 py-2 text-sm text-[rgb(var(--text-primary))] focus:outline-none focus:ring-2 focus:ring-primary/40"
-                            >
-                                {availableLifeAreas.map((option) => (
-                                    <option key={option.value} value={option.value} className="bg-surface-1">
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="mb-2 block text-xs uppercase tracking-[0.1em] text-ink-muted">Collection</label>
-                            <select
-                                value={chapterId || ''}
-                                onChange={(event) => setChapterId(event.target.value || null)}
-                                className="w-full workspace-input rounded-xl px-3 py-2 text-sm text-[rgb(var(--text-primary))] focus:outline-none focus:ring-2 focus:ring-primary/40"
-                            >
-                                <option value="" className="bg-surface-1">No collection</option>
-                                {collections.map((collection) => (
-                                    <option key={collection.id} value={collection.id} className="bg-surface-1">
-                                        {collection.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="mb-6">
-                    <label className="block text-sm font-medium text-ink-muted mb-2">How are you feeling?</label>
-                    <div className="flex flex-wrap gap-2">
-                        {MOODS.map((m) => (
-                            <button
-                                key={m.value}
-                                type="button"
-                                onClick={() => setMood(mood === m.value ? null : m.value)}
-                                className={`px-3 py-2 rounded-xl text-sm flex items-center gap-2 transition-all ${mood === m.value
-                                    ? 'bg-primary text-white'
-                                    : 'workspace-pill text-ink-secondary'
-                                    }`}
-                            >
-                                <m.icon size={14} aria-hidden="true" />
-                                <span>{m.label}</span>
-                            </button>
+                {/* ── Compact metadata row ── */}
+                <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                    {/* Category toggle */}
+                    {(['PERSONAL', 'PROFESSIONAL'] as EntryCategory[]).map((option) => (
+                        <button
+                            key={option}
+                            type="button"
+                            onClick={() => handleCategorySelect(option)}
+                            className={`rounded-full border px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] transition ${
+                                category === option
+                                    ? 'border-primary/45 bg-primary/15 text-primary'
+                                    : 'workspace-button-outline text-ink-muted'
+                            }`}
+                        >
+                            {option === 'PERSONAL' ? 'Personal' : 'Pro'}
+                        </button>
+                    ))}
+                    <span className="text-ink-muted/30 text-xs">|</span>
+                    {/* Life area */}
+                    <select
+                        value={lifeArea}
+                        onChange={(event) => setLifeArea(normalizeLifeArea(event.target.value, category))}
+                        className="workspace-input rounded-full px-2.5 py-1 text-[0.65rem] text-ink-secondary focus:outline-none focus:ring-1 focus:ring-primary/30 border border-[rgba(141,123,105,0.18)]"
+                    >
+                        {availableLifeAreas.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
-                    </div>
+                    </select>
+                    {/* Collection */}
+                    <select
+                        value={chapterId || ''}
+                        onChange={(event) => setChapterId(event.target.value || null)}
+                        className="workspace-input rounded-full px-2.5 py-1 text-[0.65rem] text-ink-secondary focus:outline-none focus:ring-1 focus:ring-primary/30 border border-[rgba(141,123,105,0.18)]"
+                    >
+                        <option value="">No collection</option>
+                        {collections.map((collection) => (
+                            <option key={collection.id} value={collection.id}>{collection.name}</option>
+                        ))}
+                    </select>
                 </div>
 
+                {/* ── Mood ── */}
+                <div className="flex flex-wrap gap-1 mb-3">
+                    {MOODS.map((m) => (
+                        <button
+                            key={m.value}
+                            type="button"
+                            onClick={() => setMood(mood === m.value ? null : m.value)}
+                            title={m.label}
+                            className={`px-2.5 py-1 rounded-full text-[0.65rem] flex items-center gap-1 transition-all ${
+                                mood === m.value
+                                    ? 'bg-primary/15 border border-primary/40 text-primary'
+                                    : 'workspace-pill text-ink-muted border border-transparent'
+                            }`}
+                        >
+                            <m.icon size={11} aria-hidden="true" />
+                            <span>{m.label}</span>
+                        </button>
+                    ))}
+                </div>
+
+                {/* ── Editor ── */}
                 <TiptapEditor
                     content={contentHtml}
                     onChange={handleEditorChange}
                     placeholder="What's on your mind today?"
                 />
 
-                <div className="mt-6">
-                    <label className="block text-sm font-medium text-ink-muted mb-2">Tags</label>
-                    <div className="flex flex-wrap gap-2 mb-2">
+                {/* ── Tags ── */}
+                <div className="mt-3">
+                    <div className="flex flex-wrap gap-1.5 mb-1.5">
                         {tags.map((tag) => (
-                            <span key={tag} className="workspace-pill px-3 py-1 rounded-full text-sm text-ink-secondary flex items-center gap-2">
+                            <span key={tag} className="workspace-pill px-2.5 py-0.5 rounded-full text-xs text-ink-secondary flex items-center gap-1">
                                 #{tag}
-                                <button type="button" onClick={() => handleRemoveTag(tag)} aria-label={`Remove tag ${tag}`} className="text-ink-muted hover:text-[rgb(var(--text-primary))]">
-                                    ×
-                                </button>
+                                <button type="button" onClick={() => handleRemoveTag(tag)} aria-label={`Remove tag ${tag}`} className="text-ink-muted hover:text-[rgb(var(--text-primary))] leading-none">×</button>
                             </span>
                         ))}
                     </div>
                     <input
                         type="text"
-                        placeholder="Add a tag and press Enter..."
+                        placeholder="Add tag + Enter"
                         value={tagInput}
                         onChange={(e) => setTagInput(e.target.value)}
                         onKeyDown={handleAddTag}
-                        className="w-full workspace-input px-4 py-2 rounded-xl text-[rgb(var(--text-primary))] focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="w-full workspace-input px-3 py-1.5 rounded-xl text-xs text-[rgb(var(--text-primary))] focus:outline-none focus:ring-1 focus:ring-primary/40"
                     />
                 </div>
             </div>

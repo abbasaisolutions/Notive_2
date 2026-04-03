@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { NotebookDoodle, type NotebookDoodleName, type NotebookAccentName } from '@/components/dashboard/NotebookDoodles';
 import type { StorySignal } from '@/utils/story-engine';
 
@@ -173,50 +172,38 @@ export default function NotiveNoticedPanel({
     const { name: doodleName, accent } = DOODLE_MAP[primaryDoodleKey] ?? DOODLE_MAP['sprout'];
 
     return (
-        <div className="mt-3 pt-3 border-t border-[rgba(141,123,105,0.18)]">
-            <div className="flex items-start gap-2">
+        <div className="mt-2 pt-2 border-t border-[rgba(141,123,105,0.14)]">
+            <div className="flex items-start gap-1.5">
                 {/* Micro doodle */}
-                <div className="mt-0.5 shrink-0 opacity-60 w-4 h-4 overflow-hidden">
+                <div className="mt-0.5 shrink-0 opacity-50 w-3.5 h-3.5 overflow-hidden">
                     <NotebookDoodle name={doodleName} accent={accent} />
                 </div>
 
                 <div className="flex-1 min-w-0">
-                    <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[rgba(141,123,105,0.9)]">
-                        Notive Noticed
-                    </span>
-
-                    <ul className="mt-1 space-y-0.5">
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                        <span className="text-[8px] font-semibold uppercase tracking-[0.16em] text-[rgba(141,123,105,0.75)]">
+                            Noticed
+                        </span>
                         {visibleBullets.map((bullet, i) => (
-                            <li key={i} className="flex gap-1.5 text-[0.7rem] text-ink-secondary leading-snug">
-                                <span className="mt-[4px] shrink-0 h-1 w-1 rounded-full bg-[rgba(141,123,105,0.45)]" />
-                                <span>{bullet}</span>
-                            </li>
+                            <span key={i} className="text-[0.68rem] text-ink-secondary leading-snug">
+                                {i > 0 && <span className="mx-1 text-ink-muted/30">·</span>}
+                                {bullet}
+                            </span>
                         ))}
-                    </ul>
-
-                    <AnimatePresence>
                         {!expanded && hiddenCount > 0 && (
-                            <motion.button
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.15 }}
+                            <button
                                 type="button"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setExpanded(true);
-                                }}
-                                className="mt-1 text-[9px] font-semibold text-primary/70 hover:text-primary transition-colors uppercase tracking-[0.12em]"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpanded(true); }}
+                                className="text-[8px] font-semibold text-primary/60 hover:text-primary transition-colors uppercase tracking-[0.1em]"
                             >
-                                +{hiddenCount} more
-                            </motion.button>
+                                +{hiddenCount}
+                            </button>
                         )}
-                    </AnimatePresence>
+                    </div>
 
-                    {/* CTA + connection dots inline */}
-                    <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-                        <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(141,123,105,0.28)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.13em] text-[rgba(141,123,105,0.85)]">
+                    {/* CTA inline */}
+                    <div className="mt-1 flex items-center gap-1">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(141,123,105,0.22)] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.1em] text-[rgba(141,123,105,0.7)]">
                             {nextMove}
                         </span>
                         <ConnectionDots entryTags={entryTags} tagCounts={tagCounts} />
