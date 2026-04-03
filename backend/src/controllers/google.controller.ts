@@ -16,6 +16,48 @@ const isMobileClient = (req: Request): boolean => {
     return platform === 'mobile' || platform === 'capacitor' || platform === 'native';
 };
 
+const resolveGoogleAuthError = (error: unknown) => {
+    const rawMessage = error instanceof Error && error.message
+        ? error.message
+        : 'Google sign-in failed';
+
+    if (rawMessage === 'Google SSO is not configured') {
+        return {
+            status: 503,
+            message: 'Google sign-in is not configured for this environment.',
+        };
+    }
+
+    if (rawMessage === 'Google credential is required') {
+        return {
+            status: 400,
+            message: 'Google credential is required.',
+        };
+    }
+
+    if (
+        rawMessage === 'Invalid Google token'
+        || /audience|wrong recipient|token used too late|malformed|invalid token/i.test(rawMessage)
+    ) {
+        return {
+            status: 401,
+            message: 'Google credential could not be verified for this app.',
+        };
+    }
+
+    if (rawMessage === 'Email not provided by Google') {
+        return {
+            status: 400,
+            message: 'Google did not provide an email address for this account.',
+        };
+    }
+
+    return {
+        status: 500,
+        message: 'Google sign-in failed',
+    };
+};
+
 /**
  * Google Sign-In
  */
@@ -106,6 +148,7 @@ export const googleSignIn = async (req: Request, res: Response) => {
         });
     } catch (error) {
         console.error('Google sign-in error:', error);
-        return res.status(500).json({ message: 'Google sign-in failed' });
+        const resolved = resolveGoogleAuthError(error);
+        return res.status(resolved.status).json({ message: resolved.message });
     }
 };

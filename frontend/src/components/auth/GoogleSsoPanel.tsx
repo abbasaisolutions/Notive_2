@@ -53,6 +53,33 @@ const ALIGNMENT = {
     center: 'items-center text-center',
 } as const;
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message.trim()) {
+        return error.message;
+    }
+
+    if (typeof error === 'string' && error.trim()) {
+        return error;
+    }
+
+    if (error && typeof error === 'object') {
+        const record = error as Record<string, unknown>;
+        const message = typeof record.message === 'string'
+            ? record.message
+            : typeof record.errorMessage === 'string'
+                ? record.errorMessage
+                : typeof record.localizedMessage === 'string'
+                    ? record.localizedMessage
+                    : '';
+
+        if (message.trim()) {
+            return message;
+        }
+    }
+
+    return fallback;
+};
+
 export function GoogleSsoPanel({
     mode,
     isLoading = false,
@@ -76,7 +103,7 @@ export function GoogleSsoPanel({
         let isMounted = true;
         void ensureNativeGoogleSsoInitialized().catch((error) => {
             if (!isMounted) return;
-            setNativeError(error instanceof Error ? error.message : 'Google sign-in is not ready on this device yet.');
+            setNativeError(getErrorMessage(error, 'Google sign-in is not ready on this device yet.'));
         });
 
         return () => {
@@ -103,8 +130,7 @@ export function GoogleSsoPanel({
             const credential = await signInWithNativeGoogleCredential();
             await onSuccess({ credential });
         } catch (error) {
-            setNativeError(error instanceof Error ? error.message : 'Google sign-in failed. Please try again.');
-            onError();
+            setNativeError(getErrorMessage(error, 'Google sign-in failed. Please try again.'));
         } finally {
             setNativeLoading(false);
         }

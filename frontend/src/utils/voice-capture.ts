@@ -39,6 +39,70 @@ export type StagedVoiceCapture = {
     audioUrl: string | null;
 };
 
+const VOICE_RECORDER_MIME_CANDIDATES = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/mpeg',
+] as const;
+
+const pickSupportedVoiceRecorderMimeType = (): string => {
+    if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
+        return '';
+    }
+
+    const supported = VOICE_RECORDER_MIME_CANDIDATES.find((candidate) => {
+        try {
+            return MediaRecorder.isTypeSupported(candidate);
+        } catch {
+            return false;
+        }
+    });
+
+    return supported || '';
+};
+
+export const normalizeRecordedAudioMimeType = (value: string | null | undefined): string => {
+    const baseType = String(value || '')
+        .split(';', 1)[0]
+        ?.trim()
+        .toLowerCase();
+
+    switch (baseType) {
+        case 'audio/mp3':
+            return 'audio/mpeg';
+        case 'audio/x-m4a':
+            return 'audio/mp4';
+        case 'audio/x-wav':
+        case 'audio/wave':
+            return 'audio/wav';
+        default:
+            return baseType || 'audio/webm';
+    }
+};
+
+export const getVoiceRecordingFilename = (mimeType: string | null | undefined): string => {
+    switch (normalizeRecordedAudioMimeType(mimeType)) {
+        case 'audio/mp4':
+            return 'voice-note.m4a';
+        case 'audio/mpeg':
+            return 'voice-note.mp3';
+        case 'audio/wav':
+            return 'voice-note.wav';
+        case 'audio/ogg':
+            return 'voice-note.ogg';
+        default:
+            return 'voice-note.webm';
+    }
+};
+
+export const createVoiceMediaRecorder = (stream: MediaStream): MediaRecorder => {
+    const mimeType = pickSupportedVoiceRecorderMimeType();
+    return mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+};
+
 const appendSegment = (existing: string, next: string) => {
     const normalizedNext = next.trim();
     if (!normalizedNext) return existing;

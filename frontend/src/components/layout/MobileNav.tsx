@@ -193,7 +193,7 @@ export default function MobileNav() {
                         role="dialog"
                         aria-modal="true"
                         aria-label="More navigation"
-                        className="fixed bottom-28 right-6 z-50 w-[260px] rounded-2xl glass-nav p-3 shadow-xl lg:hidden"
+                        className="fixed bottom-28 right-6 z-[90] w-[260px] rounded-2xl glass-nav p-3 shadow-xl lg:hidden"
                     >
                         {moreNavSections.map((section) => (
                             <div key={section.id} className="mb-2 last:mb-0">
@@ -248,7 +248,7 @@ export default function MobileNav() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => setIsMoreOpen(false)}
-                        className={`fixed inset-0 z-40 lg:hidden backdrop-blur-sm ${isPaper ? 'bg-[rgba(41,32,22,0.34)]' : 'bg-black/50'}`}
+                        className={`fixed inset-0 z-[80] lg:hidden backdrop-blur-sm ${isPaper ? 'bg-[rgba(41,32,22,0.34)]' : 'bg-black/50'}`}
                     />
                 )}
             </AnimatePresence>

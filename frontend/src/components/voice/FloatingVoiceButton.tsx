@@ -17,7 +17,10 @@ import {
 } from '@/services/voice-transcription.service';
 import {
     buildBrowserFallbackTranscription,
+    createVoiceMediaRecorder,
+    getVoiceRecordingFilename,
     getSpeechPreviewLocale,
+    normalizeRecordedAudioMimeType,
     stagePendingVoiceCapture,
 } from '@/utils/voice-capture';
 import createVoiceCaptureMonitor from '@/utils/voice-capture-metrics';
@@ -144,7 +147,8 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
 
     const processRecording = async (
         audioBlob: Blob | null,
-        captureMeta: VoiceCaptureQualityMetrics | null
+        captureMeta: VoiceCaptureQualityMetrics | null,
+        recordedMimeType?: string | null
     ) => {
         const browserTranscript = transcript.trim();
         if (!audioBlob && !browserTranscript) {
@@ -175,6 +179,7 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                     previewText: browserTranscript || null,
                     recordingDurationMs: recordingStartedAtRef.current ? Date.now() - recordingStartedAtRef.current : null,
                     captureMeta,
+                    filename: getVoiceRecordingFilename(recordedMimeType),
                 });
                 setVoiceJob(finalJobRef.current);
             }
@@ -285,7 +290,7 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                     onLevel: setAudioLevel,
                 });
 
-                const mediaRecorder = new MediaRecorder(stream);
+                const mediaRecorder = createVoiceMediaRecorder(stream);
                 mediaRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
                         audioChunksRef.current.push(event.data);
@@ -304,10 +309,13 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                         return;
                     }
 
+                    const recordedMimeType = normalizeRecordedAudioMimeType(
+                        mediaRecorder.mimeType || chunks[0]?.type || 'audio/webm'
+                    );
                     const audioBlob = chunks.length > 0
-                        ? new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' })
+                        ? new Blob(chunks, { type: recordedMimeType })
                         : null;
-                    await processRecording(audioBlob, captureMeta);
+                    await processRecording(audioBlob, captureMeta, recordedMimeType);
                 };
                 mediaRecorder.start();
                 mediaRecorderRef.current = mediaRecorder;

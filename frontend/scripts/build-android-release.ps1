@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $androidRoot = Join-Path $projectRoot 'android'
 $gradleUserHome = Join-Path $androidRoot '.gradle-home'
+$androidUserHome = Join-Path $androidRoot '.android-home'
 $keyPropertiesPath = Join-Path $androidRoot 'key.properties'
 
 function Get-JavaMajorVersion {
@@ -79,9 +80,16 @@ if (-not $hasKeyProperties -and $missingSigningVariables.Count -gt 0) {
 $env:JAVA_HOME = $supportedJavaHome
 $env:PATH = "$(Join-Path $supportedJavaHome 'bin');$env:PATH"
 $env:GRADLE_USER_HOME = $gradleUserHome
+$env:ANDROID_USER_HOME = $androidUserHome
+$env:ANDROID_SDK_HOME = $androidUserHome
+
+if (-not (Test-Path $androidUserHome)) {
+    New-Item -ItemType Directory -Path $androidUserHome | Out-Null
+}
 
 Write-Host "Using JAVA_HOME=$supportedJavaHome"
 Write-Host "Using GRADLE_USER_HOME=$gradleUserHome"
+Write-Host "Using ANDROID_USER_HOME=$androidUserHome"
 
 Push-Location $androidRoot
 

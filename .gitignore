@@ -29,6 +29,8 @@ yarn-debug.log*
 yarn-error.log*
 *.log
 frontend/.npm-cache/
+frontend/android/.android-home/
+frontend/android/.gradle-home/
 
 # Private local evaluation assets
 similarity-service/eval/private/

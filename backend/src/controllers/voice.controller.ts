@@ -3,7 +3,7 @@ import voiceLexiconService from '../services/voice-lexicon.service';
 import voiceTranscriptionJobService from '../services/voice-transcription-job.service';
 import voiceTranscriptionService, { type VoiceLanguageMode } from '../services/voice-transcription.service';
 
-const ALLOWED_MIME_TYPES = new Set(['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/wav']);
+const ALLOWED_MIME_TYPES = new Set(['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/wav', 'audio/ogg']);
 const MAX_SYNC_AUDIO_BYTES = 15 * 1024 * 1024;
 const MAX_ASYNC_AUDIO_BYTES = 50 * 1024 * 1024;
 const MAX_SYNC_DURATION_MS = 10 * 60 * 1000;
@@ -42,6 +42,27 @@ const normalizeOptionalText = (value: unknown, maxLength = 240): string | null =
     if (typeof value !== 'string') return null;
     const normalized = value.replace(/\s+/g, ' ').trim();
     return normalized ? normalized.slice(0, maxLength) : null;
+};
+
+const normalizeAudioMimeType = (value: unknown): string => {
+    if (typeof value !== 'string') return '';
+
+    const baseType = value
+        .split(';', 1)[0]
+        ?.trim()
+        .toLowerCase();
+
+    switch (baseType) {
+        case 'audio/mp3':
+            return 'audio/mpeg';
+        case 'audio/x-m4a':
+            return 'audio/mp4';
+        case 'audio/x-wav':
+        case 'audio/wave':
+            return 'audio/wav';
+        default:
+            return baseType || '';
+    }
 };
 
 const parseDurationMs = (value: unknown): number | null => {
@@ -100,7 +121,9 @@ export const transcribeVoice = async (req: Request, res: Response) => {
             });
         }
 
-        if (!ALLOWED_MIME_TYPES.has(uploaded.mimetype)) {
+        const mimeType = normalizeAudioMimeType(uploaded.mimetype);
+
+        if (!ALLOWED_MIME_TYPES.has(mimeType)) {
             return res.status(400).json({
                 code: 'VOICE_UNSUPPORTED_FORMAT',
                 message: 'Unsupported audio format.',
@@ -128,7 +151,7 @@ export const transcribeVoice = async (req: Request, res: Response) => {
         const result = await voiceTranscriptionService.transcribe({
             audioBuffer: uploaded.buffer,
             filename: uploaded.originalname || 'voice-note.webm',
-            mimeType: uploaded.mimetype,
+            mimeType,
             languageMode: normalizeLanguageMode(req.body?.languageMode),
             hintText: normalizeOptionalText(req.body?.hintText),
             entryContext: normalizeOptionalText(req.body?.entryContext, 140),
@@ -160,7 +183,9 @@ export const createVoiceTranscriptionJob = async (req: Request, res: Response) =
             });
         }
 
-        if (!ALLOWED_MIME_TYPES.has(uploaded.mimetype)) {
+        const mimeType = normalizeAudioMimeType(uploaded.mimetype);
+
+        if (!ALLOWED_MIME_TYPES.has(mimeType)) {
             return res.status(400).json({
                 code: 'VOICE_UNSUPPORTED_FORMAT',
                 message: 'Unsupported audio format.',
@@ -190,7 +215,7 @@ export const createVoiceTranscriptionJob = async (req: Request, res: Response) =
             entryId: normalizeOptionalText(req.body?.entryId, 64),
             audioBuffer: uploaded.buffer,
             fileName: uploaded.originalname || uploaded.filename || 'voice-note.webm',
-            mimeType: uploaded.mimetype,
+            mimeType,
             languageMode: normalizeLanguageMode(req.body?.languageMode),
             candidateLanguages: normalizeCandidateLanguages(req.body?.candidateLanguages),
             recordingDurationMs: durationMs,

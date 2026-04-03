@@ -3,8 +3,6 @@ import { getCredentialSsoAvailability, getGoogleIosClientId, getNativeCapacitorP
 
 let googleInitPromise: Promise<void> | null = null;
 
-const GOOGLE_SCOPES = ['openid', 'email', 'profile'];
-
 const buildNativeGoogleConfig = () => {
     const availability = getCredentialSsoAvailability('google');
     const platform = getNativeCapacitorPlatform();
@@ -47,7 +45,6 @@ export const signInWithNativeGoogleCredential = async (): Promise<string> => {
     const response = await SocialLogin.login({
         provider: 'google',
         options: {
-            scopes: GOOGLE_SCOPES,
             style: platform === 'android' ? 'bottom' : 'standard',
             filterByAuthorizedAccounts: false,
             autoSelectEnabled: false,

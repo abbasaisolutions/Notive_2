@@ -31,8 +31,11 @@ import { useToast } from '@/context/toast-context';
 import { Spinner } from '@/components/ui';
 import {
     buildBrowserFallbackTranscription,
+    createVoiceMediaRecorder,
+    getVoiceRecordingFilename,
     getSpeechPreviewLocale,
     mergeVoiceCaptureState,
+    normalizeRecordedAudioMimeType,
     takePendingVoiceCapture,
     toVoiceCaptureState,
     type VoiceCaptureState,
@@ -899,7 +902,9 @@ function NewEntryPageContent() {
 
     const processVoiceCapture = useCallback(async (
         audioBlob: Blob | null,
-        captureMeta: VoiceCaptureQualityMetrics | null
+        captureMeta: VoiceCaptureQualityMetrics | null,
+        recordedMimeType?: string | null,
+        recordingDurationMs?: number | null
     ) => {
         const browserTranscript = browserTranscriptRef.current.trim();
         if (!audioBlob && !browserTranscript) {
@@ -935,8 +940,9 @@ function NewEntryPageContent() {
                     languageMode: DEFAULT_VOICE_LANGUAGE_MODE,
                     candidateLanguages: resolveCandidateLanguages(DEFAULT_VOICE_LANGUAGE_MODE),
                     previewText: browserTranscript || null,
-                    recordingDurationMs: voiceRecordingStartedAtRef.current ? Date.now() - voiceRecordingStartedAtRef.current : null,
+                    recordingDurationMs: recordingDurationMs ?? null,
                     captureMeta,
+                    filename: getVoiceRecordingFilename(recordedMimeType),
                 });
                 setVoiceJob(createdJob);
                 if (createdJob.audioUrl) {
@@ -991,7 +997,7 @@ function NewEntryPageContent() {
         setIsVoiceProcessing(false);
         browserTranscriptRef.current = '';
         setVoiceJob(null);
-    }, [apiFetch, trackEvent]);
+    }, [apiFetch, entryId, trackEvent]);
 
     const startRecording = useCallback(async () => {
         if (isVoiceProcessing) return;
@@ -1027,7 +1033,7 @@ function NewEntryPageContent() {
                     onLevel: (level: number) => setAudioLevel(level),
                 });
 
-                const mediaRecorder = new MediaRecorder(stream);
+                const mediaRecorder = createVoiceMediaRecorder(stream);
                 mediaRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
                         audioChunksRef.current.push(event.data);
@@ -1036,6 +1042,9 @@ function NewEntryPageContent() {
                 mediaRecorder.onstop = async () => {
                     const shouldProcess = shouldProcessVoiceStopRef.current;
                     const chunks = [...audioChunksRef.current];
+                    const recordingDurationMs = voiceRecordingStartedAtRef.current
+                        ? Date.now() - voiceRecordingStartedAtRef.current
+                        : null;
                     const captureMeta = captureMonitorRef.current ? await captureMonitorRef.current.stop() : null;
                     captureMonitorRef.current = null;
                     cleanupVoiceCapture();
@@ -1044,10 +1053,13 @@ function NewEntryPageContent() {
                         return;
                     }
 
+                    const recordedMimeType = normalizeRecordedAudioMimeType(
+                        mediaRecorder.mimeType || chunks[0]?.type || 'audio/webm'
+                    );
                     const audioBlob = chunks.length > 0
-                        ? new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' })
+                        ? new Blob(chunks, { type: recordedMimeType })
                         : null;
-                    await processVoiceCapture(audioBlob, captureMeta);
+                    await processVoiceCapture(audioBlob, captureMeta, recordedMimeType, recordingDurationMs);
                 };
                 mediaRecorder.start();
                 mediaRecorderRef.current = mediaRecorder;
@@ -1088,6 +1100,9 @@ function NewEntryPageContent() {
         }
         shouldProcessVoiceStopRef.current = true;
         stopSpeechPreview();
+        const recordingDurationMs = voiceRecordingStartedAtRef.current
+            ? Date.now() - voiceRecordingStartedAtRef.current
+            : null;
 
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             mediaRecorderRef.current.stop();
@@ -1095,7 +1110,7 @@ function NewEntryPageContent() {
         }
 
         cleanupVoiceCapture();
-        void processVoiceCapture(null, null);
+        void processVoiceCapture(null, null, null, recordingDurationMs);
     }, [cleanupVoiceCapture, processVoiceCapture, stopSpeechPreview]);
 
     // Auto-start recording when navigated with autoRecord=1 (e.g. from dashboard voice button)
