@@ -951,6 +951,7 @@ export default function DashboardPage() {
         return (
             <DashboardNotebookView
                 firstName={firstName}
+                avatarUrl={safeUser.avatarUrl}
                 todayLabel={todayLabel}
                 locationLabel={profileLocation}
                 userBirthDate={safeUser.profile?.birthDate ? String(safeUser.profile.birthDate) : null}

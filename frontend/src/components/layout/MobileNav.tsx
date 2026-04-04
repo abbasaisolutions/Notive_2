@@ -11,6 +11,7 @@ import { useNotificationCount } from '@/hooks/use-notification-count';
 import { FiMoreHorizontal } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
+import UserAvatar from '@/components/ui/UserAvatar';
 import {
     filterNavItemsByRole,
     filterNavSectionsByRole,
@@ -333,6 +334,8 @@ export default function MobileNav() {
                             );
                         }
 
+                        const isProfileTab = item.href === '/profile';
+
                         return (
                             <Link
                                 key={item.href}
@@ -341,12 +344,23 @@ export default function MobileNav() {
                                 className={`relative z-10 flex min-h-[44px] flex-1 flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all ${isActive ? 'text-accent' : 'text-muted hover:text-strong'}`}
                             >
                                 <div className={`relative ${isActive ? 'opacity-100 scale-110' : 'opacity-70'} transition-transform duration-200`}>
-                                    {React.cloneElement(item.icon as React.ReactElement, {
-                                        size: 22,
-                                        strokeWidth: isActive ? 2.5 : 2
-                                    })}
-                                    {item.href === '/timeline' && sharedUnread > 0 && (
-                                        <span className="absolute -top-1 -right-1.5 h-2 w-2 rounded-full bg-[rgb(107,143,113)]" />
+                                    {isProfileTab ? (
+                                        <UserAvatar
+                                            avatarUrl={user?.avatarUrl}
+                                            name={user?.name}
+                                            size={24}
+                                            className={`ring-2 transition-all ${isActive ? 'ring-accent' : 'ring-transparent'}`}
+                                        />
+                                    ) : (
+                                        <>
+                                            {React.cloneElement(item.icon as React.ReactElement, {
+                                                size: 22,
+                                                strokeWidth: isActive ? 2.5 : 2
+                                            })}
+                                            {item.href === '/timeline' && sharedUnread > 0 && (
+                                                <span className="absolute -top-1 -right-1.5 h-2 w-2 rounded-full bg-[rgb(107,143,113)]" />
+                                            )}
+                                        </>
                                     )}
                                 </div>
                                 <span className={`type-micro mt-0.5 ${isActive ? 'text-strong opacity-100' : 'opacity-75'}`}>

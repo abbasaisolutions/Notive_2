@@ -12,6 +12,7 @@ import type { StudentActionBrief } from '@/components/action/types';
 import DailyGentleReflectionCard from '@/components/dashboard/DailyGentleReflectionCard';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import { Surface } from '@/components/ui/surface';
+import UserAvatar from '@/components/ui/UserAvatar';
 import type { GentleReflectionDraft } from '@/services/gentle-reflection.service';
 
 type DashboardAction = {
@@ -88,6 +89,7 @@ type DashboardSupportMap = {
 
 type DashboardNotebookViewProps = {
     firstName: string;
+    avatarUrl?: string | null;
     todayLabel: string;
     locationLabel?: string | null;
     profileTags?: string[];
@@ -383,6 +385,7 @@ const getWritingEnergy = (entries: DashboardNotebookViewProps['entries']): {
 
 export default function DashboardNotebookView({
     firstName,
+    avatarUrl,
     todayLabel,
     entries,
     themeClusters,
@@ -1027,7 +1030,20 @@ export default function DashboardNotebookView({
                     <Surface className="app-paper !p-4 md:!p-6">
                         <div className="space-y-3 md:space-y-5">
                             <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <UserAvatar
+                                        avatarUrl={avatarUrl}
+                                        name={firstName}
+                                        size={40}
+                                        className="ring-2 ring-[rgba(var(--paper-border),0.3)] hidden sm:flex"
+                                    />
+                                    <UserAvatar
+                                        avatarUrl={avatarUrl}
+                                        name={firstName}
+                                        size={34}
+                                        className="ring-2 ring-[rgba(var(--paper-border),0.3)] flex sm:hidden"
+                                    />
+                                    <div className="min-w-0">
                                     <h1 className="notive-logo text-2xl font-semibold leading-tight md:text-3xl">
                                         Hey {firstName}
                                         <span className="ml-1 text-sm font-normal text-[rgb(107,107,107)] md:text-base">
@@ -1056,6 +1072,7 @@ export default function DashboardNotebookView({
                                             )}
                                         </div>
                                     )}
+                                </div>
                                 </div>
                                 <NotebookDoodle
                                     name={hasSafetyFocus ? 'knot' : 'star'}

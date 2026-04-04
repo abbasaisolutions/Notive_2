@@ -1,3 +1,4 @@
+import '@/lib/sentry';
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Fraunces } from "next/font/google";
 import { Suspense } from "react";
@@ -14,6 +15,7 @@ import ReducedMotionProvider from "@/components/ReducedMotionProvider";
 import AppChrome from "@/components/layout/AppChrome";
 import RouteHeader from "@/components/layout/RouteHeader";
 import PageTransition from "@/components/layout/PageTransition";
+import OfflineBanner from "@/components/layout/OfflineBanner";
 import OnboardingGuard from "@/components/onboarding/OnboardingGuard";
 import { NOTIVE_VOICE } from "@/content/notive-voice";
 import { getCredentialSsoClientId } from "@/utils/sso";
@@ -166,6 +168,7 @@ export default function RootLayout({
                                                         </footer>
                                                     </main>
                                                 </div>
+                                                <OfflineBanner />
                                                 <ToastContainer />
                                             </SmartProvider>
                                         </GamificationProvider>

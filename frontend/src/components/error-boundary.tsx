@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
+import * as Sentry from '@sentry/react';
 import logger from '@/utils/logger';
+import { SUPPORT_EMAIL } from '@/config/legal';
 
 interface ErrorBoundaryProps {
     children: React.ReactNode;
@@ -40,10 +42,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             componentStack: errorInfo.componentStack,
         });
 
-        // Optional: Send to error tracking service (Sentry, etc.)
-        // if (process.env.NODE_ENV === 'production') {
-        //     Sentry.captureException(error, { contexts: { react: errorInfo } });
-        // }
+        Sentry.captureException(error, { contexts: { react: { componentStack: errorInfo.componentStack } } });
     }
 
     handleReset = () => {
@@ -124,7 +123,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                     <p className="text-sm text-ink-muted mt-4">
                         If this keeps happening,{' '}
                         <a
-                            href="mailto:support@notive.com"
+                            href={`mailto:${SUPPORT_EMAIL || 'info@abbasaisolutions.com'}`}
                             className="text-primary hover:underline"
                         >
                             contact support

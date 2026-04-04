@@ -9,6 +9,8 @@ const password = trimmedString.min(8, 'Password must be at least 8 characters');
 
 // --- Auth schemas ---
 
+const MINIMUM_AGE = 13;
+
 export const registerSchema = z.object({
     email,
     password: password.regex(
@@ -16,7 +18,19 @@ export const registerSchema = z.object({
         'Password must include uppercase, lowercase, and a number'
     ),
     name: trimmedString.max(100).optional(),
-    birthDate: trimmedString.min(1, 'Birth date is required'),
+    birthDate: trimmedString.min(1, 'Birth date is required').check(
+        z.refine((val) => {
+            const dob = new Date(`${val}T00:00:00.000Z`);
+            if (isNaN(dob.getTime())) return false;
+            const today = new Date();
+            let age = today.getFullYear() - dob.getFullYear();
+            const monthDiff = today.getMonth() - dob.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+                age--;
+            }
+            return age >= MINIMUM_AGE;
+        }, `You must be at least ${MINIMUM_AGE} years old to create an account`)
+    ),
 });
 
 export const loginSchema = z.object({

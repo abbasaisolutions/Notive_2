@@ -3,6 +3,7 @@
 import React from 'react';
 import { FiInfo } from 'react-icons/fi';
 import { TagInput, TextAreaField, TextField } from './fields';
+import AvatarUpload from './AvatarUpload';
 import { toBirthDateLabel, type ProfileDraft } from './types';
 
 type ProfileSectionProps = {
@@ -34,20 +35,20 @@ export function ProfileSection({
                         </p>
                     </div>
 
+                    <div className="md:col-span-2 mb-2">
+                        <AvatarUpload
+                            avatarUrl={draft.avatarUrl}
+                            name={draft.name}
+                            onAvatarChange={(url) => onChange((current) => ({ ...current, avatarUrl: url }))}
+                        />
+                    </div>
+
                     <div className="grid gap-6 md:grid-cols-2">
                         <TextField
                             label="Name"
                             value={draft.name}
                             onChange={(value) => onChange((current) => ({ ...current, name: value }))}
                             placeholder="How your name should appear"
-                        />
-                        <TextField
-                            label="Image link"
-                            type="url"
-                            value={draft.avatarUrl}
-                            onChange={(value) => onChange((current) => ({ ...current, avatarUrl: value }))}
-                            placeholder="https://..."
-                            helper="Optional. Used for your account image."
                         />
                         <TextField
                             label="Website"

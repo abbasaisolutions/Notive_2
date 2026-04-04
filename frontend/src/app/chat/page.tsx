@@ -14,6 +14,8 @@ import SafetyBanner from '@/components/safety/SafetyBanner';
 import type { StudentActionBrief, StudentBridgeDraft, StudentRisk, StudentSafetyCard } from '@/components/action/types';
 import useTelemetry from '@/hooks/use-telemetry';
 import { Spinner } from '@/components/ui';
+import UserAvatar from '@/components/ui/UserAvatar';
+import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 
 type GuidedLens = 'clarity' | 'memory' | 'growth' | 'patterns' | 'bridge';
 
@@ -59,7 +61,7 @@ interface CoachStatus {
 }
 
 export default function ChatPage() {
-    const { isLoading: authLoading, isAuthenticated } = useAuthRedirect();
+    const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { apiFetch } = useApi();
     const { trackEvent } = useTelemetry();
     const { backLabel, navigateBack } = useContextNavigation('/dashboard', 'dashboard');
@@ -452,10 +454,15 @@ export default function ChatPage() {
                             messages.map((message, index) => (
                                 <div
                                     key={index}
-                                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                    className={`flex items-end gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
+                                    {message.role === 'assistant' && (
+                                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgba(var(--paper-warm),0.6)] ring-1 ring-[rgba(var(--paper-border),0.2)]">
+                                            <NotebookDoodle name="sprout" accent="sage" size={16} />
+                                        </div>
+                                    )}
                                     <div
-                                        className={`max-w-[84%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                                        className={`max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                                             message.role === 'user'
                                                 ? 'rounded-br-sm workspace-button-primary'
                                                 : 'rounded-bl-sm workspace-soft-panel text-[rgb(var(--text-secondary))]'
@@ -465,12 +472,22 @@ export default function ChatPage() {
 
                                         {renderMessageMeta(message, index)}
                                     </div>
+                                    {message.role === 'user' && (
+                                        <UserAvatar
+                                            avatarUrl={user?.avatarUrl}
+                                            name={user?.name}
+                                            size={28}
+                                        />
+                                    )}
                                 </div>
                             ))
                         )}
 
                         {isLoading && (
-                            <div className="flex justify-start">
+                            <div className="flex items-end gap-2 justify-start">
+                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgba(var(--paper-warm),0.6)] ring-1 ring-[rgba(var(--paper-border),0.2)]">
+                                    <NotebookDoodle name="sprout" accent="sage" size={16} />
+                                </div>
                                 <div className="workspace-soft-panel rounded-2xl rounded-bl-sm px-4 py-3">
                                     <div className="flex gap-1">
                                         <span className="h-2 w-2 rounded-full bg-[rgb(var(--brand))] animate-bounce" style={{ animationDelay: '0ms' }} />

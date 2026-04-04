@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import * as Sentry from '@sentry/node';
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -25,6 +26,15 @@ import { securityConfig } from './config/security';
 import { securityHeadersMiddleware } from './middleware/security.middleware';
 import { requestLoggingMiddleware } from './middleware/request-logging.middleware';
 import { serverLogger } from './utils/server-logger';
+
+// Sentry must be initialised before the Express app is created
+if (process.env.SENTRY_DSN) {
+    Sentry.init({
+        dsn: process.env.SENTRY_DSN,
+        environment: process.env.NODE_ENV || 'development',
+        tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
+    });
+}
 
 const app: Express = express();
 const isProd = process.env.NODE_ENV === 'production';
@@ -146,6 +156,8 @@ app.use('/api/v1/memory-share', memoryShareRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/reminders', reminderRoutes);
 app.use('/api/v1/friendships', friendshipRoutes);
+
+Sentry.setupExpressErrorHandler(app);
 
 app.use((err: any, req: Request, res: Response, _next: any) => {
     serverLogger.error('http.request.failed', {

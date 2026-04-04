@@ -8,8 +8,9 @@ import { useAuth } from '@/context/auth-context';
 import { usePushNotifications } from '@/context/push-notification-context';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { hasCompletedOnboardingRequirements } from '@/utils/onboarding';
-import { FiBell, FiDownload, FiEdit3, FiLogOut, FiShield } from 'react-icons/fi';
+import { FiBell, FiDownload, FiEdit3, FiLogOut, FiMessageCircle, FiShield } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
+import { SUPPORT_EMAIL } from '@/config/legal';
 
 function getXPForLevel(level: number) {
     const thresholds = [0, 100, 300, 600, 1000, 1500, 2500, 4000, 6000, 10000, 999999];
@@ -325,10 +326,17 @@ export default function ProfileClient() {
                     </>
                 )}
 
-                {/* Sign out — always visible */}
+                {/* Feedback & sign out — always visible */}
                 <section className="workspace-panel rounded-[2rem] p-6">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 text-sm text-ink-secondary">
+                            <a
+                                href={`mailto:${SUPPORT_EMAIL || 'support@notive.com'}?subject=${encodeURIComponent('Notive Feedback')}`}
+                                className="inline-flex items-center gap-1.5 text-primary hover:underline"
+                            >
+                                <FiMessageCircle size={15} aria-hidden="true" />
+                                Send Feedback
+                            </a>
                             {isAdminUser && (
                                 <Link href="/admin" className="text-primary hover:underline">
                                     Admin

@@ -36,6 +36,7 @@
     "@capacitor/status-bar": "^7.0.6",
     "@capgo/capacitor-social-login": "^7.20.0",
     "@react-oauth/google": "^0.12.2",
+    "@sentry/react": "^10.47.0",
     "@tiptap/extension-placeholder": "^3.12.1",
     "@tiptap/extension-underline": "^3.12.1",
     "@tiptap/react": "^3.12.1",

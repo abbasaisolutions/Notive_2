@@ -3,6 +3,8 @@
  * Provides different log levels and conditional logging based on environment
  */
 
+import * as Sentry from '@sentry/react';
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 // Alias for backward compatibility
@@ -62,11 +64,13 @@ class Logger {
     error(message: string, error?: any) {
         if (this.shouldLog('error')) {
             console.error(this.formatMessage('error', message, error), error || '');
+        }
 
-            // In production, you could send errors to a service like Sentry
-            // if (process.env.NODE_ENV === 'production') {
-            //     // Sentry.captureException(error);
-            // }
+        // Always send errors to Sentry regardless of log level
+        if (error instanceof Error) {
+            Sentry.captureException(error);
+        } else {
+            Sentry.captureMessage(message, { level: 'error', extra: { error } });
         }
     }
 

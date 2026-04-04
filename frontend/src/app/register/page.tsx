@@ -114,6 +114,17 @@ export default function RegisterPage() {
             nextFieldErrors.birthDate = 'Date of birth is required.';
         } else if (Number.isNaN(new Date(`${birthDate}T00:00:00.000Z`).getTime())) {
             nextFieldErrors.birthDate = 'Enter a valid birth date.';
+        } else {
+            const dob = new Date(`${birthDate}T00:00:00.000Z`);
+            const today = new Date();
+            let age = today.getFullYear() - dob.getFullYear();
+            const monthDiff = today.getMonth() - dob.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+                age--;
+            }
+            if (age < 13) {
+                nextFieldErrors.birthDate = 'You must be at least 13 years old to create an account.';
+            }
         }
         if (!password) {
             nextFieldErrors.password = 'Password is required.';
