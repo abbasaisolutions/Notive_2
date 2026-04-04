@@ -99,14 +99,21 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background-color: rgb(var(--paper-bg));
+    min-height: 100%;
+    width: 100%;
   }
 
   body {
     @apply antialiased selection:bg-primary/30 selection:text-white leading-relaxed;
     color: rgb(var(--text-strong));
     background: var(--app-body-background);
+    background-color: rgb(var(--paper-bg));
     background-attachment: fixed;
+    margin: 0;
     min-height: 100vh;
+    overflow-x: hidden;
+    width: 100%;
   }
 
   a {

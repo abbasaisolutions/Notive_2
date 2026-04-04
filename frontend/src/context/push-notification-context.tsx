@@ -40,6 +40,16 @@ interface PushContextType {
 
 const PushContext = createContext<PushContextType | undefined>(undefined);
 
+const ANDROID_PUSH_CHANNEL = {
+    id: 'notive_default',
+    name: 'Notive updates',
+    description: 'Reflection prompts, reminders, and important Notive updates.',
+    importance: 5 as const,
+    visibility: 1 as const,
+    sound: 'default',
+    vibration: true,
+};
+
 export function PushNotificationProvider({ children }: { children: ReactNode }) {
     const { apiFetch } = useApi();
     const router = useRouter();
@@ -76,14 +86,11 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             // Set up event listeners
             await setupPushListeners();
 
-            // Request initial permission
-            const hasPermission = await requestPermission();
-            setIsPermissionGranted(hasPermission);
+            // Ensure the Android channel exists before the first notification arrives.
+            await ensureAndroidPushChannel();
 
-            // Fetch existing token if permission granted
-            if (hasPermission) {
-                await fetchDeviceTokens();
-            }
+            // Request initial permission
+            await requestPermission();
         } catch (error) {
             logger.error('Failed to initialize push notifications:', error);
         } finally {
@@ -130,12 +137,20 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
                 logger.debug('Push notification action performed:', notification);
                 handleNotificationAction(notification);
             });
-
-            // Init push notifications
-            await PushNotifications.requestPermissions();
-            await PushNotifications.register();
         } catch (error) {
             logger.error('Failed to setup push listeners:', error);
+        }
+    };
+
+    const ensureAndroidPushChannel = async () => {
+        if (getPlatform() !== 'android') {
+            return;
+        }
+
+        try {
+            await PushNotifications.createChannel(ANDROID_PUSH_CHANNEL);
+        } catch (error) {
+            logger.debug('Push channel already exists or could not be created:', error);
         }
     };
 
@@ -148,6 +163,12 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             const result = await PushNotifications.requestPermissions();
             const granted = result.receive === 'granted';
             setIsPermissionGranted(granted);
+
+            if (granted) {
+                await ensureAndroidPushChannel();
+                await PushNotifications.register();
+            }
+
             return granted;
         } catch (error) {
             logger.error('Failed to request push permissions:', error);

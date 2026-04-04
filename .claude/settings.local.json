@@ -8,7 +8,8 @@
       "Bash(find /c/Users/mtabe/Notive/frontend/src -name *.css -o -name *.scss)",
       "Bash(grep -r \"glass-card\\\\|bento-box\\\\|workspace-panel\\\\|workspace-soft-panel\" /c/Users/mtabe/Notive/frontend/src --include=*.tsx)",
       "Bash(grep -rn \"text-foreground\\\\|bg-surface-1\\\\|bg-surface-2\\\\|text-zinc\\\\|text-neutral\\\\|bg-zinc\\\\|bg-neutral\" /c/Users/mtabe/Notive/frontend/src/components --include=*.tsx)",
-      "Bash(grep -rn \"text-white\\\\|border-white/\\\\|bg-white/\\\\[0\" /c/Users/mtabe/Notive/frontend/src/app --include=*.tsx)"
+      "Bash(grep -rn \"text-white\\\\|border-white/\\\\|bg-white/\\\\[0\" /c/Users/mtabe/Notive/frontend/src/app --include=*.tsx)",
+      "Bash(grep -r \"NEXT_PUBLIC\\\\|VOICE\" /c/Users/mtabe/Notive/frontend/.env*)"
     ]
   }
 }
