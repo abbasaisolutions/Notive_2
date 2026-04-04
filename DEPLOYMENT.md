@@ -115,6 +115,8 @@ If the build fails because `routes-manifest.json` could not be found, clear any 
 
 Railway monorepo note: this repository is an isolated monorepo. Set the Railway service **Root Directory** to `backend` so Railpack sees `backend/package.json`. If you use Config as Code, point Railway at `/backend/railway.json`, because Railway's config-file path is absolute and does not follow the Root Directory setting.
 
+Runtime note: the backend workspace pins `packageManager` to `npm@10.9.3` and `engines.node` to Node 22 in `backend/package.json`. Keep Railway on Node 22 for this service, and when you intentionally regenerate `backend/package-lock.json`, do it with npm 10 from the `backend/` directory so `npm ci` stays reproducible between local and Railway builds.
+
 Initial admin note: to create or promote a production superadmin from a Railway shell, run:
 
 ```bash

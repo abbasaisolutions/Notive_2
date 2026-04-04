@@ -19,7 +19,7 @@ Notive is developed and owned by AbbasAI Solutions, LLC.
 
 To run this project, you need to install the following tools on your machine:
 
-1. **Node.js** (v18 or later): [Download here](https://nodejs.org/)
+1. **Node.js** (v22.12 or later, v22 LTS recommended): [Download here](https://nodejs.org/)
 2. **Docker Desktop**: [Download here](https://www.docker.com/products/docker-desktop/)
 3. **Git**: [Download here](https://git-scm.com/downloads)
 
@@ -51,6 +51,8 @@ cd ../backend
 npm install
 cd ..
 ```
+
+The backend workspace is pinned to `npm@10.9.3` in [backend/package.json](./backend/package.json) because Railway installs it with `npm ci`. If you ever refresh [backend/package-lock.json](./backend/package-lock.json), do that from `backend/` with npm 10 so local lockfile updates stay compatible with production deploys.
 
 ### 3. Set Up Environment Variables
 
