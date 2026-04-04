@@ -100,7 +100,7 @@ function SharedPageContent() {
             <div className="border-b border-white/10 bg-surface-1/80 backdrop-blur-md sticky top-0 z-50">
                 <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <NotiveLogo size="xs" />
+                        <NotiveLogo size="xs" variant="horizontal" />
                         <TagPill tone="muted">Shared Memory</TagPill>
                     </div>
 

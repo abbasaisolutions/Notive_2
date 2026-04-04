@@ -1029,8 +1029,9 @@ export default function DashboardNotebookView({
                     ═══════════════════════════════════════════════ */}
                     <Surface className="app-paper !p-4 md:!p-6">
                         <div className="space-y-3 md:space-y-5">
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex items-start gap-3">
+                                {/* Avatar — fixed circle, never shrinks */}
+                                <div className="shrink-0 mt-0.5">
                                     <UserAvatar
                                         avatarUrl={avatarUrl}
                                         name={firstName}
@@ -1043,14 +1044,16 @@ export default function DashboardNotebookView({
                                         size={34}
                                         className="ring-2 ring-[rgba(var(--paper-border),0.3)] flex sm:hidden"
                                     />
-                                    <div className="min-w-0">
-                                    <h1 className="notive-logo text-2xl font-semibold leading-tight md:text-3xl">
-                                        Hey {firstName}
-                                        <span className="ml-1 text-sm font-normal text-[rgb(107,107,107)] md:text-base">
+                                </div>
+                                {/* Text block — takes remaining space, clips overflow */}
+                                <div className="min-w-0 flex-1">
+                                    <h1 className="notive-logo flex items-baseline gap-1 text-xl font-semibold leading-tight md:text-3xl">
+                                        <span className="truncate">Hey {firstName}</span>
+                                        <span className="shrink-0 text-[0.75rem] font-normal text-[rgb(107,107,107)] md:text-sm">
                                             {greetingLocation}
                                         </span>
                                     </h1>
-                                    <p className="mt-1 text-sm text-[rgb(107,107,107)]">
+                                    <p className="mt-1 truncate whitespace-nowrap text-[0.72rem] text-[rgb(107,107,107)]">
                                         {todayLabel}
                                         <span className="mx-1.5 text-[rgba(107,107,107,0.55)]">•</span>
                                         <span className="sprout-accent">{energyLine}</span>
@@ -1073,12 +1076,6 @@ export default function DashboardNotebookView({
                                         </div>
                                     )}
                                 </div>
-                                </div>
-                                <NotebookDoodle
-                                    name={hasSafetyFocus ? 'knot' : 'star'}
-                                    accent={hasSafetyFocus ? 'amber' : 'sage'}
-                                    className="h-8 w-8 shrink-0 opacity-80"
-                                />
                             </div>
 
                             <div className="overflow-x-auto">

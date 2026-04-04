@@ -54,7 +54,7 @@ export default function Sidebar() {
             aria-label="Workspace navigation"
         >
             <div className="px-7 pt-7 pb-4">
-                <NotiveLogo href="/dashboard" size="sm" />
+                <NotiveLogo href="/dashboard" size="sm" variant="horizontal" />
                 <p className="type-overline mt-1 text-muted">
                     {user?.role === 'ADMIN' || user?.role === 'SUPERADMIN'
                         ? 'Admin Workspace'

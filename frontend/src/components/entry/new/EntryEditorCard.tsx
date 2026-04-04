@@ -4,6 +4,7 @@ import React, { RefObject, useState, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { FiImage, FiMic, FiSquare } from 'react-icons/fi';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
+import { ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR } from '@/utils/image-upload';
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
     ssr: false,
@@ -223,7 +224,7 @@ export default function EntryEditorCard({
                                 type="file"
                                 ref={fileInputRef}
                                 className="hidden"
-                                accept="image/*"
+                                accept={ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR}
                                 onChange={onImageUpload}
                             />
                             <button

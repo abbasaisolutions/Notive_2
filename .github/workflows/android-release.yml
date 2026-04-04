@@ -64,17 +64,19 @@ jobs:
           echo "$PLAY_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
           echo "PLAY_UPLOAD_STORE_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
 
-      - name: Resolve Android CI version
+      - name: Read Android release version
         id: version
-        env:
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          ANDROID_VERSION_CODE_OFFSET: "10000"
-        run: node scripts/resolve-android-ci-version.mjs --github-output
+        run: |
+          VERSION_CODE=$(grep '^NOTIVE_VERSION_CODE=' android/gradle.properties | cut -d'=' -f2)
+          VERSION_NAME=$(grep '^NOTIVE_VERSION_NAME=' android/gradle.properties | cut -d'=' -f2)
+          if [[ -z "$VERSION_CODE" || -z "$VERSION_NAME" ]]; then
+            echo "Failed to read Android version from frontend/android/gradle.properties" >&2
+            exit 1
+          fi
+          echo "versionCode=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "versionName=$VERSION_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Build signed Android release bundle
-        env:
-          NOTIVE_VERSION_CODE: ${{ steps.version.outputs.versionCode }}
-          NOTIVE_VERSION_NAME: ${{ steps.version.outputs.versionName }}
         run: |
           npm run android:ready
           npm run android:prepare

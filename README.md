@@ -272,10 +272,16 @@ The release script keeps using Android Studio's bundled Java runtime when availa
 Pushes to `main` now trigger [`.github/workflows/android-release.yml`](./.github/workflows/android-release.yml). That workflow:
 
 - rebuilds the frontend and syncs Capacitor so the latest web changes are included in the Android bundle
-- generates a fresh Android release number for every run
+- uses the Android release number checked into `frontend/android/gradle.properties`
 - builds a signed `.aab`
 - uploads the bundle as a GitHub Actions artifact
 - uploads it to the Google Play `internal` track when `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` is configured
+
+The current checked-in Android release is `1104 (1.1.4)`. If you want the next Play upload to use a new version, bump `frontend/android/gradle.properties` first or run one of:
+
+- `npm run android:version:patch`
+- `npm run android:version:minor`
+- `npm run android:version:major`
 
 Set these GitHub repository secrets before relying on the workflow:
 

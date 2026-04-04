@@ -1,15 +1,16 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.middleware';
-import { upload, LocalFileService } from '../services/file.service';
+import { createUpload, LocalFileService } from '../services/file.service';
 import { serverLogger } from '../utils/server-logger';
 
 const router = Router();
+const imageUpload = createUpload(15 * 1024 * 1024);
 
 // Protected routes
 router.use(authMiddleware);
 
-// Upload generic file (image/audio)
-router.post('/upload', upload.single('file'), (req, res) => {
+// Upload optimized user images with a stricter source-file cap.
+router.post('/upload', imageUpload.single('file'), (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ message: 'No file uploaded' });

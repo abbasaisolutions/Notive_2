@@ -27,7 +27,7 @@ export default function HomePage() {
                 >
                     <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                         <div className="max-w-2xl">
-                            <NotiveLogo size="sm" />
+                            <NotiveLogo size="sm" variant="horizontal" />
                             <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[rgb(39,35,31)] md:text-[2.25rem]">
                                 One honest note can be enough to make tomorrow feel less noisy.
                             </h2>

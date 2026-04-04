@@ -29,6 +29,7 @@ import {
 import { appendReturnTo } from '@/utils/navigation';
 import { useToast } from '@/context/toast-context';
 import { Spinner } from '@/components/ui';
+import { prepareImageForUpload } from '@/utils/image-upload';
 import {
     buildBrowserFallbackTranscription,
     createVoiceMediaRecorder,
@@ -1431,27 +1432,33 @@ function NewEntryPageContent() {
     }, [clearUploadResult]);
 
     const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const sourceFile = e.target.files?.[0];
+        if (!sourceFile) return;
+        if (fileInputRef.current) fileInputRef.current.value = '';
 
-        const offline = typeof navigator !== 'undefined' && !navigator.onLine;
-        if (offline) {
-            await enqueueUpload({
-                endpoint: `${API_URL}/files/upload`,
-                fieldName: 'file',
-                file,
-                fileName: file.name,
-                fileType: file.type,
-            });
-            if (fileInputRef.current) fileInputRef.current.value = '';
-            setError('You are offline. The image is queued and will upload when you are back online.');
-            return;
-        }
-
+        setError('');
+        let preparedFile: File | null = null;
         setIsUploading(true);
         try {
+            const prepared = await prepareImageForUpload(sourceFile, 'entry');
+            const file = prepared.file;
+            preparedFile = file;
+            const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+            if (offline) {
+                await enqueueUpload({
+                    endpoint: `${API_URL}/files/upload`,
+                    fieldName: 'file',
+                    file,
+                    fileName: file.name,
+                    fileType: file.type,
+                });
+                setError('You are offline. The image is queued and will upload when you are back online.');
+                return;
+            }
+
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', file, file.name);
 
             const response = await apiFetch(`${API_URL}/files/upload`, {
                 method: 'POST',
@@ -1464,15 +1471,14 @@ function NewEntryPageContent() {
             }
 
             setContent(prev => `${prev}\n![Image](${data.url})\n`);
-            if (fileInputRef.current) fileInputRef.current.value = '';
         } catch (err: any) {
-            if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            if (preparedFile && typeof navigator !== 'undefined' && !navigator.onLine) {
                 await enqueueUpload({
                     endpoint: `${API_URL}/files/upload`,
                     fieldName: 'file',
-                    file,
-                    fileName: file.name,
-                    fileType: file.type,
+                    file: preparedFile,
+                    fileName: preparedFile.name,
+                    fileType: preparedFile.type,
                 });
                 setError('That image is queued and will upload when you are back online.');
             } else {
@@ -1592,7 +1598,7 @@ function NewEntryPageContent() {
                     onEditorChange={handleEditorChange}
                     autoFocus={isQuickMode || isWhisperMode}
                     minimalEditor={isWhisperMode || (isQuickMode && !showAdvancedTools)}
-                    showImageUpload={!isWhisperMode && showAdvancedTools}
+                    showImageUpload={!isWhisperMode}
                     showFormattingToolbar={showAdvancedTools}
                 />
 

@@ -1316,7 +1316,10 @@ export function ProfileSettingsEditor() {
             </FadeIn>
 
             {activeEditableTab && (activeDirty || activeConflict) && (
-                <div className="fixed inset-x-0 bottom-4 z-40 px-4">
+                <div
+                    className="fixed inset-x-0 z-40 px-4"
+                    style={{ bottom: 'calc(var(--app-bottom-clearance, 1rem) + 0.5rem)' }}
+                >
                     <div className="workspace-panel mx-auto max-w-5xl rounded-[1.6rem] px-5 py-4 shadow-2xl">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="space-y-1">

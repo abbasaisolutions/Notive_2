@@ -11,6 +11,7 @@ import useApi from '@/hooks/use-api';
 import useContextNavigation from '@/hooks/use-context-navigation';
 import useEntryEdit from '@/hooks/use-entry-edit';
 import { EntryCategory, LIFE_AREA_OPTIONS, normalizeLifeArea } from '@/constants/life-areas';
+import { ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR } from '@/utils/image-upload';
 import type { IconType } from 'react-icons';
 import {
     FiAlertCircle,
@@ -161,7 +162,7 @@ function EditEntryContent() {
                     </div>
                 ) : (
                     <label className="workspace-soft-panel w-full h-10 rounded-xl border border-dashed border-[rgba(141,123,105,0.25)] flex items-center justify-center gap-2 cursor-pointer transition-all hover:brightness-[1.04] mb-3">
-                        <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={isUploading} />
+                        <input type="file" accept={ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR} onChange={handleImageUpload} className="hidden" disabled={isUploading} />
                         {isUploading ? <Spinner size="sm" /> : <span className="text-xs text-ink-muted">+ Add cover image</span>}
                     </label>
                 )}

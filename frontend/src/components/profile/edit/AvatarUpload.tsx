@@ -3,9 +3,10 @@
 import React, { useRef, useState } from 'react';
 import { FiCamera, FiTrash2 } from 'react-icons/fi';
 import useApi from '@/hooks/use-api';
-
-const ACCEPTED_TYPES = 'image/jpeg,image/png,image/webp';
-const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+import {
+    ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR,
+    prepareImageForUpload,
+} from '@/utils/image-upload';
 
 type AvatarUploadProps = {
     avatarUrl: string;
@@ -29,22 +30,13 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
         // Reset input so the same file can be re-selected
         e.target.value = '';
 
-        if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
-            setError('Please select a JPG, PNG, or WebP image.');
-            return;
-        }
-
-        if (file.size > MAX_SIZE_BYTES) {
-            setError('Image must be under 5 MB.');
-            return;
-        }
-
         setError('');
         setIsUploading(true);
 
         try {
+            const prepared = await prepareImageForUpload(file, 'avatar');
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', prepared.file, prepared.file.name);
 
             const res = await apiFetch('/files/upload', {
                 method: 'POST',
@@ -130,14 +122,14 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
                             Remove
                         </button>
                     )}
-                    <p className="text-xs text-ink-muted">JPG, PNG, or WebP. Max 5 MB.</p>
+                    <p className="text-xs text-ink-muted">JPG, PNG, or WebP. We crop and compress it before upload.</p>
                 </div>
 
                 {/* Hidden file input */}
                 <input
                     ref={fileInputRef}
                     type="file"
-                    accept={ACCEPTED_TYPES}
+                    accept={ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR}
                     onChange={handleFileSelect}
                     className="hidden"
                     aria-hidden="true"

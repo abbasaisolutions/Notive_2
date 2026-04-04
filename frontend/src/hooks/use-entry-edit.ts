@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { API_URL } from '@/constants/config';
 import { useAutoSave } from '@/hooks/use-auto-save';
 import { getErrorMessage } from '@/utils/http';
+import { prepareImageForUpload } from '@/utils/image-upload';
 import {
     DEFAULT_LIFE_AREA_BY_CATEGORY,
     EntryCategory,
@@ -156,12 +157,16 @@ export function useEntryEdit({
     const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        e.target.value = '';
 
+        setError('');
         setIsUploading(true);
-        const formData = new FormData();
-        formData.append('file', file);
 
         try {
+            const prepared = await prepareImageForUpload(file, 'entry');
+            const formData = new FormData();
+            formData.append('file', prepared.file, prepared.file.name);
+
             const response = await apiFetch(`${API_URL}/files/upload`, {
                 method: 'POST',
                 body: formData,

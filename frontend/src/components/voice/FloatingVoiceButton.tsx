@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import useApi from '@/hooks/use-api';
@@ -26,7 +27,7 @@ import {
     stagePendingVoiceCapture,
 } from '@/utils/voice-capture';
 import createVoiceCaptureMonitor from '@/utils/voice-capture-metrics';
-import { FiMic, FiX } from 'react-icons/fi';
+import { FiX } from 'react-icons/fi';
 
 const LANGUAGE_OPTIONS: { value: VoiceLanguageMode; label: string }[] = [
     { value: 'auto', label: 'Auto' },
@@ -478,10 +479,17 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                 ) : (
                     <button
                         onClick={startRecording}
-                        className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full bg-gradient-to-br from-primary to-secondary shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center group"
+                        className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full overflow-hidden shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200"
                         aria-label="Start voice recording"
                     >
-                        <FiMic size={24} className="text-white group-hover:scale-110 transition-transform md:h-7 md:w-7" aria-hidden="true" />
+                        <Image
+                            src="/images/Submark  Icon-Only.jpg"
+                            alt=""
+                            aria-hidden="true"
+                            width={64}
+                            height={88}
+                            className="w-full h-full object-cover"
+                        />
                     </button>
                 )}
             </div>
