@@ -43,6 +43,15 @@ const gradleProperties = fs.existsSync(gradlePropertiesPath)
     ? parseEnv(fs.readFileSync(gradlePropertiesPath, 'utf8'))
     : {};
 
+const resolveEnvValue = (key) => {
+    const processValue = (process.env[key] || '').trim();
+    if (processValue) {
+        return processValue;
+    }
+
+    return (env[key] || '').trim();
+};
+
 const isMissing = (value) =>
     !value
     || value === 'your-google-client-id'
@@ -91,14 +100,16 @@ const resolveAndroidVersionConfig = () => {
 
 resolveAndroidVersionConfig();
 
-const googleClientId = env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID || env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+const googleClientId = resolveEnvValue('NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID')
+    || resolveEnvValue('NEXT_PUBLIC_GOOGLE_CLIENT_ID');
 if (isMissing(googleClientId) || !isGoogleClientId(googleClientId)) {
-    blockers.push('Set a real `NEXT_PUBLIC_GOOGLE_CLIENT_ID` or `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` in `frontend/.env` for web and Android Google sign-in.');
+    blockers.push('Set a real `NEXT_PUBLIC_GOOGLE_CLIENT_ID` or `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` in `frontend/.env` or CI environment variables for web and Android Google sign-in.');
 } else {
     pushStatus('Google credential sign-in', 'configured');
 }
 
-const nativeApiUrl = env.NEXT_PUBLIC_NATIVE_API_URL || env.NEXT_PUBLIC_API_URL || '';
+const nativeApiUrl = resolveEnvValue('NEXT_PUBLIC_NATIVE_API_URL')
+    || resolveEnvValue('NEXT_PUBLIC_API_URL');
 if (!nativeApiUrl) {
     warnings.push('`NEXT_PUBLIC_NATIVE_API_URL` is not set. Native builds will fall back to the web API URL or production default.');
 } else if (isLikelyLocalApiUrl(nativeApiUrl)) {
@@ -187,7 +198,7 @@ if (fs.existsSync(debugApkPath)) {
 }
 
 console.log(`Android readiness audit (${mode === 'launch' ? 'launch' : 'release-core'})`);
-console.log(`Environment source: ${path.relative(projectRoot, envFilePath)}`);
+console.log(`Environment source: ${path.relative(projectRoot, envFilePath)} (process env overrides file values when present)`);
 
 if (statusLines.length > 0) {
     console.log('\nReady now');

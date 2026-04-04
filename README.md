@@ -267,6 +267,37 @@ npm run android:build:release
 
 The release script keeps using Android Studio's bundled Java runtime when available and produces a signed `.aab` through `bundleRelease`.
 
+### Automated Android Releases
+
+Pushes to `main` now trigger [`.github/workflows/android-release.yml`](./.github/workflows/android-release.yml). That workflow:
+
+- rebuilds the frontend and syncs Capacitor so the latest web changes are included in the Android bundle
+- generates a fresh Android release number for every run
+- builds a signed `.aab`
+- uploads the bundle as a GitHub Actions artifact
+- uploads it to the Google Play `internal` track when `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` is configured
+
+Set these GitHub repository secrets before relying on the workflow:
+
+- `PLAY_UPLOAD_KEYSTORE_BASE64`
+- `PLAY_UPLOAD_STORE_PASSWORD`
+- `PLAY_UPLOAD_KEY_ALIAS`
+- `PLAY_UPLOAD_KEY_PASSWORD`
+
+Set these repository variables for a production-ready Android build:
+
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+- `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` if you use a separate web client ID alias
+- `NEXT_PUBLIC_API_URL`
+- `NEXT_PUBLIC_NATIVE_API_URL`
+- `NEXT_PUBLIC_APP_URL`
+
+Optional:
+
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` to auto-publish to Google Play internal testing
+
+Important: a Git push alone does not update apps already installed on user devices. That happens only after the new bundle is distributed through Google Play, or through a separate live-update system for web assets.
+
 ## Deployment
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions for various platforms including:
