@@ -1,4 +1,4 @@
-import { MemoryShareAccessStatus } from '@prisma/client';
+import { MemoryShareAccessStatus, Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
 import { PushNotificationService } from '../services/push-notification.service';
@@ -13,6 +13,21 @@ const maskEmail = (email: string) => {
 };
 
 const formatCountLabel = (count: number) => `${count} ${count === 1 ? 'memory' : 'memories'}`;
+
+const isMissingUserBlockTableError = (error: unknown) => {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+        return false;
+    }
+
+    if (error.code !== 'P2021') {
+        return false;
+    }
+
+    const modelName = typeof error.meta?.modelName === 'string' ? error.meta.modelName : '';
+    const table = typeof error.meta?.table === 'string' ? error.meta.table : '';
+
+    return modelName === 'UserBlock' || table.includes('UserBlock');
+};
 
 const buildShareStateMap = async (senderId: string, recipientIds: string[]) => {
     if (recipientIds.length === 0) {
@@ -34,25 +49,34 @@ const buildShareStateMap = async (senderId: string, recipientIds: string[]) => {
 };
 
 const getBlockedCounterpartIds = async (userId: string, candidateIds?: string[]) => {
-    const blocks = await prisma.userBlock.findMany({
-        where: {
-            OR: [
-                {
-                    blockerId: userId,
-                    ...(candidateIds ? { blockedId: { in: candidateIds } } : {}),
-                },
-                {
-                    blockedId: userId,
-                    ...(candidateIds ? { blockerId: { in: candidateIds } } : {}),
-                },
-            ],
-        },
-        select: { blockerId: true, blockedId: true },
-    });
+    try {
+        const blocks = await prisma.userBlock.findMany({
+            where: {
+                OR: [
+                    {
+                        blockerId: userId,
+                        ...(candidateIds ? { blockedId: { in: candidateIds } } : {}),
+                    },
+                    {
+                        blockedId: userId,
+                        ...(candidateIds ? { blockerId: { in: candidateIds } } : {}),
+                    },
+                ],
+            },
+            select: { blockerId: true, blockedId: true },
+        });
 
-    return blocks.map((block) => (
-        block.blockerId === userId ? block.blockedId : block.blockerId
-    ));
+        return blocks.map((block) => (
+            block.blockerId === userId ? block.blockedId : block.blockerId
+        ));
+    } catch (error) {
+        if (isMissingUserBlockTableError(error)) {
+            console.warn('UserBlock table missing; continuing without block filtering for memory share.');
+            return [];
+        }
+
+        throw error;
+    }
 };
 
 const normalizeStringIds = (value: unknown) => {
