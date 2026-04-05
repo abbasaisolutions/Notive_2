@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FiCamera, FiTrash2 } from 'react-icons/fi';
 import useApi from '@/hooks/use-api';
 import {
     ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR,
+    MAX_IMAGE_SOURCE_BYTES,
     prepareImageForUpload,
+    CropArea,
 } from '@/utils/image-upload';
+import CropModal from './CropModal';
 
 type AvatarUploadProps = {
     avatarUrl: string;
@@ -19,22 +22,41 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState('');
+    const [cropFile, setCropFile] = useState<File | null>(null);
+    const [cropPreviewUrl, setCropPreviewUrl] = useState<string | null>(null);
 
     const initial = name?.charAt(0).toUpperCase() || '?';
     const hasAvatar = avatarUrl.trim().length > 0;
 
-    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
-        // Reset input so the same file can be re-selected
         e.target.value = '';
-
         setError('');
+
+        if (file.size > MAX_IMAGE_SOURCE_BYTES) {
+            setError('Choose a profile photo under 15 MB.');
+            return;
+        }
+
+        const url = URL.createObjectURL(file);
+        setCropFile(file);
+        setCropPreviewUrl(url);
+    };
+
+    const handleCropConfirm = async (croppedArea: CropArea) => {
+        if (!cropFile) return;
+
+        // Clean up preview URL
+        if (cropPreviewUrl) URL.revokeObjectURL(cropPreviewUrl);
+        setCropPreviewUrl(null);
+
+        const file = cropFile;
+        setCropFile(null);
         setIsUploading(true);
 
         try {
-            const prepared = await prepareImageForUpload(file, 'avatar');
+            const prepared = await prepareImageForUpload(file, 'avatar', croppedArea);
             const formData = new FormData();
             formData.append('file', prepared.file, prepared.file.name);
 
@@ -56,6 +78,20 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
             setIsUploading(false);
         }
     };
+
+    const handleCropCancel = () => {
+        if (cropPreviewUrl) URL.revokeObjectURL(cropPreviewUrl);
+        setCropPreviewUrl(null);
+        setCropFile(null);
+    };
+
+    useEffect(() => (
+        () => {
+            if (cropPreviewUrl) {
+                URL.revokeObjectURL(cropPreviewUrl);
+            }
+        }
+    ), [cropPreviewUrl]);
 
     const handleRemove = () => {
         setError('');
@@ -122,7 +158,7 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
                             Remove
                         </button>
                     )}
-                    <p className="text-xs text-ink-muted">JPG, PNG, or WebP. We crop and compress it before upload.</p>
+                    <p className="text-xs text-ink-muted">JPG, PNG, or WebP. Max 15 MB, and you&apos;ll crop it before upload.</p>
                 </div>
 
                 {/* Hidden file input */}
@@ -139,6 +175,15 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
                 <p role="alert" className="text-xs text-[rgb(var(--danger))] ml-1">
                     {error}
                 </p>
+            )}
+
+            {/* Crop modal */}
+            {cropPreviewUrl && (
+                <CropModal
+                    imageUrl={cropPreviewUrl}
+                    onConfirm={handleCropConfirm}
+                    onCancel={handleCropCancel}
+                />
             )}
         </div>
     );

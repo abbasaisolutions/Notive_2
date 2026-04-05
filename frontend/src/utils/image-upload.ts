@@ -11,6 +11,13 @@ export const MAX_IMAGE_SOURCE_BYTES = 15 * 1024 * 1024; // 15 MB
 
 type ImageUploadPreset = 'avatar' | 'entry';
 
+export type CropArea = {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+};
+
 type PreparedImageUpload = {
     file: File;
     width: number;
@@ -110,6 +117,7 @@ const loadImage = async (file: File): Promise<LoadedImage> => {
 const buildCanvas = (
     loaded: LoadedImage,
     preset: PresetConfig,
+    customCrop?: CropArea,
 ): {
     canvas: HTMLCanvasElement;
     targetWidth: number;
@@ -133,7 +141,15 @@ const buildCanvas = (
     let targetHeight = sourceHeight;
     let didCrop = false;
 
-    if (preset.squareCrop) {
+    if (customCrop) {
+        sourceX = Math.round(customCrop.x);
+        sourceY = Math.round(customCrop.y);
+        sourceDrawWidth = Math.round(customCrop.width);
+        sourceDrawHeight = Math.round(customCrop.height);
+        targetWidth = Math.min(sourceDrawWidth, preset.maxWidth);
+        targetHeight = Math.min(sourceDrawHeight, preset.maxHeight);
+        didCrop = true;
+    } else if (preset.squareCrop) {
         const side = Math.min(sourceWidth, sourceHeight);
         sourceX = Math.floor((sourceWidth - side) / 2);
         sourceY = Math.floor((sourceHeight - side) / 2);
@@ -211,6 +227,7 @@ const encodeOptimizedImage = async (
 export const prepareImageForUpload = async (
     file: File,
     presetKey: ImageUploadPreset,
+    customCrop?: CropArea,
 ): Promise<PreparedImageUpload> => {
     const preset = PRESETS[presetKey];
 
@@ -225,7 +242,7 @@ export const prepareImageForUpload = async (
     const loaded = await loadImage(file);
 
     try {
-        const { canvas, targetWidth, targetHeight, didCrop, didResize } = buildCanvas(loaded, preset);
+        const { canvas, targetWidth, targetHeight, didCrop, didResize } = buildCanvas(loaded, preset, customCrop);
         const optimizedBlob = await encodeOptimizedImage(canvas, preset);
         const optimizedMimeType = optimizedBlob.type || 'image/webp';
         const optimizedFile = new File([optimizedBlob], replaceExtension(file.name, extensionForMimeType(optimizedMimeType)), {
