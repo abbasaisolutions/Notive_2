@@ -30,7 +30,7 @@ const parseError = async (response: Response, fallbackMessage: string) => {
 export async function listVoiceLexiconItems(apiFetch: ApiFetch): Promise<VoiceLexiconItem[]> {
     const response = await apiFetch('/voice/lexicon');
     if (!response.ok) {
-        throw await parseError(response, 'Failed to load voice lexicon.');
+        throw await parseError(response, 'Couldn\u2019t load your voice spellings.');
     }
 
     const data = await response.json().catch(() => ({}));
@@ -50,7 +50,7 @@ export async function upsertVoiceLexiconItem(
     });
 
     if (!response.ok) {
-        throw await parseError(response, 'Failed to save voice lexicon item.');
+        throw await parseError(response, 'Couldn\u2019t save that voice spelling.');
     }
 
     const data = await response.json().catch(() => ({}));
@@ -63,6 +63,6 @@ export async function deleteVoiceLexiconItem(apiFetch: ApiFetch, id: string): Pr
     });
 
     if (!response.ok) {
-        throw await parseError(response, 'Failed to delete voice lexicon item.');
+        throw await parseError(response, 'Couldn\u2019t remove that voice spelling.');
     }
 }

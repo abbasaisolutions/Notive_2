@@ -371,7 +371,7 @@ function SharedWithMeList({ bundles, loading, onRefresh }: {
 
             if (!response.ok) {
                 const data = await response.json().catch(() => ({}));
-                toast.error(data.message || 'Could not update this share request');
+                toast.error(data.message || 'Couldn\u2019t update this share request. Try again?');
                 setActiveSenderId(null);
                 return;
             }
@@ -384,7 +384,7 @@ function SharedWithMeList({ bundles, loading, onRefresh }: {
             );
             await onRefresh();
         } catch {
-            toast.error('Something went wrong');
+            toast.error('Couldn\u2019t complete that action. Try again?');
         }
         setActiveSenderId(null);
     }, [apiFetch, onRefresh, toast]);
@@ -714,7 +714,7 @@ function TimelinePageContent() {
             { signal }
         );
         if (!response.ok) {
-            throw new Error('Failed to fetch timeline summary');
+            throw new Error('Couldn\u2019t load your timeline summary.');
         }
 
         const data = await response.json();
@@ -738,7 +738,7 @@ function TimelinePageContent() {
             signal,
         });
         if (!response.ok) {
-            throw new Error('Failed to fetch timeline entries');
+            throw new Error('Couldn\u2019t load your timeline entries.');
         }
 
         const data = await response.json();
@@ -840,7 +840,7 @@ function TimelinePageContent() {
                 if (controller.signal.aborted) return;
                 console.error('Failed to fetch timeline data:', error);
                 if (mounted) {
-                    setLoadError('Failed to load timeline data.');
+                    setLoadError('Couldn\u2019t load your timeline. Try refreshing.');
                 }
             } finally {
                 if (mounted) {
@@ -1519,7 +1519,7 @@ function TimelinePageContent() {
             }
         } catch (error) {
             console.error('Failed to load season anchor:', error);
-            setLoadError('Failed to load the selected season.');
+            setLoadError('Couldn\u2019t load that season. Try again?');
         }
     }, [ensureTimelineMonthLoaded, jumpToTimelineMonth, trackEvent]);
 
@@ -1531,7 +1531,7 @@ function TimelinePageContent() {
             await fetchEntriesPage({ page: nextPage, replace: false });
         } catch (error) {
             console.error('Failed to load more entries:', error);
-            setLoadError('Failed to load more memories. Please try again.');
+            setLoadError('Couldn\u2019t load more memories. Please try again.');
         } finally {
             setIsLoadingMore(false);
         }
@@ -1546,7 +1546,7 @@ function TimelinePageContent() {
             void fetchEntriesPage({ page: nextPage, replace: false })
                 .catch((error) => {
                     console.error('Failed to restore timeline context:', error);
-                    setLoadError('Failed to fully restore your previous timeline view.');
+                    setLoadError('Couldn\u2019t fully restore your previous view. Try refreshing.');
                 })
                 .finally(() => {
                     setIsLoadingMore(false);
@@ -2276,7 +2276,7 @@ function TimelinePageContent() {
 
                     {loadError && (
                         <ErrorState
-                            title="Failed to Load Timeline"
+                            title="Couldn\u2019t Load Timeline"
                             message={loadError}
                             variant="compact"
                             action={{

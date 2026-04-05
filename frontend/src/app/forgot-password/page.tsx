@@ -8,6 +8,7 @@ import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
 import { motion } from 'framer-motion';
 import { API_URL } from '@/constants/config';
 import { getErrorMessage } from '@/utils/http';
+import { resolveFriendlyMessage } from '@/utils/friendly-errors';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import {
     QuietNotebookAuthIllustration,
@@ -35,12 +36,18 @@ export default function ForgotPasswordPage() {
             });
 
             if (!res.ok) {
-                throw new Error(await getErrorMessage(res, 'Failed to send reset email'));
+                throw new Error(resolveFriendlyMessage(
+                    await getErrorMessage(res, 'Couldn\u2019t send the reset email.'),
+                    'We couldn’t send the reset email just yet. Please try again.',
+                ));
             }
 
             setIsSubmitted(true);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to send reset email. Please try again.');
+            setError(resolveFriendlyMessage(
+                err,
+                'We couldn’t send the reset email just yet. Please try again.',
+            ));
         } finally {
             setIsLoading(false);
         }
@@ -173,5 +180,4 @@ export default function ForgotPasswordPage() {
         </div>
     );
 }
-
 

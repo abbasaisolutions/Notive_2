@@ -228,7 +228,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
             const response = await apiFetch(`/import/auth-urls?${query.toString()}`);
             const data = await response.json().catch(() => null);
             if (!response.ok || data?.ready === false) {
-                throw new Error(resolveProviderAuthError(platform, data) || `Failed to start ${platform} connection`);
+                throw new Error(resolveProviderAuthError(platform, data) || `Couldn\u2019t connect to ${platform}.`);
             }
             const url = resolveProviderAuthUrl(platform, data);
             if (!url) {
@@ -247,7 +247,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
             });
             window.location.assign(url);
         } catch (error: any) {
-            const message = error?.message || 'Failed to connect account';
+            const message = error?.message || 'Couldn\u2019t connect this account.';
             setProviderSetupIssues((previous) => ({
                 ...previous,
                 [platform]: message,
@@ -275,7 +275,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
             });
             if (!response.ok) {
                 const data = await response.json().catch(() => null);
-                throw new Error(data?.message || `Failed to disconnect ${provider}`);
+                throw new Error(data?.message || `Couldn\u2019t disconnect ${provider}.`);
             }
             await fetchStatus();
             if (!options?.suppressNotice) {
@@ -290,7 +290,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
             if (!options?.suppressNotice) {
                 setImportResult({
                     success: false,
-                    message: error?.message || `Failed to disconnect ${provider}`,
+                    message: error?.message || `Couldn\u2019t disconnect ${provider}.`,
                 });
             }
             return false;

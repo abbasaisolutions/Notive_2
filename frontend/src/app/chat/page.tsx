@@ -162,7 +162,7 @@ export default function ChatPage() {
 
             const data = await response.json().catch(() => null);
             if (!response.ok) {
-                throw new Error(data?.message || data?.response || 'Failed to get response');
+                throw new Error(data?.message || data?.response || 'Couldn\u2019t get a response. Try again?');
             }
             setMessages((prev) => [...prev, {
                 role: 'assistant',

@@ -280,7 +280,7 @@ export default function AdminPage() {
                     setError('Admin access required');
                     return;
                 }
-                throw new Error('Failed to fetch users');
+                throw new Error('Couldn\u2019t load the user list.');
             }
 
             const data = await response.json();
@@ -289,7 +289,7 @@ export default function AdminPage() {
             setTotalPages(data.pagination?.totalPages || 1);
             setScanLimitReached(Boolean(data.filters?.scanLimitReached));
         } catch (err: any) {
-            setError(err.message || 'Failed to fetch users');
+            setError(err.message || 'Couldn\u2019t load the user list.');
         }
     };
 
@@ -359,12 +359,12 @@ export default function AdminPage() {
         try {
             const response = await apiFetch(`/admin/users/${userId}`);
             const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'Failed to fetch user details');
+            if (!response.ok) throw new Error(data.message || 'Couldn\u2019t load user details.');
             setSelectedUser(data.user as UserDetail);
             setRoleDraft((data.user as UserDetail).role);
             resetActionDrafts();
         } catch (err: any) {
-            setDetailError(err.message || 'Failed to fetch user details');
+            setDetailError(err.message || 'Couldn\u2019t load user details.');
             setSelectedUser(null);
         } finally {
             setIsDetailLoading(false);
@@ -403,11 +403,11 @@ export default function AdminPage() {
             const response = await apiFetch(`/admin/retrieval-debug?${params.toString()}`);
             const data = await response.json().catch(() => null);
             if (!response.ok) {
-                throw new Error(data?.message || 'Failed to run retrieval debug');
+                throw new Error(data?.message || 'Couldn\u2019t run the retrieval debug.');
             }
             setRetrievalDebug(data as RetrievalDebugResponse);
         } catch (err: any) {
-            setRetrievalDebugError(err.message || 'Failed to run retrieval debug');
+            setRetrievalDebugError(err.message || 'Couldn\u2019t run the retrieval debug.');
             setRetrievalDebug(null);
         } finally {
             setIsRetrievalDebugLoading(false);
@@ -461,14 +461,14 @@ export default function AdminPage() {
             }
 
             const data = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(data?.message || 'Failed to complete admin action');
+            if (!response.ok) throw new Error(data?.message || 'Couldn\u2019t complete that action.');
 
             setDetailNotice(data?.message || `${pendingAction.label} completed`);
             resetActionDrafts();
             void fetchUsers();
             void fetchUserDetails(selectedUser.id);
         } catch (err: any) {
-            setActionError(err.message || 'Failed to complete admin action');
+            setActionError(err.message || 'Couldn\u2019t complete that action.');
         } finally {
             setIsSubmittingAction(false);
         }

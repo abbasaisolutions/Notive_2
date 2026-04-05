@@ -71,7 +71,7 @@ export default function RewriteToolbar({ content, onRewrite, disabled }: Rewrite
             setIsOpen(false);
         } catch (err: any) {
             console.error('Rewrite failed:', err);
-            setError(err.message || 'Failed to rewrite text');
+            setError(err.message || 'Couldn\u2019t rewrite that text. Try again?');
             setPreviewContent(null);
         } finally {
             setIsLoading(false);

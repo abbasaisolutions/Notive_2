@@ -209,7 +209,7 @@ function EntryDetailContent() {
             }
         } catch (error) {
             console.error('Failed to create share link:', error);
-            setActionError('Failed to create share link. Please try again.');
+            setActionError('Couldn\u2019t create a share link. Please try again.');
         } finally {
             setIsSharing(false);
         }
@@ -230,10 +230,10 @@ function EntryDetailContent() {
                 router.push(backHref);
                 return;
             }
-            toast.error('Failed to delete entry. Please try again.');
+            toast.error('Couldn\u2019t delete this note. Please try again.');
         } catch (error) {
             console.error('Failed to delete entry:', error);
-            toast.error('Failed to delete entry. Please try again.');
+            toast.error('Couldn\u2019t delete this note. Please try again.');
         } finally {
             setIsDeleting(false);
             setShowDeleteConfirm(false);

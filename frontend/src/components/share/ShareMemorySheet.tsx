@@ -228,7 +228,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
 
             if (!response.ok) {
                 const data = await response.json().catch(() => ({}));
-                toast.error(data.message || 'Failed to share');
+                toast.error(data.message || 'Couldn\u2019t share these memories. Try again?');
                 setSending(false);
                 return;
             }
@@ -257,7 +257,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                 toast.success('Memories shared', 'They will see them next time they open Notive.');
             }
         } catch {
-            toast.error('Something went wrong');
+            toast.error('Couldn\u2019t complete the share. Try again?');
         }
         setSending(false);
     }, [apiFetch, selectedIds, selectedRecipients, message, recipientNames, toast]);

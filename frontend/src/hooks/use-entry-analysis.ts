@@ -102,7 +102,7 @@ export default function useEntryAnalysis({
 
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.message || 'Failed to generate insights');
+                throw new Error(data.message || 'Couldn\u2019t generate insights right now.');
             }
 
             setAiInsights(data.insights);
@@ -124,7 +124,7 @@ export default function useEntryAnalysis({
                 pendingSync,
             });
         } catch (err: any) {
-            setAiError(err.message || 'Failed to generate insights');
+            setAiError(err.message || 'Couldn\u2019t generate insights right now.');
         } finally {
             setIsAiLoading(false);
         }

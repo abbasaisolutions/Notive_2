@@ -74,14 +74,14 @@ function SharedBundleViewContent() {
                 if (r.status === 410) { setError('This shared memory has been revoked.'); setLoading(false); return; }
                 if (!r.ok) {
                     const data = await r.json().catch(() => ({}));
-                    setError(data.message || 'Could not load shared memories.');
+                    setError(data.message || 'Couldn\u2019t load these shared memories.');
                     setLoading(false);
                     return;
                 }
                 const data = await r.json();
                 setBundle(data.bundle);
             } catch {
-                setError('Something went wrong.');
+                setError('Couldn\u2019t load shared memories. Try refreshing.');
             }
             setLoading(false);
         })();
@@ -99,8 +99,8 @@ function SharedBundleViewContent() {
                 body: JSON.stringify({ reaction: newReaction }),
             });
             if (r.ok) { setReaction(newReaction); }
-            else { toast.error('Could not send reaction'); }
-        } catch { toast.error('Something went wrong'); }
+            else { toast.error('Couldn\u2019t send your reaction.'); }
+        } catch { toast.error('Couldn\u2019t send your reaction.'); }
         setReactSending(false);
     }, [bundleId, reaction, reactSending, apiFetch, toast]);
 

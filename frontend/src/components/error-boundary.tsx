@@ -79,7 +79,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                     {/* Error Message */}
                     <div className="text-center max-w-md">
                         <h1 className="text-2xl font-bold mb-2 text-[rgb(var(--text-primary))]">
-                            Something went wrong
+                            Something didn\u2019t work
                         </h1>
                         <p className="text-ink-secondary mb-4">
                             We encountered an unexpected error. The app has been paused to prevent further issues.

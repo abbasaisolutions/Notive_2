@@ -67,7 +67,7 @@ export function useEntryEdit({
             try {
                 const response = await apiFetch(`${API_URL}/entries/${id}`, { signal: controller.signal });
                 if (!response.ok) {
-                    throw new Error(await getErrorMessage(response, 'Failed to fetch entry'));
+                    throw new Error(await getErrorMessage(response, 'Couldn\u2019t load this note.'));
                 }
 
                 const data = await response.json();
@@ -86,7 +86,7 @@ export function useEntryEdit({
                 setCoverImage(entry.coverImage || null);
             } catch (err: any) {
                 if (controller.signal.aborted) return;
-                setError(err.message || 'Failed to fetch entry');
+                setError(err.message || 'Couldn\u2019t load this note.');
             } finally {
                 if (mounted) setIsLoading(false);
             }
@@ -172,12 +172,12 @@ export function useEntryEdit({
                 body: formData,
             });
             if (!response.ok) {
-                throw new Error(await getErrorMessage(response, 'Failed to upload image'));
+                throw new Error(await getErrorMessage(response, 'Couldn\u2019t upload that image.'));
             }
             const data = await response.json();
             setCoverImage(data.url);
         } catch (err: any) {
-            setError(err.message || 'Failed to upload image');
+            setError(err.message || 'Couldn\u2019t upload that image.');
         } finally {
             setIsUploading(false);
         }
@@ -203,7 +203,7 @@ export function useEntryEdit({
         });
 
         if (!response.ok) {
-            throw new Error(await getErrorMessage(response, 'Failed to update entry'));
+            throw new Error(await getErrorMessage(response, 'Couldn\u2019t save your note.'));
         }
 
         setLastSaved(new Date());
@@ -251,7 +251,7 @@ export function useEntryEdit({
             toast.success('Changes saved');
             navigateAfterSave();
         } catch (err: any) {
-            const msg = err.message || 'Failed to update entry';
+            const msg = err.message || 'Couldn\u2019t save your note.';
             setError(msg);
             toast.error(msg);
         } finally {

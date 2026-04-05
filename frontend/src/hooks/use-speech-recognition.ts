@@ -145,7 +145,7 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
             listeningRef.current = true;
             setError(null);
         } catch (e) {
-            setError('Failed to start voice recognition. Please try again.');
+            setError('Couldn\u2019t start voice recognition. Please try again.');
         }
     }, []);
 

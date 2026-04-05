@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/auth-context';
 import { resolveApiUrl } from '@/constants/config';
+import { resolveFriendlyMessage } from '@/utils/friendly-errors';
 import {
     FiAlertCircle,
     FiCheckCircle,
@@ -22,6 +23,24 @@ interface SpotifyStatus {
     available?: boolean;
     message?: string;
 }
+
+const getSpotifyCallbackMessage = (reason: string | null) => {
+    const normalized = reason?.trim().toLowerCase() || '';
+
+    if (!normalized) {
+        return 'Spotify didn’t connect this time. Please try again.';
+    }
+
+    if (normalized === 'access_denied') {
+        return 'Spotify sign-in was canceled before it finished.';
+    }
+
+    if (normalized === 'invalid_state') {
+        return 'Spotify sign-in expired. Please start again.';
+    }
+
+    return resolveFriendlyMessage(reason?.replace(/[_-]+/g, ' '), 'Spotify didn’t connect this time. Please try again.');
+};
 
 export default function SpotifyConnection() {
     const { accessToken } = useAuth();
@@ -56,11 +75,11 @@ export default function SpotifyConnection() {
         const params = new URLSearchParams(window.location.search);
         const spotifyResult = params.get('spotify');
         if (spotifyResult === 'success') {
-            setSuccessMessage('Spotify connected successfully!');
+            setSuccessMessage('Spotify is connected.');
             window.history.replaceState({}, '', window.location.pathname);
             fetchStatus();
         } else if (spotifyResult === 'error') {
-            setError(`Failed to connect Spotify: ${params.get('reason') || 'Unknown error'}`);
+            setError(getSpotifyCallbackMessage(params.get('reason')));
             window.history.replaceState({}, '', window.location.pathname);
         }
     }, [accessToken, fetchStatus]);
@@ -83,10 +102,13 @@ export default function SpotifyConnection() {
                 window.location.href = authUrl;
             } else {
                 const data = await response.json().catch(() => null);
-                throw new Error(data?.message || 'Failed to get authorization URL');
+                throw new Error(resolveFriendlyMessage(
+                    data?.message,
+                    'We couldn’t start Spotify sign-in. Please try again.',
+                ));
             }
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to initiate connection');
+            setError(resolveFriendlyMessage(err, 'We couldn’t start Spotify sign-in. Please try again.'));
             setIsConnecting(false);
         }
     };
@@ -104,12 +126,12 @@ export default function SpotifyConnection() {
             });
             if (response.ok) {
                 setStatus({ connected: false });
-                setSuccessMessage('Spotify disconnected');
+                setSuccessMessage('Spotify is disconnected.');
             } else {
-                throw new Error('Failed to disconnect');
+                throw new Error('We couldn’t disconnect Spotify right now. Please try again.');
             }
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to disconnect');
+            setError(resolveFriendlyMessage(err, 'We couldn’t disconnect Spotify right now. Please try again.'));
         } finally {
             setIsDisconnecting(false);
         }
@@ -125,14 +147,17 @@ export default function SpotifyConnection() {
                 headers: { Authorization: `Bearer ${accessToken}` },
             });
             if (response.ok) {
-                setSuccessMessage('Music data synced');
+                setSuccessMessage('Spotify activity is up to date.');
                 fetchStatus();
             } else {
                 const data = await response.json().catch(() => null);
-                throw new Error(data?.message || 'Failed to sync');
+                throw new Error(resolveFriendlyMessage(
+                    data?.message,
+                    'We couldn’t refresh your Spotify activity right now. Please try again.',
+                ));
             }
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to sync music data');
+            setError(resolveFriendlyMessage(err, 'We couldn’t refresh your Spotify activity right now. Please try again.'));
         } finally {
             setIsSyncing(false);
         }

@@ -202,7 +202,7 @@ export function useAnalytics(period: 'week' | 'month' | 'year' = 'week') {
     const fetchSummary = useCallback(async () => {
         const response = await apiFetch(`${API_URL}/analytics/summary?period=${period}`);
         if (!response.ok) {
-            throw new Error('Failed to fetch analytics summary');
+            throw new Error('Couldn\u2019t load your analytics.');
         }
 
         const data = await response.json();

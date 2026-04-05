@@ -104,7 +104,7 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
             const response = await apiFetch(`/import/candidates?provider=${provider}`);
             const data = await response.json().catch(() => null);
             if (!response.ok) {
-                throw new Error(data?.message || 'Failed to load import candidates.');
+                throw new Error(data?.message || 'Couldn\u2019t load import candidates.');
             }
 
             const list = Array.isArray(data?.candidates)
@@ -114,7 +114,7 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
             setCandidates(normalized);
             setSelectedIds(new Set(normalized.map((candidate) => candidate.id)));
         } catch (err: any) {
-            setError(err?.message || 'Failed to load import candidates.');
+            setError(err?.message || 'Couldn\u2019t load import candidates.');
         } finally {
             setIsLoading(false);
         }

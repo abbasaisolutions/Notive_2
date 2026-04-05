@@ -100,7 +100,7 @@ export default function LoginPage() {
             const authenticatedUser = await login(trimmedEmail, password);
             router.replace(resolvePostAuthRoute(authenticatedUser));
         } catch (err: any) {
-            setError(err.message || 'Could not sign in.');
+            setError(err.message || 'We couldn’t sign you in. Check your email and password, then try again.');
         } finally {
             setIsLoading(false);
         }
@@ -114,14 +114,14 @@ export default function LoginPage() {
                 router.replace(resolvePostAuthRoute(authenticatedUser));
             }
         } catch (err: any) {
-            setError(err.message || 'Google sign-in failed.');
+            setError(err.message || 'Google sign-in didn’t go through. Please try again.');
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleGoogleError = () => {
-        setError('Google sign-in failed. Please try again.');
+        setError('Google sign-in didn’t finish. Please try again.');
     };
 
     return (

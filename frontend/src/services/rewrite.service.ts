@@ -83,7 +83,7 @@ class RewriteService {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || 'Failed to rewrite text');
+            throw new Error(errorData.message || 'Couldn\u2019t rewrite that text. Try again?');
         }
 
         return response.json();

@@ -277,12 +277,12 @@ function OnboardingPageContent() {
 
             if (!response.ok) {
                 const data = await response.json().catch(() => null);
-                throw new Error(data?.message || 'Failed to save onboarding progress');
+                throw new Error(data?.message || 'Couldn\u2019t save your progress. Please try again.');
             }
 
             return true;
         } catch (error: any) {
-            setSubmitError(error?.message || 'Failed to save onboarding progress');
+            setSubmitError(error?.message || 'Couldn\u2019t save your progress. Please try again.');
             return false;
         } finally {
             setIsProgressSaving(false);
@@ -330,7 +330,7 @@ function OnboardingPageContent() {
 
             if (!response.ok) {
                 const data = await response.json().catch(() => null);
-                throw new Error(data?.message || 'Failed to finish setup');
+                throw new Error(data?.message || 'Couldn\u2019t finish setup. Please try again.');
             }
 
             saveOnboardingState({
@@ -356,7 +356,7 @@ function OnboardingPageContent() {
                 router.replace(`/entry/new${query}`);
             }
         } catch (error: any) {
-            setSubmitError(error?.message || 'Failed to finish setup');
+            setSubmitError(error?.message || 'Couldn\u2019t finish setup. Please try again.');
         } finally {
             setIsSubmitting(false);
         }

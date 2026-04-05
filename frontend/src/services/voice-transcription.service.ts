@@ -168,7 +168,7 @@ export async function createVoiceTranscriptionJob(
     });
 
     if (!response.ok) {
-        throw await parseError(response, 'Failed to create voice transcription job.');
+        throw await parseError(response, 'Couldn\u2019t start the voice transcription. Please try again.');
     }
 
     const data = await response.json().catch(() => ({}));
@@ -181,7 +181,7 @@ export async function getVoiceTranscriptionJob(
 ): Promise<VoiceTranscriptionJob> {
     const response = await apiFetch(`/voice/jobs/${id}`);
     if (!response.ok) {
-        throw await parseError(response, 'Failed to fetch voice transcription job.');
+        throw await parseError(response, 'Couldn\u2019t check the transcription status.');
     }
 
     const data = await response.json().catch(() => ({}));
@@ -196,7 +196,7 @@ export async function cancelVoiceTranscriptionJob(
         method: 'POST',
     });
     if (!response.ok) {
-        throw await parseError(response, 'Failed to cancel voice transcription job.');
+        throw await parseError(response, 'Couldn\u2019t cancel the transcription.');
     }
 
     const data = await response.json().catch(() => ({}));
@@ -214,7 +214,7 @@ export async function attachVoiceTranscriptionJob(
         body: JSON.stringify({ entryId }),
     });
     if (!response.ok) {
-        throw await parseError(response, 'Failed to attach voice transcription job.');
+        throw await parseError(response, 'Couldn\u2019t attach the transcription to your note.');
     }
 
     const data = await response.json().catch(() => ({}));

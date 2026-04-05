@@ -467,10 +467,10 @@ export default function PortfolioWorkspace() {
         try {
             const response = await apiFetch(`${API_URL}/ai/opportunity/overview`);
             const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'Failed to load portfolio');
+            if (!response.ok) throw new Error(data.message || 'Couldn\u2019t load your portfolio.');
             setOverview(data.overview as Overview);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to load portfolio');
+            setError(err instanceof Error ? err.message : 'Couldn\u2019t load your portfolio.');
         } finally {
             setIsLoading(false);
         }
@@ -482,10 +482,10 @@ export default function PortfolioWorkspace() {
         try {
             const response = await apiFetch(`${API_URL}/ai/opportunity/trends?period=${period}&window=6`);
             const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'Failed to load trends');
+            if (!response.ok) throw new Error(data.message || 'Couldn\u2019t load your trends.');
             setTrends(data.trends as Trends);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to load trends');
+            setError(err instanceof Error ? err.message : 'Couldn\u2019t load your trends.');
         }
     }, [apiFetch, isAuthenticated]);
 
@@ -518,7 +518,7 @@ export default function PortfolioWorkspace() {
 
     const requestExportDocument = useCallback(async (type: DocumentExportType, format: ExportDownloadFormat) => {
         const response = await apiFetch(buildExportUrl(type, format));
-        if (!response.ok) throw new Error(`Failed to load ${format} export`);
+        if (!response.ok) throw new Error(`Couldn\u2019t generate your ${format} export.`);
 
         const content = await response.text();
         const fallbackName = `notive-${type}.${format === 'html' ? 'html' : 'md'}`;
@@ -546,7 +546,7 @@ export default function PortfolioWorkspace() {
             });
         } catch (err: unknown) {
             if (requestId !== previewRequestRef.current) return;
-            setPreviewError(err instanceof Error ? err.message : 'Failed to load export preview');
+            setPreviewError(err instanceof Error ? err.message : 'Couldn\u2019t load the preview. Try again?');
         } finally {
             if (requestId === previewRequestRef.current) {
                 setIsPreviewLoading(false);
@@ -589,7 +589,7 @@ export default function PortfolioWorkspace() {
                 });
             }
         } catch (err: unknown) {
-            setPreviewError(err instanceof Error ? err.message : 'Failed to export document');
+            setPreviewError(err instanceof Error ? err.message : 'Couldn\u2019t export your document. Try again?');
         } finally {
             setDownloadingKey(null);
         }
@@ -627,7 +627,7 @@ export default function PortfolioWorkspace() {
             window.setTimeout(() => printWindow.print(), 180);
         } catch (err: unknown) {
             printWindow.close();
-            setPreviewError(err instanceof Error ? err.message : 'Failed to prepare print preview');
+            setPreviewError(err instanceof Error ? err.message : 'Couldn\u2019t prepare the print preview.');
         } finally {
             setDownloadingKey(null);
         }
@@ -1261,12 +1261,12 @@ export default function PortfolioWorkspace() {
                 }),
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'Failed to save experience');
+            if (!response.ok) throw new Error(data.message || 'Couldn\u2019t save that experience.');
 
             setEditingEntryId(null);
             await Promise.all([fetchOverview(), fetchTrends(trendPeriod)]);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to save experience');
+            setError(err instanceof Error ? err.message : 'Couldn\u2019t save that experience.');
         } finally {
             setSavingEntryId(null);
         }
@@ -1283,7 +1283,7 @@ export default function PortfolioWorkspace() {
                 body: JSON.stringify({ verified: !experience.verified }),
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'Failed to update verification');
+            if (!response.ok) throw new Error(data.message || 'Couldn\u2019t update the verification.');
 
             setOverview((prev) => prev ? ({
                 ...prev,
@@ -1293,7 +1293,7 @@ export default function PortfolioWorkspace() {
             }) : prev);
             await fetchTrends(trendPeriod);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to update verification');
+            setError(err instanceof Error ? err.message : 'Couldn\u2019t update the verification.');
         } finally {
             setUpdatingEntryId(null);
         }
@@ -3056,7 +3056,7 @@ export default function PortfolioWorkspace() {
 
             {error && (
                 <ErrorState
-                    title="Failed to Load Portfolio"
+                    title="Couldn\u2019t Load Portfolio"
                     message={error}
                     variant="compact"
                     action={{

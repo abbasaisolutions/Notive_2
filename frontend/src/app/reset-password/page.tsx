@@ -9,6 +9,7 @@ import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
 import { motion } from 'framer-motion';
 import { API_URL } from '@/constants/config';
 import { getErrorMessage } from '@/utils/http';
+import { resolveFriendlyMessage } from '@/utils/friendly-errors';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import {
     QuietNotebookAuthIllustration,
@@ -68,7 +69,10 @@ function ResetPasswordPageContent() {
             });
 
             if (!res.ok) {
-                throw new Error(await getErrorMessage(res, 'Failed to reset password'));
+                throw new Error(resolveFriendlyMessage(
+                    await getErrorMessage(res, 'Failed to reset password'),
+                    'We couldn’t update your password. This link may have expired, so request a new reset email and try again.',
+                ));
             }
 
             setIsSuccess(true);
@@ -76,7 +80,10 @@ function ResetPasswordPageContent() {
                 router.push('/login');
             }, 3000);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Could not reset password. This link may have expired.');
+            setError(resolveFriendlyMessage(
+                err,
+                'We couldn’t update your password. This link may have expired, so request a new reset email and try again.',
+            ));
         } finally {
             setIsLoading(false);
         }
@@ -211,5 +218,4 @@ export default function ResetPasswordPage() {
         </Suspense>
     );
 }
-
 

@@ -15,11 +15,11 @@ type ConstellationViewProps = {
 };
 
 const nodeClasses: Record<string, string> = {
-    center: 'border-primary/35 bg-primary/18 text-white shadow-[0_0_50px_rgba(120,150,210,0.25)]',
-    theme: 'border-white/15 bg-white/[0.05] text-white',
-    skill: 'border-emerald-400/25 bg-emerald-500/10 text-emerald-100',
-    lesson: 'border-amber-400/25 bg-amber-500/10 text-amber-100',
-    mood: 'border-sky-400/25 bg-sky-500/10 text-sky-100',
+    center: 'border-[#4a7c59]/60 bg-[#4a7c59] text-white shadow-[0_0_40px_rgba(74,124,89,0.4)]',
+    theme:  'border-[#6b50a8]/50 bg-[#7c5cbf] text-white shadow-[0_2px_12px_rgba(107,80,168,0.35)]',
+    skill:  'border-[#1a7a6e]/50 bg-[#23967e] text-white shadow-[0_2px_12px_rgba(26,122,110,0.35)]',
+    lesson: 'border-[#c07a18]/50 bg-[#d98c2a] text-white shadow-[0_2px_12px_rgba(192,122,24,0.35)]',
+    mood:   'border-[#2572b0]/50 bg-[#3282c4] text-white shadow-[0_2px_12px_rgba(37,114,176,0.35)]',
 };
 
 const kindLabels: Record<string, string> = {
@@ -56,7 +56,7 @@ export default function ConstellationView({ model, totalEntries, currentReturnTo
                     </ActionBar>
                 </div>
 
-                <div className="relative mt-5 overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_center,rgba(110,132,175,0.16),transparent_45%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] min-h-[440px]">
+                <div className="relative mt-5 overflow-hidden rounded-[2rem] border border-[rgba(92,92,92,0.14)] bg-[radial-gradient(circle_at_center,rgba(110,140,200,0.12),transparent_55%),linear-gradient(180deg,rgba(248,244,237,0.9),rgba(240,236,228,0.8))] min-h-[440px]">
                     <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                         {model.links.map((link) => {
                             const source = model.nodes.find((node) => node.id === link.sourceId);
@@ -70,14 +70,14 @@ export default function ConstellationView({ model, totalEntries, currentReturnTo
                                     y1={source.y}
                                     x2={target.x}
                                     y2={target.y}
-                                    stroke="rgba(255,255,255,0.16)"
+                                    stroke="rgba(92,92,92,0.22)"
                                     strokeWidth="0.18"
                                 />
                             );
                         })}
                     </svg>
 
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_30%)]" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.45),transparent_60%)]" />
 
                     {model.nodes.map((node, index) => {
                         const isSelected = node.id === selectedNode?.id;

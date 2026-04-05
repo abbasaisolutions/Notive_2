@@ -89,11 +89,11 @@ export default function ImportPage() {
                 const overviewData = await overviewResponse.json().catch(() => null);
 
                 if (!statusResponse.ok) {
-                    throw new Error(statusData?.message || 'Failed to load import status');
+                    throw new Error(statusData?.message || 'Couldn\u2019t load your import status.');
                 }
 
                 if (!overviewResponse.ok) {
-                    throw new Error(overviewData?.message || 'Failed to load story overview');
+                    throw new Error(overviewData?.message || 'Couldn\u2019t load the story overview.');
                 }
 
                 if (!mounted) return;
@@ -112,7 +112,7 @@ export default function ImportPage() {
                 setOverview((overviewData?.overview || null) as OverviewPayload | null);
             } catch (err: unknown) {
                 if (!mounted) return;
-                setError(err instanceof Error ? err.message : 'Failed to load import inbox');
+                setError(err instanceof Error ? err.message : 'Couldn\u2019t load your imports. Try refreshing.');
             } finally {
                 if (mounted) {
                     setIsLoading(false);
@@ -289,7 +289,7 @@ export default function ImportPage() {
 
                 {error && (
                     <ErrorState
-                        title="Failed to Load"
+                        title="Couldn\u2019t Load Imports"
                         message={error}
                         variant="compact"
                         action={{

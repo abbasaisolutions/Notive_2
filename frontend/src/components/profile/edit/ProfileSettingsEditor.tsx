@@ -157,7 +157,7 @@ export function ProfileSettingsEditor() {
             })
             .catch((error: any) => {
                 if (cancelled) return;
-                setVoiceLexiconError(error?.message || 'Failed to load voice spellings.');
+                setVoiceLexiconError(error?.message || 'Couldn\u2019t load your voice spellings. Try refreshing.');
             })
             .finally(() => {
                 if (cancelled) return;
@@ -744,7 +744,7 @@ export function ProfileSettingsEditor() {
             }
 
             if (!response.ok) {
-                throw new Error(data?.message || 'Failed to save profile settings.');
+                throw new Error(data?.message || 'Couldn\u2019t save your profile. Please try again.');
             }
 
             if (data?.user) {
@@ -757,7 +757,7 @@ export function ProfileSettingsEditor() {
         } catch (error: any) {
             setNotice({
                 type: 'error',
-                text: error?.message || 'Failed to save profile settings.',
+                text: error?.message || 'Couldn\u2019t save your profile. Please try again.',
             });
         } finally {
             setIsSavingTab(null);
@@ -809,7 +809,7 @@ export function ProfileSettingsEditor() {
             const data = await response.json().catch(() => null);
 
             if (!response.ok) {
-                throw new Error(data?.message || 'Failed to unlock sensitive account changes.');
+                throw new Error(data?.message || 'Couldn\u2019t verify your identity. Please try again.');
             }
 
             setSensitiveActionToken(data?.sensitiveActionToken || '');
@@ -822,7 +822,7 @@ export function ProfileSettingsEditor() {
         } catch (error: any) {
             setNotice({
                 type: 'error',
-                text: error?.message || 'Failed to unlock sensitive account changes.',
+                text: error?.message || 'Couldn\u2019t verify your identity. Please try again.',
             });
         } finally {
             setIsUnlockingSecurity(false);
@@ -894,7 +894,7 @@ export function ProfileSettingsEditor() {
             const data = await response.json().catch(() => null);
 
             if (!response.ok) {
-                throw new Error(data?.message || 'Failed to update sign-in email.');
+                throw new Error(data?.message || 'Couldn\u2019t update your email. Please try again.');
             }
 
             if (data?.user) {
@@ -909,7 +909,7 @@ export function ProfileSettingsEditor() {
         } catch (error: any) {
             setNotice({
                 type: 'error',
-                text: error?.message || 'Failed to update sign-in email.',
+                text: error?.message || 'Couldn\u2019t update your email. Please try again.',
             });
         } finally {
             setIsUpdatingEmail(false);
@@ -949,7 +949,7 @@ export function ProfileSettingsEditor() {
             const data = await response.json().catch(() => null);
 
             if (!response.ok) {
-                throw new Error(data?.message || 'Failed to change password.');
+                throw new Error(data?.message || 'Couldn\u2019t change your password. Please try again.');
             }
 
             setNewPassword('');
@@ -963,7 +963,7 @@ export function ProfileSettingsEditor() {
         } catch (error: any) {
             setNotice({
                 type: 'error',
-                text: error?.message || 'Failed to change password.',
+                text: error?.message || 'Couldn\u2019t change your password. Please try again.',
             });
         } finally {
             setIsChangingPassword(false);
@@ -1001,7 +1001,7 @@ export function ProfileSettingsEditor() {
             const data = await response.json().catch(() => null);
 
             if (!response.ok) {
-                throw new Error(data?.message || 'Failed to delete account.');
+                throw new Error(data?.message || 'Couldn\u2019t delete your account. Please try again.');
             }
 
             await logout();
@@ -1009,7 +1009,7 @@ export function ProfileSettingsEditor() {
         } catch (error: any) {
             setNotice({
                 type: 'error',
-                text: error?.message || 'Failed to delete account.',
+                text: error?.message || 'Couldn\u2019t delete your account. Please try again.',
             });
         } finally {
             setIsDeletingAccount(false);
@@ -1039,7 +1039,7 @@ export function ProfileSettingsEditor() {
         } catch (error: any) {
             setNotice({
                 type: 'error',
-                text: error?.message || 'Failed to export data.',
+                text: error?.message || 'Couldn\u2019t export your data. Please try again.',
             });
         } finally {
             setIsExporting(false);
@@ -1076,7 +1076,7 @@ export function ProfileSettingsEditor() {
             setVoiceLexiconLocaleDraft('');
             setVoiceLexiconTypeDraft('');
         } catch (error: any) {
-            setVoiceLexiconError(error?.message || 'Failed to save voice spelling.');
+            setVoiceLexiconError(error?.message || 'Couldn\u2019t save that spelling. Please try again.');
         } finally {
             setIsSavingVoiceLexicon(false);
         }
@@ -1088,7 +1088,7 @@ export function ProfileSettingsEditor() {
             await deleteVoiceLexiconItem(apiFetch, id);
             setVoiceLexiconItems((current) => current.filter((item) => item.id !== id));
         } catch (error: any) {
-            setVoiceLexiconError(error?.message || 'Failed to remove voice spelling.');
+            setVoiceLexiconError(error?.message || 'Couldn\u2019t remove that spelling. Please try again.');
         }
     };
 

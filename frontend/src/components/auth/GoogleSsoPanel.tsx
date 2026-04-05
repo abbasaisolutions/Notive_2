@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { getCredentialSsoAvailability } from '@/utils/sso';
 import { ensureNativeGoogleSsoInitialized, signInWithNativeGoogleCredential } from '@/utils/native-google-auth';
+import { resolveFriendlyMessage } from '@/utils/friendly-errors';
 import { FiLoader } from 'react-icons/fi';
 
 type GoogleSsoPanelMode = 'login' | 'register' | 'reauth';
@@ -53,32 +54,7 @@ const ALIGNMENT = {
     center: 'items-center text-center',
 } as const;
 
-const getErrorMessage = (error: unknown, fallback: string) => {
-    if (error instanceof Error && error.message.trim()) {
-        return error.message;
-    }
-
-    if (typeof error === 'string' && error.trim()) {
-        return error;
-    }
-
-    if (error && typeof error === 'object') {
-        const record = error as Record<string, unknown>;
-        const message = typeof record.message === 'string'
-            ? record.message
-            : typeof record.errorMessage === 'string'
-                ? record.errorMessage
-                : typeof record.localizedMessage === 'string'
-                    ? record.localizedMessage
-                    : '';
-
-        if (message.trim()) {
-            return message;
-        }
-    }
-
-    return fallback;
-};
+const getErrorMessage = (error: unknown, fallback: string) => resolveFriendlyMessage(error, fallback);
 
 export function GoogleSsoPanel({
     mode,

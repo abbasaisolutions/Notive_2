@@ -22,7 +22,21 @@
       "Bash(grep -r \"data-theme\\\\|theme.*dark\\\\|darkMode\" /c/Users/mtabe/Notive/frontend/src --include=*.tsx --include=*.ts)",
       "Bash(ls -la /c/Users/mtabe/Notive/frontend/android/app/src/main/res/mipmap*)",
       "Bash(grep -v \"^//\")",
-      "Bash(find /c/Users/mtabe/Notive/backend/src -name *.ts -newer /c/Users/mtabe/Notive/backend/package.json)"
+      "Bash(find /c/Users/mtabe/Notive/backend/src -name *.ts -newer /c/Users/mtabe/Notive/backend/package.json)",
+      "Read(//tmp/**)",
+      "Bash(ls -la /c/Users/mtabe/Notive/frontend/src/out/insights.*)",
+      "Bash(find /c/Users/mtabe/Notive/backend/src -name \"*.service.ts\" -exec sh -c 'wc -l {} | awk \"{print \\\\$1, \\\\$2}\"' \\\\;)",
+      "Bash(find /c/Users/mtabe/Notive/frontend/src/services -name \"*.service.ts\" -exec sh -c 'wc -l {} | awk \"{print \\\\$1, \\\\$2}\"' \\\\;)",
+      "Bash(grep -l \"profile-context\\\\|voice-lexicon\\\\|prompt-learning\" /c/Users/mtabe/Notive/backend/src/services/*.ts /c/Users/mtabe/Notive/frontend/src/services/*.ts)",
+      "Bash(ls -la /c/Users/mtabe/Notive/backend/src/services/prompt-learning*.ts /c/Users/mtabe/Notive/frontend/src/services/prompt-learning*.ts)",
+      "Bash(ls c:/Users/mtabe/Notive/*.md)",
+      "Bash(ls c:/Users/mtabe/Notive/backend/*.md)",
+      "Bash(ls c:/Users/mtabe/Notive/frontend/*.md)",
+      "Bash(ls c:/Users/mtabe/Notive/similarity-service/*.md)",
+      "Bash(wc -l c:/Users/mtabe/Notive/*.md c:/Users/mtabe/Notive/backend/*.md c:/Users/mtabe/Notive/frontend/ACCESSIBILITY_AUDIT.md c:/Users/mtabe/Notive/frontend/UI_COMPONENT_INTEGRATION.md c:/Users/mtabe/Notive/frontend/UI_QUALITY_CHECKLIST.md)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\mtabe\\Notive\\frontend\\src\\out"
     ]
   }
 }

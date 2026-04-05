@@ -7,6 +7,7 @@ import { API_URL } from '@/constants/config';
 import { clearOnboardingState } from '@/utils/onboarding';
 import type { CredentialSsoProvider } from '@/utils/sso';
 import { logoutNativeGoogleSession } from '@/utils/native-google-auth';
+import { resolveFriendlyMessage } from '@/utils/friendly-errors';
 
 interface UserProfile {
     bio?: string;
@@ -57,6 +58,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const REFRESH_TOKEN_KEY = 'notive_refresh_token';
 const REFRESH_RETRY_DELAY_MS = 30000;
+
+const friendlyAuthMessage = (message: unknown, fallback: string) => {
+    const normalized = typeof message === 'string' ? message.trim() : '';
+
+    if (!normalized) return fallback;
+    if (/^login failed$/i.test(normalized)) return fallback;
+    if (/^google sign-in failed$/i.test(normalized)) return fallback;
+    if (/^registration failed$/i.test(normalized)) return fallback;
+
+    return resolveFriendlyMessage(normalized, fallback);
+};
 
 const isNativePlatform = () => {
     if (typeof window === 'undefined') return false;
@@ -152,92 +164,112 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const login = async (email: string, password: string): Promise<User> => {
-        const isNative = isNativePlatform();
-        const response = await fetch(`${API_URL}/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(isNative ? { 'x-client-platform': 'mobile' } : {}),
-            },
-            credentials: 'include',
-            body: JSON.stringify({ email, password }),
-        });
+        const fallback = 'We couldn’t sign you in. Check your email and password, then try again.';
 
-        const data = await response.json();
+        try {
+            const isNative = isNativePlatform();
+            const response = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(isNative ? { 'x-client-platform': 'mobile' } : {}),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ email, password }),
+            });
 
-        if (!response.ok) {
-            throw new Error(data.message || 'Login failed');
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(friendlyAuthMessage(data.message, fallback));
+            }
+
+            setAccessToken(data.accessToken);
+            setUser(data.user);
+            refreshBlockedUntilRef.current = 0;
+
+            if (isNative && data.refreshToken) {
+                await secureStorage.set(REFRESH_TOKEN_KEY, data.refreshToken);
+            }
+
+            return data.user as User;
+        } catch (error) {
+            throw new Error(resolveFriendlyMessage(error, fallback));
         }
-
-        setAccessToken(data.accessToken);
-        setUser(data.user);
-        refreshBlockedUntilRef.current = 0;
-
-        if (isNative && data.refreshToken) {
-            await secureStorage.set(REFRESH_TOKEN_KEY, data.refreshToken);
-        }
-
-        return data.user as User;
     };
 
     const loginWithSsoCredential = async (provider: CredentialSsoProvider, credential: string): Promise<User> => {
-        const isNative = isNativePlatform();
-        const response = await fetch(`${API_URL}/auth/sso/${provider}/credential`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(isNative ? { 'x-client-platform': 'mobile' } : {}),
-            },
-            credentials: 'include',
-            body: JSON.stringify({ credential }),
-        });
+        const fallback = provider === 'google'
+            ? 'Google sign-in didn’t go through. Please try again.'
+            : 'That sign-in method didn’t go through. Please try again.';
 
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.message || 'Google sign-in failed');
+        try {
+            const isNative = isNativePlatform();
+            const response = await fetch(`${API_URL}/auth/sso/${provider}/credential`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(isNative ? { 'x-client-platform': 'mobile' } : {}),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ credential }),
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(friendlyAuthMessage(data.message, fallback));
+            }
+
+            setAccessToken(data.accessToken);
+            setUser(data.user);
+            refreshBlockedUntilRef.current = 0;
+
+            if (isNative && data.refreshToken) {
+                await secureStorage.set(REFRESH_TOKEN_KEY, data.refreshToken);
+            }
+
+            return data.user as User;
+        } catch (error) {
+            throw new Error(resolveFriendlyMessage(error, fallback));
         }
-
-        setAccessToken(data.accessToken);
-        setUser(data.user);
-        refreshBlockedUntilRef.current = 0;
-
-        if (isNative && data.refreshToken) {
-            await secureStorage.set(REFRESH_TOKEN_KEY, data.refreshToken);
-        }
-
-        return data.user as User;
     };
 
     const loginWithGoogleCredential = async (credential: string): Promise<User> =>
         loginWithSsoCredential('google', credential);
 
     const register = async (email: string, password: string, name?: string, birthDate?: string): Promise<User> => {
-        const isNative = isNativePlatform();
-        const response = await fetch(`${API_URL}/auth/register`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(isNative ? { 'x-client-platform': 'mobile' } : {}),
-            },
-            credentials: 'include',
-            body: JSON.stringify({ email, password, name, birthDate }),
-        });
+        const fallback = 'We couldn’t create your account just yet. Please try again.';
 
-        const data = await response.json();
+        try {
+            const isNative = isNativePlatform();
+            const response = await fetch(`${API_URL}/auth/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(isNative ? { 'x-client-platform': 'mobile' } : {}),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ email, password, name, birthDate }),
+            });
 
-        if (!response.ok) {
-            throw new Error(data.message || 'Registration failed');
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(friendlyAuthMessage(data.message, fallback));
+            }
+
+            setAccessToken(data.accessToken);
+            setUser(data.user);
+            refreshBlockedUntilRef.current = 0;
+
+            if (isNative && data.refreshToken) {
+                await secureStorage.set(REFRESH_TOKEN_KEY, data.refreshToken);
+            }
+
+            return data.user as User;
+        } catch (error) {
+            throw new Error(resolveFriendlyMessage(error, fallback));
         }
-
-        setAccessToken(data.accessToken);
-        setUser(data.user);
-        refreshBlockedUntilRef.current = 0;
-
-        if (isNative && data.refreshToken) {
-            await secureStorage.set(REFRESH_TOKEN_KEY, data.refreshToken);
-        }
-
-        return data.user as User;
     };
 
     const logout = async () => {

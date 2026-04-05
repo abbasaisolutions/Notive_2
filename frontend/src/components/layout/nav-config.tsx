@@ -255,6 +255,20 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
         },
     },
     {
+        prefix: '/shared/view',
+        meta: {
+            title: 'Shared memory',
+            description: 'Review a bundle someone sent you, react to it, and decide what you want to carry forward.',
+            section: 'Main',
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Memories', href: '/timeline' }, { label: 'Shared memory' }],
+            primaryAction: { label: 'Open Memories', shortLabel: 'Memories', href: '/timeline' },
+            secondaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
+            visibleInfo: ['Sender', 'Shared notes', 'Reaction'],
+            journeyStage: 'capture',
+            headerMode: 'standard',
+        },
+    },
+    {
         prefix: '/chapters',
         meta: {
             title: 'Groups',

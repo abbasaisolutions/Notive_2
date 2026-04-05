@@ -18,6 +18,7 @@ import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useApi from '@/hooks/use-api';
 import { resolvePostAuthDestination } from '@/utils/auth-routing';
 import { unwrapSetupReturnTo } from '@/utils/redirect';
+import { resolveFriendlyMessage } from '@/utils/friendly-errors';
 import { Spinner } from '@/components/ui';
 
 export default function CompleteProfilePage() {
@@ -76,13 +77,19 @@ export default function CompleteProfilePage() {
             const data = await response.json().catch(() => null);
 
             if (!response.ok || !data?.user) {
-                throw new Error(data?.message || 'Could not save your date of birth.');
+                throw new Error(resolveFriendlyMessage(
+                    data?.message,
+                    'We couldn’t save your birthday just yet. Please try again.',
+                ));
             }
 
             syncUser(data.user);
             router.replace(resolvePostAuthDestination(data.user, safeReturnTo));
         } catch (nextError: any) {
-            setError(nextError?.message || 'Could not save your date of birth.');
+            setError(resolveFriendlyMessage(
+                nextError,
+                'We couldn’t save your birthday just yet. Please try again.',
+            ));
         } finally {
             setIsSaving(false);
         }

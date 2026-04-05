@@ -59,7 +59,7 @@ function SharedPageContent() {
                 }
             } catch (err) {
                 if (controller.signal.aborted) return;
-                setError('Failed to load shared content.');
+                setError('Couldn\u2019t load this shared content.');
             } finally {
                 setIsLoading(false);
             }

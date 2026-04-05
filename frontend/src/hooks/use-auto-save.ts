@@ -68,7 +68,7 @@ export function useAutoSave<T>({ data, onSave, interval = 2000, enabled = true }
                 lastTrackedSnapshotRef.current = toSnapshot(data);
                 setHasUnsavedChanges(false);
             } catch (err: any) {
-                setError(err.message || 'Failed to auto-save');
+                setError(err.message || 'Couldn\u2019t auto-save your changes.');
             } finally {
                 setIsSaving(false);
             }

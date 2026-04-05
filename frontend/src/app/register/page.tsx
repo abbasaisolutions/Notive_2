@@ -153,7 +153,7 @@ export default function RegisterPage() {
             clearOnboardingState(registeredUser.id);
             router.replace(resolvePostAuthRoute(registeredUser));
         } catch (err: any) {
-            setError(err.message || 'Could not create your account.');
+            setError(err.message || 'We couldn’t create your account just yet. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -165,7 +165,7 @@ export default function RegisterPage() {
             setFieldErrors({});
             setIsLoading(true);
             if (!credentialResponse.credential) {
-                throw new Error('Google credential is missing');
+                throw new Error('Google sign-in did not finish. Please try again.');
             }
             if (!acceptedPolicies) {
                 setFieldErrors({ policies: 'Please accept the Terms of Service and Privacy Policy.' });
@@ -176,14 +176,14 @@ export default function RegisterPage() {
             clearOnboardingState(registeredUser.id);
             router.replace(resolvePostAuthRoute(registeredUser));
         } catch (err: any) {
-            setError(err.message || 'Google sign-up failed.');
+            setError(err.message || 'Google sign-up didn’t go through. Please try again.');
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleGoogleError = () => {
-        setError('Google sign-up failed. Please try again.');
+        setError('Google sign-up didn’t finish. Please try again.');
     };
 
     return (
@@ -548,4 +548,3 @@ export default function RegisterPage() {
         </div>
     );
 }
-

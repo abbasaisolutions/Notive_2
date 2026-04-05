@@ -8,6 +8,7 @@ import {
     LEGAL_ENTITY_NAME,
     SUPPORT_EMAIL,
 } from '@/config/legal';
+import { resolveFriendlyMessage } from '@/utils/friendly-errors';
 
 const apiBaseUrl = API_URL.replace(/\/$/, '');
 
@@ -37,7 +38,10 @@ export default function AccountDeletionPage() {
             const payload = await response.json().catch(() => null);
 
             if (!response.ok) {
-                throw new Error(payload?.message || 'Failed to submit your deletion request.');
+                throw new Error(resolveFriendlyMessage(
+                    payload?.message,
+                    'We couldn’t submit your deletion request just yet. Please try again.',
+                ));
             }
 
             setNotice({
@@ -48,7 +52,10 @@ export default function AccountDeletionPage() {
         } catch (error) {
             setNotice({
                 type: 'error',
-                message: error instanceof Error ? error.message : 'Failed to submit your deletion request.',
+                message: resolveFriendlyMessage(
+                    error,
+                    'We couldn’t submit your deletion request just yet. Please try again.',
+                ),
             });
         } finally {
             setIsSubmitting(false);
