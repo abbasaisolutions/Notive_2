@@ -1,3 +1,4 @@
+import { MemoryShareAccessStatus } from '@prisma/client';
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
 import { PushNotificationService } from '../services/push-notification.service';
@@ -325,6 +326,35 @@ export const blockUser = async (req: Request, res: Response) => {
                         { requesterId: blockerId, addresseeId: blockedId },
                         { requesterId: blockedId, addresseeId: blockerId },
                     ],
+                },
+            });
+
+            await tx.memoryShareAccess.deleteMany({
+                where: {
+                    OR: [
+                        { senderId: blockerId, recipientId: blockedId },
+                        { senderId: blockedId, recipientId: blockerId },
+                    ],
+                },
+            });
+
+            await tx.sharedMemoryRecipient.updateMany({
+                where: {
+                    OR: [
+                        {
+                            recipientId: blockerId,
+                            bundle: { senderId: blockedId },
+                        },
+                        {
+                            recipientId: blockedId,
+                            bundle: { senderId: blockerId },
+                        },
+                    ],
+                },
+                data: {
+                    status: MemoryShareAccessStatus.DECLINED,
+                    readAt: new Date(),
+                    reaction: null,
                 },
             });
         });

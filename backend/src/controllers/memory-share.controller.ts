@@ -1,18 +1,73 @@
+import { MemoryShareAccessStatus } from '@prisma/client';
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
 import { PushNotificationService } from '../services/push-notification.service';
 
 const pushService = new PushNotificationService(prisma);
+const SEARCH_SHARE_STATE_NONE = 'NONE' as const;
 
-/** Mask an email for privacy: "john@gmail.com" → "j***@gmail.com" */
 const maskEmail = (email: string) => {
     const [local, domain] = email.split('@');
     if (!local || !domain) return '***';
     return `${local[0]}***@${domain}`;
 };
 
+const formatCountLabel = (count: number) => `${count} ${count === 1 ? 'memory' : 'memories'}`;
+
+const buildShareStateMap = async (senderId: string, recipientIds: string[]) => {
+    if (recipientIds.length === 0) {
+        return new Map<string, MemoryShareAccessStatus>();
+    }
+
+    const accessRows = await prisma.memoryShareAccess.findMany({
+        where: {
+            senderId,
+            recipientId: { in: recipientIds },
+        },
+        select: {
+            recipientId: true,
+            status: true,
+        },
+    });
+
+    return new Map(accessRows.map((row) => [row.recipientId, row.status]));
+};
+
+const getBlockedCounterpartIds = async (userId: string, candidateIds?: string[]) => {
+    const blocks = await prisma.userBlock.findMany({
+        where: {
+            OR: [
+                {
+                    blockerId: userId,
+                    ...(candidateIds ? { blockedId: { in: candidateIds } } : {}),
+                },
+                {
+                    blockedId: userId,
+                    ...(candidateIds ? { blockerId: { in: candidateIds } } : {}),
+                },
+            ],
+        },
+        select: { blockerId: true, blockedId: true },
+    });
+
+    return blocks.map((block) => (
+        block.blockerId === userId ? block.blockedId : block.blockerId
+    ));
+};
+
+const normalizeStringIds = (value: unknown) => {
+    if (!Array.isArray(value)) return [];
+
+    return [...new Set(
+        value
+            .filter((item): item is string => typeof item === 'string')
+            .map((item) => item.trim())
+            .filter(Boolean),
+    )];
+};
+
 /**
- * Search Notive users by name or email prefix (for recipient picker).
+ * Search Notive users by name or email (for recipient picker).
  * GET /api/v1/memory-share/users/search?q=&limit=8
  */
 export const searchUsers = async (req: Request, res: Response) => {
@@ -25,36 +80,43 @@ export const searchUsers = async (req: Request, res: Response) => {
             return res.json({ users: [] });
         }
 
-        // Exclude users who blocked me or whom I blocked
-        const blocks = await prisma.userBlock.findMany({
-            where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
-            select: { blockerId: true, blockedId: true },
-        });
-        const blockedIds = blocks.map((b) =>
-            b.blockerId === userId ? b.blockedId : b.blockerId,
-        );
+        const blockedIds = await getBlockedCounterpartIds(userId);
 
         const users = await prisma.user.findMany({
             where: {
-                id: { not: userId, notIn: blockedIds },
+                id: {
+                    not: userId,
+                    ...(blockedIds.length > 0 ? { notIn: blockedIds } : {}),
+                },
                 isBanned: false,
-                profile: { onboardingCompletedAt: { not: null } },
                 OR: [
                     { name: { contains: q, mode: 'insensitive' } },
-                    { email: { startsWith: q, mode: 'insensitive' } },
+                    { email: { contains: q, mode: 'insensitive' } },
                 ],
             },
             select: { id: true, name: true, avatarUrl: true, email: true },
             take: limit,
-            orderBy: { name: 'asc' },
+            orderBy: [
+                { name: 'asc' },
+                { email: 'asc' },
+            ],
         });
 
+        // Gracefully degrade if MemoryShareAccess table not yet migrated.
+        let shareStateMap: Map<string, MemoryShareAccessStatus>;
+        try {
+            shareStateMap = await buildShareStateMap(userId, users.map((user) => user.id));
+        } catch {
+            shareStateMap = new Map();
+        }
+
         return res.json({
-            users: users.map((u) => ({
-                id: u.id,
-                name: u.name,
-                avatarUrl: u.avatarUrl,
-                email: maskEmail(u.email),
+            users: users.map((user) => ({
+                id: user.id,
+                name: user.name,
+                avatarUrl: user.avatarUrl,
+                email: maskEmail(user.email),
+                shareState: shareStateMap.get(user.id) ?? SEARCH_SHARE_STATE_NONE,
             })),
         });
     } catch (error) {
@@ -72,9 +134,11 @@ export const recentRecipients = async (req: Request, res: Response) => {
         const userId = req.userId;
         const limit = Math.min(10, Math.max(1, Number(req.query.limit) || 5));
 
-        // Get distinct recipients from bundles this user sent, ordered by most recent
         const recipients = await prisma.sharedMemoryRecipient.findMany({
-            where: { bundle: { senderId: userId, status: 'ACTIVE' } },
+            where: {
+                status: { not: MemoryShareAccessStatus.DECLINED },
+                bundle: { senderId: userId, status: 'ACTIVE' },
+            },
             select: {
                 recipientId: true,
                 createdAt: true,
@@ -83,20 +147,25 @@ export const recentRecipients = async (req: Request, res: Response) => {
             orderBy: { createdAt: 'desc' },
         });
 
-        // Deduplicate by recipientId, keeping most recent
         const seen = new Set<string>();
-        const unique = recipients.filter((r) => {
-            if (seen.has(r.recipientId)) return false;
-            seen.add(r.recipientId);
+        const unique = recipients.filter((recipient) => {
+            if (seen.has(recipient.recipientId)) return false;
+            seen.add(recipient.recipientId);
             return true;
         }).slice(0, limit);
 
+        const shareStateMap = await buildShareStateMap(
+            userId,
+            unique.map((recipient) => recipient.recipientId),
+        );
+
         return res.json({
-            users: unique.map((r) => ({
-                id: r.recipient.id,
-                name: r.recipient.name,
-                avatarUrl: r.recipient.avatarUrl,
-                email: maskEmail(r.recipient.email),
+            users: unique.map((recipient) => ({
+                id: recipient.recipient.id,
+                name: recipient.recipient.name,
+                avatarUrl: recipient.recipient.avatarUrl,
+                email: maskEmail(recipient.recipient.email),
+                shareState: shareStateMap.get(recipient.recipient.id) ?? SEARCH_SHARE_STATE_NONE,
             })),
         });
     } catch (error) {
@@ -106,35 +175,43 @@ export const recentRecipients = async (req: Request, res: Response) => {
 };
 
 /**
- * Create a shared memory bundle (the share action).
+ * Create a shared memory bundle.
+ * First-time recipients receive a pending share request and must accept before
+ * they can open the memories. Accepted sender/recipient pairs receive shares immediately.
+ *
  * POST /api/v1/memory-share/bundles
  * Body: { entryIds: string[], recipientIds: string[], message?: string }
  */
 export const createBundle = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
-        const { entryIds, recipientIds, message } = req.body;
+        const entryIds = normalizeStringIds(req.body.entryIds);
+        const recipientIds = normalizeStringIds(req.body.recipientIds);
+        const message = typeof req.body.message === 'string' ? req.body.message : undefined;
 
-        // Validate input
-        if (!Array.isArray(entryIds) || entryIds.length === 0 || entryIds.length > 10) {
+        if (entryIds.length === 0 || entryIds.length > 10) {
             return res.status(400).json({ message: 'Provide 1-10 entry IDs' });
         }
-        if (!Array.isArray(recipientIds) || recipientIds.length === 0 || recipientIds.length > 5) {
+        if (recipientIds.length === 0 || recipientIds.length > 5) {
             return res.status(400).json({ message: 'Provide 1-5 recipient IDs' });
         }
-        if (message && typeof message === 'string' && message.length > 500) {
+        if (message && message.length > 500) {
             return res.status(400).json({ message: 'Message must be 500 characters or fewer' });
         }
         if (recipientIds.includes(userId)) {
             return res.status(400).json({ message: 'Cannot share with yourself' });
         }
 
-        // Verify all entries belong to sender and are not deleted
         const entries = await prisma.entry.findMany({
             where: { id: { in: entryIds }, userId, deletedAt: null },
             select: {
-                id: true, title: true, content: true, mood: true,
-                tags: true, coverImage: true, createdAt: true,
+                id: true,
+                title: true,
+                content: true,
+                mood: true,
+                tags: true,
+                coverImage: true,
+                createdAt: true,
             },
         });
 
@@ -142,7 +219,6 @@ export const createBundle = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'One or more entries not found' });
         }
 
-        // Verify all recipients exist and are not banned
         const recipients = await prisma.user.findMany({
             where: { id: { in: recipientIds }, isBanned: false },
             select: { id: true, name: true },
@@ -152,33 +228,66 @@ export const createBundle = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'One or more recipients not found' });
         }
 
-        // Verify all recipients are accepted friends
-        const friendships = await prisma.friendship.findMany({
-            where: {
-                status: 'ACCEPTED',
-                OR: [
-                    { requesterId: userId, addresseeId: { in: recipientIds } },
-                    { addresseeId: userId, requesterId: { in: recipientIds } },
-                ],
-            },
-            select: { requesterId: true, addresseeId: true },
-        });
-        const friendIds = new Set(
-            friendships.map((f) => (f.requesterId === userId ? f.addresseeId : f.requesterId)),
-        );
-        const nonFriends = recipientIds.filter((id: string) => !friendIds.has(id));
-        if (nonFriends.length > 0) {
-            return res.status(403).json({ message: 'You can only share memories with accepted friends' });
+        const blockedIds = new Set(await getBlockedCounterpartIds(userId, recipientIds));
+        if (blockedIds.size > 0) {
+            return res.status(403).json({ message: 'You cannot share with one or more selected users' });
         }
 
-        // Get sender name for notifications
+        let accessMap = new Map<string, MemoryShareAccessStatus>();
+        try {
+            const accessRows = await prisma.memoryShareAccess.findMany({
+                where: {
+                    senderId: userId,
+                    recipientId: { in: recipientIds },
+                },
+                select: {
+                    recipientId: true,
+                    status: true,
+                },
+            });
+            accessMap = new Map(accessRows.map((row) => [row.recipientId, row.status]));
+        } catch {
+            // MemoryShareAccess table may not be migrated yet; treat all as first-time.
+        }
+
+        const declinedRecipients = recipients.filter(
+            (recipient) => accessMap.get(recipient.id) === MemoryShareAccessStatus.DECLINED,
+        );
+        if (declinedRecipients.length > 0) {
+            const firstName = declinedRecipients[0]?.name || 'This user';
+            return res.status(403).json({
+                message: declinedRecipients.length === 1
+                    ? `${firstName} isn't accepting memory shares from you right now`
+                    : 'One or more selected people are not accepting memory shares from you right now',
+            });
+        }
+
         const sender = await prisma.user.findUnique({
             where: { id: userId },
             select: { name: true },
         });
+        const senderName = sender?.name || 'Someone';
+        const entryCount = entries.length;
+        const noAccessRecipientIds = recipientIds.filter((recipientId) => !accessMap.has(recipientId));
+        const acceptedRecipientIds = recipientIds.filter(
+            (recipientId) => accessMap.get(recipientId) === MemoryShareAccessStatus.ACCEPTED,
+        );
+        const pendingRecipientIds = recipientIds.filter((recipientId) => (
+            (accessMap.get(recipientId) ?? MemoryShareAccessStatus.PENDING) === MemoryShareAccessStatus.PENDING
+        ));
 
-        // Create bundle, items, recipients, and notifications in a transaction
         const bundle = await prisma.$transaction(async (tx) => {
+            if (noAccessRecipientIds.length > 0) {
+                await tx.memoryShareAccess.createMany({
+                    data: noAccessRecipientIds.map((recipientId) => ({
+                        senderId: userId,
+                        recipientId,
+                        status: MemoryShareAccessStatus.PENDING,
+                    })),
+                    skipDuplicates: true,
+                });
+            }
+
             const newBundle = await tx.sharedMemoryBundle.create({
                 data: {
                     senderId: userId,
@@ -196,19 +305,21 @@ export const createBundle = async (req: Request, res: Response) => {
                         })),
                     },
                     recipients: {
-                        create: recipientIds.map((recipientId: string) => ({ recipientId })),
+                        create: recipientIds.map((recipientId) => ({
+                            recipientId,
+                            status: accessMap.get(recipientId) === MemoryShareAccessStatus.ACCEPTED
+                                ? MemoryShareAccessStatus.ACCEPTED
+                                : MemoryShareAccessStatus.PENDING,
+                        })),
                     },
                 },
             });
 
-            // Create in-app notifications for each recipient
-            const senderName = sender?.name || 'Someone';
-            const entryCount = entries.length;
-            await tx.inAppNotification.createMany({
-                data: recipientIds.map((recipientId: string) => ({
+            const notifications = [
+                ...acceptedRecipientIds.map((recipientId) => ({
                     userId: recipientId,
                     type: 'shared_memory',
-                    title: `${senderName} shared ${entryCount} ${entryCount === 1 ? 'memory' : 'memories'} with you`,
+                    title: `${senderName} shared ${formatCountLabel(entryCount)} with you`,
                     data: {
                         bundleId: newBundle.id,
                         senderId: userId,
@@ -216,17 +327,39 @@ export const createBundle = async (req: Request, res: Response) => {
                         entryCount,
                     },
                 })),
-            });
+                ...pendingRecipientIds.map((recipientId) => ({
+                    userId: recipientId,
+                    type: 'memory_share_request',
+                    title: `${senderName} wants to share ${formatCountLabel(entryCount)} with you`,
+                    body: 'Open Shared to accept or deny this request.',
+                    data: {
+                        bundleId: newBundle.id,
+                        senderId: userId,
+                        senderName,
+                        entryCount,
+                    },
+                })),
+            ];
+
+            if (notifications.length > 0) {
+                await tx.inAppNotification.createMany({ data: notifications });
+            }
 
             return newBundle;
         });
 
-        // Send push notifications (fire and forget — don't block the response)
-        const senderName = sender?.name || 'Someone';
-        for (const recipientId of recipientIds) {
+        for (const recipientId of acceptedRecipientIds) {
             pushService.sendPushNotification(recipientId, {
                 title: 'New shared memories',
-                body: `${senderName} shared ${entries.length} ${entries.length === 1 ? 'memory' : 'memories'} with you`,
+                body: `${senderName} shared ${formatCountLabel(entryCount)} with you`,
+                data: { route: '/timeline?tab=shared', bundleId: bundle.id },
+            }).catch((err) => console.error('Push notification failed:', err));
+        }
+
+        for (const recipientId of pendingRecipientIds) {
+            pushService.sendPushNotification(recipientId, {
+                title: 'New share request',
+                body: `${senderName} wants to share ${formatCountLabel(entryCount)} with you`,
                 data: { route: '/timeline?tab=shared', bundleId: bundle.id },
             }).catch((err) => console.error('Push notification failed:', err));
         }
@@ -238,6 +371,11 @@ export const createBundle = async (req: Request, res: Response) => {
                 recipientCount: recipientIds.length,
                 createdAt: bundle.createdAt,
             },
+            delivery: {
+                acceptedCount: acceptedRecipientIds.length,
+                pendingCount: pendingRecipientIds.length,
+                recipientCount: recipientIds.length,
+            },
         });
     } catch (error) {
         console.error('Create bundle error:', error);
@@ -246,7 +384,7 @@ export const createBundle = async (req: Request, res: Response) => {
 };
 
 /**
- * List bundles shared with me (inbox).
+ * List bundles shared with me, including pending first-share requests.
  * GET /api/v1/memory-share/received?page=1&limit=20
  */
 export const listReceived = async (req: Request, res: Response) => {
@@ -257,10 +395,25 @@ export const listReceived = async (req: Request, res: Response) => {
 
         const where = {
             recipientId: userId,
+            status: {
+                in: [
+                    MemoryShareAccessStatus.PENDING,
+                    MemoryShareAccessStatus.ACCEPTED,
+                ],
+            },
             bundle: { status: 'ACTIVE' as const },
         };
 
-        const [records, total] = await Promise.all([
+        const unreadWhere = {
+            recipientId: userId,
+            bundle: { status: 'ACTIVE' as const },
+            OR: [
+                { status: MemoryShareAccessStatus.PENDING },
+                { status: MemoryShareAccessStatus.ACCEPTED, readAt: null },
+            ],
+        };
+
+        const [records, total, unreadCount, pendingCount] = await Promise.all([
             prisma.sharedMemoryRecipient.findMany({
                 where,
                 orderBy: { createdAt: 'desc' },
@@ -286,30 +439,184 @@ export const listReceived = async (req: Request, res: Response) => {
                 },
             }),
             prisma.sharedMemoryRecipient.count({ where }),
+            prisma.sharedMemoryRecipient.count({ where: unreadWhere }),
+            prisma.sharedMemoryRecipient.count({
+                where: {
+                    recipientId: userId,
+                    status: MemoryShareAccessStatus.PENDING,
+                    bundle: { status: 'ACTIVE' },
+                },
+            }),
         ]);
 
-        const bundles = records.map((r) => ({
-            bundleId: r.bundle.id,
-            sender: r.bundle.sender,
-            message: r.bundle.message,
-            itemCount: r.bundle._count.items,
-            firstItem: r.bundle.items[0] ? {
-                title: r.bundle.items[0].snapshotTitle,
-                contentPreview: r.bundle.items[0].snapshotContent.slice(0, 120),
-                mood: r.bundle.items[0].snapshotMood,
+        const bundles = records.map((record) => ({
+            bundleId: record.bundle.id,
+            sender: record.bundle.sender,
+            message: record.bundle.message,
+            itemCount: record.bundle._count.items,
+            firstItem: record.status === MemoryShareAccessStatus.ACCEPTED && record.bundle.items[0] ? {
+                title: record.bundle.items[0].snapshotTitle,
+                contentPreview: record.bundle.items[0].snapshotContent.slice(0, 120),
+                mood: record.bundle.items[0].snapshotMood,
             } : null,
-            readAt: r.readAt,
-            reaction: r.reaction,
-            sharedAt: r.createdAt,
+            readAt: record.readAt,
+            reaction: record.status === MemoryShareAccessStatus.ACCEPTED ? record.reaction : null,
+            sharedAt: record.createdAt,
+            status: record.status,
         }));
 
-        const unreadCount = await prisma.sharedMemoryRecipient.count({
-            where: { recipientId: userId, readAt: null, bundle: { status: 'ACTIVE' } },
-        });
-
-        return res.json({ bundles, total, unreadCount, page, limit });
+        return res.json({ bundles, total, unreadCount, pendingCount, page, limit });
     } catch (error) {
         console.error('List received error:', error);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+/**
+ * Respond to a sender's first-time share request.
+ * PATCH /api/v1/memory-share/requests/:senderId/respond
+ * Body: { decision: "ACCEPT" | "DECLINE" }
+ */
+export const respondToShareRequest = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const { senderId } = req.params;
+        const decision = String(req.body.decision || req.body.action || '').trim().toUpperCase();
+
+        if (!senderId) {
+            return res.status(400).json({ message: 'senderId is required' });
+        }
+        if (!['ACCEPT', 'DECLINE'].includes(decision)) {
+            return res.status(400).json({ message: 'Decision must be ACCEPT or DECLINE' });
+        }
+
+        const access = await prisma.memoryShareAccess.findUnique({
+            where: {
+                senderId_recipientId: {
+                    senderId,
+                    recipientId: userId,
+                },
+            },
+        });
+
+        if (!access) {
+            return res.status(404).json({ message: 'Share request not found' });
+        }
+
+        if (access.status !== MemoryShareAccessStatus.PENDING) {
+            return res.status(409).json({
+                message: 'This share request has already been handled',
+                status: access.status,
+            });
+        }
+
+        const nextStatus = decision === 'ACCEPT'
+            ? MemoryShareAccessStatus.ACCEPTED
+            : MemoryShareAccessStatus.DECLINED;
+
+        const result = await prisma.$transaction(async (tx) => {
+            const pendingBundleCount = await tx.sharedMemoryRecipient.count({
+                where: {
+                    recipientId: userId,
+                    status: MemoryShareAccessStatus.PENDING,
+                    bundle: {
+                        senderId,
+                        status: 'ACTIVE',
+                    },
+                },
+            });
+
+            await tx.memoryShareAccess.update({
+                where: {
+                    senderId_recipientId: {
+                        senderId,
+                        recipientId: userId,
+                    },
+                },
+                data: {
+                    status: nextStatus,
+                    decidedAt: new Date(),
+                },
+            });
+
+            await tx.sharedMemoryRecipient.updateMany({
+                where: {
+                    recipientId: userId,
+                    status: MemoryShareAccessStatus.PENDING,
+                    bundle: {
+                        senderId,
+                        status: 'ACTIVE',
+                    },
+                },
+                data: nextStatus === MemoryShareAccessStatus.ACCEPTED
+                    ? { status: MemoryShareAccessStatus.ACCEPTED }
+                    : {
+                        status: MemoryShareAccessStatus.DECLINED,
+                        readAt: new Date(),
+                        reaction: null,
+                    },
+            });
+
+            const responder = await tx.user.findUnique({
+                where: { id: userId },
+                select: { name: true },
+            });
+
+            // Mark the incoming share-request notification as read so the badge clears.
+            await tx.inAppNotification.updateMany({
+                where: {
+                    userId,
+                    type: 'memory_share_request',
+                    readAt: null,
+                    data: {
+                        path: ['senderId'],
+                        equals: senderId,
+                    },
+                },
+                data: { readAt: new Date() },
+            });
+
+            await tx.inAppNotification.create({
+                data: {
+                    userId: senderId,
+                    type: nextStatus === MemoryShareAccessStatus.ACCEPTED
+                        ? 'memory_share_request_accepted'
+                        : 'memory_share_request_declined',
+                    title: `${responder?.name || 'Someone'} ${nextStatus === MemoryShareAccessStatus.ACCEPTED ? 'accepted' : 'declined'} your memory share request`,
+                    data: {
+                        recipientId: userId,
+                        recipientName: responder?.name,
+                        status: nextStatus,
+                        pendingBundleCount,
+                    },
+                },
+            });
+
+            return {
+                pendingBundleCount,
+                responderName: responder?.name || 'Someone',
+            };
+        });
+
+        pushService.sendPushNotification(senderId, {
+            title: nextStatus === MemoryShareAccessStatus.ACCEPTED
+                ? 'Share request accepted'
+                : 'Share request declined',
+            body: nextStatus === MemoryShareAccessStatus.ACCEPTED
+                ? `${result.responderName} can now see your shared memories`
+                : `${result.responderName} declined your share request`,
+            data: { route: '/timeline?tab=shared' },
+        }).catch((err) => console.error('Push notification failed:', err));
+
+        return res.json({
+            message: nextStatus === MemoryShareAccessStatus.ACCEPTED
+                ? 'Share request accepted'
+                : 'Share request declined',
+            status: nextStatus,
+            pendingBundleCount: result.pendingBundleCount,
+        });
+    } catch (error) {
+        console.error('Respond to share request error:', error);
         return res.status(500).json({ message: 'Internal server error' });
     }
 };
@@ -343,6 +650,7 @@ export const getBundleDetail = async (req: Request, res: Response) => {
                 recipients: {
                     select: {
                         recipientId: true,
+                        status: true,
                         readAt: true,
                         reaction: true,
                         recipient: { select: { id: true, name: true, avatarUrl: true } },
@@ -359,18 +667,24 @@ export const getBundleDetail = async (req: Request, res: Response) => {
             return res.status(410).json({ message: 'This shared memory has been revoked' });
         }
 
-        // Verify access: user is sender or a recipient
         const isSender = bundle.sender.id === userId;
-        const recipientRecord = bundle.recipients.find((r) => r.recipientId === userId);
+        const recipientRecord = bundle.recipients.find((recipient) => recipient.recipientId === userId);
 
         if (!isSender && !recipientRecord) {
             return res.status(403).json({ message: 'Access denied' });
         }
 
-        // Auto-mark as read if recipient viewing for the first time
+        if (recipientRecord && recipientRecord.status !== MemoryShareAccessStatus.ACCEPTED) {
+            return res.status(403).json({ message: 'Accept this share request before viewing the memories' });
+        }
+
         if (recipientRecord && !recipientRecord.readAt) {
             await prisma.sharedMemoryRecipient.updateMany({
-                where: { bundleId: id, recipientId: userId },
+                where: {
+                    bundleId: id,
+                    recipientId: userId,
+                    status: MemoryShareAccessStatus.ACCEPTED,
+                },
                 data: { readAt: new Date() },
             });
         }
@@ -420,12 +734,15 @@ export const reactToBundle = async (req: Request, res: Response) => {
             return res.status(410).json({ message: 'This shared memory has been revoked' });
         }
 
+        if (recipient.status !== MemoryShareAccessStatus.ACCEPTED) {
+            return res.status(403).json({ message: 'Accept this share request before reacting' });
+        }
+
         await prisma.sharedMemoryRecipient.update({
             where: { id: recipient.id },
             data: { reaction },
         });
 
-        // Notify sender of the reaction (if adding, not removing)
         if (reaction) {
             const reactor = await prisma.user.findUnique({
                 where: { id: userId },

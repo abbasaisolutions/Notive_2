@@ -72,7 +72,12 @@ function SharedBundleViewContent() {
             try {
                 const r = await apiFetch(`${API_URL}/memory-share/bundles/${bundleId}`);
                 if (r.status === 410) { setError('This shared memory has been revoked.'); setLoading(false); return; }
-                if (!r.ok) { setError('Could not load shared memories.'); setLoading(false); return; }
+                if (!r.ok) {
+                    const data = await r.json().catch(() => ({}));
+                    setError(data.message || 'Could not load shared memories.');
+                    setLoading(false);
+                    return;
+                }
                 const data = await r.json();
                 setBundle(data.bundle);
             } catch {

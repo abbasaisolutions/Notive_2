@@ -7,8 +7,6 @@ import { useApi } from '@/hooks/use-api';
 import { useToast } from '@/context/toast-context';
 import { API_URL } from '@/constants/config';
 
-/* ─── Types ────────────────────────────────────────────── */
-
 export type ShareableEntry = {
     id: string;
     title: string | null;
@@ -17,22 +15,27 @@ export type ShareableEntry = {
     createdAt: string;
 };
 
+type ShareState = 'NONE' | 'PENDING' | 'ACCEPTED' | 'DECLINED';
+
 type SearchUser = {
     id: string;
     name: string | null;
     avatarUrl: string | null;
     email: string;
+    shareState: ShareState;
 };
 
 type ShareMemorySheetProps = {
-    /** The entry the user originally tapped "share" on */
     initialEntry: ShareableEntry;
-    /** All recent entries for the "add more" list */
     allEntries: ShareableEntry[];
     onClose: () => void;
 };
 
-/* ─── Helpers ──────────────────────────────────────────── */
+type ShareDeliverySummary = {
+    acceptedCount: number;
+    pendingCount: number;
+    recipientCount: number;
+};
 
 const MOOD_COLORS: Record<string, string> = {
     happy: '#F59E0B', excited: '#EF4444', calm: '#6B8F71',
@@ -41,11 +44,31 @@ const MOOD_COLORS: Record<string, string> = {
     motivated: '#8B5CF6',
 };
 
-const avatarInitial = (name: string | null) =>
-    (name || '?').charAt(0).toUpperCase();
+const SHARE_STATE_META: Record<ShareState, { label: string; tone: string; selectable: boolean }> = {
+    NONE: {
+        label: 'First share needs approval',
+        tone: 'border-[rgba(107,143,113,0.18)] bg-[rgba(107,143,113,0.08)] text-[rgb(107,143,113)]',
+        selectable: true,
+    },
+    PENDING: {
+        label: 'Waiting for approval',
+        tone: 'border-[rgba(217,119,6,0.18)] bg-[rgba(245,158,11,0.08)] text-[rgb(180,83,9)]',
+        selectable: true,
+    },
+    ACCEPTED: {
+        label: 'Can share now',
+        tone: 'border-[rgba(14,116,144,0.18)] bg-[rgba(14,116,144,0.08)] text-[rgb(14,116,144)]',
+        selectable: true,
+    },
+    DECLINED: {
+        label: 'Not accepting right now',
+        tone: 'border-[rgba(220,38,38,0.15)] bg-[rgba(220,38,38,0.08)] text-[rgb(185,28,28)]',
+        selectable: false,
+    },
+};
 
-const truncate = (text: string, len: number) =>
-    text.length <= len ? text : `${text.slice(0, len).trimEnd()}...`;
+const avatarInitial = (name: string | null) => (name || '?').charAt(0).toUpperCase();
+const truncate = (text: string, len: number) => (text.length <= len ? text : `${text.slice(0, len).trimEnd()}...`);
 
 const slideVariants = {
     enter: (dir: number) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
@@ -53,42 +76,57 @@ const slideVariants = {
     exit: (dir: number) => ({ x: dir > 0 ? -60 : 60, opacity: 0 }),
 };
 
-/* ─── Component ────────────────────────────────────────── */
+const getCompletionCopy = (summary: ShareDeliverySummary, recipientNames: string) => {
+    if (summary.pendingCount > 0 && summary.acceptedCount === 0) {
+        return {
+            title: `Request sent to ${recipientNames}`,
+            body: 'They will need to accept before the memories appear in Shared.',
+        };
+    }
+
+    if (summary.pendingCount > 0) {
+        return {
+            title: `Shared with ${recipientNames}`,
+            body: `${summary.acceptedCount} ${summary.acceptedCount === 1 ? 'person can' : 'people can'} see it now. ${summary.pendingCount} ${summary.pendingCount === 1 ? 'person is' : 'people are'} waiting on approval.`,
+        };
+    }
+
+    return {
+        title: `Shared with ${recipientNames}`,
+        body: 'They will see it next time they open their timeline.',
+    };
+};
 
 export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: ShareMemorySheetProps) {
     const { apiFetch } = useApi();
     const toast = useToast();
     const [isMounted, setIsMounted] = useState(false);
-
-    // Steps: 0 = select entries, 1 = pick recipients, 2 = confirm, 3 = done
     const [step, setStep] = useState(0);
     const [direction, setDirection] = useState(1);
-
-    // Step 0 — entry selection
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set([initialEntry.id]));
     const [showMore, setShowMore] = useState(false);
-
-    // Step 1 — recipient picker
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
     const [recentUsers, setRecentUsers] = useState<SearchUser[]>([]);
     const [selectedRecipients, setSelectedRecipients] = useState<SearchUser[]>([]);
     const [searching, setSearching] = useState(false);
+    const [searchError, setSearchError] = useState(false);
+    const [message, setMessage] = useState('');
+    const [sending, setSending] = useState(false);
+    const [completionTitle, setCompletionTitle] = useState('Shared');
+    const [completionBody, setCompletionBody] = useState('They will see it next time they open their timeline.');
     const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
 
-    // Step 2 — message
-    const [message, setMessage] = useState('');
+    const goForward = () => { setDirection(1); setStep((current) => current + 1); };
+    const goBack = () => { setDirection(-1); setStep((current) => current - 1); };
 
-    // Step 3 — sending
-    const [sending, setSending] = useState(false);
-
-    const goForward = () => { setDirection(1); setStep((s) => s + 1); };
-    const goBack = () => { setDirection(-1); setStep((s) => s - 1); };
-
-    // Load recent recipients on mount
     useEffect(() => {
         apiFetch(`${API_URL}/memory-share/users/recent?limit=5`)
-            .then(async (r) => { if (r.ok) { const d = await r.json(); setRecentUsers(d.users ?? []); } })
+            .then(async (response) => {
+                if (!response.ok) return;
+                const data = await response.json();
+                setRecentUsers(data.users ?? []);
+            })
             .catch(() => {});
     }, [apiFetch]);
 
@@ -103,69 +141,126 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
         };
     }, []);
 
-    // Debounced user search
     useEffect(() => {
         if (searchTimeout.current) clearTimeout(searchTimeout.current);
-        if (searchQuery.trim().length < 2) { setSearchResults([]); setSearching(false); return; }
+        if (searchQuery.trim().length < 2) {
+            setSearchResults([]);
+            setSearchError(false);
+            setSearching(false);
+            return;
+        }
+
         setSearching(true);
+        setSearchError(false);
         searchTimeout.current = setTimeout(async () => {
             try {
-                const r = await apiFetch(`${API_URL}/memory-share/users/search?q=${encodeURIComponent(searchQuery)}&limit=8`);
-                if (r.ok) { const d = await r.json(); setSearchResults(d.users ?? []); }
-            } catch { /* ignore */ }
+                const response = await apiFetch(`${API_URL}/memory-share/users/search?q=${encodeURIComponent(searchQuery)}&limit=8`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setSearchResults(data.users ?? []);
+                } else {
+                    setSearchError(true);
+                    setSearchResults([]);
+                }
+            } catch {
+                setSearchError(true);
+                setSearchResults([]);
+            }
             setSearching(false);
         }, 300);
-        return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
+
+        return () => {
+            if (searchTimeout.current) clearTimeout(searchTimeout.current);
+        };
     }, [searchQuery, apiFetch]);
 
     const toggleEntry = useCallback((id: string) => {
-        setSelectedIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) { if (next.size > 1) next.delete(id); }
-            else if (next.size < 10) next.add(id);
+        setSelectedIds((previous) => {
+            const next = new Set(previous);
+            if (next.has(id)) {
+                if (next.size > 1) next.delete(id);
+            } else if (next.size < 10) {
+                next.add(id);
+            }
             return next;
         });
     }, []);
 
     const addRecipient = useCallback((user: SearchUser) => {
-        setSelectedRecipients((prev) => {
-            if (prev.length >= 5 || prev.some((r) => r.id === user.id)) return prev;
-            return [...prev, user];
+        if (!SHARE_STATE_META[user.shareState].selectable) {
+            return;
+        }
+
+        setSelectedRecipients((previous) => {
+            if (previous.length >= 5 || previous.some((recipient) => recipient.id === user.id)) {
+                return previous;
+            }
+            return [...previous, user];
         });
     }, []);
 
     const removeRecipient = useCallback((id: string) => {
-        setSelectedRecipients((prev) => prev.filter((r) => r.id !== id));
+        setSelectedRecipients((previous) => previous.filter((recipient) => recipient.id !== id));
     }, []);
+
+    const recipientNames = useMemo(
+        () => selectedRecipients.map((recipient) => recipient.name || 'Someone').join(', '),
+        [selectedRecipients],
+    );
+
+    const approvalRecipientCount = useMemo(
+        () => selectedRecipients.filter((recipient) => recipient.shareState !== 'ACCEPTED').length,
+        [selectedRecipients],
+    );
 
     const handleSend = useCallback(async () => {
         setSending(true);
         try {
-            const r = await apiFetch(`${API_URL}/memory-share/bundles`, {
+            const response = await apiFetch(`${API_URL}/memory-share/bundles`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     entryIds: [...selectedIds],
-                    recipientIds: selectedRecipients.map((u) => u.id),
+                    recipientIds: selectedRecipients.map((user) => user.id),
                     message: message.trim() || undefined,
                 }),
             });
-            if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.message || 'Failed to share'); setSending(false); return; }
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                toast.error(data.message || 'Failed to share');
+                setSending(false);
+                return;
+            }
+
+            const data = await response.json().catch(() => ({}));
+            const delivery = (data.delivery ?? {
+                acceptedCount: selectedRecipients.length,
+                pendingCount: 0,
+                recipientCount: selectedRecipients.length,
+            }) as ShareDeliverySummary;
+
+            const nextCompletion = getCompletionCopy(delivery, recipientNames);
+            setCompletionTitle(nextCompletion.title);
+            setCompletionBody(nextCompletion.body);
             setDirection(1);
             setStep(3);
-            toast.success('Memories shared', 'They will see them next time they open Notive.');
+
+            if (delivery.pendingCount > 0 && delivery.acceptedCount === 0) {
+                toast.success('Share request sent', 'They will need to accept before the memories appear.');
+            } else if (delivery.pendingCount > 0) {
+                toast.success(
+                    'Shared and pending approval',
+                    `${delivery.acceptedCount} ${delivery.acceptedCount === 1 ? 'person can' : 'people can'} see it now. ${delivery.pendingCount} ${delivery.pendingCount === 1 ? 'person is' : 'people are'} waiting on approval.`,
+                );
+            } else {
+                toast.success('Memories shared', 'They will see them next time they open Notive.');
+            }
         } catch {
             toast.error('Something went wrong');
         }
         setSending(false);
-    }, [apiFetch, selectedIds, selectedRecipients, message, toast]);
-
-    const recipientNames = useMemo(
-        () => selectedRecipients.map((r) => r.name || 'Someone').join(', '),
-        [selectedRecipients],
-    );
-
-    /* ─── Render helpers ───────────────────────────────── */
+    }, [apiFetch, selectedIds, selectedRecipients, message, recipientNames, toast]);
 
     const renderCompactCard = (entry: ShareableEntry, checked: boolean, onClick?: () => void) => (
         <button
@@ -181,7 +276,11 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
             <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
                 checked ? 'border-[rgb(107,143,113)] bg-[rgb(107,143,113)]' : 'border-[rgba(92,92,92,0.25)] bg-white'
             }`}>
-                {checked && <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                {checked && (
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                )}
             </div>
             <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -196,10 +295,39 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
         </button>
     );
 
-    /* ─── Steps ────────────────────────────────────────── */
+    const renderRecipientOption = (user: SearchUser) => {
+        const meta = SHARE_STATE_META[user.shareState];
+        const isDisabled = !meta.selectable;
+
+        return (
+            <button
+                key={user.id}
+                type="button"
+                onClick={() => addRecipient(user)}
+                disabled={isDisabled}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
+                    isDisabled
+                        ? 'cursor-not-allowed opacity-60'
+                        : 'hover:bg-[rgba(107,143,113,0.06)]'
+                }`}
+            >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-[0.72rem] font-bold text-[rgb(107,143,113)]">
+                    {avatarInitial(user.name)}
+                </span>
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                        <p className="truncate text-[0.78rem] font-medium text-[rgb(var(--paper-ink))]">{user.name || 'Notive User'}</p>
+                        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.08em] ${meta.tone}`}>
+                            {meta.label}
+                        </span>
+                    </div>
+                    <p className="truncate text-[0.65rem] text-[rgb(130,130,130)]">{user.email}</p>
+                </div>
+            </button>
+        );
+    };
 
     const stepContent = [
-        // Step 0 — Select entries
         <div key="step0" className="space-y-4">
             <div>
                 <p className="section-label">Sharing</p>
@@ -216,26 +344,26 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
             )}
             {showMore && (
                 <div className="max-h-52 space-y-2 overflow-y-auto pr-1">
-                    {allEntries.filter((e) => e.id !== initialEntry.id).slice(0, 19).map((e) =>
-                        renderCompactCard(e, selectedIds.has(e.id), () => toggleEntry(e.id))
-                    )}
+                    {allEntries.filter((entry) => entry.id !== initialEntry.id).slice(0, 19).map((entry) => (
+                        renderCompactCard(entry, selectedIds.has(entry.id), () => toggleEntry(entry.id))
+                    ))}
                 </div>
             )}
         </div>,
 
-        // Step 1 — Choose recipients
         <div key="step1" className="space-y-4">
             <div>
                 <p className="section-label">Recipients</p>
                 <h3 className="notebook-title mt-1 text-lg">Who should see this?</h3>
+                <p className="mt-1 text-[0.72rem] text-[rgb(130,130,130)]">Anyone can show up in search. First-time shares stay pending until they accept.</p>
             </div>
             {selectedRecipients.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
-                    {selectedRecipients.map((u) => (
-                        <span key={u.id} className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(107,143,113,0.35)] bg-[rgba(107,143,113,0.08)] px-2.5 py-1 text-[0.72rem] font-medium text-[rgb(var(--paper-ink))]">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[rgb(107,143,113)] text-[0.6rem] font-bold text-white">{avatarInitial(u.name)}</span>
-                            {u.name || u.email}
-                            <button type="button" onClick={() => removeRecipient(u.id)} className="ml-0.5 text-[rgb(130,130,130)] hover:text-[rgb(var(--paper-ink))]">&times;</button>
+                    {selectedRecipients.map((user) => (
+                        <span key={user.id} className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(107,143,113,0.35)] bg-[rgba(107,143,113,0.08)] px-2.5 py-1 text-[0.72rem] font-medium text-[rgb(var(--paper-ink))]">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[rgb(107,143,113)] text-[0.6rem] font-bold text-white">{avatarInitial(user.name)}</span>
+                            {user.name || user.email}
+                            <button type="button" onClick={() => removeRecipient(user.id)} className="ml-0.5 text-[rgb(130,130,130)] hover:text-[rgb(var(--paper-ink))]">&times;</button>
                         </span>
                     ))}
                 </div>
@@ -243,54 +371,40 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
             <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search by name or email..."
                 className="workspace-input w-full rounded-xl px-3 py-2.5 text-[0.82rem]"
             />
             {searching && <p className="text-[0.72rem] text-[rgb(130,130,130)]">Searching...</p>}
-            {searchResults.length > 0 && (
-                <div className="max-h-44 space-y-1 overflow-y-auto">
+            {searchError && (
+                <div className="rounded-xl border border-dashed border-[rgba(220,38,38,0.2)] bg-[rgba(220,38,38,0.04)] px-3 py-3 text-[0.72rem] text-[rgb(185,28,28)]">
+                    Search is temporarily unavailable. Please try again in a moment.
+                </div>
+            )}
+            {!searchError && searchResults.length > 0 && (
+                <div className="max-h-52 space-y-1 overflow-y-auto">
                     {searchResults
-                        .filter((u) => !selectedRecipients.some((r) => r.id === u.id))
-                        .map((u) => (
-                            <button
-                                key={u.id}
-                                type="button"
-                                onClick={() => addRecipient(u)}
-                                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-[rgba(107,143,113,0.06)]"
-                            >
-                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-[0.72rem] font-bold text-[rgb(107,143,113)]">{avatarInitial(u.name)}</span>
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[0.78rem] font-medium text-[rgb(var(--paper-ink))]">{u.name || 'Notive User'}</p>
-                                    <p className="truncate text-[0.65rem] text-[rgb(130,130,130)]">{u.email}</p>
-                                </div>
-                            </button>
-                        ))}
+                        .filter((user) => !selectedRecipients.some((recipient) => recipient.id === user.id))
+                        .map((user) => renderRecipientOption(user))}
+                </div>
+            )}
+            {!searching && !searchError && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+                <div className="rounded-xl border border-dashed border-[rgba(92,92,92,0.14)] px-3 py-3 text-[0.72rem] text-[rgb(130,130,130)]">
+                    No matching people yet. Try a different name or email.
                 </div>
             )}
             {!searchQuery && recentUsers.length > 0 && (
                 <div>
                     <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-[rgb(130,130,130)]">Recent</p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="space-y-1.5">
                         {recentUsers
-                            .filter((u) => !selectedRecipients.some((r) => r.id === u.id))
-                            .map((u) => (
-                                <button
-                                    key={u.id}
-                                    type="button"
-                                    onClick={() => addRecipient(u)}
-                                    className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(92,92,92,0.12)] bg-white/70 px-2.5 py-1.5 text-[0.72rem] transition-colors hover:border-[rgba(107,143,113,0.3)] hover:bg-[rgba(107,143,113,0.06)]"
-                                >
-                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-[0.55rem] font-bold text-[rgb(107,143,113)]">{avatarInitial(u.name)}</span>
-                                    {u.name || u.email}
-                                </button>
-                            ))}
+                            .filter((user) => !selectedRecipients.some((recipient) => recipient.id === user.id))
+                            .map((user) => renderRecipientOption(user))}
                     </div>
                 </div>
             )}
         </div>,
 
-        // Step 2 — Message + confirm
         <div key="step2" className="space-y-4">
             <div>
                 <p className="section-label">Almost there</p>
@@ -298,7 +412,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
             </div>
             <textarea
                 value={message}
-                onChange={(e) => { if (e.target.value.length <= 500) setMessage(e.target.value); }}
+                onChange={(event) => { if (event.target.value.length <= 500) setMessage(event.target.value); }}
                 placeholder="Add a personal note (optional)"
                 rows={3}
                 className="workspace-input w-full resize-none rounded-xl px-3 py-2.5 text-[0.82rem]"
@@ -308,6 +422,11 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                 <p className="text-[0.72rem] leading-5 text-[rgb(130,130,130)]">
                     They&apos;ll see a snapshot of your entries as they are now. Future edits stay private.
                 </p>
+                {approvalRecipientCount > 0 && (
+                    <p className="mt-2 text-[0.72rem] leading-5 text-[rgb(130,130,130)]">
+                        {approvalRecipientCount} {approvalRecipientCount === 1 ? 'recipient needs' : 'recipients need'} approval before the memories unlock.
+                    </p>
+                )}
             </div>
             <div className="space-y-1.5 text-[0.75rem] text-[rgb(var(--paper-ink))]">
                 <p><span className="font-medium">{selectedIds.size}</span> {selectedIds.size === 1 ? 'memory' : 'memories'}</p>
@@ -315,7 +434,6 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
             </div>
         </div>,
 
-        // Step 3 — Done
         <div key="step3" className="flex flex-col items-center py-6 text-center">
             <motion.div
                 initial={{ scale: 0 }}
@@ -323,10 +441,12 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                 transition={{ duration: 0.5, ease: 'easeOut' }}
                 className="flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)]"
             >
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M7 14.5l5 5L21 9" stroke="rgb(107,143,113)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                    <path d="M7 14.5l5 5L21 9" stroke="rgb(107,143,113)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
             </motion.div>
-            <h3 className="notebook-title mt-4 text-lg">Shared with {recipientNames}</h3>
-            <p className="mt-2 text-[0.78rem] text-[rgb(130,130,130)]">They&apos;ll see it next time they open their timeline.</p>
+            <h3 className="notebook-title mt-4 text-lg">{completionTitle}</h3>
+            <p className="mt-2 text-[0.78rem] text-[rgb(130,130,130)]">{completionBody}</p>
         </div>,
     ];
 
@@ -343,7 +463,6 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
 
     return createPortal((
         <AnimatePresence>
-            {/* Backdrop */}
             <motion.div
                 key="share-backdrop"
                 initial={{ opacity: 0 }}
@@ -354,7 +473,6 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                 onClick={onClose}
             />
 
-            {/* Sheet */}
             <motion.div
                 key="share-sheet"
                 initial={{ opacity: 0, y: '100%' }}
@@ -363,16 +481,15 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                 transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
                 className="fixed inset-x-0 bottom-0 z-[100] max-h-[85vh] overflow-hidden rounded-t-[1.5rem] border-t border-[rgba(92,92,92,0.12)] bg-[rgb(var(--paper-bg))] shadow-xl md:inset-x-auto md:inset-y-0 md:m-auto md:max-h-[560px] md:max-w-lg md:rounded-[1.5rem] md:border"
                 style={{ bottom: 'var(--app-bottom-clearance, 0px)' }}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-label="Share memories"
             >
-                {/* Header */}
                 <div className="flex items-center justify-between border-b border-[rgba(92,92,92,0.1)] px-5 py-3">
                     <div className="flex gap-1.5">
-                        {[0, 1, 2].map((i) => (
-                            <div key={i} className={`h-1 rounded-full transition-all ${i <= step && step < 3 ? 'w-6 bg-[rgb(107,143,113)]' : 'w-3 bg-[rgba(92,92,92,0.18)]'}`} />
+                        {[0, 1, 2].map((index) => (
+                            <div key={index} className={`h-1 rounded-full transition-all ${index <= step && step < 3 ? 'w-6 bg-[rgb(107,143,113)]' : 'w-3 bg-[rgba(92,92,92,0.18)]'}`} />
                         ))}
                     </div>
                     <button type="button" onClick={onClose} className="text-[0.78rem] font-medium text-[rgb(130,130,130)] hover:text-[rgb(var(--paper-ink))]">
@@ -380,7 +497,6 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                     </button>
                 </div>
 
-                {/* Body */}
                 <div className="overflow-y-auto px-5 py-4" style={{ maxHeight: 'calc(85vh - 120px)' }}>
                     <AnimatePresence mode="wait" custom={direction}>
                         <motion.div
@@ -397,7 +513,6 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                     </AnimatePresence>
                 </div>
 
-                {/* Footer */}
                 {step < 3 && (
                     <div className="flex items-center gap-3 border-t border-[rgba(92,92,92,0.1)] px-5 py-3" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0.75rem)' }}>
                         {step > 0 && (

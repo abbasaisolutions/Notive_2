@@ -17,6 +17,7 @@ import useApi from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useTelemetry from '@/hooks/use-telemetry';
+import { useToast } from '@/context/toast-context';
 import { getMoodEmoji } from '@/constants/moods';
 import { FiArrowLeft, FiChevronDown, FiSearch, FiSliders } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo, buildSearchString } from '@/utils/navigation';
@@ -78,6 +79,7 @@ type SharedBundle = {
     readAt: string | null;
     reaction: string | null;
     sharedAt: string;
+    status: 'PENDING' | 'ACCEPTED';
 };
 type TimelineFilterState = {
     query: string;
@@ -351,9 +353,41 @@ const MOOD_COLORS_SHARED: Record<string, string> = {
 function SharedWithMeList({ bundles, loading, onRefresh }: {
     bundles: SharedBundle[];
     loading: boolean;
-    onRefresh: () => void;
+    onRefresh: () => Promise<void> | void;
 }) {
+    const { apiFetch } = useApi();
+    const toast = useToast();
     const router = useRouter();
+    const [activeSenderId, setActiveSenderId] = useState<string | null>(null);
+
+    const respondToRequest = useCallback(async (senderId: string, decision: 'ACCEPT' | 'DECLINE') => {
+        setActiveSenderId(senderId);
+        try {
+            const response = await apiFetch(`${API_URL}/memory-share/requests/${senderId}/respond`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ decision }),
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                toast.error(data.message || 'Could not update this share request');
+                setActiveSenderId(null);
+                return;
+            }
+
+            toast.success(
+                decision === 'ACCEPT' ? 'Share request accepted' : 'Share request denied',
+                decision === 'ACCEPT'
+                    ? 'The shared memories are ready in your Shared tab now.'
+                    : 'That sender can no longer unlock memories for you until you allow it later.',
+            );
+            await onRefresh();
+        } catch {
+            toast.error('Something went wrong');
+        }
+        setActiveSenderId(null);
+    }, [apiFetch, onRefresh, toast]);
 
     if (loading) {
         return (
@@ -379,14 +413,14 @@ function SharedWithMeList({ bundles, loading, onRefresh }: {
             {bundles.map((b) => {
                 const senderName = b.sender.name || 'Someone';
                 const initial = senderName.charAt(0).toUpperCase();
-                const isUnread = !b.readAt;
+                const isPending = b.status === 'PENDING';
+                const isUnread = isPending || !b.readAt;
                 const relTime = formatSharedRelTime(b.sharedAt);
+                const isActing = activeSenderId === b.sender.id;
 
                 return (
-                    <motion.button
+                    <motion.div
                         key={b.bundleId}
-                        type="button"
-                        onClick={() => router.push(`/shared/view?id=${b.bundleId}`)}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className={`block w-full rounded-2xl border p-4 text-left transition-colors ${
@@ -405,14 +439,21 @@ function SharedWithMeList({ bundles, loading, onRefresh }: {
                                     <span className="truncate text-[0.82rem] font-semibold text-[rgb(var(--paper-ink))]">
                                         {senderName}
                                     </span>
+                                    {isPending && (
+                                        <span className="shrink-0 rounded-full border border-[rgba(217,119,6,0.18)] bg-[rgba(245,158,11,0.08)] px-2 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.08em] text-[rgb(180,83,9)]">
+                                            Needs response
+                                        </span>
+                                    )}
                                     <span className="ml-auto shrink-0 text-[0.65rem] text-[rgb(130,130,130)]">{relTime}</span>
                                 </div>
                                 <p className="mt-0.5 text-[0.75rem] text-[rgb(130,130,130)]">
-                                    {b.itemCount} {b.itemCount === 1 ? 'memory' : 'memories'} shared
+                                    {isPending
+                                        ? `${senderName} wants to share ${b.itemCount} ${b.itemCount === 1 ? 'memory' : 'memories'}`
+                                        : `${b.itemCount} ${b.itemCount === 1 ? 'memory' : 'memories'} shared`}
                                 </p>
                             </div>
                         </div>
-                        {b.firstItem && (
+                        {!isPending && b.firstItem && (
                             <div className="mt-2 rounded-xl border border-[rgba(92,92,92,0.08)] bg-[rgba(248,244,237,0.5)] px-3 py-2">
                                 <div className="flex items-center gap-1.5">
                                     {b.firstItem.mood && (
@@ -431,7 +472,36 @@ function SharedWithMeList({ bundles, loading, onRefresh }: {
                         {b.message && (
                             <p className="mt-2 line-clamp-2 text-[0.72rem] italic text-[rgb(130,130,130)]">&ldquo;{b.message}&rdquo;</p>
                         )}
-                    </motion.button>
+
+                        {isPending ? (
+                            <div className="mt-3 flex gap-2">
+                                <button
+                                    type="button"
+                                    disabled={isActing}
+                                    onClick={() => void respondToRequest(b.sender.id, 'DECLINE')}
+                                    className="workspace-button-outline rounded-xl px-4 py-2 text-[0.72rem] font-semibold disabled:opacity-50"
+                                >
+                                    {isActing ? 'Saving...' : 'Deny'}
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={isActing}
+                                    onClick={() => void respondToRequest(b.sender.id, 'ACCEPT')}
+                                    className="workspace-button-primary rounded-xl px-4 py-2 text-[0.72rem] font-semibold disabled:opacity-50"
+                                >
+                                    {isActing ? 'Saving...' : 'Accept'}
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => router.push(`/shared/view?id=${b.bundleId}`)}
+                                className="mt-3 inline-flex rounded-xl border border-[rgba(107,143,113,0.22)] bg-[rgba(107,143,113,0.06)] px-3 py-2 text-[0.72rem] font-semibold text-[rgb(107,143,113)] transition hover:bg-[rgba(107,143,113,0.1)]"
+                            >
+                                Open shared memories
+                            </button>
+                        )}
+                    </motion.div>
                 );
             })}
         </div>
@@ -2260,4 +2330,3 @@ export default function TimelinePage() {
         </Suspense>
     );
 }
-

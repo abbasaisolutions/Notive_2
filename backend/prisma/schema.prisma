@@ -112,6 +112,8 @@ model User {
   // Memory Sharing
   sentBundles         SharedMemoryBundle[]   @relation("sentBundles")
   receivedBundles     SharedMemoryRecipient[] @relation("receivedBundles")
+  memoryShareAccessSent      MemoryShareAccess[] @relation("memoryShareAccessSender")
+  memoryShareAccessReceived  MemoryShareAccess[] @relation("memoryShareAccessRecipient")
   inAppNotifications  InAppNotification[]
   reminders           Reminder[]
 
@@ -584,6 +586,12 @@ enum SharedBundleStatus {
   REVOKED
 }
 
+enum MemoryShareAccessStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
 model SharedMemoryBundle {
   id        String              @id @default(cuid())
   senderId  String
@@ -629,12 +637,29 @@ model SharedMemoryRecipient {
   recipientId String
   recipient   User      @relation("receivedBundles", fields: [recipientId], references: [id], onDelete: Cascade)
 
+  status      MemoryShareAccessStatus @default(ACCEPTED)
   readAt      DateTime?
   reaction    String?   @db.VarChar(32)
   createdAt   DateTime  @default(now())
 
   @@unique([bundleId, recipientId])
-  @@index([recipientId, createdAt])
+  @@index([recipientId, status, createdAt])
+}
+
+model MemoryShareAccess {
+  id          String                  @id @default(cuid())
+  senderId    String
+  sender      User                    @relation("memoryShareAccessSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User                    @relation("memoryShareAccessRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  status      MemoryShareAccessStatus @default(PENDING)
+  decidedAt   DateTime?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@unique([senderId, recipientId])
+  @@index([recipientId, status, updatedAt])
+  @@index([senderId, status, updatedAt])
 }
 
 // ── In-App Notifications ────────────────────────────────
