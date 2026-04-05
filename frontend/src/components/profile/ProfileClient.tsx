@@ -43,6 +43,7 @@ export default function ProfileClient() {
     const { isSupported: pushSupported, isPermissionGranted, requestPermission } = usePushNotifications();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isRequestingPush, setIsRequestingPush] = useState(false);
+    const [avatarFailed, setAvatarFailed] = useState(false);
 
     const tabParam = searchParams.get('tab');
     const activeTab: ProfileTab = tabParam === 'privacy' ? 'privacy' : 'about';
@@ -78,6 +79,7 @@ export default function ProfileClient() {
     const avatarInitial = safeUser.name?.charAt(0).toUpperCase() || safeUser.email.charAt(0).toUpperCase();
     const avatarUrl = typeof safeUser.avatarUrl === 'string' ? safeUser.avatarUrl.trim() : '';
     const hasAvatar = avatarUrl.length > 0;
+    const showAvatarImage = hasAvatar && !avatarFailed;
     const xpProgress = stats ? ((stats.xp - getXPForLevel(stats.level)) / (getXPForLevel(stats.level + 1) - getXPForLevel(stats.level))) * 100 : 0;
     const highlights = [
         safeUser.profile?.primaryGoal,
@@ -87,6 +89,10 @@ export default function ProfileClient() {
     ].filter(Boolean) as string[];
     const support = getPinnedSupportSummary(safeUser.profile?.personalizationSignals);
     const isAdminUser = safeUser.role === 'ADMIN' || safeUser.role === 'SUPERADMIN';
+
+    useEffect(() => {
+        setAvatarFailed(false);
+    }, [avatarUrl]);
 
     return (
         <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
@@ -99,7 +105,14 @@ export default function ProfileClient() {
                                 className="flex h-full w-full items-center justify-center overflow-hidden rounded-[1.3rem] text-2xl font-serif"
                                 style={{ background: 'rgb(var(--paper-soft))', color: 'rgb(var(--paper-ink))' }}
                             >
-                                {hasAvatar ? <img src={avatarUrl} alt={`${safeUser.name || 'User'} avatar`} className="h-full w-full object-cover" /> : avatarInitial}
+                                {showAvatarImage ? (
+                                    <img
+                                        src={avatarUrl}
+                                        alt={`${safeUser.name || 'User'} avatar`}
+                                        className="h-full w-full object-cover"
+                                        onError={() => setAvatarFailed(true)}
+                                    />
+                                ) : avatarInitial}
                             </div>
                         </div>
                         <div className="min-w-0 flex-1">

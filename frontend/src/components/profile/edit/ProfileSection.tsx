@@ -10,6 +10,7 @@ type ProfileSectionProps = {
     draft: ProfileDraft;
     lifeGoalsDraft: string;
     onChange: (updater: (current: ProfileDraft) => ProfileDraft) => void;
+    onAvatarChange: (url: string) => Promise<void> | void;
     onLifeGoalsDraftChange: (value: string) => void;
     onAddLifeGoal: () => void;
     onRemoveLifeGoal: (value: string) => void;
@@ -19,6 +20,7 @@ export function ProfileSection({
     draft,
     lifeGoalsDraft,
     onChange,
+    onAvatarChange,
     onLifeGoalsDraftChange,
     onAddLifeGoal,
     onRemoveLifeGoal,
@@ -39,7 +41,7 @@ export function ProfileSection({
                         <AvatarUpload
                             avatarUrl={draft.avatarUrl}
                             name={draft.name}
-                            onAvatarChange={(url) => onChange((current) => ({ ...current, avatarUrl: url }))}
+                            onAvatarChange={onAvatarChange}
                         />
                     </div>
 

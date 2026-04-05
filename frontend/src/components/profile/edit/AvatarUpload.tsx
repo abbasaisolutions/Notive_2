@@ -14,7 +14,7 @@ import CropModal from './CropModal';
 type AvatarUploadProps = {
     avatarUrl: string;
     name: string;
-    onAvatarChange: (url: string) => void;
+    onAvatarChange: (url: string) => Promise<void> | void;
 };
 
 export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: AvatarUploadProps) {
@@ -24,9 +24,11 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
     const [error, setError] = useState('');
     const [cropFile, setCropFile] = useState<File | null>(null);
     const [cropPreviewUrl, setCropPreviewUrl] = useState<string | null>(null);
+    const [previewFailed, setPreviewFailed] = useState(false);
 
     const initial = name?.charAt(0).toUpperCase() || '?';
     const hasAvatar = avatarUrl.trim().length > 0;
+    const showAvatarImage = hasAvatar && !previewFailed;
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -71,9 +73,9 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
             }
 
             const data = await res.json();
-            onAvatarChange(data.url);
+            await onAvatarChange(data.url);
         } catch (err: any) {
-            setError(err.message || 'Failed to upload image.');
+            setError(err.message || 'We couldn’t save your photo. Please try again.');
         } finally {
             setIsUploading(false);
         }
@@ -93,9 +95,21 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
         }
     ), [cropPreviewUrl]);
 
-    const handleRemove = () => {
+    useEffect(() => {
+        setPreviewFailed(false);
+    }, [avatarUrl]);
+
+    const handleRemove = async () => {
         setError('');
-        onAvatarChange('');
+        setIsUploading(true);
+
+        try {
+            await onAvatarChange('');
+        } catch (err: any) {
+            setError(err.message || 'We couldn’t remove your photo. Please try again.');
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     return (
@@ -108,14 +122,12 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
                         className="flex h-full w-full items-center justify-center overflow-hidden rounded-[1.3rem] text-2xl font-serif border-2 border-[rgba(var(--paper-border),0.3)]"
                         style={{ background: 'rgb(var(--paper-soft))', color: 'rgb(var(--paper-ink))' }}
                     >
-                        {hasAvatar ? (
+                        {showAvatarImage ? (
                             <img
                                 src={avatarUrl}
                                 alt="Profile photo"
                                 className="h-full w-full object-cover"
-                                onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                }}
+                                onError={() => setPreviewFailed(true)}
                             />
                         ) : (
                             initial

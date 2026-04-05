@@ -63,7 +63,7 @@ export function ProfileSettingsEditor() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
-    const { refreshUser, logout } = useAuth();
+    const { refreshUser, logout, syncUser } = useAuth();
     const { apiFetch } = useApi();
 
     const [activeTab, setActiveTab] = useState<EditTab>(resolveEditTab(searchParams.get('tab')));
@@ -650,6 +650,94 @@ export function ProfileSettingsEditor() {
         setSavedPrivacyDraft(nextDraft);
     };
 
+    const syncCurrentUserSnapshot = (source: SnapshotUser) => {
+        if (!user) return;
+
+        syncUser({
+            ...user,
+            ...source,
+            profile: source.profile ?? user.profile ?? undefined,
+        } as NonNullable<typeof user>);
+    };
+
+    const saveAvatar = async (nextAvatarUrl: string) => {
+        const previousAvatarUrl = profileDraft.avatarUrl;
+
+        setProfileDraft((current) => ({
+            ...current,
+            avatarUrl: nextAvatarUrl,
+        }));
+        setIsSavingTab('profile');
+        setNotice(null);
+        setConflict(null);
+
+        try {
+            const response = await apiFetch('/user/profile/basic', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    avatarUrl: nextAvatarUrl || null,
+                    expectedUserUpdatedAt: serverUserUpdatedAt,
+                    expectedProfileUpdatedAt: serverProfileUpdatedAt,
+                }),
+            });
+
+            const data = await response.json().catch(() => null);
+
+            if (response.status === 409 && data?.user) {
+                setConflict({
+                    tab: 'profile',
+                    latestUser: data.user as SnapshotUser,
+                    userUpdatedAt: data?.conflict?.userUpdatedAt || null,
+                    profileUpdatedAt: data?.conflict?.profileUpdatedAt || null,
+                });
+                throw new Error(data?.message || 'Your profile changed somewhere else. Reload and try saving your photo again.');
+            }
+
+            if (!response.ok) {
+                throw new Error(data?.message || 'We couldn’t save your photo. Please try again.');
+            }
+
+            if (data?.user) {
+                const nextUser = data.user as SnapshotUser;
+                const persistedAvatarUrl = nextUser.avatarUrl || '';
+
+                setServerUserUpdatedAt(nextUser.updatedAt || null);
+                setServerProfileUpdatedAt(nextUser.profile?.updatedAt || null);
+                setProfileDraft((current) => ({
+                    ...current,
+                    avatarUrl: persistedAvatarUrl,
+                }));
+                setSavedProfileDraft((current) => ({
+                    ...current,
+                    avatarUrl: persistedAvatarUrl,
+                }));
+                syncCurrentUserSnapshot(nextUser);
+            } else {
+                setSavedProfileDraft((current) => ({
+                    ...current,
+                    avatarUrl: nextAvatarUrl,
+                }));
+            }
+
+            setNotice({ type: 'success', text: nextAvatarUrl ? 'Profile photo updated.' : 'Profile photo removed.' });
+        } catch (error: any) {
+            setProfileDraft((current) => ({
+                ...current,
+                avatarUrl: previousAvatarUrl,
+            }));
+            setNotice({
+                type: 'error',
+                text: error?.message || 'We couldn’t save your photo. Please try again.',
+            });
+            throw new Error(error?.message || 'We couldn’t save your photo. Please try again.');
+        } finally {
+            setIsSavingTab(null);
+        }
+    };
+
     const saveSection = async (
         tab: EditableTab,
         overrideConflict?: { userUpdatedAt: string | null; profileUpdatedAt: string | null }
@@ -748,7 +836,9 @@ export function ProfileSettingsEditor() {
             }
 
             if (data?.user) {
-                syncSavedSection(tab, data.user as SnapshotUser);
+                const nextUser = data.user as SnapshotUser;
+                syncSavedSection(tab, nextUser);
+                syncCurrentUserSnapshot(nextUser);
             }
 
             setConflict(null);
@@ -1198,6 +1288,7 @@ export function ProfileSettingsEditor() {
                                 setProfileDraft((current) => updater(current));
                                 resetNoticeState();
                             }}
+                            onAvatarChange={saveAvatar}
                             onLifeGoalsDraftChange={setLifeGoalsDraft}
                             onAddLifeGoal={handleAddLifeGoal}
                             onRemoveLifeGoal={handleRemoveLifeGoal}
