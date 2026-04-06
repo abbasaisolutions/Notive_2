@@ -42,6 +42,9 @@ similarity-service/eval/private/
 # Vercel
 .vercel
 
+# Local Claude state
+.claude/worktrees/
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts

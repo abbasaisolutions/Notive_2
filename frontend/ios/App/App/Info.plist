@@ -45,5 +45,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Notive uses your microphone so you can speak your notes instead of typing them.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Notive uses your location to quietly tag where you were when you wrote something meaningful.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Notive uses your camera to attach photos to your journal entries.</string>
 </dict>
 </plist>

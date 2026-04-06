@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { StructuredEntryData } from '@/services/structured-data.service';
@@ -60,6 +61,7 @@ import {
     normalizeLifeArea,
 } from '@/constants/life-areas';
 import { captureEntryLocation, type EntryLocation } from '@/services/location-context.service';
+import { captureDeviceSnapshot, type DeviceSnapshot } from '@/services/device-context.service';
 import type { IconType } from 'react-icons';
 import {
     FiAlertCircle,
@@ -270,11 +272,14 @@ function NewEntryPageContent() {
     const [polishNotice, setPolishNotice] = useState<string | null>(null);
     const [draftConflict, setDraftConflict] = useState<DraftConflict | null>(null);
     const [entryLocation, setEntryLocation] = useState<EntryLocation | null>(null);
+    const [deviceSnapshot, setDeviceSnapshot] = useState<DeviceSnapshot | null>(null);
     const [audioLevel, setAudioLevel] = useState(0);
     const [recordingElapsed, setRecordingElapsed] = useState(0);
     const [isBackgroundRefining, setIsBackgroundRefining] = useState(false);
+    const [mirrorSentence, setMirrorSentence] = useState<string | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const mirrorTimerRef = useRef<NodeJS.Timeout>();
     const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
     const draftPersistTimeoutRef = useRef<NodeJS.Timeout>();
     const polishNoticeTimeoutRef = useRef<NodeJS.Timeout>();
@@ -382,6 +387,9 @@ function NewEntryPageContent() {
         captureEntryLocation()
             .then((loc) => { if (!cancelled && loc) setEntryLocation(loc); })
             .catch(() => {});
+        captureDeviceSnapshot()
+            .then((snap) => { if (!cancelled) setDeviceSnapshot(snap); })
+            .catch(() => {});
         return () => { cancelled = true; };
     }, []);
 
@@ -389,6 +397,9 @@ function NewEntryPageContent() {
         return () => {
             shouldProcessVoiceStopRef.current = false;
             cleanupVoiceCapture();
+            if (mirrorTimerRef.current) {
+                clearTimeout(mirrorTimerRef.current);
+            }
         };
     }, [cleanupVoiceCapture]);
 
@@ -1220,6 +1231,7 @@ function NewEntryPageContent() {
                         locationLng: entryLocation.lng,
                         locationName: entryLocation.name,
                     } : {}),
+                    ...(deviceSnapshot ? { deviceContext: deviceSnapshot } : {}),
                 }),
             });
 
@@ -1307,7 +1319,25 @@ function NewEntryPageContent() {
                 }
 
                 toast.success('Note saved');
-                router.push(backHref);
+
+                // ── Mirror: show a brief reflection before navigating ──
+                const sentence = extractedData?.growthPoints && extractedData.growthPoints.length > 0
+                    ? 'This entry had more growth language than your average.'
+                    : extractedData?.overallSentiment === 'mixed'
+                        ? "There's a small gap between your stated mood and your writing — that's worth sitting with."
+                        : extractedData?.keyPhrases && extractedData.keyPhrases.length >= 3
+                            ? `You keep circling "${extractedData.keyPhrases[0]}" — that thread might mean something.`
+                            : null;
+
+                if (sentence && !entryId) {
+                    setMirrorSentence(sentence);
+                    mirrorTimerRef.current = setTimeout(() => {
+                        setMirrorSentence(null);
+                        router.push(backHref);
+                    }, 5000);
+                } else {
+                    router.push(backHref);
+                }
             } else {
                 persistDraftSnapshot(false);
             }
@@ -1791,6 +1821,35 @@ function NewEntryPageContent() {
                 </div>
             </div>
             )}
+
+            {/* ── The Mirror: post-save reflection card ── */}
+            <AnimatePresence>
+                {mirrorSentence && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 12 }}
+                        transition={{ duration: 0.4, ease: 'easeOut' }}
+                        className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-sm rounded-[1.25rem] border border-[rgba(138,154,111,0.25)] bg-[rgba(248,244,237,0.96)] px-4 py-3 shadow-[0_4px_20px_rgba(92,92,92,0.12)] backdrop-blur-sm"
+                    >
+                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(138,154,111)]">Notive noticed</p>
+                        <p className="mt-1 text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))] italic" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                            {mirrorSentence}
+                        </p>
+                        <button
+                            onClick={() => {
+                                if (mirrorTimerRef.current) clearTimeout(mirrorTimerRef.current);
+                                setMirrorSentence(null);
+                                router.push(backHref);
+                            }}
+                            className="mt-1 text-[0.65rem] text-[rgb(107,107,107)] hover:text-[rgb(var(--paper-ink))]"
+                            aria-label="Dismiss"
+                        >
+                            Dismiss
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {draftConflict && (
                 <div

@@ -1,4 +1,5 @@
 import type { StudentActionResponse } from '@/components/action/types';
+import { getDayPart, getDayPartLabel, type DayPart } from '@/services/device-context.service';
 
 export type HomeActionEntry = {
     mood: string | null;
@@ -111,12 +112,21 @@ const inferScenario = (action: StudentActionResponse | null) => {
     return 'general';
 };
 
-const buildIntro = (scenario: HomeActionScenario, entriesCount: number) => {
+const buildIntro = (scenario: HomeActionScenario, entriesCount: number, dayPart?: DayPart) => {
     if (scenario === 'support') return 'Keep today small. Support counts as progress.';
-    if (scenario === 'school') return 'You do not need to solve school all at once today.';
+    if (scenario === 'school') {
+        if (dayPart === 'late_night' || dayPart === 'night') return 'It is late. Pick one small task and give yourself permission to stop.';
+        if (dayPart === 'early_morning') return 'Early start on school. One step at a time.';
+        return 'You do not need to solve school all at once today.';
+    }
     if (scenario === 'conflict') return 'Slow the moment down before it gets louder.';
     if (scenario === 'future') return 'Treat this like a direction check, not a final verdict.';
-    if (scenario === 'energy') return 'Start with steadiness before you ask more from yourself.';
+    if (scenario === 'energy') {
+        if (dayPart === 'late_night' || dayPart === 'night') return 'Rest is the reset. Let tonight be enough.';
+        return 'Start with steadiness before you ask more from yourself.';
+    }
+    if (dayPart === 'late_night') return 'You are still here. A few quiet lines can close the day.';
+    if (dayPart === 'early_morning') return 'Fresh start. One honest sentence is a good way to begin.';
     return entriesCount > 2
         ? 'Keep it light. One useful next move is enough for today.'
         : 'Start small. One honest note is enough to turn today into something clearer.';
@@ -309,6 +319,7 @@ export const buildHomeActionContent = (input: {
     entries: HomeActionEntry[];
     onboardingTrackLabel: string;
     fallbackPrompt: string;
+    dayPart?: DayPart;
 }): HomeActionContent => {
     const scenario = inferScenario(input.todayAction);
     const groundingCount = input.todayAction?.brief?.groundingEntryIds?.length || input.todayAction?.highlights?.length || 0;
@@ -328,8 +339,10 @@ export const buildHomeActionContent = (input: {
         entriesCount: input.entries.length,
     });
 
+    const dayPart = input.dayPart ?? getDayPart(new Date().getHours());
+
     return {
-        intro: buildIntro(scenario, input.entries.length),
+        intro: buildIntro(scenario, input.entries.length, dayPart),
         title: buildTitle(scenario),
         body: buildBody({
             scenario,

@@ -33,7 +33,10 @@
       "Bash(ls c:/Users/mtabe/Notive/backend/*.md)",
       "Bash(ls c:/Users/mtabe/Notive/frontend/*.md)",
       "Bash(ls c:/Users/mtabe/Notive/similarity-service/*.md)",
-      "Bash(wc -l c:/Users/mtabe/Notive/*.md c:/Users/mtabe/Notive/backend/*.md c:/Users/mtabe/Notive/frontend/ACCESSIBILITY_AUDIT.md c:/Users/mtabe/Notive/frontend/UI_COMPONENT_INTEGRATION.md c:/Users/mtabe/Notive/frontend/UI_QUALITY_CHECKLIST.md)"
+      "Bash(wc -l c:/Users/mtabe/Notive/*.md c:/Users/mtabe/Notive/backend/*.md c:/Users/mtabe/Notive/frontend/ACCESSIBILITY_AUDIT.md c:/Users/mtabe/Notive/frontend/UI_COMPONENT_INTEGRATION.md c:/Users/mtabe/Notive/frontend/UI_QUALITY_CHECKLIST.md)",
+      "Bash(grep -r \"getDashboardInsights\\\\|getJournalIntelligence\\\\|getInsights\\\\|buildDashboard\\\\|buildJournal\" /c/Users/mtabe/Notive/backend/src/controllers/*.ts)",
+      "Bash(ls -1 /c/Users/mtabe/Notive/frontend/src/components/dashboard/*.tsx)",
+      "Bash(find /c/Users/mtabe/Notive/backend/src/services -name \"*.ts\" -exec basename {} \\\\;)"
     ],
     "additionalDirectories": [
       "c:\\Users\\mtabe\\Notive\\frontend\\src\\out"

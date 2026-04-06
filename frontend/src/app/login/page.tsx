@@ -11,6 +11,7 @@ import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
 import { GoogleSsoPanel } from '@/components/auth/GoogleSsoPanel';
 import { motion } from 'framer-motion';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
+import NotiveLoadingScreen from '@/components/ui/NotiveLoadingScreen';
 import {
     quietNotebookPageStyle,
     quietNotebookPanelStyle,
@@ -29,6 +30,14 @@ const TRUST_POINTS = [
     'Works on phone, tablet, and laptop',
 ];
 
+const LOGIN_PHRASES = [
+    'Welcome back\u2026',
+    'Opening your notebook\u2026',
+    'Picking up where you left off\u2026',
+    'Reconnecting your story\u2026',
+    'Almost there\u2026',
+];
+
 const SIGNIN_DESKTOP_HERO = '/images/auth-signin-desktop.jpg';
 const SIGNIN_MOBILE_HERO = '/images/auth-signin-mobile.jpg';
 const AUTH_SIDE_STRIP = '/images/auth-side-strip.jpg';
@@ -42,6 +51,8 @@ export default function LoginPage() {
     const [notice, setNotice] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
     const [isLoading, setIsLoading] = useState(false);
+    const [loginSuccess, setLoginSuccess] = useState(false);
+    const [postAuthRoute, setPostAuthRoute] = useState<string | null>(null);
     const [safeReturnTo, setSafeReturnTo] = useState<string | null>(null);
 
     useEffect(() => {
@@ -73,6 +84,14 @@ export default function LoginPage() {
         }
     }, [authLoading, user, router, resolvePostAuthRoute]);
 
+    useEffect(() => {
+        if (!loginSuccess || !postAuthRoute) return;
+        const timer = setTimeout(() => {
+            router.replace(postAuthRoute);
+        }, 3200);
+        return () => clearTimeout(timer);
+    }, [loginSuccess, postAuthRoute, router]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -98,10 +117,11 @@ export default function LoginPage() {
 
         try {
             const authenticatedUser = await login(trimmedEmail, password);
-            router.replace(resolvePostAuthRoute(authenticatedUser));
+            const dest = resolvePostAuthRoute(authenticatedUser);
+            setPostAuthRoute(dest);
+            setLoginSuccess(true);
         } catch (err: any) {
-            setError(err.message || 'We couldn’t sign you in. Check your email and password, then try again.');
-        } finally {
+            setError(err.message || 'We couldn\u2019t sign you in. Check your email and password, then try again.');
             setIsLoading(false);
         }
     };
@@ -111,11 +131,15 @@ export default function LoginPage() {
             setIsLoading(true);
             if (credentialResponse.credential) {
                 const authenticatedUser = await loginWithSsoCredential('google', credentialResponse.credential);
-                router.replace(resolvePostAuthRoute(authenticatedUser));
+                const dest = resolvePostAuthRoute(authenticatedUser);
+                setPostAuthRoute(dest);
+                setLoginSuccess(true);
+            } else {
+                setError('Google sign-in didn’t finish. Please try again.');
+                setIsLoading(false);
             }
         } catch (err: any) {
-            setError(err.message || 'Google sign-in didn’t go through. Please try again.');
-        } finally {
+            setError(err.message || 'Google sign-in didn\u2019t go through. Please try again.');
             setIsLoading(false);
         }
     };
@@ -123,6 +147,14 @@ export default function LoginPage() {
     const handleGoogleError = () => {
         setError('Google sign-in didn’t finish. Please try again.');
     };
+
+    if (loginSuccess) {
+        return (
+            <div className="page-paper-canvas min-h-screen" style={quietNotebookPageStyle}>
+                <NotiveLoadingScreen phrases={LOGIN_PHRASES} phraseInterval={3400} />
+            </div>
+        );
+    }
 
     return (
         <div className="page-paper-canvas min-h-screen px-3 py-3 md:px-5 md:py-5" style={quietNotebookPageStyle}>

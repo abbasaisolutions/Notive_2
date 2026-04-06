@@ -375,9 +375,16 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                         {entry.title || 'Untitled Memory'}
                                                     </h3>
 
-                                                    <p className="text-xs text-ink-secondary leading-snug line-clamp-2 mb-1.5">
-                                                        {entry.content}
-                                                    </p>
+                                                    <div className="flex items-center gap-1.5 mb-1">
+                                                        <p className="text-xs text-ink-secondary leading-snug line-clamp-2 flex-1 min-w-0">
+                                                            {entry.content}
+                                                        </p>
+                                                        {entry.content && (
+                                                            <span className="shrink-0 text-[0.55rem] font-medium text-ink-muted/70 tabular-nums">
+                                                                {entry.content.split(/\s+/).filter(Boolean).length}w
+                                                            </span>
+                                                        )}
+                                                    </div>
 
                                                     {/* Micro-insight: analysisLine + takeawayLine */}
                                                     {(entry.analysisLine || entry.takeawayLine) && (

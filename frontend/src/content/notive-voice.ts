@@ -8,7 +8,7 @@ export const NOTIVE_VOICE = {
         memoryAtlas: 'Memories',
         signalStudio: 'Patterns',
         outcomeStudio: 'Stories',
-        reflectionCoach: 'Guide',
+        reflectionCoach: 'AskNotive',
         storyCollections: 'Groups',
         memoryInbox: 'Bring In',
         profileStudio: 'Me',

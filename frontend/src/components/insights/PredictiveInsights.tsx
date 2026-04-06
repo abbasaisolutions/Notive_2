@@ -179,7 +179,7 @@ export function PredictiveInsights({
                     message: 'A short note could help you name what keeps coming back.',
                     priority: 'high',
                     signals: [{ label: 'Low days', value: String(negativeCount) }],
-                    action: { label: 'Open Guide', href: '/chat' },
+                    action: { label: 'Open AskNotive', href: '/chat' },
                 });
             } else if (positiveCount >= 5) {
                 insights.push({

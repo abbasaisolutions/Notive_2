@@ -7,6 +7,7 @@
  */
 
 import { App } from '@capacitor/app';
+import { captureDeviceSnapshotLite } from '@/services/device-context.service';
 
 const SESSION_KEY = 'notive_session_start';
 let sessionStartTime: number | null = null;
@@ -98,21 +99,26 @@ function reportSession(minutes: number): void {
     const token = getToken();
     if (!token) return;
 
-    // Fire and forget — use sendBeacon for reliability on page unload
-    const body = JSON.stringify({ sessionMinutes: minutes });
+    const deviceInfo = captureDeviceSnapshotLite();
 
-    if (typeof navigator?.sendBeacon === 'function') {
-        const blob = new Blob([body], { type: 'application/json' });
-        navigator.sendBeacon(`${apiUrl}/device/app-session`, blob);
-    } else {
-        void fetch(`${apiUrl}/device/app-session`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-            },
-            body,
-            keepalive: true,
-        }).catch(() => {});
-    }
+    // This endpoint requires auth, so sendBeacon is not usable here because it
+    // cannot attach the bearer token. Use keepalive fetch instead.
+    const body = JSON.stringify({
+        sessionMinutes: minutes,
+        platform: deviceInfo.platform,
+        timezone: deviceInfo.timezone,
+        dayPart: deviceInfo.dayPart,
+        connectivity: deviceInfo.connectivity,
+        deviceType: deviceInfo.deviceType,
+    });
+
+    void fetch(`${apiUrl}/device/app-session`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+        body,
+        keepalive: true,
+    }).catch(() => {});
 }

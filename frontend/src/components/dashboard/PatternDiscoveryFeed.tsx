@@ -14,6 +14,12 @@ type Correlation = {
     direction: 'lifter' | 'drain';
 };
 
+function getConfidence(occurrences: number): { label: string; color: string } {
+    if (occurrences >= 8) return { label: 'High confidence', color: 'rgba(138,154,111,0.9)' };
+    if (occurrences >= 4) return { label: 'Medium confidence', color: 'rgba(191,214,221,0.9)' };
+    return { label: 'Low — early signal', color: 'rgba(234,216,189,0.9)' };
+}
+
 function CorrelationCard({ data }: { data: Correlation }) {
     const isLifter = data.direction === 'lifter';
     const accent = isLifter ? 'rgba(199,220,203,0.95)' : 'rgba(234,216,189,0.95)';
@@ -38,6 +44,20 @@ function CorrelationCard({ data }: { data: Correlation }) {
                     <p className="notebook-muted text-[0.7rem] mt-1">
                         {data.occurrences} {data.occurrences === 1 ? 'note' : 'notes'}
                     </p>
+                    {(() => {
+                        const conf = getConfidence(data.occurrences);
+                        return (
+                            <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                <span className="rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-[0.06em]"
+                                    style={{ backgroundColor: conf.color.replace('0.9)', '0.12)'), color: conf.color.replace('0.9)', '1)') }}>
+                                    {conf.label}
+                                </span>
+                                <span className="text-[0.62rem] text-[rgb(107,107,107)]">
+                                    based on {data.occurrences} {data.occurrences === 1 ? 'note' : 'notes'}
+                                </span>
+                            </div>
+                        );
+                    })()}
                 </div>
             </div>
         </div>

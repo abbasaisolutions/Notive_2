@@ -1,5 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 import { PushNotificationService } from './push-notification.service';
+import {
+    buildUserContexts,
+    shouldSuppress,
+    resolveTimeOfDay,
+    resolveCategory,
+    selectNotification,
+    getLocalDate,
+} from './notification-copy';
 
 export interface ReminderInput {
     time: string;            // "HH:MM" 24-hour
@@ -74,7 +82,6 @@ export class ReminderService {
         const now = new Date();
         const currentUtcHour = now.getUTCHours();
         const currentUtcMinute = now.getUTCMinutes();
-        const currentUtcDay = now.getUTCDay(); // 0=Sun
 
         const enabled = await this.prisma.reminder.findMany({
             where: { enabled: true },
@@ -82,31 +89,57 @@ export class ReminderService {
 
         let dispatched = 0;
 
+        // Phase 1: collect due reminders (time + day-of-week match)
+        const dueReminders: ReminderRecord[] = [];
         for (const reminder of enabled) {
             const [remHour, remMin] = reminder.time.split(':').map(Number);
             if (isNaN(remHour) || isNaN(remMin)) continue;
 
-            // Convert reminder local time to UTC for comparison using the stored timezone.
-            // For simplicity we approximate using JS Intl — works for standard IANA zones.
             const utcOffset = getUtcOffsetMinutes(reminder.timezone, now);
             const reminderUtcMinutes = (remHour * 60 + remMin - utcOffset + 1440) % 1440;
             const currentUtcMinutes = currentUtcHour * 60 + currentUtcMinute;
 
             if (reminderUtcMinutes !== currentUtcMinutes) continue;
 
-            // Check day-of-week filter (in user's local timezone)
             if (reminder.days.length > 0) {
                 const localDay = getLocalDayOfWeek(reminder.timezone, now);
                 if (!reminder.days.includes(localDay)) continue;
             }
 
-            await this.pushService.sendPushNotification(reminder.userId, {
-                title: "Time to reflect 📓",
-                body: "Take a moment to capture what's on your mind today.",
-                data: { type: 'reminder', link: '/entry/new' },
-            }).catch(() => {});
+            dueReminders.push(reminder);
+        }
 
-            dispatched++;
+        if (dueReminders.length === 0) return { dispatched: 0 };
+
+        // Phase 2: batch-query user context (last entry, 7-day count)
+        const userIds = dueReminders.map(r => r.userId);
+        const contexts = await buildUserContexts(this.prisma, userIds);
+
+        // Phase 3: send context-aware notifications
+        for (const reminder of dueReminders) {
+            const ctx = contexts.get(reminder.userId) ?? {
+                lastEntryAt: null,
+                daysSinceLastEntry: null,
+                isConsistent: false,
+            };
+
+            // Skip if user already journaled today
+            if (shouldSuppress(ctx.lastEntryAt, reminder.timezone)) continue;
+
+            const timeOfDay = resolveTimeOfDay(reminder.time);
+            const category = resolveCategory(ctx.daysSinceLastEntry, ctx.isConsistent, timeOfDay);
+            const localDate = getLocalDate(reminder.timezone, now);
+            const copy = selectNotification(category, reminder.userId, localDate);
+
+            const result = await this.pushService.sendPushNotification(reminder.userId, {
+                title: copy.title,
+                body: copy.body,
+                data: { type: 'reminder', link: '/entry/new' },
+            }).catch(() => null);
+
+            if ((result?.sent ?? 0) > 0) {
+                dispatched++;
+            }
         }
 
         return { dispatched };

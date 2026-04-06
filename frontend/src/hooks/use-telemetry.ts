@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import useApi from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
+import { captureDeviceSnapshotLite } from '@/services/device-context.service';
 
 type TrackTelemetryInput = {
     eventType: string;
@@ -19,6 +20,7 @@ export function useTelemetry() {
 
     const trackEvent = useCallback(async (input: TrackTelemetryInput) => {
         try {
+            const deviceInfo = captureDeviceSnapshotLite();
             await apiFetch(`${API_URL}/analytics/events`, {
                 method: 'POST',
                 headers: {
@@ -29,7 +31,10 @@ export function useTelemetry() {
                     field: input.field,
                     value: input.value,
                     pathname: input.pathname || pathname || null,
-                    metadata: input.metadata || null,
+                    metadata: {
+                        ...deviceInfo,
+                        ...input.metadata,
+                    },
                     occurredAt: new Date().toISOString(),
                 }),
             });

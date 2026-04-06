@@ -4,7 +4,7 @@
    Every teen gets one grounded next move immediately. */
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { FiBookOpen, FiClock, FiEdit3, FiGrid, FiMic } from 'react-icons/fi';
@@ -53,7 +53,6 @@ import {
 } from '@/utils/gentle-reflection';
 import { deriveWriterDNA } from '@/services/writer-dna.service';
 import { getInsightTier, Gate, WhatsComingCard, EmptyDashboard } from '@/components/dashboard/ColdStartGate';
-import QuickPulseStrip from '@/components/dashboard/QuickPulseStrip';
 // Dead-branch visualization components — dynamic to exclude from initial bundle
 const PrimeTimePrediction = dynamic(() => import('@/components/dashboard/PrimeTimePrediction'));
 const WritingRhythmCalendar = dynamic(() => import('@/components/dashboard/WritingRhythmCalendar'));
@@ -64,6 +63,7 @@ const PatternDiscoveryFeed = dynamic(() => import('@/components/dashboard/Patter
 const HeroInsightCard = dynamic(() => import('@/components/dashboard/HeroInsightCard'));
 import DeviceContextStrip from '@/components/dashboard/DeviceContextStrip';
 import DashboardNoticeCard from '@/components/dashboard/DashboardNoticeCard';
+const DailyCheckIn = dynamic(() => import('@/components/dashboard/DailyCheckIn'));
 const WellnessCheckin = dynamic(() => import('@/components/dashboard/WellnessCheckin'));
 import type { WellnessData } from '@/components/dashboard/WellnessCheckin';
 const JournalIntelligenceSection = dynamic(() => import('@/components/dashboard/JournalIntelligenceSection'));
@@ -72,6 +72,7 @@ const DashboardNotebookView = dynamic(() => import('@/components/dashboard/Dashb
     loading: () => <div className="flex min-h-[60vh] items-center justify-center"><Spinner /></div>,
 });
 import { Spinner } from '@/components/ui';
+import NotiveLoadingScreen from '@/components/ui/NotiveLoadingScreen';
 
 type DashboardAction = {
     label: string;
@@ -93,8 +94,6 @@ type DashboardFocusConfig = {
     accent: NotebookAccentName;
     doodle?: NotebookDoodleName | null;
 };
-
-type DashboardTab = 'recent' | 'moments' | 'patterns';
 
 type DeviceContextSummary = {
     location?: { placeName: string; visitCount: number } | null;
@@ -121,6 +120,23 @@ type DashboardWeeklyDigest = {
     editorial: string;
     highlights: Array<{ category: string; insight: string }>;
     generatedAt: string;
+};
+
+type DashboardStoryOverview = {
+    stats: {
+        entryCount: number;
+        experienceCount: number;
+        verifiedCount: number;
+    };
+    experiences: Array<{
+        verified: boolean;
+        completeness?: {
+            readyForVerification: boolean;
+            readyForExport: boolean;
+        } | null;
+    }>;
+    topSkills: string[];
+    topLessons: string[];
 };
 
 type DashboardSupportMap = {
@@ -156,11 +172,21 @@ const SCENARIO_VISUALS: Record<HomeActionScenario, { accent: NotebookAccentName;
 
 const SUPPORT_PATTERN = /\b(friend|fight|argument|drama|parent|family|roommate|text|conversation|left out|awkward)\b/i;
 const MOON_PATTERN = /\b(night|late|sleep|tired|quiet|alone|overthink|brain dump)\b/i;
-const TAB_ORDER: DashboardTab[] = ['recent', 'moments', 'patterns'];
-const TAB_LABELS: Record<DashboardTab, string> = {
-    recent: 'Recent notes',
-    moments: 'Moments',
-    patterns: 'Patterns',
+const DAILY_CHECKIN_TAGS = new Set(['check-in', 'daily-checkin']);
+
+const getStartOfLocalDay = (ref = new Date()) => {
+    const dayStart = new Date(ref);
+    dayStart.setHours(0, 0, 0, 0);
+    return dayStart;
+};
+
+const isDailyCheckInEntry = (entry: Pick<Entry, 'title' | 'tags'>) => {
+    const tags = Array.isArray(entry.tags) ? entry.tags : [];
+    if (tags.some((tag) => DAILY_CHECKIN_TAGS.has(String(tag).trim().toLowerCase()))) {
+        return true;
+    }
+
+    return String(entry.title || '').trim().toLowerCase() === 'quick check-in';
 };
 
 const countWordsThisWeek = (entries: Entry[]) => {
@@ -458,15 +484,16 @@ const buildStarterFocus = (input: {
     doodle: 'moon',
 });
 
+/* ─── Animated loading screen (shared component) ─── */
+
 export default function DashboardPage() {
     const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { apiFetch } = useApi();
     const { trackEvent } = useTelemetry();
-    const { stats: gamificationStats, isLoading: gamificationLoading } = useGamification();
+    const { stats: gamificationStats, isLoading: gamificationLoading, refreshStats: refreshGamificationStats } = useGamification();
     const [entries, setEntries] = useState<Entry[]>([]);
     const [resurfacedMoments, setResurfacedMoments] = useState<ResurfacedMoment[]>([]);
     const [themeClusters, setThemeClusters] = useState<ThemeCluster[]>([]);
-    const [activeTab, setActiveTab] = useState<DashboardTab>('recent');
     const [isLoading, setIsLoading] = useState(true);
     const [dashboardInsightsLoaded, setDashboardInsightsLoaded] = useState(false);
     const [journalIntelLoaded, setJournalIntelLoaded] = useState(false);
@@ -491,6 +518,7 @@ export default function DashboardPage() {
     const [heroInsightLoading, setHeroInsightLoading] = useState(false);
     const [journalIntel, setJournalIntel] = useState<DashboardPageJournalIntel | null>(null);
     const [weeklyDigest, setWeeklyDigest] = useState<DashboardWeeklyDigest | null>(null);
+    const [storyOverview, setStoryOverview] = useState<DashboardStoryOverview | null>(null);
     const [supportMap, setSupportMap] = useState<DashboardSupportMap | null>(null);
     const [deviceSignals, setDeviceSignals] = useState<DeviceContextSummary | null>(null);
     const [wellnessSubmitted, setWellnessSubmitted] = useState(false);
@@ -531,6 +559,7 @@ export default function DashboardPage() {
             setDashboardInsights(null);
             setJournalIntel(null);
             setWeeklyDigest(null);
+            setStoryOverview(null);
             setSupportMap(null);
             setHeroInsight(null);
             setDeviceSignals(null);
@@ -607,6 +636,20 @@ export default function DashboardPage() {
                     });
                 } else if (mounted) {
                     setHeroInsightLoading(false);
+                }
+
+                if (entryCount >= 1) {
+                    scheduleDeferred(260, () => {
+                        apiFetch(`${API_URL}/ai/opportunity/overview`, { signal: controller.signal })
+                            .then(async (r) => {
+                                if (!mounted || !r.ok) return;
+                                const data = await r.json().catch(() => null);
+                                if (mounted && data?.overview) {
+                                    setStoryOverview(data.overview as DashboardStoryOverview);
+                                }
+                            })
+                            .catch(() => { /* non-critical */ });
+                    });
                 }
 
                 // Journal intelligence and deeper synthesis arrive after the core notebook is visible.
@@ -731,6 +774,47 @@ export default function DashboardPage() {
     // Keep hooks above early returns so React sees the same order on every render.
     const streak = gamificationLoading ? null : (gamificationStats?.currentStreak ?? null);
     const totalWords = gamificationLoading ? null : (gamificationStats?.totalWords ?? null);
+
+    // ── Daily Check-In ────────────────────────────────
+    const todayCheckInEntry = useMemo(() => {
+        const todayStart = getStartOfLocalDay();
+        return entries.find((entry) => (
+            isDailyCheckInEntry(entry) && new Date(entry.createdAt) >= todayStart
+        )) ?? null;
+    }, [entries]);
+    const hasCheckedInToday = Boolean(todayCheckInEntry);
+    const todayCheckInMood = todayCheckInEntry?.mood ?? null;
+
+    const handleDailyCheckIn = useCallback(async (mood: string, note: string) => {
+        const content = note || `Feeling ${mood} today.`;
+        const res = await apiFetch(`${API_URL}/entries`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content, mood, title: 'Quick check-in', tags: ['check-in'] }),
+        });
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => null);
+            throw new Error(errorData?.message || 'Couldn’t save your check-in. Please try again.');
+        }
+
+        const saved = await res.json().catch(() => null);
+        const normalizedEntry = {
+            ...saved,
+            content: saved?.content ?? content,
+            mood: saved?.mood ?? mood,
+            title: saved?.title ?? 'Quick check-in',
+            tags: Array.isArray(saved?.tags) && saved.tags.length > 0 ? saved.tags : ['check-in'],
+            createdAt: saved?.createdAt ?? new Date().toISOString(),
+        } as Entry;
+        const todayStart = getStartOfLocalDay();
+
+        setEntries((prev) => [
+            normalizedEntry,
+            ...prev.filter((entry) => !(isDailyCheckInEntry(entry) && new Date(entry.createdAt) >= todayStart)),
+        ]);
+        void refreshGamificationStats();
+        void trackEvent({ eventType: 'daily_checkin', metadata: { mood } });
+    }, [apiFetch, refreshGamificationStats, trackEvent]);
     const writerDNA = useMemo(() => deriveWriterDNA({
         entries: entries.map((e) => ({ mood: e.mood, createdAt: e.createdAt, contentLength: e.content?.length ?? 0 })),
         themeClusters: themeClusters.map((t) => ({ label: t.label, dominantMood: t.dominantMood, entryCount: t.entryCount })),
@@ -751,17 +835,7 @@ export default function DashboardPage() {
     }
 
     if (isLoading) {
-        return (
-            <div className="min-h-screen pb-6 md:pb-20">
-                <main className="mx-auto w-full max-w-4xl px-4 py-6 md:px-6 md:py-10 lg:ml-0 lg:mr-auto">
-                    <DashboardNoticeCard
-                        eyebrow="Loading"
-                        title="Pulling your notes together."
-                        body="Notive is syncing your latest writing so the dashboard starts from real signals, not placeholders."
-                    />
-                </main>
-            </div>
-        );
+        return <NotiveLoadingScreen />;
     }
 
     const safeUser = user!;
@@ -988,6 +1062,10 @@ export default function DashboardPage() {
                 dashboardInsights={dashboardInsights}
                 journalIntel={journalIntel}
                 weeklyDigest={weeklyDigest}
+                storyOverview={storyOverview}
+                hasCheckedInToday={hasCheckedInToday}
+                todayCheckInMood={todayCheckInMood}
+                onDailyCheckIn={handleDailyCheckIn}
                 supportMap={supportMap}
                 heroInsight={heroInsight}
                 heroInsightLoading={heroInsightLoading}
@@ -1102,20 +1180,19 @@ export default function DashboardPage() {
                     ) : null}
                 </Gate>
 
-                {/* ── Quick Pulse Strip (tier 3+) ──────────────────── */}
-                <Gate minTier={3} currentTier={insightTier}>
-                    <QuickPulseStrip
-                        entries={entries}
-                        streak={streak}
-                        totalWords={totalWords}
-                    />
-                </Gate>
-
                 {/* ── Mood sparkline (tier 2+) ─────────────────────── */}
                 <Gate minTier={2} currentTier={insightTier}>
                     {showMoodHistory && (
                         <MoodSparkline entries={entries} />
                     )}
+                </Gate>
+
+                {/* ── Daily Check-In (tier 1+) ───────────────────── */}
+                <Gate minTier={1} currentTier={insightTier}>
+                    <DailyCheckIn
+                        hasCheckedInToday={hasCheckedInToday}
+                        onSubmit={handleDailyCheckIn}
+                    />
                 </Gate>
 
                 {/* ── Focus card (tier 1+) ─────────────────────────── */}
@@ -1353,7 +1430,7 @@ export default function DashboardPage() {
                 {/* ── Bottom nav links ────────────────────────────────── */}
                 <div className="flex items-center justify-center gap-5 pt-2 pb-1">
                     <Link href={guideHref} className="notebook-muted text-sm hover:opacity-80 transition-opacity">
-                        Guide
+                        AskNotive
                     </Link>
                     <span className="notebook-muted text-xs opacity-40">·</span>
                     <Link href={timelineHref} className="notebook-muted text-sm hover:opacity-80 transition-opacity">

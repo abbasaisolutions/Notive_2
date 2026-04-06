@@ -79,7 +79,7 @@ const icons = {
 const homeNavItem: NavItem = { href: '/dashboard', label: 'Home', shortLabel: 'Home', icon: icons.home, matchPrefixes: ['/dashboard'] };
 const writeNavItem: NavItem = { href: '/entry/new', label: 'Write', shortLabel: 'Write', icon: icons.write, isMain: true, matchPrefixes: ['/entry/new', '/entry/edit'] };
 const memoriesNavItem: NavItem = { href: '/timeline', label: 'Memories', shortLabel: 'Memories', icon: icons.memories, matchPrefixes: ['/timeline'] };
-const guideNavItem: NavItem = { href: '/chat', label: 'Guide', shortLabel: 'Guide', icon: icons.guide, matchPrefixes: ['/chat'] };
+const guideNavItem: NavItem = { href: '/chat', label: 'AskNotive', shortLabel: 'Ask', icon: icons.guide, matchPrefixes: ['/chat'] };
 const groupsNavItem: NavItem = { href: '/chapters', label: 'Groups', shortLabel: 'Groups', icon: icons.chapters, matchPrefixes: ['/chapters'] };
 const importsNavItem: NavItem = { href: '/import', label: 'Imports', shortLabel: 'Imports', icon: icons.imports, matchPrefixes: ['/import'] };
 const storiesNavItem: NavItem = { href: '/portfolio', label: 'Stories', shortLabel: 'Stories', icon: icons.stories, matchPrefixes: ['/portfolio'] };
@@ -177,7 +177,7 @@ export const getMobileMainNavItems = (maturity: WorkspaceMaturity): NavItem[] =>
 
 export const getMobileMoreNavSections = (_maturity: WorkspaceMaturity): NavSection[] => {
     // Only admin items remain in the More drawer.
-    // Regular users see Home, Memories, +Write, Guide, Me in the bottom bar.
+    // Regular users see Home, Memories, +Write, AskNotive, Me in the bottom bar.
     return [
         {
             id: 'admin',
@@ -206,7 +206,7 @@ export const getProfileReadinessAction = (completionScore: number): RouteAction 
 export const journeyStages: JourneyStage[] = [
     { id: 'capture', label: 'Write', description: 'Save moments while they are still fresh.', href: '/entry/new' },
     { id: 'organize', label: 'Groups', description: 'Group related memories so they are easy to find.', href: '/chapters' },
-    { id: 'reflect', label: 'Guide', description: 'Get grounded advice based on your notes.', href: '/chat' },
+    { id: 'reflect', label: 'AskNotive', description: 'Get grounded advice based on your notes.', href: '/chat' },
     { id: 'apply', label: 'Stories', description: 'Turn moments into clear stories you can use later.', href: '/portfolio' },
     { id: 'account', label: 'Me', description: 'Choose your goals, settings, and privacy.', href: '/profile' },
 ];
@@ -299,10 +299,10 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
     {
         prefix: '/chat',
         meta: {
-            title: 'Guide',
+            title: 'AskNotive',
             description: 'Get grounded advice based on your notes — one next step, one support draft, or a clearer question.',
             section: 'Reflect',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Guide' }],
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'AskNotive' }],
             primaryAction: { label: 'Open Memories', shortLabel: 'Memories', href: '/timeline' },
             secondaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
             visibleInfo: ['Action brief', 'Bridge draft', 'Next step'],

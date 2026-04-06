@@ -365,7 +365,7 @@ export default function ChatPage() {
                             <FiArrowLeft size={20} aria-hidden="true" />
                         </button>
                         <div>
-                            <h1 className="text-lg font-semibold workspace-heading">Guide</h1>
+                            <h1 className="text-lg font-semibold workspace-heading">AskNotive</h1>
                             <p className="text-xs text-ink-muted">
                                 {coachAvailable ? 'Ask about your notes, patterns, or what to write next' : 'Unavailable in this environment'}
                             </p>
@@ -418,7 +418,7 @@ export default function ChatPage() {
 
                         {!coachAvailable && (
                             <div className="workspace-soft-panel rounded-2xl px-4 py-4 text-sm">
-                                <p className="font-medium workspace-heading">Guide is paused here.</p>
+                                <p className="font-medium workspace-heading">AskNotive is paused here.</p>
                                 <p className="mt-2 text-[rgb(var(--text-secondary))]">{coachMessage}</p>
                                 <p className="mt-2 text-[rgb(var(--text-secondary))]">You can still write entries, browse memories, and check patterns.</p>
                             </div>

@@ -7,6 +7,7 @@ import { App } from '@capacitor/app';
 import logger from '@/utils/logger';
 import { useApi } from '@/hooks/use-api';
 import { isNativePlatform, getNativePlatform } from '@/utils/platform';
+import { hasCompletedPermissionsOnboarding } from '@/services/device-permissions.service';
 
 export interface DeviceToken {
     id: string;
@@ -89,8 +90,23 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             // Ensure the Android channel exists before the first notification arrives.
             await ensureAndroidPushChannel();
 
-            // Request initial permission
-            await requestPermission();
+            // Only auto-request permission if the user has already been through the
+            // permissions onboarding step. Otherwise, let that step handle the first ask
+            // so the OS prompt comes with context instead of on a cold mount.
+            if (hasCompletedPermissionsOnboarding()) {
+                await requestPermission();
+            } else {
+                // Still check current status so UI reflects reality
+                const check = await PushNotifications.checkPermissions();
+                const alreadyGranted = check.receive === 'granted';
+                setIsPermissionGranted(alreadyGranted);
+
+                // Existing users who granted permission before the onboarding
+                // flag existed still need token registration on every app start.
+                if (alreadyGranted) {
+                    await PushNotifications.register();
+                }
+            }
         } catch (error) {
             logger.error('Failed to initialize push notifications:', error);
         } finally {
@@ -109,10 +125,13 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
 
     const setupPushListeners = async () => {
         try {
-            // Handle token received
+            // Handle token received — also syncs isPermissionGranted because
+            // receiving a token proves the OS permission is granted (covers
+            // cases where permission was requested outside this context, e.g.
+            // the onboarding flow's standalone device-permissions service).
             PushNotifications.addListener('registration', (token: any) => {
                 logger.debug('Push token received:', token.value);
-                // Auto-register this token
+                setIsPermissionGranted(true);
                 registerDevice(token.value, getPlatform()).catch(err =>
                     logger.error('Failed to auto-register token:', err)
                 );

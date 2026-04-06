@@ -8,11 +8,13 @@ import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import ActionBriefPanel from '@/components/action/ActionBriefPanel';
+import DailyCheckIn from '@/components/dashboard/DailyCheckIn';
 import type { StudentActionBrief } from '@/components/action/types';
 import DailyGentleReflectionCard from '@/components/dashboard/DailyGentleReflectionCard';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import { Surface } from '@/components/ui/surface';
 import UserAvatar from '@/components/ui/UserAvatar';
+import { useGamification } from '@/context/gamification-context';
 import type { GentleReflectionDraft } from '@/services/gentle-reflection.service';
 
 type DashboardAction = {
@@ -39,11 +41,15 @@ type DashboardJournalIntel = {
         totalUniqueWords: number;
         recentNewWords: string[];
         growthRate: number;
+        richness?: number;
+        rarityScore?: number;
+        readingGradeLevel?: number;
     };
     lifeBalance: {
         dominantArea: string;
         neglectedArea: string | null;
         balanceScore: number;
+        areas?: Array<{ area: string; score: number; entryCount: number; recentTrend?: 'up' | 'stable' | 'down' }>;
     };
     peopleMap: {
         people: Array<{
@@ -56,10 +62,45 @@ type DashboardJournalIntel = {
     growthLanguage: {
         totalGrowthPhrases: number;
         recentTrend: 'increasing' | 'stable' | 'decreasing';
+        mindsetRatio?: number;
+        growthDensity?: number;
+        topPhrases?: Array<{ phrase: string; count: number }>;
+        fixedMindsetCount?: number;
+        growthMindsetCount?: number;
+    };
+    emotionalRange?: {
+        uniqueEmotions: number;
+        emotionList: string[];
+        rangeScore: number;
+        dominantEmotion: string;
+        rarestEmotion: string | null;
+        emotionFrequency: Array<{ emotion: string; count: number; percentage: number }>;
+        complexityScore: number;
     };
     gratitude: {
         totalExpressions: number;
         recentTrend: 'growing' | 'stable' | 'fading';
+        depthScore?: number;
+        streak?: number;
+        avgPerWeek?: number;
+    };
+    selfTalk?: {
+        growthStatements: number;
+        fixedStatements: number;
+        ratio: number;
+        label: string;
+        topGrowthPhrases: string[];
+        topFixedPhrases: string[];
+    };
+    writingVoice?: {
+        avgSentenceLength: number;
+        avgParagraphLength: number;
+        readingLevel: string;
+        readingGrade: number;
+        questionFrequency: number;
+        exclamationFrequency: number;
+        firstPersonRatio: number;
+        tenseDistribution: { past: number; present: number; future: number };
     };
 };
 
@@ -68,6 +109,23 @@ type DashboardWeeklyDigest = {
     editorial: string;
     highlights: Array<{ category: string; insight: string }>;
     generatedAt: string;
+};
+
+type DashboardStoryOverview = {
+    stats: {
+        entryCount: number;
+        experienceCount: number;
+        verifiedCount: number;
+    };
+    experiences: Array<{
+        verified: boolean;
+        completeness?: {
+            readyForVerification: boolean;
+            readyForExport: boolean;
+        } | null;
+    }>;
+    topSkills: string[];
+    topLessons: string[];
 };
 
 type DashboardSupportMap = {
@@ -151,13 +209,17 @@ type DashboardNotebookViewProps = {
             summary: string;
         } | null;
         resilience: { narrative: string } | null;
-        reflectionDepth: { levelLabel: string } | null;
+        reflectionDepth: { level?: number; levelLabel: string; score?: number; progressToNext?: number } | null;
         correlations: Array<{ topic: string; direction: 'lifter' | 'drain' }>;
         contradictions: Array<{ description: string }>;
         triggerMap: Array<{ entity: string; direction: 'lifter' | 'drain' }>;
     } | null;
     journalIntel: DashboardJournalIntel | null;
     weeklyDigest: DashboardWeeklyDigest | null;
+    storyOverview: DashboardStoryOverview | null;
+    hasCheckedInToday: boolean;
+    todayCheckInMood: string | null;
+    onDailyCheckIn: (mood: string, note: string) => Promise<void>;
     supportMap: DashboardSupportMap | null;
     heroInsight: { body: string } | null;
     heroInsightLoading: boolean;
@@ -165,7 +227,7 @@ type DashboardNotebookViewProps = {
     userBirthDate: string | null;
 };
 
-type DashboardTab = 'today' | 'recent' | 'growth' | 'patterns';
+type DashboardTab = 'overview' | 'growth' | 'patterns';
 
 const MOOD_EMOJI: Record<string, string> = {
     happy: '😊',
@@ -179,10 +241,9 @@ const MOOD_EMOJI: Record<string, string> = {
     grateful: '🙏',
 };
 
-const TAB_ORDER: DashboardTab[] = ['today', 'recent', 'growth', 'patterns'];
+const TAB_ORDER: DashboardTab[] = ['overview', 'growth', 'patterns'];
 const TAB_LABELS: Record<DashboardTab, string> = {
-    today: 'Today',
-    recent: 'Recent notes',
+    overview: 'Overview',
     growth: 'Growth',
     patterns: 'Patterns',
 };
@@ -227,6 +288,17 @@ const toTitleCase = (value: string | null | undefined) =>
 
 const formatNotebookLabel = (value: string | null | undefined) =>
     toTitleCase(String(value || '').replace(/[_-]+/g, ' '));
+
+const formatCompactCount = (value: number) =>
+    value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k` : value.toLocaleString();
+
+const buildMeterSegments = (filled: number, total: number) =>
+    Array.from({ length: total }, (_, index) => index < Math.max(0, Math.min(total, filled)));
+
+const toProgressPercent = (value: number, maxValue: number) => {
+    if (maxValue <= 0) return 0;
+    return Math.max(8, Math.min(100, Math.round((value / maxValue) * 100)));
+};
 
 const getWeekStart = () => {
     const now = new Date();
@@ -419,6 +491,10 @@ export default function DashboardNotebookView({
     dashboardInsights,
     journalIntel,
     weeklyDigest,
+    storyOverview,
+    hasCheckedInToday,
+    todayCheckInMood,
+    onDailyCheckIn,
     supportMap,
     heroInsight,
     heroInsightLoading,
@@ -427,7 +503,8 @@ export default function DashboardNotebookView({
     userBirthDate,
     profileTags = [],
 }: DashboardNotebookViewProps) {
-    const [activeTab, setActiveTab] = useState<DashboardTab>('today');
+    const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
+    const { stats: gamificationStats, isLoading: gamificationLoading } = useGamification();
     const weekWords = useMemo(() => countWordsThisWeek(entries), [entries]);
     const notesThisWeek = useMemo(() => countEntriesThisWeek(entries), [entries]);
     const writingDays = useMemo(() => countWritingDays(entries), [entries]);
@@ -440,8 +517,87 @@ export default function DashboardNotebookView({
     const moodShift = useMemo(() => getMoodMicroShift(entries), [entries]);
     const writingEnergy = useMemo(() => getWritingEnergy(entries), [entries]);
     const latestEntry = entries[0] || null;
+    const daysSinceLastEntry = useMemo(() => {
+        if (!latestEntry) return null;
+        return Math.floor((Date.now() - new Date(latestEntry.createdAt).getTime()) / 86400000);
+    }, [latestEntry]);
     const resurfacedMoment = resurfacedMoments[0] || null;
     const returningThemes = themeClusters.filter((cluster) => cluster.entryCount >= 2).length;
+
+    const { currentStreak, bestStreak } = useMemo(() => {
+        if (entries.length === 0) return { currentStreak: 0, bestStreak: 0 };
+        const daySet = new Set(entries.map(e => {
+            const d = new Date(e.createdAt);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }));
+        // Current streak: walk backwards from today or yesterday
+        let current = 0;
+        const now = new Date();
+        const fmt = (dt: Date) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+        const todayStr = fmt(now);
+        const yest = new Date(Date.now() - 86400000);
+        const start = daySet.has(todayStr) ? now : daySet.has(fmt(yest)) ? yest : null;
+        if (start) {
+            let d = new Date(start);
+            for (let i = 0; i < 400; i++) {
+                if (!daySet.has(fmt(d))) break;
+                current++;
+                d = new Date(d.getTime() - 86400000);
+            }
+        }
+        // Best streak
+        const sorted = [...daySet].sort();
+        let best = sorted.length > 0 ? 1 : 0;
+        let run = 1;
+        for (let i = 1; i < sorted.length; i++) {
+            const diff = (new Date(sorted[i] + 'T00:00:00').getTime() - new Date(sorted[i - 1] + 'T00:00:00').getTime()) / 86400000;
+            if (diff === 1) { run++; best = Math.max(best, run); } else { run = 1; }
+        }
+        return { currentStreak: current, bestStreak: Math.max(best, current) };
+    }, [entries]);
+
+    const xpProgressPercent = useMemo(() => {
+        if (!gamificationStats) return 0;
+        const { xp, level } = gamificationStats;
+        const thresholds = [0, 100, 300, 600, 1000, 1500, 2500, 4000, 6000, 10000];
+        const levelStart = thresholds[Math.min(level - 1, 9)];
+        const levelEnd = thresholds[Math.min(level, 9)];
+        if (levelEnd <= levelStart) return 100;
+        return Math.round(((xp - levelStart) / (levelEnd - levelStart)) * 100);
+    }, [gamificationStats]);
+
+    const LEVEL_NAMES: Record<number, { name: string; short: string }> = {
+        1:  { name: 'First Page',      short: 'FP' },
+        2:  { name: 'Ink Finder',      short: 'IF' },
+        3:  { name: 'Moment Keeper',   short: 'MK' },
+        4:  { name: 'Pattern Seeker',  short: 'PS' },
+        5:  { name: 'Thread Weaver',   short: 'TW' },
+        6:  { name: 'Story Shaper',    short: 'SS' },
+        7:  { name: 'Deep Reflector',  short: 'DR' },
+        8:  { name: 'Quiet Architect', short: 'QA' },
+        9:  { name: 'Life Author',     short: 'LA' },
+        10: { name: 'Legacy Keeper',   short: 'LK' },
+    };
+    const currentLevel = gamificationStats ? LEVEL_NAMES[gamificationStats.level] ?? LEVEL_NAMES[1]! : LEVEL_NAMES[1]!;
+    const nextLevel = gamificationStats && gamificationStats.level < 10 ? LEVEL_NAMES[gamificationStats.level + 1] : null;
+
+    const nextBadge = useMemo(() => {
+        if (!gamificationStats) return null;
+        const earned = new Set(gamificationStats.badges);
+        const { currentStreak, totalEntries, totalWords: tw } = gamificationStats;
+        if (!earned.has('streak_3') && currentStreak > 0)
+            return { name: 'Rhythm of Thought', current: currentStreak, target: 3, icon: '🔥' };
+        if (!earned.has('entries_10') && totalEntries < 10)
+            return { name: 'Chronicle I', current: totalEntries, target: 10, icon: '📖' };
+        if (!earned.has('streak_7') && currentStreak >= 3 && currentStreak < 7)
+            return { name: 'Synchronized', current: currentStreak, target: 7, icon: '⚡' };
+        if (!earned.has('entries_50') && totalEntries < 50)
+            return { name: 'Life Historian', current: totalEntries, target: 50, icon: '✦' };
+        if (!earned.has('words_1000') && (tw ?? 0) < 1000)
+            return { name: 'Eloquent Mind', current: tw ?? 0, target: 1000, icon: '✍️' };
+        return null;
+    }, [gamificationStats]);
+
     const strongestEmotion = dashboardInsights?.emotionalFingerprint?.axes
         ? [...dashboardInsights.emotionalFingerprint.axes].sort((left, right) => right.score - left.score)[0] ?? null
         : null;
@@ -536,6 +692,27 @@ export default function DashboardNotebookView({
     const noticingLine = heroInsightLoading
         ? 'Notive is still reading across your notes before it says this more clearly.'
         : compactText(noticingSummary, 150);
+    const storyPipelineCounts = useMemo(() => {
+        const experiences = storyOverview?.experiences || [];
+        const readyToVerifyCount = experiences.filter(
+            (experience) => !experience.verified && experience.completeness?.readyForVerification && !experience.completeness?.readyForExport
+        ).length;
+        const readyToUseCount = experiences.filter(
+            (experience) => !experience.verified && experience.completeness?.readyForExport
+        ).length;
+        const shapingCount = Math.max(
+            (storyOverview?.stats.experienceCount || 0) - readyToVerifyCount - readyToUseCount - (storyOverview?.stats.verifiedCount || 0),
+            0
+        );
+
+        return {
+            notes: storyOverview?.stats.entryCount || entries.length,
+            shaping: shapingCount,
+            ready: readyToVerifyCount + readyToUseCount,
+            verified: storyOverview?.stats.verifiedCount || 0,
+            leadSignal: storyOverview?.topSkills?.[0] || storyOverview?.topLessons?.[0] || null,
+        };
+    }, [entries.length, storyOverview]);
     const lifeBalanceLine = journalIntel?.lifeBalance
         ? journalIntel.lifeBalance.neglectedArea
             ? `${formatNotebookLabel(journalIntel.lifeBalance.dominantArea)} has taken most of the page lately. ${formatNotebookLabel(journalIntel.lifeBalance.neglectedArea)} has been quieter.`
@@ -567,11 +744,13 @@ export default function DashboardNotebookView({
             x: 22 + (index * 356) / Math.max(1, recentEmotionEntries.length - 1),
             y: MOOD_THREAD_Y[entry.mood ?? ''] ?? 56,
             label: new Date(entry.createdAt).toLocaleDateString('en-US', { weekday: 'short' }),
+            mood: entry.mood ?? null,
         }))
         : FALLBACK_THREAD_POINTS.map((value, index) => ({
             x: 22 + (index * 356) / Math.max(1, FALLBACK_THREAD_POINTS.length - 1),
             y: value,
             label: DAY_LABELS[index]?.short ?? '',
+            mood: null as string | null,
         }));
     const emotionalThreadPath = buildSmoothPath(emotionalThreadPoints);
     const greetingLocation = locationLabel ? ` in ${locationLabel}.` : '.';
@@ -581,6 +760,78 @@ export default function DashboardNotebookView({
         : returningThemes > 0
             ? `${returningThemes} ${returningThemes === 1 ? 'theme is' : 'themes are'} returning lately.`
             : 'A few more notes will sharpen the pattern view.';
+    const lastMoodKey = latestEntry?.mood ? String(latestEntry.mood).toLowerCase() : null;
+    const lastMoodEmoji = lastMoodKey ? (MOOD_EMOJI[lastMoodKey] ?? '✦') : null;
+
+    const glanceSignals = [
+        {
+            key: 'streak',
+            label: 'Streak',
+            value: `${currentStreak}d`,
+            note: bestStreak > currentStreak ? `Best: ${bestStreak}d` : currentStreak > 0 ? 'In a row' : 'Start today',
+            accent: currentStreak >= 3 ? 'rgba(138,154,111,0.85)' : currentStreak > 0 ? 'rgba(192,160,100,0.85)' : 'rgba(120,150,160,0.85)',
+            meter: buildMeterSegments(Math.min(5, currentStreak), 5),
+            badge: null,
+        },
+        {
+            key: 'week',
+            label: 'This week',
+            value: String(notesThisWeek > 0 ? notesThisWeek : entries.length),
+            note: notesThisWeek > 0 ? `${formatCompactCount(weekWords)} words` : `${entries.length} total`,
+            accent: 'rgba(191,214,221,0.95)',
+            meter: buildMeterSegments(
+                notesThisWeek > 0
+                    ? Math.min(5, notesThisWeek)
+                    : Math.min(5, Math.max(entries.length > 0 ? 1 : 0, Math.round(entries.length / 3))),
+                5
+            ),
+            badge: writingDays > 0 ? `${writingDays}d active` : null,
+        },
+        {
+            key: 'threads',
+            label: 'Threads',
+            value: String(Math.max(returningThemes, themeClusters.length > 0 ? 1 : 0)),
+            note: themeClusters[0]?.label ? formatNotebookLabel(themeClusters[0].label) : 'Forming',
+            accent: 'rgba(216,199,232,0.95)',
+            meter: buildMeterSegments(Math.min(4, Math.max(returningThemes, themeClusters.length > 0 ? 1 : 0)), 4),
+            badge: strongestEmotion ? `${MOOD_EMOJI[String(strongestEmotion.emotion).toLowerCase()] ?? '✦'} ${formatNotebookLabel(strongestEmotion.emotion)}` : null,
+        },
+        {
+            key: 'mood',
+            label: 'Mood',
+            value: lastMoodEmoji ?? '—',
+            note: lastMoodKey ? toTitleCase(lastMoodKey) : 'Log a mood',
+            accent: 'rgba(234,216,189,0.95)',
+            meter: buildMeterSegments(lastMoodKey ? 3 : 0, 5),
+            badge: null,
+        },
+    ];
+    const storyPipelineStages = storyPipelineCounts.notes > 0 ? [
+        {
+            label: 'Notes',
+            value: storyPipelineCounts.notes,
+            progress: toProgressPercent(Math.min(storyPipelineCounts.notes, 7), 7),
+            accent: 'rgba(191,214,221,0.95)',
+        },
+        {
+            label: 'Shaping',
+            value: storyPipelineCounts.shaping,
+            progress: toProgressPercent(storyPipelineCounts.shaping, Math.max(storyPipelineCounts.notes, 1)),
+            accent: 'rgba(234,216,189,0.95)',
+        },
+        {
+            label: 'Ready',
+            value: storyPipelineCounts.ready,
+            progress: toProgressPercent(storyPipelineCounts.ready, Math.max(storyPipelineCounts.notes, 1)),
+            accent: 'rgba(216,199,232,0.95)',
+        },
+        {
+            label: 'Verified',
+            value: storyPipelineCounts.verified,
+            progress: toProgressPercent(storyPipelineCounts.verified, Math.max(storyPipelineCounts.notes, 1)),
+            accent: 'rgba(138,154,111,0.92)',
+        },
+    ] : [];
     const noticedItems = [
         themeClusters[0]
             ? `Your "${themeClusters[0].label}" thread has shown up in ${themeClusters[0].entryCount} recent ${themeClusters[0].entryCount === 1 ? 'note' : 'notes'}. ${todayBrief?.whatHelpedBefore?.summary ? compactText(todayBrief.whatHelpedBefore.summary, 92) : 'That is worth naming directly today.'}`
@@ -718,45 +969,100 @@ export default function DashboardNotebookView({
         </div>
     );
 
-    /* ── 3 KPIs for the At-a-Glance strip ── */
-    const glanceKPIs = [
-        {
-            value: weekWords > 0 ? weekWords : (totalWords ?? 0),
-            label: weekWords > 0 ? 'Words this week' : 'Words saved',
-            note: weekWords > 0 ? 'Calmer thread' : 'Notebook total',
-        },
-        {
-            value: notesThisWeek,
-            label: 'Notes this week',
-            note: notesThisWeek > 0 ? 'Recent captures' : 'Ready when you are',
-        },
-        {
-            value: returningThemes,
-            label: 'Returning theme' + (returningThemes !== 1 ? 's' : ''),
-            note: themeClusters[0]?.label ? toTitleCase(themeClusters[0].label) : 'Still forming',
-        },
-    ];
     const glanceStrip = entries.length > 0 ? (
-        <div className="rounded-[1.1rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.5)] px-3 py-3">
-            <div className="flex items-center justify-between gap-3">
+        <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3 rounded-[1.1rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.5)] px-3 py-2.5">
                 <p className="section-label">At a glance</p>
                 <p className="text-[0.69rem] leading-5 text-[rgb(107,107,107)]">
                     {atAGlanceLine}
                 </p>
             </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-                {glanceKPIs.map((kpi) => (
-                    <span
-                        key={kpi.label}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(248,244,237,0.94)] px-2.5 py-1 text-[0.7rem] text-[rgb(107,107,107)]"
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                {glanceSignals.map((signal) => (
+                    <div
+                        key={signal.key}
+                        className="rounded-[0.85rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(248,244,237,0.94)] px-2 py-2 sm:rounded-[1.05rem] sm:px-3 sm:py-3"
                     >
-                        <span className="font-medium text-[rgb(var(--paper-ink))]">
-                            {kpi.value.toLocaleString()}
-                        </span>
-                        <span>{kpi.label}</span>
-                    </span>
+                        <div className="flex items-start justify-between gap-1 sm:gap-2">
+                            <div className="min-w-0">
+                                <p className="truncate text-[0.5rem] font-bold uppercase tracking-[0.09em] text-[rgb(var(--paper-ink-soft))] sm:text-[0.58rem]">{signal.label}</p>
+                                <p className="mt-1 text-[0.85rem] font-semibold leading-none text-[rgb(var(--paper-ink))] sm:mt-2 sm:text-[1.1rem]">
+                                    {signal.value}
+                                </p>
+                            </div>
+                            {signal.badge && (
+                                <span
+                                    className="hidden rounded-full px-1.5 py-0.5 text-[0.5rem] font-medium sm:inline-block"
+                                    style={{ backgroundColor: `${signal.accent}22`, color: signal.accent }}
+                                >
+                                    {signal.badge}
+                                </span>
+                            )}
+                        </div>
+                        <p className="mt-1 text-[0.52rem] leading-4 text-[rgb(107,107,107)] sm:mt-1.5 sm:text-[0.62rem] sm:leading-5">
+                            {signal.note}
+                        </p>
+                        <div className="mt-1.5 hidden items-end gap-1.5 sm:flex">
+                            {signal.meter.map((filled, index) => (
+                                <span
+                                    key={`${signal.key}-${index}`}
+                                    className="block rounded-full"
+                                    style={{
+                                        width: signal.key === 'threads' ? '8px' : '7px',
+                                        height: signal.key === 'threads' ? '8px' : `${10 + index * 2}px`,
+                                        backgroundColor: filled ? signal.accent : 'rgba(92,92,92,0.14)',
+                                        opacity: filled ? 1 : 0.6,
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    </div>
                 ))}
             </div>
+            {storyPipelineStages.length > 0 && (
+                <div className="rounded-[1.1rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.5)] px-3 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                            <p className="section-label">Story pipeline</p>
+                            {storyPipelineCounts.leadSignal && (
+                                <p className="mt-1 text-[0.69rem] leading-5 text-[rgb(107,107,107)]">
+                                    Top material: {formatNotebookLabel(storyPipelineCounts.leadSignal)}
+                                </p>
+                            )}
+                        </div>
+                        <Link href={portfolioHref} className="text-[0.69rem] font-medium text-[rgb(138,154,111)] transition-opacity hover:opacity-80">
+                            Open stories
+                        </Link>
+                    </div>
+                    <div className="mt-3 grid grid-cols-4 gap-1.5 sm:gap-2">
+                        {storyPipelineStages.map((stage) => (
+                            <div
+                                key={stage.label}
+                                className="rounded-[0.75rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(248,244,237,0.94)] px-2 py-2 sm:rounded-[1rem] sm:px-3 sm:py-2.5"
+                            >
+                                <div className="flex items-center gap-1 sm:gap-2">
+                                    <span
+                                        className="h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5"
+                                        style={{ backgroundColor: stage.accent }}
+                                    />
+                                    <p className="truncate text-[0.56rem] font-semibold uppercase tracking-[0.06em] text-[rgb(107,107,107)] sm:text-[0.64rem] sm:tracking-[0.08em]">
+                                        {stage.label}
+                                    </p>
+                                </div>
+                                <p className="mt-1 text-[0.85rem] font-semibold leading-none text-[rgb(var(--paper-ink))] sm:mt-2 sm:text-[1rem]">
+                                    {stage.value.toLocaleString()}
+                                </p>
+                                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[rgba(92,92,92,0.12)] sm:mt-2 sm:h-1.5">
+                                    <div
+                                        className="h-full rounded-full"
+                                        style={{ width: `${stage.progress}%`, backgroundColor: stage.accent }}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     ) : null;
     const welcomeNotebookBanner = entries.length === 0 ? (
@@ -783,17 +1089,67 @@ export default function DashboardNotebookView({
             </div>
         </div>
     ) : null;
-    const topPreviewContent = activeTab === 'today' ? (
+    const topPreviewContent = activeTab === 'overview' ? (
         <>
             {glanceStrip}
+
+            {/* ── Gamification progress bar ── */}
+            {gamificationStats && !gamificationLoading && (
+                <div className="notebook-card rounded-[1.75rem] px-5 py-4 flex items-center gap-4">
+                    <div className="shrink-0 flex h-10 w-10 items-center justify-center rounded-full border-2 border-[rgba(138,154,111,0.6)] bg-[rgba(138,154,111,0.08)]">
+                        <span className="text-[0.6rem] font-bold text-[rgb(138,154,111)] leading-none text-center">{currentLevel.short}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <p className="section-label">{currentLevel.name}</p>
+                            <p className="text-[0.65rem] text-[rgb(107,107,107)]">{gamificationStats.xp} XP</p>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-[rgba(92,92,92,0.12)]">
+                            <div
+                                className="h-1.5 rounded-full bg-[rgba(138,154,111,0.85)] transition-all duration-700"
+                                style={{ width: `${xpProgressPercent}%` }}
+                            />
+                        </div>
+                        <div className="mt-1.5 flex items-center justify-between gap-2">
+                            {nextBadge && (
+                                <p className="text-[0.62rem] text-[rgb(107,107,107)]">
+                                    {nextBadge.icon} {nextBadge.current}/{nextBadge.target} → {nextBadge.name}
+                                </p>
+                            )}
+                            {nextLevel && (
+                                <p className="text-[0.58rem] text-[rgb(138,154,111)] font-medium">
+                                    Next: {nextLevel.name}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    {gamificationStats.badges.length > 0 && (
+                        <div className="shrink-0 text-center">
+                            <p className="text-lg font-semibold text-[rgb(var(--paper-ink))]">{gamificationStats.badges.length}</p>
+                            <p className="text-[0.6rem] text-[rgb(107,107,107)] uppercase tracking-wide">badges</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            <DailyCheckIn
+                hasCheckedInToday={hasCheckedInToday}
+                todayMood={todayCheckInMood}
+                onSubmit={onDailyCheckIn}
+            />
+
             <h2 className="notive-logo italic text-lg font-semibold leading-snug md:text-2xl">
-                {moodShift?.type === 'shift'
-                    ? `Your mood moved from ${moodShift.from} to ${moodShift.to} lately.`
-                    : moodShift?.type === 'steady'
-                        ? `Holding steady at ${moodShift.mood} — that's worth noticing.`
-                        : notesThisWeek > 0
-                            ? `${notesThisWeek} ${notesThisWeek === 1 ? 'note' : 'notes'} this week${returningThemes > 0 ? `, ${returningThemes} returning ${returningThemes === 1 ? 'theme' : 'themes'}` : ''}.`
-                            : `Hey ${firstName ?? 'there'} — your notebook is ready.`}
+                {daysSinceLastEntry !== null && daysSinceLastEntry >= 5
+                    ? `You've been away ${daysSinceLastEntry} days. No pressure — one sentence is enough.`
+                    : daysSinceLastEntry !== null && daysSinceLastEntry >= 2
+                        ? `It's been ${daysSinceLastEntry} days. A lot can happen — what's worth keeping?`
+                        : moodShift?.type === 'shift'
+                            ? `Your mood moved from ${moodShift.from} to ${moodShift.to} lately.`
+                            : moodShift?.type === 'steady'
+                                ? `Holding steady at ${moodShift.mood} — that's worth noticing.`
+                                : notesThisWeek > 0
+                                    ? `${notesThisWeek} ${notesThisWeek === 1 ? 'note' : 'notes'} this week${returningThemes > 0 ? `, ${returningThemes} returning ${returningThemes === 1 ? 'theme' : 'themes'}` : ''}.`
+                                    : `Hey ${firstName ?? 'there'} — your notebook is ready.`}
             </h2>
 
             {welcomeNotebookBanner}
@@ -888,133 +1244,540 @@ export default function DashboardNotebookView({
                 )}
             </div>
         </>
-    ) : activeTab === 'recent' ? (
-        <div className="space-y-4">
-            {glanceStrip}
-            <div>
-                <p className="section-label">Recent notes</p>
-                <h2 className="notive-logo italic mt-2 text-lg font-semibold leading-snug md:text-2xl">
-                    Return to the notes, not the stats.
-                </h2>
-                <p className="mt-3 text-[0.875rem] leading-7 text-[rgb(107,107,107)]">
-                    {latestEntry
-                        ? 'The clearest next move might already be hiding in something you wrote this week.'
-                        : 'Your first few notes will start building this page as soon as they land.'}
-                </p>
-            </div>
-
-            {latestEntry ? (
-                <Link
-                    href={openDashboardEntryHref(latestEntry.id)}
-                    className="app-paper-soft block rounded-[1.25rem] p-4 transition-opacity hover:opacity-80"
-                >
-                    <p className="section-label">Continue</p>
-                    <div className="mt-2 flex items-start gap-3">
-                        <span className="mt-0.5 text-sm" aria-hidden="true">
-                            {MOOD_EMOJI[latestEntry.mood ?? ''] ?? '✦'}
-                        </span>
-                        <div className="min-w-0">
-                            <p className="notebook-title text-[1rem] leading-6">{latestEntry.title || 'Untitled'}</p>
-                            <p className="mt-2 text-[0.82rem] leading-6 text-[rgb(107,107,107)]">
-                                {compactText(latestEntry.content, 120)}
-                            </p>
-                        </div>
-                    </div>
-                </Link>
-            ) : null}
-
-            <div className="flex flex-wrap items-center gap-3">
-                <Link href={timelineHref} className="workspace-button-primary inline-flex items-center rounded-xl px-4 py-3 text-sm font-semibold">
-                    Open recent notes
-                </Link>
-                <span className="text-[0.74rem] leading-5 text-[rgb(107,107,107)]">
-                    {entries.length > 0 ? `${entries.length} saved ${entries.length === 1 ? 'note' : 'notes'} waiting here.` : 'A short note is enough to start this page.'}
-                </span>
-            </div>
-        </div>
     ) : activeTab === 'growth' ? (
-        <div className="space-y-4">
-            {glanceStrip}
+        <div className="space-y-2.5">
+            {/* Identity: traits + archetype */}
             <div>
                 <p className="section-label">Growth</p>
-                <h2 className="notive-logo italic mt-2 text-lg font-semibold leading-snug md:text-2xl">
-                    Your notebook is starting to show real shape.
-                </h2>
-            </div>
-
-            {writerDNA.traits.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                    {writerDNA.traits.map((trait) => (
-                        <span
-                            key={trait.label}
-                            className="notebook-chip rounded-full px-2.5 py-1 text-xs font-medium"
-                        >
-                            {toTitleCase(String(trait.label).replace(/[_-]+/g, ' '))}
-                        </span>
-                    ))}
-                </div>
-            )}
-
-            <div className="app-paper-soft rounded-[1.25rem] p-4">
-                <p className="section-label">{weeklyDigest ? 'Week in one line' : 'Growth thread'}</p>
-                <p className="mt-2 notebook-copy text-[0.875rem] leading-7">
-                    {weeklyDigest?.title || growthSummary}
-                </p>
-                <p className="mt-3 text-[0.82rem] leading-6 text-[rgb(107,107,107)]">
-                    {weeklyDigestSnippet || growthEvidence}
-                </p>
-                {weeklyDigestHighlights.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                        {weeklyDigestHighlights.map((item) => (
-                            <span
-                                key={`${item.category}-${item.insight}`}
-                                className="rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.54)] px-2.5 py-1 text-[0.66rem] text-[rgb(107,107,107)]"
-                            >
-                                {item.category}
+                {writerDNA.traits.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                        {writerDNA.traits.map((trait) => (
+                            <span key={trait.label} className="notebook-chip rounded-full px-2 py-0.5 text-[0.62rem] font-medium">
+                                {toTitleCase(String(trait.label).replace(/[_-]+/g, ' '))}
                             </span>
                         ))}
                     </div>
                 )}
+                <p className="mt-1 text-[0.72rem] italic font-serif text-[rgb(140,140,140)]">
+                    &ldquo;{writerDNA.archetype.oneLiner}&rdquo;
+                </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-                <Link href={portfolioHref} className="workspace-button-primary inline-flex items-center rounded-xl px-4 py-3 text-sm font-semibold">
-                    Open growth
-                </Link>
-                <span className="text-[0.74rem] leading-5 text-[rgb(107,107,107)]">
-                    {growthLedgerItems[0] || threadSentence}
-                </span>
+            {/* Core growth signals — 3 gauge rings */}
+            <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                <div className="grid grid-cols-3 divide-x divide-[rgba(92,92,92,0.06)]">
+                    {/* Reflection Depth */}
+                    {(() => {
+                        const depth = dashboardInsights?.reflectionDepth;
+                        const level = depth?.level ?? 0;
+                        const score = depth?.score ?? 0;
+                        return (
+                            <div className="flex flex-col items-center gap-0.5 px-2 py-1">
+                                <div className="relative h-9 w-9">
+                                    <svg viewBox="0 0 32 32" className="h-9 w-9 -rotate-90">
+                                        <circle cx="16" cy="16" r="13" fill="none" stroke="rgba(92,92,92,0.06)" strokeWidth="2.5" />
+                                        <circle cx="16" cy="16" r="13" fill="none" stroke="rgb(138,154,111)" strokeWidth="2.5" strokeLinecap="round"
+                                            strokeDasharray={`${score * 81.7} 81.7`} />
+                                    </svg>
+                                    <span className="absolute inset-0 flex items-center justify-center text-[0.6rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">{level}</span>
+                                </div>
+                                <span className="text-[0.52rem] font-semibold text-[rgb(var(--paper-ink))]">Depth</span>
+                                <span className="text-[0.44rem] text-[rgb(150,150,150)]">{depth?.levelLabel ?? 'Surface'}</span>
+                            </div>
+                        );
+                    })()}
+                    {/* Growth Mindset */}
+                    {(() => {
+                        const ratio = journalIntel?.growthLanguage?.mindsetRatio ?? 0.5;
+                        const trend = journalIntel?.growthLanguage?.recentTrend ?? 'stable';
+                        const pct = Math.round(ratio * 100);
+                        return (
+                            <div className="flex flex-col items-center gap-0.5 px-2 py-1">
+                                <div className="relative h-9 w-9">
+                                    <svg viewBox="0 0 32 32" className="h-9 w-9 -rotate-90">
+                                        <circle cx="16" cy="16" r="13" fill="none" stroke="rgba(92,92,92,0.06)" strokeWidth="2.5" />
+                                        <circle cx="16" cy="16" r="13" fill="none" stroke={ratio >= 0.6 ? 'rgb(138,154,111)' : 'rgb(192,160,100)'} strokeWidth="2.5" strokeLinecap="round"
+                                            strokeDasharray={`${ratio * 81.7} 81.7`} />
+                                    </svg>
+                                    <span className="absolute inset-0 flex items-center justify-center text-[0.55rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">{pct}%</span>
+                                </div>
+                                <span className="text-[0.52rem] font-semibold text-[rgb(var(--paper-ink))]">Mindset</span>
+                                <span className="text-[0.44rem] text-[rgb(150,150,150)]">{trend === 'increasing' ? '↗ Growing' : trend === 'decreasing' ? '↘ Shifting' : '→ Steady'}</span>
+                            </div>
+                        );
+                    })()}
+                    {/* Emotional Intelligence */}
+                    {(() => {
+                        const eq = journalIntel?.emotionalRange;
+                        const complexity = eq?.complexityScore ?? 0;
+                        const uniqueCount = eq?.uniqueEmotions ?? 0;
+                        return (
+                            <div className="flex flex-col items-center gap-0.5 px-2 py-1">
+                                <div className="relative h-9 w-9">
+                                    <svg viewBox="0 0 32 32" className="h-9 w-9 -rotate-90">
+                                        <circle cx="16" cy="16" r="13" fill="none" stroke="rgba(92,92,92,0.06)" strokeWidth="2.5" />
+                                        <circle cx="16" cy="16" r="13" fill="none" stroke="rgb(160,140,200)" strokeWidth="2.5" strokeLinecap="round"
+                                            strokeDasharray={`${complexity * 81.7} 81.7`} />
+                                    </svg>
+                                    <span className="absolute inset-0 flex items-center justify-center text-[0.55rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">{uniqueCount}</span>
+                                </div>
+                                <span className="text-[0.52rem] font-semibold text-[rgb(var(--paper-ink))]">EQ</span>
+                                <span className="text-[0.44rem] text-[rgb(150,150,150)]">{complexity >= 0.7 ? 'Complex' : complexity >= 0.4 ? 'Growing' : 'Building'}</span>
+                            </div>
+                        );
+                    })()}
+                </div>
+            </div>
+
+            {/* Growth metrics — 2×2 grid */}
+            <div className="grid grid-cols-2 gap-2">
+                {/* Vocabulary */}
+                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                    <p className="section-label">Vocabulary</p>
+                    <div className="mt-1 flex items-baseline gap-1.5">
+                        <span className="text-lg font-bold tabular-nums text-[rgb(var(--paper-ink))]">
+                            {journalIntel?.vocabulary.totalUniqueWords ?? 0}
+                        </span>
+                        <span className="text-[0.5rem] text-[rgb(150,150,150)]">words</span>
+                        {(journalIntel?.vocabulary.growthRate ?? 0) > 0 && (
+                            <span className="ml-auto rounded-full bg-[rgba(138,154,111,0.1)] px-1.5 py-px text-[0.46rem] font-semibold text-[rgb(118,134,91)]">
+                                ↑{Math.round((journalIntel?.vocabulary.growthRate ?? 0) * 100)}%
+                            </span>
+                        )}
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                        <span className="text-[0.46rem] text-[rgb(150,150,150)]">Richness</span>
+                        <div className="flex-1 h-[3px] rounded-full bg-[rgba(92,92,92,0.06)] overflow-hidden">
+                            <div className="h-full rounded-full bg-[rgb(138,154,111)]" style={{ width: `${Math.min(100, Math.round((journalIntel?.vocabulary.richness ?? 0) * 100))}%` }} />
+                        </div>
+                    </div>
+                </div>
+                {/* Gratitude */}
+                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                    <p className="section-label">Gratitude</p>
+                    <div className="mt-1 flex items-baseline gap-1.5">
+                        <span className="text-lg font-bold tabular-nums text-[rgb(var(--paper-ink))]">
+                            {journalIntel?.gratitude.totalExpressions ?? 0}
+                        </span>
+                        <span className="text-[0.5rem] text-[rgb(150,150,150)]">moments</span>
+                        {(journalIntel?.gratitude.streak ?? 0) > 1 && (
+                            <span className="ml-auto rounded-full bg-[rgba(138,154,111,0.1)] px-1.5 py-px text-[0.46rem] font-semibold text-[rgb(118,134,91)]">
+                                🔥{journalIntel?.gratitude.streak}d
+                            </span>
+                        )}
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                        <span className="text-[0.46rem] text-[rgb(150,150,150)]">Depth</span>
+                        <div className="flex-1 h-[3px] rounded-full bg-[rgba(92,92,92,0.06)] overflow-hidden">
+                            <div className="h-full rounded-full bg-[rgb(138,154,111)]" style={{ width: `${Math.min(100, Math.round((journalIntel?.gratitude.depthScore ?? 0) * 100))}%` }} />
+                        </div>
+                    </div>
+                </div>
+                {/* Life Balance */}
+                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                    <p className="section-label">Life balance</p>
+                    <div className="mt-1.5 space-y-[3px]">
+                        {(journalIntel?.lifeBalance.areas ?? []).filter(a => a.score > 0).sort((a, b) => b.score - a.score).slice(0, 4).map((area) => (
+                            <div key={area.area} className="flex items-center gap-1.5">
+                                <span className="w-[2.8rem] text-[0.46rem] text-[rgb(140,140,140)] truncate">{formatNotebookLabel(area.area)}</span>
+                                <div className="flex-1 h-[3px] rounded-full bg-[rgba(92,92,92,0.05)] overflow-hidden">
+                                    <div className="h-full rounded-full bg-[rgb(138,154,111)]" style={{ width: `${Math.min(100, Math.round(area.score * 100))}%` }} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    {!journalIntel?.lifeBalance.areas?.length && (
+                        <p className="mt-1 text-[0.5rem] text-[rgb(170,170,170)]">More entries reveal balance.</p>
+                    )}
+                </div>
+                {/* Writing Voice */}
+                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                    <p className="section-label">Writing voice</p>
+                    {(() => {
+                        const voice = journalIntel?.writingVoice;
+                        const tense = voice?.tenseDistribution ?? { past: 0.33, present: 0.34, future: 0.33 };
+                        return (
+                            <>
+                                <div className="mt-1.5 flex h-[3px] rounded-full overflow-hidden">
+                                    <div className="h-full bg-[rgba(160,140,200,0.6)]" style={{ width: `${Math.round(tense.past * 100)}%` }} />
+                                    <div className="h-full bg-[rgb(138,154,111)]" style={{ width: `${Math.round(tense.present * 100)}%` }} />
+                                    <div className="h-full bg-[rgba(120,170,200,0.7)]" style={{ width: `${Math.round(tense.future * 100)}%` }} />
+                                </div>
+                                <div className="mt-1 flex justify-between text-[0.42rem] text-[rgb(150,150,150)]">
+                                    <span>Past {Math.round(tense.past * 100)}%</span>
+                                    <span>Now {Math.round(tense.present * 100)}%</span>
+                                    <span>Future {Math.round(tense.future * 100)}%</span>
+                                </div>
+                                <div className="mt-1 flex items-center gap-2 text-[0.46rem] text-[rgb(140,140,140)]">
+                                    {voice?.questionFrequency !== undefined && <span>? {Math.round(voice.questionFrequency * 100)}%</span>}
+                                    {voice?.readingLevel && <span className="ml-auto">{voice.readingLevel}</span>}
+                                </div>
+                            </>
+                        );
+                    })()}
+                </div>
+            </div>
+
+            {/* Growth thread + Story material — compact 2-col */}
+            <div className="grid gap-2 sm:grid-cols-2">
+                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                    <p className="section-label">{weeklyDigest ? 'Week in one line' : 'Growth thread'}</p>
+                    <p className="mt-1 text-[0.78rem] font-semibold leading-5 text-[rgb(var(--paper-ink))]">
+                        {weeklyDigest?.title || growthSummary}
+                    </p>
+                    <p className="mt-1 text-[0.68rem] leading-[1.35] text-[rgb(107,107,107)]">
+                        {weeklyDigestSnippet || growthEvidence}
+                    </p>
+                    {weeklyDigestHighlights.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                            {weeklyDigestHighlights.map((item) => (
+                                <span key={`${item.category}-${item.insight}`} className="rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.54)] px-2 py-0.5 text-[0.52rem] text-[rgb(107,107,107)]">
+                                    {item.category}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                    <p className="section-label">Story material</p>
+                    <div className="mt-1 space-y-1">
+                        {(growthLedgerItems.length > 0 ? growthLedgerItems : [threadSentence]).slice(0, 3).map((item) => (
+                            <div key={item} className="flex items-start gap-1.5">
+                                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[rgb(138,154,111)]" />
+                                <p className="text-[0.65rem] leading-4 text-[rgb(107,107,107)]">{item}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Carry this forward — compact */}
+            <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                <p className="section-label">Carry this forward</p>
+                <p className="mt-1 text-[0.68rem] leading-[1.35] text-[rgb(107,107,107)]">
+                    {resurfacedMoment
+                        ? 'An older note is echoing this week. Growth often looks like noticing the same moment sooner.'
+                        : 'Keep saving real moments. They become evidence for school, work, and your own story.'}
+                </p>
+                <div className="mt-1.5 flex items-center gap-3">
+                    <Link href={portfolioHref} className="text-[0.68rem] font-medium text-[rgb(138,154,111)] transition-opacity hover:opacity-80">
+                        See this as a story for college/apps →
+                    </Link>
+                </div>
             </div>
         </div>
     ) : (
-        <div className="space-y-4">
-            {glanceStrip}
-            <div>
-                <p className="section-label">Patterns</p>
-                <h2 className="notive-logo italic mt-2 text-lg font-semibold leading-snug md:text-2xl">
-                    The quieter patterns are ready when you want them.
-                </h2>
+        <div className="space-y-2.5">
+            {/* ── Emotional thread — hero visualization ── */}
+            <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                <div className="flex items-baseline justify-between">
+                    <p className="section-label">Emotional thread</p>
+                    {moodShift && (
+                        <span className={`rounded-full px-2 py-0.5 text-[0.55rem] font-medium tracking-wide ${
+                            moodShift.type === 'shift'
+                                ? 'bg-[rgba(192,160,100,0.12)] text-[rgb(160,130,70)]'
+                                : 'bg-[rgba(138,154,111,0.12)] text-[rgb(118,134,91)]'
+                        }`}>
+                            {moodShift.type === 'shift' ? `${moodShift.from} → ${moodShift.to}` : `steady · ${moodShift.mood}`}
+                        </span>
+                    )}
+                </div>
+                <div className="mt-1.5 rounded-[0.75rem] bg-[rgba(255,255,255,0.5)] px-1 pt-1 pb-0.5">
+                    <svg viewBox="0 0 440 120" className="h-[7.5rem] w-full" aria-label="Emotional thread showing mood changes over recent entries">
+                        {/* Gradient fill under curve */}
+                        <defs>
+                            <linearGradient id="moodFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#8A9A6F" stopOpacity="0.18" />
+                                <stop offset="100%" stopColor="#8A9A6F" stopOpacity="0.02" />
+                            </linearGradient>
+                        </defs>
+
+                        {/* Zone bands */}
+                        <rect x="18" y="24" width="404" height="20" rx="3" fill="rgba(138,154,111,0.04)" />
+                        <rect x="18" y="68" width="404" height="20" rx="3" fill="rgba(192,134,90,0.04)" />
+
+                        {/* Y-axis labels */}
+                        <text x="14" y="34" fontSize="6.5" fill="rgba(138,154,111,0.7)" textAnchor="end" fontWeight="500">good</text>
+                        <text x="14" y="56" fontSize="6.5" fill="rgba(92,92,92,0.35)" textAnchor="end">neutral</text>
+                        <text x="14" y="80" fontSize="6.5" fill="rgba(192,134,90,0.6)" textAnchor="end">low</text>
+
+                        {/* Guide lines */}
+                        <line x1="18" y1="30" x2="422" y2="30" stroke="rgba(138,154,111,0.12)" strokeWidth="0.5" strokeDasharray="3 4" />
+                        <line x1="18" y1="50" x2="422" y2="50" stroke="rgba(92,92,92,0.07)" strokeWidth="0.5" strokeDasharray="3 4" />
+                        <line x1="18" y1="70" x2="422" y2="70" stroke="rgba(92,92,92,0.07)" strokeWidth="0.5" strokeDasharray="3 4" />
+                        <line x1="18" y1="84" x2="422" y2="84" stroke="rgba(192,134,90,0.10)" strokeWidth="0.5" strokeDasharray="3 4" />
+
+                        {/* Area fill under curve */}
+                        {emotionalThreadPoints.length >= 2 && (
+                            <path
+                                d={`${emotionalThreadPath} L ${emotionalThreadPoints[emotionalThreadPoints.length - 1].x} 95 L ${emotionalThreadPoints[0].x} 95 Z`}
+                                fill="url(#moodFill)"
+                            />
+                        )}
+
+                        {/* The mood curve */}
+                        <path d={emotionalThreadPath} fill="none" stroke="#8A9A6F" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+
+                        {/* Data points */}
+                        {emotionalThreadPoints.map((point) => (
+                            <g key={`pt-${point.x}-${point.label}`}>
+                                <circle cx={point.x} cy={point.y} r="6" fill="#8A9A6F" opacity="0.08" />
+                                <circle cx={point.x} cy={point.y} r="3.2" fill="#F8F4ED" stroke="#5C5C5C" strokeWidth="1.3" />
+                                {point.mood && MOOD_EMOJI[point.mood] && (
+                                    <text x={point.x} y={Math.max(14, point.y - 9)} textAnchor="middle" fontSize="8.5">
+                                        {MOOD_EMOJI[point.mood]}
+                                    </text>
+                                )}
+                                <text x={point.x} y="103" textAnchor="middle" fontSize="7" fontWeight="500" fill="#5C5C5C">{point.label}</text>
+                                {point.mood && (
+                                    <text x={point.x} y="112" textAnchor="middle" fontSize="5.5" fill="#9A9A9A">{point.mood}</text>
+                                )}
+                            </g>
+                        ))}
+                    </svg>
+                </div>
+                <p className="mt-1.5 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">{emotionalThreadLine}</p>
             </div>
 
-            <div className="app-paper-soft rounded-[1.25rem] p-4">
-                <p className="section-label">My writing rhythm</p>
-                <p className="mt-2 text-[0.875rem] leading-7 text-[rgb(107,107,107)]">{writingRhythmLine}</p>
-                <p className="mt-3 text-[0.75rem] leading-6 text-[rgb(138,154,111)]">{writingRhythmPrompt}</p>
+            {/* ── When you write + Writing windows — 2-col ── */}
+            <div className="grid gap-2 sm:grid-cols-2">
+                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                    <p className="section-label">When you write</p>
+                    <div className="mt-2 flex items-end justify-between gap-0.5 px-0.5">
+                        {weekdayCounts.map((day) => {
+                            const barH = highestWeekdayCount > 0
+                                ? Math.max(4, Math.round((day.count / highestWeekdayCount) * 36))
+                                : 4;
+                            const isActive = day.count > 0;
+                            return (
+                                <div key={day.short} className="flex flex-col items-center gap-1" style={{ flex: 1 }}>
+                                    <span className={`text-[0.52rem] tabular-nums ${isActive ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-transparent'}`}>
+                                        {day.count}
+                                    </span>
+                                    <div
+                                        className={`w-full max-w-[18px] rounded-t-[3px] ${isActive ? 'bg-[rgb(138,154,111)]' : 'bg-[rgba(92,92,92,0.07)]'}`}
+                                        style={{ height: `${barH}px` }}
+                                    />
+                                    <span className={`text-[0.55rem] ${isActive ? 'font-medium text-[rgb(var(--paper-ink))]' : 'text-[rgb(170,170,170)]'}`}>
+                                        {day.short}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <p className="mt-2 text-[0.68rem] leading-4 text-[rgb(107,107,107)]">{writingRhythmLine}</p>
+                </div>
+
+                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                    <p className="section-label">Writing windows</p>
+                    <div className="mt-2 space-y-2">
+                        {writingWindowCounts.map((bucket) => {
+                            const pct = highestWindowCount > 0 ? Math.max(4, Math.round((bucket.count / highestWindowCount) * 100)) : 4;
+                            const isTop = bucket.count === highestWindowCount && bucket.count > 0;
+                            return (
+                                <div key={bucket.label} className="flex items-center gap-2">
+                                    <span className={`w-[3.2rem] text-[0.62rem] ${isTop ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-[rgb(140,140,140)]'}`}>
+                                        {bucket.label}
+                                    </span>
+                                    <div className="flex-1 h-[0.45rem] rounded-full bg-[rgba(92,92,92,0.05)] overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full ${isTop ? 'bg-[rgb(138,154,111)]' : 'bg-[rgba(138,154,111,0.4)]'}`}
+                                            style={{ width: `${pct}%` }}
+                                        />
+                                    </div>
+                                    <span className={`w-4 text-right text-[0.55rem] tabular-nums ${isTop ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-[rgb(170,170,170)]'}`}>
+                                        {bucket.count || '–'}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <p className="mt-2 text-[0.62rem] leading-4 text-[rgb(138,154,111)]">{writingRhythmPrompt}</p>
+                </div>
             </div>
 
-            <div className="app-paper-soft rounded-[1.25rem] p-4">
-                <p className="section-label">Emotional thread</p>
-                <p className="mt-2 text-[0.875rem] leading-7 text-[rgb(107,107,107)]">{emotionalThreadLine}</p>
-            </div>
+            {/* ── Emotional fingerprint — ranked bars ── */}
+            {dashboardInsights?.emotionalFingerprint && dashboardInsights.emotionalFingerprint.axes.length > 0 && (
+                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                    <div className="flex items-baseline justify-between">
+                        <p className="section-label">Emotional fingerprint</p>
+                        <span className="text-[0.52rem] text-[rgb(170,170,170)] uppercase tracking-wider">frequency</span>
+                    </div>
+                    <div className="mt-2 space-y-[0.35rem]">
+                        {(() => {
+                            const sortedAxes = [...dashboardInsights.emotionalFingerprint!.axes].sort((a, b) => b.score - a.score).slice(0, 6);
+                            const maxScore = sortedAxes[0]?.score ?? 0;
+                            return sortedAxes.map((axis, i) => {
+                                const barWidth = maxScore > 0 ? Math.max(6, Math.round((axis.score / maxScore) * 100)) : 6;
+                                const isTop = i === 0;
+                                return (
+                                    <div key={axis.emotion} className="flex items-center gap-1.5">
+                                        <span className="w-[1.1rem] text-center text-[0.72rem] leading-none">{MOOD_EMOJI[axis.emotion] ?? '·'}</span>
+                                        <span className={`w-[3.5rem] text-[0.6rem] truncate ${isTop ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-[rgb(130,130,130)]'}`}>
+                                            {toTitleCase(axis.emotion)}
+                                        </span>
+                                        <div className="flex-1 h-[0.4rem] rounded-full bg-[rgba(92,92,92,0.05)] overflow-hidden">
+                                            <div
+                                                className="h-full rounded-full"
+                                                style={{
+                                                    width: `${barWidth}%`,
+                                                    backgroundColor: isTop ? 'rgb(138,154,111)' : 'rgba(138,154,111,0.45)',
+                                                }}
+                                            />
+                                        </div>
+                                        <span className={`w-6 text-right text-[0.52rem] tabular-nums ${isTop ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-[rgb(170,170,170)]'}`}>
+                                            {axis.entryCount}×
+                                        </span>
+                                    </div>
+                                );
+                            });
+                        })()}
+                    </div>
+                    <p className="mt-2 text-[0.65rem] leading-4 text-[rgb(107,107,107)]">
+                        {dashboardInsights.emotionalFingerprint.summary}
+                    </p>
+                </div>
+            )}
 
-            <div className="flex flex-wrap items-center gap-3">
-                <Link href={guideHref} className="workspace-button-primary inline-flex items-center rounded-xl px-4 py-3 text-sm font-semibold">
-                    Open patterns
-                </Link>
-                <span className="text-[0.74rem] leading-5 text-[rgb(107,107,107)]">
-                    {supportSummaryLine || noticingLine}
-                </span>
-            </div>
+            {/* ── Life balance + Resilience — 2-col ── */}
+            {(journalIntel?.lifeBalance || dashboardInsights?.resilience) && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                    {journalIntel?.lifeBalance && (
+                        <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                            <p className="section-label">Life balance</p>
+                            <div className="mt-2 flex items-center gap-3">
+                                <div className="relative h-11 w-11 shrink-0">
+                                    <svg viewBox="0 0 36 36" className="h-11 w-11 -rotate-90">
+                                        <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(92,92,92,0.06)" strokeWidth="3.5" />
+                                        <circle
+                                            cx="18" cy="18" r="15" fill="none"
+                                            stroke="rgb(138,154,111)" strokeWidth="3.5" strokeLinecap="round"
+                                            strokeDasharray={`${journalIntel.lifeBalance.balanceScore * 94.2} 94.2`}
+                                        />
+                                    </svg>
+                                    <span className="absolute inset-0 flex items-center justify-center text-[0.56rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">
+                                        {Math.round(journalIntel.lifeBalance.balanceScore * 100)}
+                                    </span>
+                                </div>
+                                <div className="min-w-0 space-y-0.5">
+                                    <p className="text-[0.68rem] leading-4 text-[rgb(var(--paper-ink))]">
+                                        <span className="font-semibold">{formatNotebookLabel(journalIntel.lifeBalance.dominantArea)}</span> dominates
+                                    </p>
+                                    {journalIntel.lifeBalance.neglectedArea && (
+                                        <p className="text-[0.6rem] leading-4 text-[rgb(140,140,140)]">
+                                            {formatNotebookLabel(journalIntel.lifeBalance.neglectedArea)} is quieter lately
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {dashboardInsights?.resilience && (
+                        <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                            <p className="section-label">Resilience</p>
+                            <p className="mt-1.5 text-[0.68rem] leading-[1.55] text-[rgb(107,107,107)]">
+                                {dashboardInsights.resilience.narrative}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── Who steadies you + What lifts & drains — 2-col ── */}
+            {(supportAnchorCards.length > 0 || (dashboardInsights && (dashboardInsights.correlations.length > 0 || dashboardInsights.triggerMap.length > 0))) && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                    {(supportAnchorCards.length > 0 || supportivePeople.length > 0 || groundingAnchors.length > 0) && (
+                        <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                            <p className="section-label">Who steadies you</p>
+                            {supportAnchorCards.length > 0 ? (
+                                <div className="mt-2 space-y-1.5">
+                                    {supportAnchorCards.slice(0, 3).map((anchor) => (
+                                        <div key={anchor.id} className="flex items-center gap-2">
+                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[rgba(138,154,111,0.12)] text-[0.55rem] font-bold text-[rgb(118,134,91)]">
+                                                {anchor.label.charAt(0).toUpperCase()}
+                                            </span>
+                                            <div className="min-w-0 flex-1">
+                                                <span className="text-[0.7rem] font-semibold text-[rgb(var(--paper-ink))]">{anchor.label}</span>
+                                                <span className="ml-1.5 rounded-full border border-[rgba(92,92,92,0.08)] px-1.5 py-px text-[0.48rem] uppercase tracking-[0.06em] text-[rgb(160,160,160)]">{anchor.type}</span>
+                                            </div>
+                                            {anchor.supportCount > 0 && (
+                                                <span className="text-[0.52rem] tabular-nums text-[rgb(160,160,160)]">{anchor.supportCount}×</span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="mt-2 flex flex-wrap gap-1">
+                                    {[...supportivePeople, ...groundingAnchors].slice(0, 4).map((anchor) => (
+                                        <span key={anchor.id} className="rounded-full border border-[rgba(92,92,92,0.1)] bg-white/50 px-2 py-0.5 text-[0.58rem] text-[rgb(120,120,120)]">{anchor.label}</span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {dashboardInsights && (dashboardInsights.correlations.length > 0 || dashboardInsights.triggerMap.length > 0) && (
+                        <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                            <p className="section-label">What lifts &amp; drains</p>
+                            <div className="mt-2 space-y-1.5">
+                                {[...dashboardInsights.correlations.slice(0, 3), ...dashboardInsights.triggerMap.slice(0, 3)]
+                                    .slice(0, 4)
+                                    .map((item) => {
+                                        const topic = 'topic' in item ? item.topic : item.entity;
+                                        const isLift = item.direction === 'lifter';
+                                        return (
+                                            <div key={topic} className="flex items-center gap-2">
+                                                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.55rem] ${
+                                                    isLift ? 'bg-[rgba(138,154,111,0.12)] text-[rgb(118,134,91)]' : 'bg-[rgba(192,134,90,0.12)] text-[rgb(170,120,70)]'
+                                                }`}>
+                                                    {isLift ? '↑' : '↓'}
+                                                </span>
+                                                <span className="flex-1 text-[0.7rem] text-[rgb(var(--paper-ink))]">{formatNotebookLabel(topic)}</span>
+                                                <span className={`text-[0.52rem] font-medium ${isLift ? 'text-[rgb(118,134,91)]' : 'text-[rgb(180,130,80)]'}`}>
+                                                    {isLift ? 'Lifts' : 'Drains'}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── Worth noticing (contradictions) ── */}
+            {dashboardInsights && dashboardInsights.contradictions.length > 0 && (
+                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5 border-l-[3px] border-[rgba(192,160,100,0.35)]">
+                    <p className="section-label">Worth noticing</p>
+                    <div className="mt-1.5 space-y-1.5">
+                        {dashboardInsights.contradictions.slice(0, 2).map((c, i) => (
+                            <div key={i} className="flex items-start gap-2">
+                                <span className="mt-0.5 text-[0.65rem]">🪞</span>
+                                <p className="text-[0.68rem] leading-[1.55] text-[rgb(107,107,107)]">{c.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Small evidence ── */}
+            {evidenceLedger.length > 0 && (
+                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                    <p className="section-label">Small evidence</p>
+                    <div className="mt-1.5 space-y-1.5">
+                        {evidenceLedger.slice(0, 3).map((item) => (
+                            <div key={item.title} className="flex items-start gap-2">
+                                <span className="mt-[0.35rem] h-[5px] w-[5px] shrink-0 rounded-full bg-[rgb(138,154,111)]" />
+                                <div>
+                                    <span className="text-[0.7rem] font-semibold text-[rgb(var(--paper-ink))]">{item.title}</span>
+                                    <span className="ml-1 text-[0.65rem] text-[rgb(130,130,130)]">{item.body}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 
@@ -1088,18 +1851,21 @@ export default function DashboardNotebookView({
                                             aria-selected={activeTab === tab}
                                             aria-controls={`dashboard-page-${tab}`}
                                             onClick={() => setActiveTab(tab)}
-                                            className={`flex-1 whitespace-nowrap rounded-[1.1rem] px-3 py-2.5 text-sm font-medium transition-all ${
+                                            className={`flex-1 whitespace-nowrap rounded-[1.1rem] px-2.5 py-2 text-[0.8rem] font-medium transition-all ${
                                                 activeTab === tab
                                                     ? 'bg-[rgba(248,244,237,0.98)] text-[rgb(41,38,34)] shadow-[0_2px_8px_rgba(92,92,92,0.08)]'
                                                     : 'text-[rgb(107,107,107)] hover:bg-[rgba(255,255,255,0.5)]'
                                             }`}
                                         >
-                                            <span className="flex items-center justify-center gap-1.5">
-                                                {activeTab === tab && tab === 'today' && (
-                                                    <NotebookDoodle name="sprout" accent="sage" className="h-4 w-4" />
+                                            <span className="flex items-center justify-center gap-1">
+                                                {tab === 'overview' && (
+                                                    <NotebookDoodle name="sprout" accent="sage" className="h-3.5 w-3.5" />
                                                 )}
-                                                {activeTab === tab && tab !== 'today' && (
-                                                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-[rgb(138,154,111)]" />
+                                                {tab === 'growth' && (
+                                                    <NotebookDoodle name="ladder" accent="apricot" className="h-3.5 w-3.5" />
+                                                )}
+                                                {tab === 'patterns' && (
+                                                    <NotebookDoodle name="compass" accent="lilac" className="h-3.5 w-3.5" />
                                                 )}
                                                 <span>{TAB_LABELS[tab]}</span>
                                             </span>
@@ -1121,350 +1887,49 @@ export default function DashboardNotebookView({
                     {/* ── Sub-tab content ── */}
                     <section className="space-y-4 stagger-child">
 
-                        {/* ── RECENT NOTES ── */}
-                        {activeTab === 'recent' && (
+                        {/* ── OVERVIEW — RECENT NOTES ── */}
+                        {activeTab === 'overview' && entries.length > 0 && (
                             <Surface doodle="moon" doodleAccent="sky" className="app-paper">
-                                <p className="section-label">Recent</p>
-                                <h2 className="notive-logo mt-2 text-[1.35rem] font-semibold leading-tight md:text-[1.45rem]">
-                                    Return to the notes, not the stats.
-                                </h2>
-                                {latestEntry ? (
-                                    <Surface doodle="sprout" doodleAccent="sage" className="app-paper-soft mt-4 !rounded-[1.25rem]">
-                                        <Link href={openDashboardEntryHref(latestEntry.id)} className="block transition-opacity hover:opacity-80">
-                                            <p className="section-label">Continue</p>
-                                            <p className="notebook-title mt-2 text-lg">{latestEntry.title || 'Untitled'}</p>
-                                            <p className="mt-2 text-[0.875rem] leading-7 text-[rgb(107,107,107)]">
-                                                {compactText(latestEntry.content, 130)}
-                                            </p>
-                                        </Link>
-                                    </Surface>
-                                ) : (
-                                    <p className="mt-3 text-[0.875rem] leading-7 text-[rgb(107,107,107)]">
-                                        Your first note will show up here as soon as it lands.
-                                    </p>
-                                )}
-                                {entries.length > 0 && (
-                                    <div className="mt-4 space-y-3">
-                                        {entries.slice(0, 4).map((entry) => (
-                                            <Link
-                                                key={entry.id}
-                                                href={openDashboardEntryHref(entry.id)}
-                                                className="app-paper-soft block rounded-[1.25rem] p-4 transition-opacity hover:opacity-80"
-                                            >
-                                                <div className="flex items-start gap-3">
-                                                    <span className="mt-0.5 text-sm" aria-hidden="true">
-                                                        {MOOD_EMOJI[entry.mood ?? ''] ?? '✦'}
-                                                    </span>
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="flex flex-wrap items-center gap-2">
-                                                            <p className="truncate text-sm font-semibold text-[rgb(var(--paper-ink))]">
-                                                                {entry.title || 'Untitled'}
-                                                            </p>
-                                                            <span className="text-xs text-[rgb(107,107,107)]">
-                                                                {new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                                            </span>
-                                                        </div>
-                                                        <p className="mt-2 text-[0.875rem] leading-7 text-[rgb(107,107,107)]">
-                                                            {compactText(entry.content, 105)}
+                                <p className="section-label">Recent notes</p>
+                                <div className="mt-3 space-y-3">
+                                    {entries.slice(0, 3).map((entry) => (
+                                        <Link
+                                            key={entry.id}
+                                            href={openDashboardEntryHref(entry.id)}
+                                            className="app-paper-soft block rounded-[1.25rem] p-4 transition-opacity hover:opacity-80"
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <span className="mt-0.5 text-sm" aria-hidden="true">
+                                                    {MOOD_EMOJI[entry.mood ?? ''] ?? '✦'}
+                                                </span>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <p className="truncate text-sm font-semibold text-[rgb(var(--paper-ink))]">
+                                                            {entry.title || 'Untitled'}
                                                         </p>
+                                                        <span className="text-xs text-[rgb(107,107,107)]">
+                                                            {new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                        </span>
                                                     </div>
+                                                    <p className="mt-2 text-[0.875rem] leading-7 text-[rgb(107,107,107)]">
+                                                        {compactText(entry.content, 105)}
+                                                    </p>
                                                 </div>
-                                            </Link>
-                                        ))}
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                                {entries.length > 3 && (
+                                    <div className="mt-3">
+                                        <Link href={timelineHref} className="text-[0.75rem] text-[rgb(138,154,111)] hover:opacity-75">
+                                            See all {entries.length} notes →
+                                        </Link>
                                     </div>
                                 )}
                             </Surface>
                         )}
 
-                        {/* ── GROWTH  (writer DNA, rhythm, resilience, carry-forward) ── */}
-                        {activeTab === 'growth' && (
-                            <div className="space-y-4">
-                                <Surface doodle="sprout" doodleAccent="sage" className="app-paper">
-                                    <p className="section-label">Growth</p>
-                                    <h2 className="notive-logo mt-2 text-[1.35rem] font-semibold leading-tight md:text-[1.45rem]">
-                                        Your notebook is starting to show real shape.
-                                    </h2>
-
-                                    {writerDNA.traits.length > 0 && (
-                                        <div className="mt-3 flex flex-wrap gap-1.5">
-                                            {writerDNA.traits.map((trait) => (
-                                                <span
-                                                    key={trait.label}
-                                                    className="notebook-chip rounded-full px-2.5 py-1 text-xs font-medium"
-                                                >
-                                                    {toTitleCase(String(trait.label).replace(/[_-]+/g, ' '))}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    <p className="notebook-copy mt-3 text-sm italic font-serif">
-                                        &ldquo;{writerDNA.archetype.oneLiner}&rdquo;
-                                    </p>
-
-                                    <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-                                        <div className="app-paper-soft rounded-[1.25rem] p-4">
-                                            <p className="section-label">{weeklyDigest ? 'Week in one line' : 'Growth thread'}</p>
-                                            <p className="mt-2 text-[0.94rem] font-semibold leading-6 text-[rgb(var(--paper-ink))]">
-                                                {weeklyDigest?.title || growthSummary}
-                                            </p>
-                                            <p className="mt-2 text-[0.82rem] leading-6 text-[rgb(107,107,107)]">
-                                                {weeklyDigestSnippet || growthEvidence}
-                                            </p>
-                                            {weeklyDigestHighlights.length > 0 && (
-                                                <div className="mt-3 flex flex-wrap gap-1.5">
-                                                    {weeklyDigestHighlights.map((item) => (
-                                                        <span
-                                                            key={`${item.category}-${item.insight}`}
-                                                            className="rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.62)] px-2.5 py-1 text-[0.66rem] text-[rgb(107,107,107)]"
-                                                        >
-                                                            {item.category}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="app-paper-soft rounded-[1.25rem] p-4">
-                                            <p className="section-label">Story material</p>
-                                            <div className="mt-2 space-y-2.5">
-                                                {(growthLedgerItems.length > 0 ? growthLedgerItems : [threadSentence]).map((item) => (
-                                                    <div key={item} className="flex items-start gap-2">
-                                                        <span className="mt-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[rgb(138,154,111)]" />
-                                                        <p className="text-[0.76rem] leading-5 text-[rgb(107,107,107)]">{item}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Surface>
-
-                                <Surface doodle="star" doodleAccent="apricot" className="app-paper">
-                                    <p className="section-label">Carry this forward</p>
-                                    <p className="mt-2 text-[0.875rem] leading-7 text-[rgb(107,107,107)]">
-                                        {resurfacedMoment
-                                            ? 'One older note is echoing this week. Growth often looks like noticing the same moment sooner.'
-                                            : 'Keep saving the real moments. They become evidence you can use for school, work, and your own story.'}
-                                    </p>
-                                    {journalIntel?.peopleMap.people?.length ? (
-                                        <p className="mt-3 text-[0.76rem] leading-6 text-[rgb(107,107,107)]">
-                                            {journalIntel.peopleMap.people[0].name} and the people around that part of your life may already belong in a future story about support, effort, or self-advocacy.
-                                        </p>
-                                    ) : null}
-                                    <div className="mt-4 flex flex-wrap items-center gap-3">
-                                        <Link href={portfolioHref} className="workspace-button-primary inline-flex items-center rounded-xl px-4 py-3 text-sm font-semibold">
-                                            See this as a story for college/apps
-                                        </Link>
-                                        {showThenNow && (
-                                            <span className="text-[0.75rem] text-[rgb(107,107,107)]">
-                                                {daysSinceFirst} days of writing already changed the view.
-                                            </span>
-                                        )}
-                                    </div>
-                                </Surface>
-                            </div>
-                        )}
-
-                        {/* ── PATTERNS  (writing rhythm, emotional thread, triggers, evidence) ── */}
-                        {activeTab === 'patterns' && (
-                            <div className="space-y-4">
-                                {/* Writing Rhythm */}
-                                <Surface doodle="sprout" doodleAccent="sage" className="app-paper">
-                                    <p className="section-label">Patterns</p>
-                                    <h2 className="notive-logo mt-2 text-[1.35rem] font-semibold leading-tight md:text-[1.55rem]">
-                                        My Writing Rhythm
-                                    </h2>
-                                    <p className="mt-3 text-[0.875rem] leading-7 text-[rgb(107,107,107)]">{noticingLine}</p>
-
-                                    <div className="app-paper mt-4 p-4 md:p-5">
-                                        <div className="grid grid-cols-7 gap-2">
-                                            {weekdayCounts.map((day) => {
-                                                const circleSize = highestWeekdayCount > 0
-                                                    ? 18 + Math.round((day.count / highestWeekdayCount) * 18)
-                                                    : 18;
-
-                                                return (
-                                                    <div key={day.short} className="text-center">
-                                                        <div
-                                                            className="mx-auto mb-2 flex items-center justify-center rounded-full border border-[rgb(92,92,92)] text-[0.72rem] text-[rgb(92,92,92)]"
-                                                            style={{ width: `${circleSize}px`, height: `${circleSize}px` }}
-                                                        >
-                                                            {day.count > 0 ? day.count : ''}
-                                                        </div>
-                                                        <div className="text-[0.7rem] text-[rgb(107,107,107)]">{day.short}</div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-
-                                        <p className="mt-5 text-[0.875rem] leading-7 text-[rgb(107,107,107)]">
-                                            {writingRhythmLine}
-                                        </p>
-                                        <div className="mt-3 text-[0.75rem] leading-6 text-[rgb(138,154,111)]">
-                                            {writingRhythmPrompt}
-                                        </div>
-                                    </div>
-                                </Surface>
-
-                                {/* Emotional Thread */}
-                                <Surface doodle="knot" doodleAccent="amber" className="app-paper">
-                                    <h3 className="notive-logo text-[1.3rem] font-semibold leading-tight md:text-[1.45rem]">
-                                        Emotional Thread
-                                    </h3>
-                                    <div className="mt-4 rounded-[1rem] border-b border-[rgba(92,92,92,0.4)] bg-[rgba(255,255,255,0.42)] px-2 py-3">
-                                        <svg viewBox="0 0 400 120" className="h-40 w-full" aria-hidden="true">
-                                            <path
-                                                d="M 18 95 L 382 95"
-                                                fill="none"
-                                                stroke="rgba(92,92,92,0.28)"
-                                                strokeWidth="1.5"
-                                                strokeLinecap="round"
-                                            />
-                                            <path
-                                                d={emotionalThreadPath}
-                                                fill="none"
-                                                stroke="#8A9A6F"
-                                                strokeWidth="3"
-                                                strokeLinecap="round"
-                                            />
-                                            {emotionalThreadPoints.map((point) => (
-                                                <circle
-                                                    key={`${point.x}-${point.label}`}
-                                                    cx={point.x}
-                                                    cy={point.y}
-                                                    r="3.2"
-                                                    fill="#F8F4ED"
-                                                    stroke="#5C5C5C"
-                                                    strokeWidth="1.6"
-                                                />
-                                            ))}
-                                            {emotionalThreadPoints.map((point) => (
-                                                <text
-                                                    key={`${point.label}-${point.x}`}
-                                                    x={point.x}
-                                                    y="112"
-                                                    textAnchor="middle"
-                                                    fontSize="9"
-                                                    fill="#6B6B6B"
-                                                >
-                                                    {point.label}
-                                                </text>
-                                            ))}
-                                        </svg>
-                                    </div>
-                                    <p className="mt-4 text-[0.875rem] leading-7 text-[rgb(107,107,107)]">
-                                        {emotionalThreadLine}
-                                    </p>
-                                    <Link href={guideHref} className="mt-3 inline-flex text-[0.75rem] leading-6 text-[rgb(92,92,92)] hover:opacity-75">
-                                        When the knot feels tight again, try the Bridge Builder to reach someone.
-                                    </Link>
-                                </Surface>
-
-                                {(supportAnchorCards.length > 0 || (dashboardInsights && (dashboardInsights.correlations.length > 0 || dashboardInsights.triggerMap.length > 0))) && (
-                                    <Surface doodle="ladder" doodleAccent="sage" className="app-paper">
-                                        <div className="grid gap-4 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                                            <div>
-                                                <h3 className="notive-logo text-[1.3rem] font-semibold leading-tight md:text-[1.45rem]">
-                                                    Who steadies you
-                                                </h3>
-                                                <p className="mt-2 text-[0.8rem] leading-6 text-[rgb(107,107,107)]">
-                                                    {supportSummaryLine}
-                                                </p>
-                                                {supportAnchorCards.length > 0 ? (
-                                                    <div className="mt-3 space-y-2">
-                                                        {supportAnchorCards.map((anchor) => (
-                                                            <div
-                                                                key={anchor.id}
-                                                                className="rounded-[1rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.62)] px-3 py-3"
-                                                            >
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-sm font-semibold text-[rgb(var(--paper-ink))]">{anchor.label}</span>
-                                                                    <span className="rounded-full border border-[rgba(92,92,92,0.1)] px-2 py-0.5 text-[0.62rem] uppercase tracking-[0.08em] text-[rgb(107,107,107)]">
-                                                                        {anchor.type}
-                                                                    </span>
-                                                                    {anchor.supportCount > 0 && (
-                                                                        <span className="ml-auto text-[0.62rem] text-[rgb(107,107,107)]">
-                                                                            {anchor.supportCount} steady {anchor.supportCount === 1 ? 'note' : 'notes'}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                                <p className="mt-1.5 text-[0.74rem] leading-5 text-[rgb(107,107,107)]">
-                                                                    {compactText(anchor.whyItHelps, 100)}
-                                                                </p>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                ) : supportivePeople.length > 0 || groundingAnchors.length > 0 ? (
-                                                    <div className="mt-3 flex flex-wrap gap-1.5">
-                                                        {[...supportivePeople, ...groundingAnchors].slice(0, 4).map((anchor) => (
-                                                            <span
-                                                                key={anchor.id}
-                                                                className="rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.62)] px-2.5 py-1 text-[0.66rem] text-[rgb(107,107,107)]"
-                                                            >
-                                                                {anchor.label}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                ) : null}
-                                            </div>
-
-                                            {dashboardInsights && (dashboardInsights.correlations.length > 0 || dashboardInsights.triggerMap.length > 0) && (
-                                                <div>
-                                                    <h3 className="notive-logo text-[1.3rem] font-semibold leading-tight md:text-[1.45rem]">
-                                                        What lifts &amp; what drains
-                                                    </h3>
-                                                    <div className="mt-4 space-y-2">
-                                                        {[...dashboardInsights.correlations.slice(0, 3), ...dashboardInsights.triggerMap.slice(0, 3)]
-                                                            .slice(0, 4)
-                                                            .map((item) => {
-                                                                const topic = 'topic' in item ? item.topic : item.entity;
-                                                                return (
-                                                                    <div key={topic} className="flex items-center gap-3 rounded-[1rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.62)] px-3 py-2">
-                                                                        <span className={`inline-block h-2 w-2 rounded-full ${item.direction === 'lifter' ? 'bg-[rgb(138,154,111)]' : 'bg-[rgb(180,120,80)]'}`} />
-                                                                        <span className="text-sm text-[rgb(var(--paper-ink))]">{formatNotebookLabel(topic)}</span>
-                                                                        <span className="ml-auto text-xs text-[rgb(107,107,107)]">
-                                                                            {item.direction === 'lifter' ? 'Steadies mood' : 'Drains energy'}
-                                                                        </span>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {primarySupportAnchor?.reconnectSuggestion && (
-                                            <p className="mt-4 text-[0.75rem] leading-6 text-[rgb(138,154,111)]">
-                                                {primarySupportAnchor.reconnectSuggestion}
-                                            </p>
-                                        )}
-                                    </Surface>
-                                )}
-
-                                {/* Small Evidence */}
-                                <Surface doodle="star" doodleAccent="apricot" className="app-paper">
-                                    <h3 className="notive-logo text-[1.3rem] font-semibold leading-tight md:text-[1.45rem]">
-                                        Small Evidence
-                                    </h3>
-                                    <div className="mt-4 space-y-4">
-                                        {evidenceLedger.map((item) => (
-                                            <div key={item.title} className="flex gap-4">
-                                                <div className="mt-2 h-2 w-2 rounded-full bg-[rgb(138,154,111)]" />
-                                                <div>
-                                                    <div className="text-sm font-semibold text-[rgb(var(--paper-ink))]">{item.title}</div>
-                                                    <div className="mt-1 text-[0.875rem] leading-7 text-[rgb(107,107,107)]">{item.body}</div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <Link
-                                        href={portfolioHref}
-                                        className="mt-6 inline-flex w-full items-center justify-center rounded-[1rem] border border-[rgba(138,154,111,0.42)] bg-[rgba(138,154,111,0.12)] px-4 py-3 text-sm font-semibold text-[rgb(92,92,92)] transition-opacity hover:opacity-85"
-                                    >
-                                        Turn this into a college story →
-                                    </Link>
-                                </Surface>
-                            </div>
-                        )}
+                        {/* Growth & Patterns content now inlined in topPreviewContent above */}
                     </section>
                 </div>
             </main>
