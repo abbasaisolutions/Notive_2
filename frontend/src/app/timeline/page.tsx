@@ -2229,10 +2229,12 @@ function TimelinePageContent() {
                 </header>
 
                 {surface === 'timeline' && (
-                    <TagCloud
-                        selectedTag={themeFilter || null}
-                        onSelectTag={(tag) => setThemeFilter(tag || '')}
-                    />
+                    <div className="mt-2">
+                        <TagCloud
+                            selectedTag={themeFilter || null}
+                            onSelectTag={(tag) => setThemeFilter(tag || '')}
+                        />
+                    </div>
                 )}
 
                 <section

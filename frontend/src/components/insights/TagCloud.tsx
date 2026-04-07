@@ -78,66 +78,64 @@ export default function TagCloud({ onSelectTag, selectedTag = null }: TagCloudPr
     };
 
     return (
-        <div className="workspace-soft-panel rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-                <h3 className="type-overline text-ink-muted tracking-wider text-[0.65rem] uppercase">
-                    Your themes
-                </h3>
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide py-0.5">
+            <AnimatePresence mode="popLayout">
                 {selectedTag && (
-                    <button
-                        onClick={() => onSelectTag?.(null)}
-                        className="text-[0.65rem] text-primary hover:text-primary/80 transition-colors font-medium"
+                    <motion.button
+                        key="__clear__"
+                        layout
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                        onClick={() => { hapticTap(); onSelectTag?.(null); }}
+                        className="flex-shrink-0 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
                     >
-                        Clear filter
-                    </button>
+                        ✕ clear
+                    </motion.button>
                 )}
-            </div>
+                {themes.map(theme => {
+                    const isSelected = selectedTag === theme.tag;
+                    const isFiltered = selectedTag !== null && !isSelected;
+                    const dominantMood = moodMap.get(theme.tag);
+                    const moodColor = dominantMood ? getMoodColor(dominantMood) : null;
 
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1 pb-0.5">
-                <AnimatePresence mode="popLayout">
-                    {themes.map(theme => {
-                        const isSelected = selectedTag === theme.tag;
-                        const isFiltered = selectedTag !== null && !isSelected;
-                        const dominantMood = moodMap.get(theme.tag);
-                        const moodColor = dominantMood ? getMoodColor(dominantMood) : null;
-
-                        return (
-                            <motion.button
-                                key={theme.tag}
-                                layout
-                                initial={{ opacity: 0, scale: 0.8 }}
-                                animate={{
-                                    opacity: isFiltered ? 0.4 : 1,
-                                    scale: isSelected ? 1.08 : 1,
-                                }}
-                                exit={{ opacity: 0, scale: 0.8 }}
-                                whileTap={{ scale: 0.95 }}
-                                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                                onClick={() => handleSelect(theme.tag)}
-                                className={[
-                                    'flex-shrink-0 rounded-full font-medium transition-colors border text-xs px-2.5 py-1',
-                                    isSelected
-                                        ? 'bg-primary/20 border-primary/50 text-primary shadow-sm shadow-primary/10'
-                                        : 'workspace-pill border-transparent text-ink-muted hover:text-strong hover:border-primary/20',
-                                ].join(' ')}
-                                style={moodColor && !isSelected ? { borderColor: `${moodColor}30` } : undefined}
-                                aria-pressed={isSelected}
-                            >
-                                <span className="flex items-center gap-1.5">
-                                    {moodColor && (
-                                        <span
-                                            className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
-                                            style={{ backgroundColor: moodColor }}
-                                        />
-                                    )}
-                                    #{theme.tag}
-                                    <span className="opacity-50 font-normal">{theme.count}</span>
-                                </span>
-                            </motion.button>
-                        );
-                    })}
-                </AnimatePresence>
-            </div>
+                    return (
+                        <motion.button
+                            key={theme.tag}
+                            layout
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{
+                                opacity: isFiltered ? 0.4 : 1,
+                                scale: isSelected ? 1.08 : 1,
+                            }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            whileTap={{ scale: 0.95 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                            onClick={() => handleSelect(theme.tag)}
+                            className={[
+                                'flex-shrink-0 rounded-full font-medium transition-colors border text-xs px-2.5 py-1',
+                                isSelected
+                                    ? 'bg-primary/20 border-primary/50 text-primary shadow-sm shadow-primary/10'
+                                    : 'workspace-pill border-transparent text-ink-muted hover:text-strong hover:border-primary/20',
+                            ].join(' ')}
+                            style={moodColor && !isSelected ? { borderColor: `${moodColor}30` } : undefined}
+                            aria-pressed={isSelected}
+                        >
+                            <span className="flex items-center gap-1.5">
+                                {moodColor && (
+                                    <span
+                                        className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                        style={{ backgroundColor: moodColor }}
+                                    />
+                                )}
+                                #{theme.tag}
+                                <span className="opacity-50 font-normal">{theme.count}</span>
+                            </span>
+                        </motion.button>
+                    );
+                })}
+            </AnimatePresence>
         </div>
     );
 }
