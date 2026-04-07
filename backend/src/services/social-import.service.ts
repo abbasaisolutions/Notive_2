@@ -1250,10 +1250,9 @@ export class SocialImportService {
         return `${provider === 'INSTAGRAM' ? 'Instagram' : 'Facebook'} Memory ${createdAt.toLocaleDateString()}`;
     }
 
-    private buildImportTags(provider: 'INSTAGRAM' | 'FACEBOOK', content?: string): string[] {
-        const base = provider === 'INSTAGRAM' ? 'instagram' : 'facebook';
+    private buildImportTags(_provider: 'INSTAGRAM' | 'FACEBOOK', content?: string): string[] {
         const fromHashtags = this.extractHashtags(content);
-        return Array.from(new Set([base, 'imported', ...fromHashtags])).slice(0, 12);
+        return Array.from(new Set(fromHashtags)).slice(0, 12);
     }
 
     private mapInstagramPostToEntryData(userId: string, post: InstagramPost): EntryImportCreateData {

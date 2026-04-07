@@ -28,6 +28,7 @@ import {
     type VoiceTranscriptionResponse,
 } from '@/services/voice-transcription.service';
 import { appendReturnTo } from '@/utils/navigation';
+import { normalizeTag } from '@/utils/tags';
 import { useToast } from '@/context/toast-context';
 import { Spinner } from '@/components/ui';
 import { prepareImageForUpload } from '@/utils/image-upload';
@@ -1447,8 +1448,9 @@ function NewEntryPageContent() {
     }, [content, isSaving, handleSave]);
 
     const addTag = useCallback((tag: string) => {
-        if (tag && !tagsOverride.includes(tag)) {
-            setTagsOverride(prev => [...prev, tag]);
+        const normalized = normalizeTag(tag);
+        if (normalized && !tagsOverride.some(t => normalizeTag(t) === normalized)) {
+            setTagsOverride(prev => [...prev, normalized]);
         }
     }, [tagsOverride]);
 

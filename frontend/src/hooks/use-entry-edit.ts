@@ -12,6 +12,7 @@ import {
     normalizeLifeArea,
 } from '@/constants/life-areas';
 import { useToast } from '@/context/toast-context';
+import { normalizeTag } from '@/utils/tags';
 
 type ApiFetch = (path: string, options?: RequestInit & { retryOnUnauthorized?: boolean }) => Promise<Response>;
 
@@ -144,8 +145,9 @@ export function useEntryEdit({
     const handleAddTag = useCallback((e: React.KeyboardEvent) => {
         if (e.key !== 'Enter' || !tagInput.trim()) return;
         e.preventDefault();
-        if (!tags.includes(tagInput.trim())) {
-            setTags([...tags, tagInput.trim()]);
+        const normalized = normalizeTag(tagInput);
+        if (normalized && !tags.some(t => normalizeTag(t) === normalized)) {
+            setTags([...tags, normalized]);
         }
         setTagInput('');
     }, [tagInput, tags]);

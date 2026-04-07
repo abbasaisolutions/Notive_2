@@ -11,17 +11,7 @@ import { buildTimelineMonthGroups } from '@/utils/timeline-groups';
 import { storyStatusLabel, type StorySignal } from '@/utils/story-engine';
 import NotiveNoticedPanel, { type NotiveInsight } from './NotiveNoticedPanel';
 
-// Tags/skills shown on a card must pass this — filters NLP garbage like #im, #has, #nodeo
-const CARD_TAG_NOISE = new Set([
-    'im','ive','id','ill','its','dont','didnt','wont','cant','not',
-    'has','had','have','does','did','just','like','also','some','both',
-    'this','that','what','when','where','good','okay','yeah','very','even',
-    'make','made','more','much','many','every','really','back','still',
-    'thing','things','day','today','time','week','feel','feels','felt',
-    'want','know','think','said','with','from','into','over','down','life',
-    'work','node','nodeo','features','nothing','something','everything',
-]);
-const isCardTag = (t: string) => t.length >= 4 && !CARD_TAG_NOISE.has(t.toLowerCase().replace(/[^a-z0-9-]/g,''));
+import { isCardTag } from '@/utils/tags';
 
 export interface TopEmotion {
     emotion: string;

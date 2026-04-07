@@ -12,8 +12,9 @@ export const normalizeTag = (tag: string) =>
         .replace(/^#+/, '')
         .trim()
         .toLowerCase()
-        .replace(/\s+/g, ' ')
         .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/[\s-]+/g, '-')
+        .replace(/^-|-$/g, '')
         .slice(0, 32);
 
 export const buildTagMetaList = (tags: TagMetaInput[]): TagMetaInput[] => {

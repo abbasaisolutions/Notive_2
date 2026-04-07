@@ -28,13 +28,14 @@ const STOPWORDS = new Set([
     'through', 'down', 'out', 'off', 'up', 'way', 'thing', 'things', 'time', 'day', 'today',
     'yesterday', 'week', 'feels', 'felt', 'feel', 'right', 'well', 'good', 'yeah', 'okay',
     'features', 'node', 'nodeo', 'happy', 'just', 'something', 'anything', 'everything',
+    'instagram', 'facebook', 'imported',
 ]);
 
 /** Minimum character length for a tag to be valid */
 const MIN_TAG_LENGTH = 3;
 
 /** Returns true only for tags that are meaningful keywords (not stopwords, long enough) */
-const isValidTag = (normalized: string): boolean => {
+export const isValidTag = (normalized: string): boolean => {
     if (normalized.length < MIN_TAG_LENGTH) return false;
     // Reject single-word tags that are stopwords
     const parts = normalized.split(/[\s-]+/);

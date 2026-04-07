@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
-import taggingService from '../services/tagging.service';
+import taggingService, { isValidTag } from '../services/tagging.service';
 import { Prisma, TagSource } from '@prisma/client';
-import { buildTagMetaList, syncEntryTags } from '../services/tag-manager.service';
+import { buildTagMetaList, normalizeTag, syncEntryTags } from '../services/tag-manager.service';
 import { upsertEntryAnalysisFromNlp, upsertEntryAnalysisFromPayload } from '../services/entry-analysis.service';
 import nlpService, { AnalysisResult } from '../services/nlp.service';
 import embeddingService from '../services/embedding.service';
@@ -513,7 +513,9 @@ export const createEntry = async (req: Request, res: Response) => {
         }
 
         const tagMeta = buildTagMetaList([
-            ...providedTags.map((tag: string) => ({ name: tag, source: TagSource.USER, confidence: 1 })),
+            ...providedTags
+                .filter((tag: string) => isValidTag(normalizeTag(String(tag))))
+                .map((tag: string) => ({ name: tag, source: TagSource.USER, confidence: 1 })),
             ...autoTagMeta,
         ]);
 
@@ -836,11 +838,13 @@ export const updateEntry = async (req: Request, res: Response) => {
 
         const tagMeta = tags !== undefined
             ? buildTagMetaList(
-                (Array.isArray(tags) ? tags : []).map((tag: string) => ({
-                    name: tag,
-                    source: TagSource.USER,
-                    confidence: 1,
-                }))
+                (Array.isArray(tags) ? tags : [])
+                    .filter((tag: string) => isValidTag(normalizeTag(String(tag))))
+                    .map((tag: string) => ({
+                        name: tag,
+                        source: TagSource.USER,
+                        confidence: 1,
+                    }))
             )
             : null;
         const safeContentHtml = contentHtml !== undefined

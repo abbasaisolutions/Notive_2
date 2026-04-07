@@ -18,6 +18,7 @@ import BridgeCard from '@/components/action/BridgeCard';
 import SafetyBanner from '@/components/safety/SafetyBanner';
 import type { StudentActionResponse } from '@/components/action/types';
 import useTelemetry from '@/hooks/use-telemetry';
+import { isCardTag } from '@/utils/tags';
 import { useToast } from '@/context/toast-context';
 import ShareMemorySheet, { type ShareableEntry } from '@/components/share/ShareMemorySheet';
 
@@ -51,14 +52,6 @@ interface RelatedEntry {
     matchReasons: string[];
     coverImage?: string | null;
 }
-
-const CARD_TAG_NOISE = new Set(['im','ive','id','ill','its','dont','didnt','wont','cant','not',
-    'has','had','have','does','did','just','like','also','some','both','this','that','what',
-    'when','where','good','okay','yeah','very','even','make','made','more','much','many','every',
-    'really','back','still','thing','things','day','today','time','week','feel','feels','felt',
-    'want','know','think','said','with','from','into','over','down','life','work','node','nodeo',
-    'features','nothing','something','everything']);
-const isCardTag = (t: string) => t.length >= 4 && !CARD_TAG_NOISE.has(t.toLowerCase().replace(/[^a-z0-9-]/g,''));
 
 function EntryDetailContent() {
     const router = useRouter();
