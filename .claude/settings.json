@@ -36,7 +36,10 @@
       "Bash(wc -l c:/Users/mtabe/Notive/*.md c:/Users/mtabe/Notive/backend/*.md c:/Users/mtabe/Notive/frontend/ACCESSIBILITY_AUDIT.md c:/Users/mtabe/Notive/frontend/UI_COMPONENT_INTEGRATION.md c:/Users/mtabe/Notive/frontend/UI_QUALITY_CHECKLIST.md)",
       "Bash(grep -r \"getDashboardInsights\\\\|getJournalIntelligence\\\\|getInsights\\\\|buildDashboard\\\\|buildJournal\" /c/Users/mtabe/Notive/backend/src/controllers/*.ts)",
       "Bash(ls -1 /c/Users/mtabe/Notive/frontend/src/components/dashboard/*.tsx)",
-      "Bash(find /c/Users/mtabe/Notive/backend/src/services -name \"*.ts\" -exec basename {} \\\\;)"
+      "Bash(find /c/Users/mtabe/Notive/backend/src/services -name \"*.ts\" -exec basename {} \\\\;)",
+      "Bash(npx vitest:*)",
+      "Bash(find /c/Users/mtabe/Notive/frontend/src -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) -exec grep -l \"tag\\\\|Tag\" {} \\\\;)",
+      "Bash(grep -r \"dedup\\\\|duplicate.*tag\\\\|unique\" /c/Users/mtabe/Notive/backend/src/services/tag* -i -n)"
     ],
     "additionalDirectories": [
       "c:\\Users\\mtabe\\Notive\\frontend\\src\\out"

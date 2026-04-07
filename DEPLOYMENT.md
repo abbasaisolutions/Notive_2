@@ -117,6 +117,19 @@ Railway monorepo note: this repository is an isolated monorepo. Set the Railway 
 
 Runtime note: the backend workspace pins `packageManager` to `npm@10.9.3` and `engines.node` to Node 22 in `backend/package.json`. Keep Railway on Node 22 for this service, and when you intentionally regenerate `backend/package-lock.json`, do it with npm 10 from the `backend/` directory so `npm ci` stays reproducible between local and Railway builds.
 
+Launch note: production uploads and push notifications are not fully ready from `DATABASE_URL` + JWT secrets alone. Before the first real mobile rollout, also configure:
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_BUCKET_NAME`
+- `AWS_REGION`
+- `FIREBASE_SERVICE_ACCOUNT`
+- `PUBLIC_SUPPORT_EMAIL`
+- `SENTRY_DSN` (recommended)
+- `REDIS_URL` (recommended)
+
+See [RAILWAY_PRODUCTION_SETUP.md](./RAILWAY_PRODUCTION_SETUP.md) for the exact launch checklist, Firebase JSON handling, and post-deploy validation steps.
+
 Initial admin note: to create or promote a production superadmin from a Railway shell, run:
 
 ```bash
@@ -137,6 +150,7 @@ If the user already exists, this promotes the account to `SUPERADMIN`. If the us
    - `NEXT_PUBLIC_APP_URL`: `https://notive.abbasaisolutions.com` or your production frontend URL
    - `NEXT_PUBLIC_API_URL`: Your Railway backend URL + `/api/v1`
    - `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: Your Google OAuth client ID
+   - `NEXT_PUBLIC_SUPPORT_EMAIL`: support address shown on privacy and account-deletion pages
 5. Deploy!
 
 If Vercel shows `No Next.js version detected`, the project is pointing at the wrong folder. Set **Root Directory** to `frontend`, because the Next.js app and its `package.json` live there.

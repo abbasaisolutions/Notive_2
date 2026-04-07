@@ -80,8 +80,31 @@ const extensionForMimeType = (mimeType: string) => {
     }
 };
 
-const isAcceptedImageType = (file: File) =>
-    ACCEPTED_IMAGE_UPLOAD_TYPES.includes(file.type as (typeof ACCEPTED_IMAGE_UPLOAD_TYPES)[number]);
+const inferMimeTypeFromExtension = (fileName: string): string | null => {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    switch (ext) {
+        case 'jpg':
+        case 'jpeg':
+            return 'image/jpeg';
+        case 'png':
+            return 'image/png';
+        case 'webp':
+            return 'image/webp';
+        default:
+            return null;
+    }
+};
+
+const resolveImageMimeType = (file: File): string | null => {
+    if (ACCEPTED_IMAGE_UPLOAD_TYPES.includes(file.type as (typeof ACCEPTED_IMAGE_UPLOAD_TYPES)[number])) {
+        return file.type;
+    }
+    // Android file pickers often return empty or generic MIME types (e.g. application/octet-stream).
+    // Fall back to extension-based detection.
+    return inferMimeTypeFromExtension(file.name);
+};
+
+const isAcceptedImageType = (file: File) => resolveImageMimeType(file) !== null;
 
 const canvasToBlob = (canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob | null> =>
     new Promise((resolve) => {
@@ -194,34 +217,44 @@ const buildCanvas = (
     };
 };
 
-const encodeOptimizedImage = async (
+const tryEncodeFormat = async (
     canvas: HTMLCanvasElement,
+    mimeType: string,
     preset: PresetConfig,
-): Promise<Blob> => {
+): Promise<Blob | null> => {
     let smallestBlob: Blob | null = null;
 
     for (const quality of QUALITY_STEPS) {
         const effectiveQuality = Math.min(quality, preset.quality);
-        const webpBlob = await canvasToBlob(canvas, 'image/webp', effectiveQuality);
+        const blob = await canvasToBlob(canvas, mimeType, effectiveQuality);
 
-        if (!webpBlob) {
-            continue;
+        if (!blob) continue;
+
+        if (!smallestBlob || blob.size < smallestBlob.size) {
+            smallestBlob = blob;
         }
 
-        if (!smallestBlob || webpBlob.size < smallestBlob.size) {
-            smallestBlob = webpBlob;
+        if (blob.size <= preset.targetBytes) {
+            return blob;
         }
-
-        if (webpBlob.size <= preset.targetBytes) {
-            return webpBlob;
-        }
-    }
-
-    if (!smallestBlob) {
-        throw new Error(`We could not optimize that ${preset.label}. Please try a different image.`);
     }
 
     return smallestBlob;
+};
+
+const encodeOptimizedImage = async (
+    canvas: HTMLCanvasElement,
+    preset: PresetConfig,
+): Promise<Blob> => {
+    // Try WebP first, then fall back to JPEG.
+    // Some Android WebViews do not support WebP encoding via canvas.toBlob.
+    const webpResult = await tryEncodeFormat(canvas, 'image/webp', preset);
+    if (webpResult) return webpResult;
+
+    const jpegResult = await tryEncodeFormat(canvas, 'image/jpeg', preset);
+    if (jpegResult) return jpegResult;
+
+    throw new Error(`We could not optimize that ${preset.label}. Please try a different image.`);
 };
 
 export const prepareImageForUpload = async (
@@ -255,7 +288,19 @@ export const prepareImageForUpload = async (
             && !didResize
             && optimizedFile.size >= file.size;
 
-        const finalFile = shouldKeepOriginal ? file : optimizedFile;
+        let finalFile: File;
+        if (shouldKeepOriginal) {
+            // On Android, file pickers can return a wrong MIME type (e.g. application/octet-stream).
+            // Re-wrap the file with the correct type so the backend upload filter accepts it.
+            const resolvedType = resolveImageMimeType(file);
+            if (resolvedType && resolvedType !== file.type) {
+                finalFile = new File([file], file.name, { type: resolvedType, lastModified: file.lastModified });
+            } else {
+                finalFile = file;
+            }
+        } else {
+            finalFile = optimizedFile;
+        }
 
         return {
             file: finalFile,

@@ -44,6 +44,10 @@ const bootstrap = async () => {
         stage = 'app.import';
         const { default: app } = await import('./app');
 
+        stage = 'readiness.checks';
+        const { logProductionReadinessChecks } = await import('./config/production-readiness');
+        logProductionReadinessChecks();
+
         stage = 'embedding.import';
         const { default: embeddingService } = await import('./services/embedding.service');
 
