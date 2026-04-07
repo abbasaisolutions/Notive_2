@@ -30,6 +30,7 @@ import {
 import { appendReturnTo } from '@/utils/navigation';
 import { normalizeTag, isValidTag } from '@/utils/tags';
 import { useToast } from '@/context/toast-context';
+import { usePushNotifications } from '@/context/push-notification-context';
 import { Spinner } from '@/components/ui';
 import FirstEntryHandoff from '@/components/entry/FirstEntryHandoff';
 import { prepareImageForUpload } from '@/utils/image-upload';
@@ -64,6 +65,7 @@ import {
 } from '@/constants/life-areas';
 import { captureEntryLocation, type EntryLocation } from '@/services/location-context.service';
 import { captureDeviceSnapshot, type DeviceSnapshot } from '@/services/device-context.service';
+import { hapticSuccess, hapticError, hapticTap, hapticWarning } from '@/services/haptics.service';
 import type { IconType } from 'react-icons';
 import {
     FiAlertCircle,
@@ -233,6 +235,7 @@ function NewEntryPageContent() {
     const { loadDraft, saveDraft, clearDraft } = useEntryDraft(user?.id ?? null);
     const { backHref, backLabel, navigateBack } = useContextNavigation('/dashboard', 'dashboard');
     const toast = useToast();
+    const { isPermissionGranted: pushPermissionGranted, requestPermission: requestPushPermission } = usePushNotifications();
     const modeParam = searchParams.get('mode');
     const isQuickMode = modeParam !== 'full';
     const isWhisperRequested = modeParam === 'whisper';
@@ -1024,10 +1027,7 @@ function NewEntryPageContent() {
             return;
         }
 
-        // Haptic feedback on mobile
-        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-            navigator.vibrate(30);
-        }
+        hapticSuccess(); // recording start
 
         setVoiceError(null);
         setVoiceJob(null);
@@ -1105,10 +1105,7 @@ function NewEntryPageContent() {
     ]);
 
     const stopRecording = useCallback(() => {
-        // Haptic feedback on mobile
-        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-            navigator.vibrate([15, 30, 15]);
-        }
+        hapticTap(); // recording stop
         shouldProcessVoiceStopRef.current = true;
         stopSpeechPreview();
         const recordingDurationMs = voiceRecordingStartedAtRef.current
@@ -1198,6 +1195,7 @@ function NewEntryPageContent() {
         if (saveWordCount < 130) {
             persistDraftSnapshot(true);
             if (!isAutoSave) {
+                hapticWarning();
                 toast.info(
                     'I still need to know more about this',
                     `Add a bit more detail so I can give you meaningful insights (${saveWordCount}/130 words).`,
@@ -1321,8 +1319,13 @@ function NewEntryPageContent() {
                 if (!entryId) {
                     awardXP(50, 'Entry created');
                     refreshStats();
+                    hapticSuccess();
                 }
                 clearDraft();
+                // After the user's first-ever save, prompt for push permission with context.
+                if (!entryId && !pushPermissionGranted) {
+                    void requestPushPermission();
+                }
                 if (!entryId && isGentleReflectionEntry && data.entry?.id) {
                     if (user?.id && gentleReflectionId) {
                         markGentleReflectionCompleted(user.id, gentleReflectionId);
@@ -1362,6 +1365,7 @@ function NewEntryPageContent() {
                 const msg = err.message || 'Could not save your note. Try again in a moment.';
                 setError(msg);
                 toast.error(msg);
+                hapticError();
             }
         } finally {
             setIsSaving(false);
@@ -1396,6 +1400,8 @@ function NewEntryPageContent() {
         user?.id,
         voiceCapture,
         toast,
+        pushPermissionGranted,
+        requestPushPermission,
     ]);
 
     useEffect(() => {

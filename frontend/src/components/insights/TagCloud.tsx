@@ -6,6 +6,7 @@ import useApi from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
 import { getMoodColor } from '@/constants/moods';
 import { isCardTag } from '@/utils/tags';
+import { hapticTap } from '@/services/haptics.service';
 
 interface TagTheme {
     tag: string;
@@ -69,11 +70,10 @@ export default function TagCloud({ onSelectTag, selectedTag = null }: TagCloudPr
         return map;
     }, [moodPatterns]);
 
-    const maxCount = useMemo(() => Math.max(...themes.map(t => t.count), 1), [themes]);
-
     if (!themesLoaded || themes.length === 0) return null;
 
     const handleSelect = (tag: string) => {
+        hapticTap();
         onSelectTag?.(selectedTag === tag ? null : tag);
     };
 
@@ -93,19 +93,13 @@ export default function TagCloud({ onSelectTag, selectedTag = null }: TagCloudPr
                 )}
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1 pb-0.5">
                 <AnimatePresence mode="popLayout">
                     {themes.map(theme => {
                         const isSelected = selectedTag === theme.tag;
                         const isFiltered = selectedTag !== null && !isSelected;
                         const dominantMood = moodMap.get(theme.tag);
                         const moodColor = dominantMood ? getMoodColor(dominantMood) : null;
-
-                        // Size tier based on frequency
-                        const ratio = theme.count / maxCount;
-                        const sizeClass = ratio > 0.7 ? 'text-sm px-3 py-1.5'
-                            : ratio > 0.4 ? 'text-xs px-2.5 py-1'
-                            : 'text-[0.65rem] px-2 py-0.5';
 
                         return (
                             <motion.button
@@ -121,8 +115,7 @@ export default function TagCloud({ onSelectTag, selectedTag = null }: TagCloudPr
                                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                                 onClick={() => handleSelect(theme.tag)}
                                 className={[
-                                    'rounded-full font-medium transition-colors border',
-                                    sizeClass,
+                                    'flex-shrink-0 rounded-full font-medium transition-colors border text-xs px-2.5 py-1',
                                     isSelected
                                         ? 'bg-primary/20 border-primary/50 text-primary shadow-sm shadow-primary/10'
                                         : 'workspace-pill border-transparent text-ink-muted hover:text-strong hover:border-primary/20',

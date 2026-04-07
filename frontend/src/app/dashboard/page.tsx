@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { FiBookOpen, FiClock, FiEdit3, FiGrid, FiMic } from 'react-icons/fi';
 import useApi from '@/hooks/use-api';
+import { getSavedDraftWordCount } from '@/hooks/use-entry-draft';
 import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import {
@@ -537,6 +538,13 @@ export default function DashboardPage() {
     useEffect(() => {
         setGentleReflectionsEnabled(isGentleReflectionEnabled(user?.profile?.personalizationSignals));
     }, [user?.profile?.personalizationSignals]);
+
+    const draftWordCount = useMemo(
+        () => getSavedDraftWordCount(user?.id),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [user?.id]
+    );
+    const showContinueDraft = draftWordCount >= 40;
 
     useEffect(() => {
         const controller = new AbortController();
@@ -1195,6 +1203,27 @@ export default function DashboardPage() {
                         onSubmit={handleDailyCheckIn}
                     />
                 </Gate>
+
+                {/* ── Continue your draft card ─────────────────────── */}
+                {showContinueDraft && (
+                    <Link
+                        href={appendReturnTo('/entry/new', dashboardReturnTo)}
+                        className="block workspace-soft-panel rounded-2xl px-4 py-3 border border-[rgba(var(--brand),0.22)] hover:border-[rgba(var(--brand),0.42)] transition-colors"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[rgba(var(--brand),0.12)] flex items-center justify-center">
+                                <FiEdit3 className="w-4 h-4 text-[rgb(var(--text-accent))]" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs font-semibold text-[rgb(var(--text-accent))] uppercase tracking-wide">Draft in progress</p>
+                                <p className="text-sm notebook-copy truncate">Continue where you left off — {draftWordCount} words saved</p>
+                            </div>
+                            <svg className="flex-shrink-0 w-4 h-4 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
+                    </Link>
+                )}
 
                 {/* ── Focus card (tier 1+) ─────────────────────────── */}
                 <Gate minTier={1} currentTier={insightTier}>

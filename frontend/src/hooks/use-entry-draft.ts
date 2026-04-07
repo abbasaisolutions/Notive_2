@@ -76,4 +76,18 @@ export function hasPendingSyncDraft(userId: string | null | undefined): boolean 
     }
 }
 
+/** Return the word count of a saved draft (0 if none). */
+export function getSavedDraftWordCount(userId: string | null | undefined): number {
+    if (!userId) return 0;
+    try {
+        const raw = localStorage.getItem(getDraftKey(userId));
+        if (!raw) return 0;
+        const parsed = JSON.parse(raw) as EntryDraft;
+        const text = parsed.content?.trim() ?? '';
+        return text ? text.split(/\s+/).length : 0;
+    } catch {
+        return 0;
+    }
+}
+
 export default useEntryDraft;

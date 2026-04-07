@@ -180,8 +180,10 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
                 logger.debug('Push notification received:', notification);
                 addNotificationToState(notification);
 
-                // Optional: Show a toast or badge
+                // Show in-app toast and immediately remove the OS drawer entry
+                // to prevent the double-notification (drawer + toast) UX.
                 showNotificationToast(notification);
+                void PushNotifications.removeAllDeliveredNotifications().catch(() => {/* non-fatal */});
             });
 
             // Handle notification action (tap)

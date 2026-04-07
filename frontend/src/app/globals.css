@@ -1663,6 +1663,15 @@
   }
 }
 
+/* Hide scrollbar utility — used by horizontal scroll strips (TagCloud, etc.) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
