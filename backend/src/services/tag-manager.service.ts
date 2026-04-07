@@ -1,21 +1,13 @@
 import prisma from '../config/prisma';
 import { TagSource } from '@prisma/client';
+export { normalizeTag } from '../utils/normalize-tag';
+import { normalizeTag } from '../utils/normalize-tag';
 
 export interface TagMetaInput {
     name: string;
     source?: TagSource;
     confidence?: number;
 }
-
-export const normalizeTag = (tag: string) =>
-    tag
-        .replace(/^#+/, '')
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/[\s-]+/g, '-')
-        .replace(/^-|-$/g, '')
-        .slice(0, 32);
 
 export const buildTagMetaList = (tags: TagMetaInput[]): TagMetaInput[] => {
     const seen = new Map<string, TagMetaInput>();

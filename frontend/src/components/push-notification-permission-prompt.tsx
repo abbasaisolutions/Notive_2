@@ -18,10 +18,10 @@ export function PushNotificationPermissionPrompt() {
     useEffect(() => {
         // Only show for authenticated native users without push permission
         if (user && isSupported && !isPermissionGranted && !isLoading && !dismissed) {
-            // Show prompt after a delay to avoid interruption on initial load
+            // Delay longer to let users interact first before prompting
             const timer = setTimeout(() => {
                 setShowPrompt(true);
-            }, 3000);
+            }, 6000);
 
             return () => clearTimeout(timer);
         }
@@ -51,39 +51,47 @@ export function PushNotificationPermissionPrompt() {
     }
 
     return (
-        <div className="fixed bottom-20 right-4 max-w-xs z-40 animate-in slide-in-from-bottom-4">
-            <div className="workspace-panel rounded-xl shadow-lg p-4">
-                <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-0.5">
-                        <svg
-                            className="h-5 w-5 text-primary"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                        >
-                            <path d="M10 2a6 6 0 00-6 6v3.586L4.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l2-2a1 1 0 00-1.414-1.414L5 11.586V8a5 5 0 0110 0v3.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l2-2a1 1 0 00-1.414-1.414L14 11.586V8a6 6 0 00-6-6zM9 16a1 1 0 112 0 1 1 0 01-2 0z" />
-                        </svg>
-                    </div>
-                    <div className="flex-1">
-                        <h3 className="text-sm font-semibold text-strong">
-                            Enable notifications
-                        </h3>
-                        <p className="text-sm text-soft mt-1">
-                            Get real-time updates and insights on your mobile device
-                        </p>
-                        <div className="flex gap-2 mt-3">
-                            <button
-                                onClick={handleRequestPermission}
-                                className="flex-1 px-3 py-1.5 text-sm font-medium rounded-md workspace-button-primary transition-colors"
+        <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={handleDismiss} />
+
+            {/* Card */}
+            <div className="relative mx-4 mb-6 sm:mb-0 w-full max-w-sm animate-in slide-in-from-bottom-6 duration-300">
+                <div className="workspace-panel rounded-2xl shadow-2xl p-6">
+                    {/* Bell icon */}
+                    <div className="flex justify-center mb-4">
+                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                            <svg
+                                className="h-6 w-6 text-primary"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
                             >
-                                Enable
-                            </button>
-                            <button
-                                onClick={handleDismiss}
-                                className="flex-1 px-3 py-1.5 text-sm font-medium rounded-md workspace-button-secondary transition-colors"
-                            >
-                                Later
-                            </button>
+                                <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                            </svg>
                         </div>
+                    </div>
+
+                    <h3 className="text-base font-semibold text-[rgb(var(--text-primary))] text-center">
+                        Stay in the loop
+                    </h3>
+
+                    <p className="text-sm text-ink-secondary text-center mt-2 leading-relaxed">
+                        Get gentle reminders to reflect, see when friends share memories with you, and know when your insights are ready.
+                    </p>
+
+                    <div className="flex flex-col gap-2 mt-5">
+                        <button
+                            onClick={handleRequestPermission}
+                            className="w-full px-4 py-2.5 text-sm font-semibold rounded-xl primary-cta text-white transition-all"
+                        >
+                            Enable notifications
+                        </button>
+                        <button
+                            onClick={handleDismiss}
+                            className="w-full px-4 py-2.5 text-sm font-medium rounded-xl text-ink-secondary hover:text-[rgb(var(--text-primary))] hover:bg-white/5 transition-all"
+                        >
+                            Maybe later
+                        </button>
                     </div>
                 </div>
             </div>

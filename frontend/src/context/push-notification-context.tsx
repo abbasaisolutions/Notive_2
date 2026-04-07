@@ -8,6 +8,7 @@ import logger from '@/utils/logger';
 import { useApi } from '@/hooks/use-api';
 import { isNativePlatform, getNativePlatform } from '@/utils/platform';
 import { hasCompletedPermissionsOnboarding } from '@/services/device-permissions.service';
+import { useToast } from '@/context/toast-context';
 
 export interface DeviceToken {
     id: string;
@@ -51,9 +52,41 @@ const ANDROID_PUSH_CHANNEL = {
     vibration: true,
 };
 
+const ANDROID_PUSH_CHANNELS = [
+    ANDROID_PUSH_CHANNEL,
+    {
+        id: 'notive_reminders',
+        name: 'Journal reminders',
+        description: 'Daily reflection prompts and journaling reminders.',
+        importance: 4 as const,
+        visibility: 1 as const,
+        sound: 'default',
+        vibration: true,
+    },
+    {
+        id: 'notive_social',
+        name: 'Friends & shared memories',
+        description: 'Friend requests, shared memories, and reactions.',
+        importance: 3 as const,
+        visibility: 1 as const,
+        sound: 'default',
+        vibration: true,
+    },
+    {
+        id: 'notive_insights',
+        name: 'Insights & analysis',
+        description: 'AI insights ready and analysis updates.',
+        importance: 2 as const,
+        visibility: 1 as const,
+        sound: 'default',
+        vibration: false,
+    },
+];
+
 export function PushNotificationProvider({ children }: { children: ReactNode }) {
     const { apiFetch } = useApi();
     const router = useRouter();
+    const toast = useToast();
     const [isLoading, setIsLoading] = useState(true);
     const [isSupported, setIsSupported] = useState(false);
     const [isPermissionGranted, setIsPermissionGranted] = useState(false);
@@ -167,9 +200,11 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         }
 
         try {
-            await PushNotifications.createChannel(ANDROID_PUSH_CHANNEL);
+            for (const channel of ANDROID_PUSH_CHANNELS) {
+                await PushNotifications.createChannel(channel);
+            }
         } catch (error) {
-            logger.debug('Push channel already exists or could not be created:', error);
+            logger.debug('Push channel creation error (may already exist):', error);
         }
     };
 
@@ -273,16 +308,26 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
     };
 
     const showNotificationToast = (notification: any) => {
-        // This would typically show a toast/banner
-        // For now, just log it
-        logger.debug('Notification toast would show:', notification.title);
+        const title = notification.title || 'Notive';
+        const body = notification.body || '';
+        const data = notification.data;
+        const deepLink = data?.link || data?.route;
+
+        toast.notification(
+            title,
+            body,
+            deepLink
+                ? { label: 'View', onClick: () => router.push(deepLink) }
+                : undefined,
+        );
     };
 
     const handleNotificationAction = async (notification: any) => {
         // Handle deep linking or navigation based on notification data
         const data = notification.notification?.data || notification.data;
-        if (data?.link) {
-            router.push(data.link);
+        const deepLink = data?.link || data?.route;
+        if (deepLink) {
+            router.push(deepLink);
         }
     };
 

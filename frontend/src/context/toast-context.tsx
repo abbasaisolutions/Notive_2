@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
-export type ToastVariant = 'success' | 'error' | 'warning' | 'info';
+export type ToastVariant = 'success' | 'error' | 'warning' | 'info' | 'notification';
 
 export interface Toast {
     id: string;
@@ -24,6 +24,7 @@ interface ToastContextType {
     error: (title: string, description?: string) => string;
     warning: (title: string, description?: string) => string;
     info: (title: string, description?: string) => string;
+    notification: (title: string, description?: string, action?: Toast['action']) => string;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -82,8 +83,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         [addToast]
     );
 
+    const notification = useCallback(
+        (title: string, description?: string, action?: Toast['action']) =>
+            addToast({ title, description, variant: 'notification', duration: 7000, action }),
+        [addToast]
+    );
+
     return (
-        <ToastContext.Provider value={{ toasts, addToast, removeToast, success, error, warning, info }}>
+        <ToastContext.Provider value={{ toasts, addToast, removeToast, success, error, warning, info, notification }}>
             {children}
         </ToastContext.Provider>
     );
@@ -120,7 +127,7 @@ export function ToastContainer() {
     const { toasts, removeToast } = useToastState();
 
     return (
-        <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 pointer-events-none max-w-sm">
+        <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-50 flex flex-col gap-3 pointer-events-none sm:max-w-sm" style={{ top: 'max(1rem, env(safe-area-inset-top, 1rem))' }}>
             {toasts.map(toast => (
                 <ToastItem
                     key={toast.id}
@@ -171,6 +178,14 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
                     desc: 'text-blue-700',
                     button: 'text-blue-600 hover:text-blue-700',
                 };
+            case 'notification':
+                return {
+                    bg: 'bg-[rgba(var(--paper-sage),0.12)] border-[rgba(var(--paper-sage),0.35)]',
+                    icon: 'bg-[rgba(var(--paper-sage),0.2)] text-[rgb(var(--paper-sage))]',
+                    title: 'text-[rgb(var(--text-primary))]',
+                    desc: 'text-ink-secondary',
+                    button: 'text-primary hover:text-primary/80',
+                };
         }
     };
 
@@ -215,6 +230,12 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
                             d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
                             clipRule="evenodd"
                         />
+                    </svg>
+                );
+            case 'notification':
+                return (
+                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
                     </svg>
                 );
         }

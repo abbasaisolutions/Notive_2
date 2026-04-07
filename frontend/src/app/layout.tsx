@@ -17,6 +17,7 @@ import RouteHeader from "@/components/layout/RouteHeader";
 import PageTransition from "@/components/layout/PageTransition";
 import OfflineBanner from "@/components/layout/OfflineBanner";
 import OnboardingGuard from "@/components/onboarding/OnboardingGuard";
+import PermissionGate from "@/components/PermissionGate";
 import { NOTIVE_VOICE } from "@/content/notive-voice";
 import { getCredentialSsoClientId } from "@/utils/sso";
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -137,6 +138,7 @@ export default function RootLayout({
                                         <GamificationProvider>
                                             <SmartProvider>
                                                 <OnboardingGuard />
+                                                <PermissionGate />
                                                 <script
                                                     type="application/ld+json"
                                                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

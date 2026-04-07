@@ -12,7 +12,6 @@ import MobileNav from '@/components/layout/MobileNav';
 import Sidebar from '@/components/layout/Sidebar';
 import CelebrationModal from '@/components/gamification/CelebrationModal';
 import FloatingVoiceButton from '@/components/voice/FloatingVoiceButton';
-import PushNotificationPermissionPrompt from '@/components/push-notification-permission-prompt';
 import { getWorkspaceMaturity, shouldHideGlobalNav } from '@/components/layout/nav-config';
 import { initSessionTracker } from '@/services/app-session-tracker.service';
 import { API_URL } from '@/constants/config';
@@ -144,7 +143,6 @@ export default function AppChrome() {
                             <ProgressivePersonalizationPrompt />
                         </div>
                     )}
-                    <PushNotificationPermissionPrompt />
                 </>
             )}
         </>

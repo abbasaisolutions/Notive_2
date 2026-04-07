@@ -63,4 +63,17 @@ export function useEntryDraft(userId: string | null | undefined) {
     };
 }
 
+/** Check localStorage for any draft with pendingSync === true for a given user. */
+export function hasPendingSyncDraft(userId: string | null | undefined): boolean {
+    if (!userId) return false;
+    try {
+        const raw = localStorage.getItem(getDraftKey(userId));
+        if (!raw) return false;
+        const parsed = JSON.parse(raw) as EntryDraft;
+        return !!parsed.pendingSync;
+    } catch {
+        return false;
+    }
+}
+
 export default useEntryDraft;

@@ -13,22 +13,54 @@ const allowLLMTagging = process.env.USE_LLM_TAGGING === 'true' && hasLlmProvider
 const llmTaggingMinLocalTags = Number.parseInt(process.env.LLM_TAGGING_MIN_LOCAL_TAGS || '10', 10) || 10;
 
 const STOPWORDS = new Set([
+    // articles, prepositions, conjunctions
     'a', 'an', 'and', 'the', 'to', 'of', 'in', 'on', 'for', 'with', 'at', 'from', 'by', 'as',
+    'or', 'but', 'so', 'if', 'then', 'than', 'too', 'into', 'over', 'after', 'before',
+    'between', 'under', 'through', 'down', 'out', 'off', 'up',
+    // pronouns & determiners
     'is', 'it', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'we', 'they',
-    'my', 'your', 'our', 'their', 'me', 'him', 'her', 'us', 'them', 'be', 'been', 'being',
-    'was', 'were', 'am', 'are', 'or', 'but', 'so', 'if', 'then', 'than', 'too', 'very', 'just',
-    'im', 'ive', 'id', 'ill', 'its', 'dont', 'didnt', 'wont', 'cant', 'not', 'no', 'yes',
+    'my', 'your', 'our', 'their', 'me', 'him', 'her', 'us', 'them',
+    'each', 'every', 'all', 'both', 'few', 'other', 'such', 'only', 'own', 'same',
+    'some', 'what', 'when', 'where', 'how', 'which', 'who', 'whom', 'why',
+    // common verbs (not topical as standalone tags)
+    'be', 'been', 'being', 'was', 'were', 'am', 'are',
+    'im', 'ive', 'id', 'ill', 'its', 'dont', 'didnt', 'wont', 'cant',
     'has', 'had', 'have', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'shall',
-    'may', 'might', 'must', 'need', 'get', 'got', 'one', 'two', 'three', 'also', 'about',
-    'like', 'want', 'know', 'think', 'make', 'made', 'some', 'what', 'when', 'where', 'how',
-    'which', 'who', 'whom', 'why', 'here', 'there', 'now', 'more', 'much', 'many', 'any',
-    'each', 'every', 'all', 'both', 'few', 'other', 'such', 'only', 'own', 'same', 'into',
-    'over', 'after', 'before', 'between', 'under', 'again', 'still', 'really', 'even', 'back',
-    'come', 'came', 'went', 'going', 'doing', 'been', 'said', 'says', 'tell', 'told',
-    'through', 'down', 'out', 'off', 'up', 'way', 'thing', 'things', 'time', 'day', 'today',
-    'yesterday', 'week', 'feels', 'felt', 'feel', 'right', 'well', 'good', 'yeah', 'okay',
-    'features', 'node', 'nodeo', 'happy', 'just', 'something', 'anything', 'everything',
-    'instagram', 'facebook', 'imported',
+    'may', 'might', 'must', 'need', 'get', 'got',
+    'like', 'want', 'know', 'think', 'make', 'made',
+    'come', 'came', 'went', 'going', 'doing', 'said', 'says', 'tell', 'told',
+    'go', 'see', 'saw', 'seen', 'give', 'gave', 'take', 'took', 'taken', 'put',
+    'let', 'try', 'tried', 'keep', 'kept', 'leave', 'left', 'call', 'called',
+    'run', 'ran', 'look', 'looked', 'ask', 'asked', 'use', 'used', 'find', 'found',
+    'say', 'set', 'help', 'helped', 'show', 'showed', 'turn', 'turned', 'move', 'moved',
+    'start', 'started', 'stop', 'stopped', 'end', 'ended', 'open', 'opened',
+    'talk', 'talked', 'hear', 'heard', 'bring', 'brought', 'begin', 'began',
+    'seem', 'seemed', 'happen', 'happened', 'become', 'became', 'stay', 'stayed',
+    // common adjectives & adverbs (not meaningful as tags)
+    'not', 'no', 'yes', 'very', 'just', 'really', 'even', 'still', 'also', 'about',
+    'here', 'there', 'now', 'more', 'much', 'many', 'any', 'again', 'back',
+    'right', 'well', 'good', 'bad', 'big', 'small', 'long', 'new', 'old', 'last', 'next',
+    'first', 'great', 'little', 'different', 'important', 'hard', 'best', 'whole', 'able',
+    'happy', 'okay', 'yeah', 'nice', 'sure', 'real', 'fine', 'pretty', 'enough',
+    // generic nouns (too vague for meaningful tags)
+    'one', 'two', 'three', 'way', 'thing', 'things', 'time', 'day', 'today',
+    'yesterday', 'week', 'month', 'year', 'lot', 'kind', 'part', 'place', 'point',
+    'nothing', 'something', 'anything', 'everything',
+    'people', 'person', 'life', 'work', 'stuff', 'bit',
+    // feelings as standalone (mood is stored separately)
+    'feels', 'felt', 'feel', 'feeling',
+    // platform noise
+    'features', 'node', 'nodeo', 'instagram', 'facebook', 'imported',
+]);
+
+/** Gerunds that are valid noun-topics despite the -ing suffix */
+const NOUN_GERUNDS = new Set([
+    'writing', 'reading', 'coding', 'meeting', 'training', 'learning', 'teaching',
+    'building', 'cooking', 'painting', 'drawing', 'swimming', 'running', 'boxing',
+    'singing', 'dancing', 'gaming', 'hiking', 'climbing', 'cycling', 'skating',
+    'journaling', 'tutoring', 'volunteering', 'mentoring', 'networking',
+    'brainstorming', 'programming', 'engineering', 'designing', 'planning',
+    'budgeting', 'investing', 'marketing', 'consulting', 'parenting',
 ]);
 
 /** Minimum character length for a tag to be valid */
@@ -37,9 +69,16 @@ const MIN_TAG_LENGTH = 3;
 /** Returns true only for tags that are meaningful keywords (not stopwords, long enough) */
 export const isValidTag = (normalized: string): boolean => {
     if (normalized.length < MIN_TAG_LENGTH) return false;
-    // Reject single-word tags that are stopwords
     const parts = normalized.split(/[\s-]+/);
+    // Reject if every part is a stopword or too short
     if (parts.every(p => STOPWORDS.has(p) || p.length < 2)) return false;
+    // For single-word tags, block non-noun gerunds (e.g. "feeling", "going")
+    if (parts.length === 1) {
+        const word = parts[0];
+        if (word.endsWith('ing') && word.length > 4 && !NOUN_GERUNDS.has(word)) return false;
+        // Block past-tense words ending in -ed (e.g. "started", "happened")
+        if (word.endsWith('ed') && word.length > 4 && STOPWORDS.has(word)) return false;
+    }
     return true;
 };
 

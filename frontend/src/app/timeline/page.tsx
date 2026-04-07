@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 const ConstellationView = dynamic(() => import('@/components/timeline/ConstellationView'), { ssr: false });
+const TagCloud = dynamic(() => import('@/components/insights/TagCloud'));
 import TimelineView from '@/components/timeline/TimelineView';
 import ShareMemorySheet from '@/components/share/ShareMemorySheet';
 import type { ShareableEntry } from '@/components/share/ShareMemorySheet';
@@ -2226,6 +2227,13 @@ function TimelinePageContent() {
                     )}
 
                 </header>
+
+                {surface === 'timeline' && (
+                    <TagCloud
+                        selectedTag={themeFilter || null}
+                        onSelectTag={(tag) => setThemeFilter(tag || '')}
+                    />
+                )}
 
                 <section
                     id="timeline-results-panel"

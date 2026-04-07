@@ -80,7 +80,8 @@ const extensionForMimeType = (mimeType: string) => {
     }
 };
 
-const inferMimeTypeFromExtension = (fileName: string): string | null => {
+/** @internal — exported for testing */
+export const inferMimeTypeFromExtension = (fileName: string): string | null => {
     const ext = fileName.split('.').pop()?.toLowerCase();
     switch (ext) {
         case 'jpg':
@@ -95,7 +96,8 @@ const inferMimeTypeFromExtension = (fileName: string): string | null => {
     }
 };
 
-const resolveImageMimeType = (file: File): string | null => {
+/** @internal — exported for testing */
+export const resolveImageMimeType = (file: Pick<File, 'type' | 'name'>): string | null => {
     if (ACCEPTED_IMAGE_UPLOAD_TYPES.includes(file.type as (typeof ACCEPTED_IMAGE_UPLOAD_TYPES)[number])) {
         return file.type;
     }

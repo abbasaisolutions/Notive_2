@@ -1,35 +1,5 @@
 import { describe, it, expect } from 'vitest';
-
-// We test the module's exported helpers indirectly by importing them.
-// The canvas/blob functions need a real DOM so we focus on the pure logic
-// that can run in jsdom.
-
-// Re-implement the private helpers inline so we can unit-test the logic
-// without exporting them from the production module.
-
-const ACCEPTED_IMAGE_UPLOAD_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
-
-const inferMimeTypeFromExtension = (fileName: string): string | null => {
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    switch (ext) {
-        case 'jpg':
-        case 'jpeg':
-            return 'image/jpeg';
-        case 'png':
-            return 'image/png';
-        case 'webp':
-            return 'image/webp';
-        default:
-            return null;
-    }
-};
-
-const resolveImageMimeType = (file: { type: string; name: string }): string | null => {
-    if (ACCEPTED_IMAGE_UPLOAD_TYPES.includes(file.type as any)) {
-        return file.type;
-    }
-    return inferMimeTypeFromExtension(file.name);
-};
+import { inferMimeTypeFromExtension, resolveImageMimeType } from './image-upload';
 
 describe('inferMimeTypeFromExtension', () => {
     it('returns image/jpeg for .jpg', () => {

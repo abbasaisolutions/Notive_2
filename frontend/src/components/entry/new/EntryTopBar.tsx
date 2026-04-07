@@ -117,8 +117,14 @@ export default function EntryTopBar({
                         </button>
                         <div className="min-w-0">
                             <p className="text-[10px] uppercase tracking-[0.16em] text-ink-muted font-semibold leading-none">{studioLabel}</p>
-                            <p className="mt-0.5 text-[0.65rem] text-ink-muted leading-none">
-                                {wordCount > 0 ? `${wordCount} words` : studioPrompt.split('.')[0]}
+                            <p className={`mt-0.5 text-[0.65rem] leading-none ${
+                                wordCount >= 130 ? 'text-[rgb(var(--paper-sage))]' : 'text-ink-muted'
+                            }`}>
+                                {wordCount > 0
+                                    ? wordCount >= 130
+                                        ? `${wordCount} words ✓`
+                                        : `${wordCount} / 130 words`
+                                    : studioPrompt.split('.')[0]}
                             </p>
                         </div>
                     </div>

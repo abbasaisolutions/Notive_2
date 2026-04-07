@@ -67,6 +67,7 @@ const DailyCheckIn = dynamic(() => import('@/components/dashboard/DailyCheckIn')
 const WellnessCheckin = dynamic(() => import('@/components/dashboard/WellnessCheckin'));
 import type { WellnessData } from '@/components/dashboard/WellnessCheckin';
 const JournalIntelligenceSection = dynamic(() => import('@/components/dashboard/JournalIntelligenceSection'));
+const TagCloud = dynamic(() => import('@/components/insights/TagCloud'));
 import { Surface } from '@/components/ui/surface';
 const DashboardNotebookView = dynamic(() => import('@/components/dashboard/DashboardNotebookView'), {
     loading: () => <div className="flex min-h-[60vh] items-center justify-center"><Spinner /></div>,
@@ -1239,6 +1240,11 @@ export default function DashboardPage() {
                             body="Keep naming feelings in your notes and Notive will start sketching the emotional fingerprint here."
                         />
                     ) : null}
+                </Gate>
+
+                {/* ── Tag Cloud — your themes (tier 3+) ────────── */}
+                <Gate minTier={3} currentTier={insightTier}>
+                    <TagCloud />
                 </Gate>
 
                 {/* ── Journal Intelligence — compact pills, expand on tap ── */}

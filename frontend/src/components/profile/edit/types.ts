@@ -312,11 +312,11 @@ export const normalizeStringArray = (value: unknown): string[] => {
         .filter(Boolean);
 };
 
-export const normalizeTag = (value: string, maxLength: number): string =>
+export const normalizeTextField = (value: string, maxLength: number): string =>
     value.replace(/\s+/g, ' ').trim().slice(0, maxLength);
 
 export const addTag = (items: string[], rawTag: string, maxItems: number, maxLength: number): string[] => {
-    const nextTag = normalizeTag(rawTag, maxLength);
+    const nextTag = normalizeTextField(rawTag, maxLength);
     if (!nextTag || items.length >= maxItems) return items;
 
     const exists = items.some((item) => item.toLowerCase() === nextTag.toLowerCase());
@@ -356,7 +356,7 @@ const normalizeEmailAddress = (value: unknown): string => {
 };
 
 const buildTrustedContactId = (name: string, relationship?: string) =>
-    `${normalizeTag(name, 40).toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'contact'}-${normalizeTag(relationship || 'support', 24).toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'support'}`;
+    `${normalizeTextField(name, 40).toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'contact'}-${normalizeTextField(relationship || 'support', 24).toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'support'}`;
 
 const normalizeTrustedContacts = (value: unknown): TrustedContactPreference[] => {
     if (!Array.isArray(value)) return [];
@@ -366,17 +366,17 @@ const normalizeTrustedContacts = (value: unknown): TrustedContactPreference[] =>
         if (!item || typeof item !== 'object' || Array.isArray(item)) return acc;
 
         const source = item as TrustedContactPreference;
-        const name = normalizeTag(String(source.name || ''), 60);
+        const name = normalizeTextField(String(source.name || ''), 60);
         if (!name) return acc;
 
-        const relationship = normalizeTag(String(source.relationship || ''), 40);
-        const note = normalizeTag(String(source.note || ''), 160);
+        const relationship = normalizeTextField(String(source.relationship || ''), 40);
+        const note = normalizeTextField(String(source.note || ''), 160);
         const phoneNumber = normalizePhoneNumber(source.phoneNumber);
         const emailAddress = normalizeEmailAddress(source.emailAddress);
         const channel: TrustedContactChannel = source.channel === 'call' || source.channel === 'in_person'
             ? source.channel
             : 'text';
-        const id = normalizeTag(String(source.id || buildTrustedContactId(name, relationship)), 80)
+        const id = normalizeTextField(String(source.id || buildTrustedContactId(name, relationship)), 80)
             || buildTrustedContactId(name, relationship);
         const key = `${name.toLowerCase()}::${relationship.toLowerCase()}`;
         if (seen.has(key) || acc.length >= 4) return acc;
@@ -417,7 +417,7 @@ const normalizeContactOutcomes = (value: unknown): SupportContactOutcome[] => {
             if (!item || typeof item !== 'object' || Array.isArray(item)) return acc;
 
             const source = item as SupportContactOutcome;
-            const contactName = normalizeTag(String(source.contactName || ''), 80);
+            const contactName = normalizeTextField(String(source.contactName || ''), 80);
             const recordedAt = typeof source.recordedAt === 'string' ? source.recordedAt : '';
             const outcome = source.outcome === 'helped' || source.outcome === 'still_need_support'
                 ? source.outcome
@@ -434,8 +434,8 @@ const normalizeContactOutcomes = (value: unknown): SupportContactOutcome[] => {
             }
 
             acc.push({
-                id: normalizeTag(String(source.id || `support-outcome-${index}`), 80) || `support-outcome-${index}`,
-                ...(source.contactId ? { contactId: normalizeTag(String(source.contactId), 80) } : {}),
+                id: normalizeTextField(String(source.id || `support-outcome-${index}`), 80) || `support-outcome-${index}`,
+                ...(source.contactId ? { contactId: normalizeTextField(String(source.contactId), 80) } : {}),
                 contactName,
                 outcome,
                 source: contactSource,
@@ -449,7 +449,7 @@ const normalizeContactOutcomes = (value: unknown): SupportContactOutcome[] => {
                 ...(source.riskLevel === 'none' || source.riskLevel === 'yellow' || source.riskLevel === 'orange' || source.riskLevel === 'red'
                     ? { riskLevel: source.riskLevel }
                     : {}),
-                ...(source.entryId ? { entryId: normalizeTag(String(source.entryId), 80) } : {}),
+                ...(source.entryId ? { entryId: normalizeTextField(String(source.entryId), 80) } : {}),
                 recordedAt,
             });
             return acc;
@@ -464,8 +464,8 @@ const normalizeSupportPreferences = (value: unknown): SupportPreferences | undef
     }
 
     const source = value as SupportPreferences;
-    const pinnedPeople = normalizeStringArray(source.pinnedPeople).slice(0, 6).map((item) => normalizeTag(item, 60));
-    const groundingRoutines = normalizeStringArray(source.groundingRoutines).slice(0, 6).map((item) => normalizeTag(item, 60));
+    const pinnedPeople = normalizeStringArray(source.pinnedPeople).slice(0, 6).map((item) => normalizeTextField(item, 60));
+    const groundingRoutines = normalizeStringArray(source.groundingRoutines).slice(0, 6).map((item) => normalizeTextField(item, 60));
     const trustedContacts = normalizeTrustedContacts(source.trustedContacts);
     const contactOutcomes = normalizeContactOutcomes(source.contactOutcomes);
     const safetyRegion: SafetyRegion = source.safetyRegion === 'us' || source.safetyRegion === 'intl'

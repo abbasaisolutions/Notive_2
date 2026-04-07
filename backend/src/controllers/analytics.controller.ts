@@ -8,6 +8,7 @@ import { evaluatePromptLearningModels } from '../services/prompt-learning-evalua
 import { buildPromptExperimentReport } from '../services/prompt-experiment-report.service';
 import { applyPromptPolicyPerformanceFeedback } from '../services/prompt-learning-policy-feedback.service';
 import { buildPromptBehaviorProfileWithPolicy } from '../services/prompt-learning-policy.service';
+import { isValidTag } from '../services/tagging.service';
 import {
     buildPromptLearningPolicyPerformanceReport,
     persistPromptLearningPolicySnapshot,
@@ -636,6 +637,7 @@ export const getTagThemes = async (req: Request, res: Response) => {
 
         const themes = Array.from(tagMap.entries())
             .map(([tag, { count, lastSeen }]) => ({ tag, count, lastSeen }))
+            .filter(({ tag }) => isValidTag(tag))
             .sort((a, b) => b.count - a.count)
             .slice(0, 10);
 

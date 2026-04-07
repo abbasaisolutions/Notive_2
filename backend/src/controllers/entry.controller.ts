@@ -614,12 +614,15 @@ export const createEntry = async (req: Request, res: Response) => {
         // Fire-and-forget: generate Notive Noticed insights in the background
         guidedReflectionService.generateNotiveInsights(entry.id, userId).catch(() => {});
 
+        const wordCount = content.trim().split(/\s+/).length;
+
         return res.status(201).json({
             entry: attachEntryStorySignal(responseEntry),
             suggestedTags: autoTagMeta
                 .map(t => t.name)
                 .filter(tag => !providedTagKeys.has(tag.toLowerCase())),
             suggestions: nlpFallback?.suggestions || null,
+            ...(wordCount < 130 ? { insufficientContent: true } : {}),
         });
     } catch (error) {
         console.error('Create entry error:', error);

@@ -1,21 +1,11 @@
 import { PrismaClient, TagSource, EntrySource } from '@prisma/client';
+import { normalizeTag } from '../src/utils/normalize-tag';
 
 const prisma = new PrismaClient();
 
 const BATCH_SIZE = 200;
 const normalizeEntries = process.argv.includes('--normalize-entry-tags');
 const dryRun = process.argv.includes('--dry-run');
-
-/** Canonical normalization — must match tag-manager.service.ts */
-const normalizeTag = (tag: string) =>
-    tag
-        .replace(/^#+/, '')
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/[\s-]+/g, '-')
-        .replace(/^-|-$/g, '')
-        .slice(0, 32);
 
 const isSameTagSet = (a: string[], b: string[]) => {
     if (a.length !== b.length) return false;

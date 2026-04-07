@@ -119,21 +119,21 @@ function EditEntryContent() {
     };
 
     return (
-        <div className="min-h-screen p-3 md:p-6">
+        <div className="min-h-screen p-4 md:p-6">
             <div className="max-w-2xl mx-auto">
                 {/* ── Top bar ── */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-5">
                     <button
                         type="button"
                         onClick={navigateBack}
                         aria-label={backLabel}
                         className="flex items-center gap-1.5 text-ink-muted hover:text-[rgb(var(--text-primary))] transition-colors"
                     >
-                        <FiArrowLeft size={16} aria-hidden="true" />
-                        <span className="text-xs font-medium">Back</span>
+                        <FiArrowLeft size={18} aria-hidden="true" />
+                        <span className="text-sm font-medium">Back</span>
                     </button>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[0.65rem] text-ink-muted">
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs text-ink-muted">
                             {isAutoSaving ? 'Saving…' : hasUnsavedChanges ? 'Unsaved' : lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
                         </span>
                         <Button onClick={handleSave} isLoading={isSaving}>
@@ -143,27 +143,27 @@ function EditEntryContent() {
                 </div>
 
                 {error && (
-                    <div className="mb-3 workspace-soft-panel text-ink-secondary px-3 py-2 rounded-xl text-xs">
+                    <div className="mb-4 workspace-soft-panel text-ink-secondary px-4 py-2.5 rounded-xl text-sm">
                         {error}
                     </div>
                 )}
 
                 {/* ── Cover image ── */}
                 {coverImage ? (
-                    <div className="relative w-full h-36 rounded-2xl overflow-hidden group mb-3">
+                    <div className="relative w-full h-40 rounded-2xl overflow-hidden group mb-5">
                         <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
                         <button
                             onClick={() => setCoverImage(null)}
                             aria-label="Remove cover image"
-                            className="absolute top-2 right-2 px-2 py-1 rounded-lg bg-black/50 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-black/50 text-white text-xs sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                         >
                             Remove
                         </button>
                     </div>
                 ) : (
-                    <label className="workspace-soft-panel w-full h-10 rounded-xl border border-dashed border-[rgba(141,123,105,0.25)] flex items-center justify-center gap-2 cursor-pointer transition-all hover:brightness-[1.04] mb-3">
+                    <label className="workspace-soft-panel w-full h-11 rounded-xl border border-dashed border-[rgba(141,123,105,0.25)] flex items-center justify-center gap-2 cursor-pointer transition-all hover:brightness-[1.04] mb-5">
                         <input type="file" accept={ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR} onChange={handleImageUpload} className="hidden" disabled={isUploading} />
-                        {isUploading ? <Spinner size="sm" /> : <span className="text-xs text-ink-muted">+ Add cover image</span>}
+                        {isUploading ? <Spinner size="sm" /> : <span className="text-sm text-ink-muted">+ Add cover image</span>}
                     </label>
                 )}
 
@@ -173,18 +173,17 @@ function EditEntryContent() {
                     placeholder="Title"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full ink-title-input text-xl font-bold font-serif focus:outline-none mb-3 bg-transparent"
+                    className="w-full ink-title-input text-xl font-bold font-serif focus:outline-none mb-5 bg-transparent"
                 />
 
-                {/* ── Compact metadata row ── */}
-                <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                    {/* Category toggle */}
+                {/* ── Metadata ── */}
+                <div className="flex flex-wrap items-center gap-2 mb-5">
                     {(['PERSONAL', 'PROFESSIONAL'] as EntryCategory[]).map((option) => (
                         <button
                             key={option}
                             type="button"
                             onClick={() => handleCategorySelect(option)}
-                            className={`rounded-full border px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] transition ${
+                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] transition ${
                                 category === option
                                     ? 'border-primary/45 bg-primary/15 text-primary'
                                     : 'workspace-button-outline text-ink-muted'
@@ -194,21 +193,19 @@ function EditEntryContent() {
                         </button>
                     ))}
                     <span className="text-ink-muted/30 text-xs">|</span>
-                    {/* Life area */}
                     <select
                         value={lifeArea}
                         onChange={(event) => setLifeArea(normalizeLifeArea(event.target.value, category))}
-                        className="workspace-input rounded-full px-2.5 py-1 text-[0.65rem] text-ink-secondary focus:outline-none focus:ring-1 focus:ring-primary/30 border border-[rgba(141,123,105,0.18)]"
+                        className="workspace-input rounded-full px-3 py-1.5 text-xs text-ink-secondary focus:outline-none focus:ring-1 focus:ring-primary/30 border border-[rgba(141,123,105,0.18)]"
                     >
                         {availableLifeAreas.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                     </select>
-                    {/* Collection */}
                     <select
                         value={chapterId || ''}
                         onChange={(event) => setChapterId(event.target.value || null)}
-                        className="workspace-input rounded-full px-2.5 py-1 text-[0.65rem] text-ink-secondary focus:outline-none focus:ring-1 focus:ring-primary/30 border border-[rgba(141,123,105,0.18)]"
+                        className="workspace-input rounded-full px-3 py-1.5 text-xs text-ink-secondary focus:outline-none focus:ring-1 focus:ring-primary/30 border border-[rgba(141,123,105,0.18)]"
                     >
                         <option value="">No collection</option>
                         {collections.map((collection) => (
@@ -218,20 +215,21 @@ function EditEntryContent() {
                 </div>
 
                 {/* ── Mood ── */}
-                <div className="flex flex-wrap gap-1 mb-3">
+                <div className="flex flex-wrap gap-1.5 mb-5">
                     {MOODS.map((m) => (
                         <button
                             key={m.value}
                             type="button"
                             onClick={() => setMood(mood === m.value ? null : m.value)}
                             title={m.label}
-                            className={`px-2.5 py-1 rounded-full text-[0.65rem] flex items-center gap-1 transition-all ${
+                            aria-pressed={mood === m.value}
+                            className={`px-3 py-1.5 rounded-full text-xs flex items-center gap-1.5 transition-all ${
                                 mood === m.value
-                                    ? 'bg-primary/15 border border-primary/40 text-primary'
-                                    : 'workspace-pill text-ink-muted border border-transparent'
+                                    ? 'bg-primary/15 border border-primary/40 text-primary font-medium'
+                                    : 'workspace-pill text-ink-muted border border-transparent hover:border-primary/15'
                             }`}
                         >
-                            <m.icon size={11} aria-hidden="true" />
+                            <m.icon size={14} aria-hidden="true" />
                             <span>{m.label}</span>
                         </button>
                     ))}
@@ -245,23 +243,30 @@ function EditEntryContent() {
                 />
 
                 {/* ── Tags ── */}
-                <div className="mt-3">
-                    <div className="flex flex-wrap gap-1.5 mb-1.5">
+                <div className="mt-5">
+                    <div className="flex flex-wrap gap-2 mb-2">
                         {tags.map((tag) => (
-                            <span key={tag} className="workspace-pill px-2.5 py-0.5 rounded-full text-xs text-ink-secondary flex items-center gap-1">
+                            <span key={tag} className="workspace-pill px-3 py-1 rounded-full text-xs text-ink-secondary flex items-center gap-1.5">
                                 #{tag}
-                                <button type="button" onClick={() => handleRemoveTag(tag)} aria-label={`Remove tag ${tag}`} className="text-ink-muted hover:text-[rgb(var(--text-primary))] leading-none">×</button>
+                                <button type="button" onClick={() => handleRemoveTag(tag)} aria-label={`Remove tag ${tag}`} className="text-ink-muted hover:text-[rgb(var(--text-primary))] leading-none text-sm">&times;</button>
                             </span>
                         ))}
                     </div>
-                    <input
-                        type="text"
-                        placeholder="Add tag + Enter"
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
-                        onKeyDown={handleAddTag}
-                        className="w-full workspace-input px-3 py-1.5 rounded-xl text-xs text-[rgb(var(--text-primary))] focus:outline-none focus:ring-1 focus:ring-primary/40"
-                    />
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="Add a tag..."
+                            value={tagInput}
+                            onChange={(e) => setTagInput(e.target.value)}
+                            onKeyDown={handleAddTag}
+                            className="w-full workspace-input px-3 py-2 rounded-xl text-sm text-[rgb(var(--text-primary))] focus:outline-none focus:ring-1 focus:ring-primary/40"
+                        />
+                        {!tagInput && (
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[0.65rem] text-ink-muted/50 pointer-events-none">
+                                press Enter to add
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

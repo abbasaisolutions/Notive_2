@@ -28,9 +28,10 @@ import {
     type VoiceTranscriptionResponse,
 } from '@/services/voice-transcription.service';
 import { appendReturnTo } from '@/utils/navigation';
-import { normalizeTag } from '@/utils/tags';
+import { normalizeTag, isValidTag } from '@/utils/tags';
 import { useToast } from '@/context/toast-context';
 import { Spinner } from '@/components/ui';
+import FirstEntryHandoff from '@/components/entry/FirstEntryHandoff';
 import { prepareImageForUpload } from '@/utils/image-upload';
 import {
     buildBrowserFallbackTranscription,
@@ -278,6 +279,7 @@ function NewEntryPageContent() {
     const [recordingElapsed, setRecordingElapsed] = useState(0);
     const [isBackgroundRefining, setIsBackgroundRefining] = useState(false);
     const [mirrorSentence, setMirrorSentence] = useState<string | null>(null);
+    const [showFirstEntryHandoff, setShowFirstEntryHandoff] = useState(entrySource === 'onboarding');
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mirrorTimerRef = useRef<NodeJS.Timeout>();
@@ -1192,6 +1194,18 @@ function NewEntryPageContent() {
             return;
         }
 
+        const saveWordCount = content.trim().split(/\s+/).length;
+        if (saveWordCount < 130) {
+            persistDraftSnapshot(true);
+            if (!isAutoSave) {
+                toast.info(
+                    'I still need to know more about this',
+                    `Add a bit more detail so I can give you meaningful insights (${saveWordCount}/130 words).`,
+                );
+            }
+            return;
+        }
+
         const offline = typeof navigator !== 'undefined' && !navigator.onLine;
         if (offline) {
             persistDraftSnapshot(true);
@@ -1449,7 +1463,7 @@ function NewEntryPageContent() {
 
     const addTag = useCallback((tag: string) => {
         const normalized = normalizeTag(tag);
-        if (normalized && !tagsOverride.some(t => normalizeTag(t) === normalized)) {
+        if (normalized && isValidTag(normalized) && !tagsOverride.some(t => normalizeTag(t) === normalized)) {
             setTagsOverride(prev => [...prev, normalized]);
         }
     }, [tagsOverride]);
@@ -1573,6 +1587,9 @@ function NewEntryPageContent() {
 
     return (
         <div className={`entry-studio min-h-screen selection:bg-primary/30 ${isWhisperMode ? 'bg-[rgb(var(--bg-canvas))] text-[rgb(var(--text-soft))]' : 'text-[rgb(var(--text-primary))]'}`}>
+            {showFirstEntryHandoff && (
+                <FirstEntryHandoff onDismiss={() => setShowFirstEntryHandoff(false)} />
+            )}
             <h1 className="sr-only">New Entry</h1>
             {!isWhisperMode && (
                 <>

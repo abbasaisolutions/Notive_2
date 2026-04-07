@@ -99,7 +99,7 @@ const titleize = (value: string) =>
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ');
 
-const normalizeTag = (value: string | null | undefined) =>
+const normalizeThemeLabel = (value: string | null | undefined) =>
     String(value || '')
         .replace(/[_#]+/g, ' ')
         .replace(/\s+/g, ' ')
@@ -110,7 +110,7 @@ const dedupe = (values: Array<string | null | undefined>) =>
     Array.from(
         new Set(
             values
-                .map((value) => normalizeTag(value))
+                .map((value) => normalizeThemeLabel(value))
                 .filter(Boolean)
         )
     );
@@ -120,7 +120,7 @@ const pickThemeFromTags = (entries: GentleReflectionEntry[]): string | null => {
 
     entries.slice(0, 6).forEach((entry) => {
         entry.tags.forEach((tag) => {
-            const normalized = normalizeTag(tag).toLowerCase();
+            const normalized = normalizeThemeLabel(tag).toLowerCase();
             if (!normalized || GENERIC_TAGS.has(normalized) || normalized.length < 3) return;
             counts.set(normalized, (counts.get(normalized) || 0) + 1);
         });
