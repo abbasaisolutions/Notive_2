@@ -287,7 +287,7 @@ function generateHealthData(userId: string) {
             caloriesBurned: 1800 + randomBetween(200, 800),
             avgHeartRate: 72 + randomBetween(-8, 15),
             restingHeartRate: 58 + randomBetween(-4, 8),
-            source: 'GOOGLE_FIT'
+            source: 'SELF_REPORT'
         });
     }
     

@@ -47,10 +47,3 @@ export const getConfiguredApiBaseUrl = (): string | null => {
     return apiUrl ? apiUrl.replace(/\/api\/v1\/?$/, '') : null;
 };
 
-export const getGoogleFitRedirectUri = (): string | null => {
-    const explicit = normalizeHttpUrl(process.env.GOOGLE_FIT_REDIRECT_URI);
-    if (explicit) return explicit;
-
-    const apiBaseUrl = getConfiguredApiBaseUrl();
-    return apiBaseUrl ? `${apiBaseUrl}/api/v1/health/google-fit/callback` : null;
-};

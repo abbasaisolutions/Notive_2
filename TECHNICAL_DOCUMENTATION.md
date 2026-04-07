@@ -62,7 +62,6 @@ Notive addresses these gaps by integrating multiple NLP techniques into the jour
 | Semantic Search | Find entries by meaning, not just keywords |
 | Journal Chat (RAG) | Conversational AI to query personal journal history |
 | Text Rewriting | Transform entries with different tones/styles |
-| Health Correlation | Connect Google Fit data with mood patterns |
 | Chapters & Organization | Hierarchical organization of entries |
 | Analytics Dashboard | Visualize journaling habits and trends |
 | Social Import | Import posts from Instagram/Facebook as entries |
@@ -121,8 +120,8 @@ The application demonstrates practical NLP applications including:
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           EXTERNAL INTEGRATIONS                          │
 ├─────────────────────────────────────────────────────────────────────────┤
-│  Google OAuth (Authentication)    │    Google Fit (Health Data)         │
-│  Instagram/Facebook (Import)      │    Redis (Caching - optional)       │
+│  Google OAuth (Authentication)    │    Instagram/Facebook (Import)      │
+│  Redis (Caching - optional)       │                                     │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -203,7 +202,6 @@ backend/src/
 | **HuggingFace Inference** | Alternative LLM (Qwen, GPT-OSS) | `@huggingface/inference` SDK |
 | **Sentence Transformers** | Semantic embeddings | Python microservice |
 | **Google OAuth** | SSO authentication | `google-auth-library` |
-| **Google Fit API** | Health data synchronization | OAuth + REST API |
 | **Instagram/Facebook** | Social media import | OAuth + Graph API |
 
 ### 2.6 Communication Flow
@@ -304,7 +302,6 @@ enum Role {
 ### 3.7 Background Jobs
 
 **Health Cron Service:**
-- Scheduled Google Fit data synchronization
 - Weekly insight generation for connected users
 - Configurable via `ENABLE_HEALTH_CRON` environment variable
 
@@ -919,10 +916,7 @@ await prisma.refreshToken.create({
 2. **Embedding service:** Content processed by Python service
    - *Mitigation:* Self-hosted within same infrastructure (Docker)
 
-3. **Health data:** Google Fit syncing
-   - *Mitigation:* User explicitly connects; data stored locally
-
-4. **Social import:** Instagram/Facebook content imported
+3. **Social import:** Instagram/Facebook content imported
    - *Mitigation:* User-initiated; marked with source
 
 ---
