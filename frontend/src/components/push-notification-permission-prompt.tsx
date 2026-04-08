@@ -5,6 +5,21 @@ import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { useAuth } from '@/context/auth-context';
 import logger from '@/utils/logger';
 
+const DISMISS_KEY = 'notive_push_prompt_dismissed';
+const DISMISS_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // re-show after 7 days
+
+function wasDismissedRecently(): boolean {
+    try {
+        const ts = localStorage.getItem(DISMISS_KEY);
+        if (!ts) return false;
+        return Date.now() - Number(ts) < DISMISS_EXPIRY_MS;
+    } catch { return false; }
+}
+
+function persistDismissal(): void {
+    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* noop */ }
+}
+
 /**
  * Component that handles push notification permission requests
  * Shows a subtle prompt to enable push notifications
@@ -13,7 +28,7 @@ export function PushNotificationPermissionPrompt() {
     const { isSupported, isPermissionGranted, isLoading, requestPushPermission } = usePushNotifications();
     const { user } = useAuth();
     const [showPrompt, setShowPrompt] = useState(false);
-    const [dismissed, setDismissed] = useState(false);
+    const [dismissed, setDismissed] = useState(() => wasDismissedRecently());
 
     useEffect(() => {
         // Only show for authenticated native users without push permission
@@ -25,7 +40,11 @@ export function PushNotificationPermissionPrompt() {
 
             return () => clearTimeout(timer);
         }
-    }, [user, isSupported, isPermissionGranted, isLoading, dismissed]);
+        // If permission was granted while this component is mounted, hide it
+        if (isPermissionGranted && showPrompt) {
+            setShowPrompt(false);
+        }
+    }, [user, isSupported, isPermissionGranted, isLoading, dismissed, showPrompt]);
 
     const handleRequestPermission = async () => {
         try {
@@ -33,7 +52,11 @@ export function PushNotificationPermissionPrompt() {
             if (granted) {
                 logger.debug('Push notification permission granted');
                 setShowPrompt(false);
+                // Clear any previous dismissal so we don't have stale state
+                try { localStorage.removeItem(DISMISS_KEY); } catch { /* noop */ }
             } else {
+                // User denied at OS level — treat like a dismiss so we don't nag
+                handleDismiss();
                 logger.debug('Push notification permission denied');
             }
         } catch (error) {
@@ -44,6 +67,7 @@ export function PushNotificationPermissionPrompt() {
     const handleDismiss = () => {
         setShowPrompt(false);
         setDismissed(true);
+        persistDismissal();
     };
 
     if (!showPrompt) {

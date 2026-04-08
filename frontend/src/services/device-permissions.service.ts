@@ -62,6 +62,12 @@ async function requestNotificationPermission(): Promise<PermissionStatus> {
     }
     try {
         const { PushNotifications } = await import('@capacitor/push-notifications');
+        // Fast-path: if OS already granted, skip the prompt entirely.
+        const check = await PushNotifications.checkPermissions();
+        if (check.receive === 'granted') {
+            await PushNotifications.register();
+            return 'granted';
+        }
         const result = await PushNotifications.requestPermissions();
         if (result.receive === 'granted') {
             await PushNotifications.register();

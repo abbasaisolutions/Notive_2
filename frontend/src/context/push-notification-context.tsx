@@ -123,23 +123,23 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             // Ensure the Android channel exists before the first notification arrives.
             await ensureAndroidPushChannel();
 
-            // Only auto-request permission if the user has already been through the
-            // permissions onboarding step. Otherwise, let that step handle the first ask
-            // so the OS prompt comes with context instead of on a cold mount.
-            if (hasCompletedPermissionsOnboarding()) {
-                await requestPermission();
-            } else {
-                // Still check current status so UI reflects reality
-                const check = await PushNotifications.checkPermissions();
-                const alreadyGranted = check.receive === 'granted';
-                setIsPermissionGranted(alreadyGranted);
+            // Always check current OS permission status first so we never
+            // re-show the OS prompt when the user already granted access.
+            const check = await PushNotifications.checkPermissions();
+            const alreadyGranted = check.receive === 'granted';
+            setIsPermissionGranted(alreadyGranted);
 
-                // Existing users who granted permission before the onboarding
-                // flag existed still need token registration on every app start.
-                if (alreadyGranted) {
-                    await PushNotifications.register();
-                }
+            if (alreadyGranted) {
+                // Permission already granted — just ensure token registration.
+                await PushNotifications.register();
+            } else if (hasCompletedPermissionsOnboarding()) {
+                // User completed onboarding but hasn't granted push yet —
+                // request once. If the OS previously recorded a hard deny
+                // this will be a no-op on Android 13+ (returns 'denied').
+                await requestPermission();
             }
+            // Otherwise: first-time user who hasn't been through onboarding.
+            // Don't prompt — let the onboarding step handle the first ask.
         } catch (error) {
             logger.error('Failed to initialize push notifications:', error);
         } finally {
@@ -216,6 +216,15 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
 
     const requestPermission = async (): Promise<boolean> => {
         try {
+            // Fast-path: if already granted, skip the OS prompt entirely.
+            const check = await PushNotifications.checkPermissions();
+            if (check.receive === 'granted') {
+                setIsPermissionGranted(true);
+                await ensureAndroidPushChannel();
+                await PushNotifications.register();
+                return true;
+            }
+
             const result = await PushNotifications.requestPermissions();
             const granted = result.receive === 'granted';
             setIsPermissionGranted(granted);
