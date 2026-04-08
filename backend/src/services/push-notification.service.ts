@@ -217,24 +217,52 @@ export class PushNotificationService {
     private async sendViaFcm(app: App, token: string, payload: PushNotificationPayload): Promise<void> {
         const message: Message = {
             token,
+            // NOTE: We use data-only + platform notification blocks so we have
+            // full control over how the notification renders on each OS.
+            // The `notification` top-level field is intentionally included so
+            // FCM shows the heads-up banner when the app is killed/background.
             notification: {
                 title: payload.title,
                 body: payload.body,
             },
             data: payload.data ?? {},
             android: {
-                notification: {
-                    sound: payload.sound ?? 'default',
-                    icon: payload.icon ?? 'ic_notification',
-                    channelId: 'notive_default',
-                },
+                // high priority wakes the device for heads-up display (like WhatsApp)
                 priority: 'high',
+                notification: {
+                    // ── Icon & colour ────────────────────────────────
+                    icon: 'ic_stat_notive',           // monochrome status-bar icon
+                    color: '#8A9A6F',                 // sage-green accent (brand)
+                    // ── Channel ──────────────────────────────────────
+                    channelId: payload.data?.type === 'reminder'
+                        ? 'notive_reminders'
+                        : 'notive_default',
+                    // ── Sound & vibration ────────────────────────────
+                    sound: payload.sound ?? 'default',
+                    defaultVibrateTimings: true,
+                    // ── Visibility ───────────────────────────────────
+                    // PUBLIC so title+body show on lock screen (like WhatsApp).
+                    visibility: 'public',
+                    // ── Behaviour ────────────────────────────────────
+                    // Tag collapses multiple reminder notifications into one,
+                    // preventing a stack of stale reminders.
+                    tag: payload.data?.type ?? 'notive',
+                    // Ticker text shown briefly in the status bar on older devices
+                    ticker: payload.title,
+                    // Notification priority within the shade (MAX = heads-up pop)
+                    priority: 'max',
+                },
             },
             apns: {
+                headers: {
+                    'apns-priority': '10',            // immediate delivery
+                },
                 payload: {
                     aps: {
                         sound: payload.sound ?? 'default',
                         badge: payload.badge ? Number(payload.badge) : undefined,
+                        // Show notification on lock screen and as banner
+                        'mutable-content': 1,
                     },
                 },
             },

@@ -58,8 +58,8 @@ const ANDROID_PUSH_CHANNELS = [
         id: 'notive_reminders',
         name: 'Journal reminders',
         description: 'Daily reflection prompts and journaling reminders.',
-        importance: 4 as const,
-        visibility: 1 as const,
+        importance: 5 as const,   // MAX — heads-up popup like WhatsApp
+        visibility: 1 as const,   // PUBLIC — show on lock screen
         sound: 'default',
         vibration: true,
     },
@@ -202,7 +202,21 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         }
 
         try {
+            const { channels } = await PushNotifications.listChannels();
+            const existingChannels = new Map(
+                channels.map((channel) => [channel.id, channel])
+            );
+
             for (const channel of ANDROID_PUSH_CHANNELS) {
+                const existingChannel = existingChannels.get(channel.id);
+                const needsRecreate = existingChannel
+                    && (existingChannel.importance !== channel.importance
+                        || existingChannel.visibility !== channel.visibility);
+
+                if (needsRecreate) {
+                    await PushNotifications.deleteChannel({ id: channel.id });
+                }
+
                 await PushNotifications.createChannel(channel);
             }
         } catch (error) {

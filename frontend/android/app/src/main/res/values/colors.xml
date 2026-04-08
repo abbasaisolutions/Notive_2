@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="notive_background">#F8F4ED</color>
+    <!-- Accent color shown on the notification small icon tint and header -->
+    <color name="notive_notification_accent">#8A9A6F</color>
 </resources>
