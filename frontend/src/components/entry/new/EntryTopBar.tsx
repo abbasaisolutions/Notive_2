@@ -1,6 +1,7 @@
 'use client';
 
 import { type ReactNode } from 'react';
+import { MIN_WORDS_FOR_ENTRY_INSIGHTS } from '@/constants/entry-requirements';
 import { FiAlertTriangle, FiArrowLeft, FiCloud, FiMic, FiRefreshCw, FiZap } from 'react-icons/fi';
 
 type EntryTopBarProps = {
@@ -118,12 +119,12 @@ export default function EntryTopBar({
                         <div className="min-w-0">
                             <p className="text-[10px] uppercase tracking-[0.16em] text-ink-muted font-semibold leading-none">{studioLabel}</p>
                             <p className={`mt-0.5 text-[0.65rem] leading-none ${
-                                wordCount >= 130 ? 'text-[rgb(var(--paper-sage))]' : 'text-ink-muted'
+                                wordCount >= MIN_WORDS_FOR_ENTRY_INSIGHTS ? 'text-[rgb(var(--paper-sage))]' : 'text-ink-muted'
                             }`}>
                                 {wordCount > 0
-                                    ? wordCount >= 130
+                                    ? wordCount >= MIN_WORDS_FOR_ENTRY_INSIGHTS
                                         ? `${wordCount} words ✓`
-                                        : `${wordCount} / 130 words`
+                                        : `${wordCount} / ${MIN_WORDS_FOR_ENTRY_INSIGHTS} words`
                                     : studioPrompt.split('.')[0]}
                             </p>
                         </div>

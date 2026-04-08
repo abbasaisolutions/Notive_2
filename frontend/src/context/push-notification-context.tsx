@@ -7,8 +7,9 @@ import { App } from '@capacitor/app';
 import logger from '@/utils/logger';
 import { useApi } from '@/hooks/use-api';
 import { isNativePlatform, getNativePlatform } from '@/utils/platform';
-import { hasCompletedPermissionsOnboarding } from '@/services/device-permissions.service';
+import { type PermissionStatus } from '@/services/device-permissions.service';
 import { useToast } from '@/context/toast-context';
+import { hapticLight } from '@/services/haptics.service';
 
 export interface DeviceToken {
     id: string;
@@ -31,6 +32,7 @@ export interface PushNotification {
 interface PushContextType {
     isSupported: boolean;
     isPermissionGranted: boolean;
+    permissionState: PermissionStatus;
     isLoading: boolean;
     deviceTokens: DeviceToken[];
     notifications: PushNotification[];
@@ -41,6 +43,16 @@ interface PushContextType {
 }
 
 const PushContext = createContext<PushContextType | undefined>(undefined);
+const FOREGROUND_TOAST_DURATION_MS = 6000;
+const SOCIAL_TOAST_TYPES = new Set([
+    'social',
+    'shared_memory',
+    'memory_share_request',
+    'shared_memory_response',
+    'share_reaction',
+    'friend_request',
+    'friend_accepted',
+]);
 
 const ANDROID_PUSH_CHANNEL = {
     id: 'notive_default',
@@ -67,8 +79,8 @@ const ANDROID_PUSH_CHANNELS = [
         id: 'notive_social',
         name: 'Friends & shared memories',
         description: 'Friend requests, shared memories, and reactions.',
-        importance: 3 as const,
-        visibility: 1 as const,
+        importance: 4 as const,   // HIGH — heads-up popup for social interactions
+        visibility: 1 as const,   // PUBLIC — show on lock screen
         sound: 'default',
         vibration: true,
     },
@@ -90,6 +102,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
     const [isLoading, setIsLoading] = useState(true);
     const [isSupported, setIsSupported] = useState(false);
     const [isPermissionGranted, setIsPermissionGranted] = useState(false);
+    const [permissionState, setPermissionState] = useState<PermissionStatus>('prompt');
     const [deviceTokens, setDeviceTokens] = useState<DeviceToken[]>([]);
     const [notifications, setNotifications] = useState<PushNotification[]>([]);
 
@@ -97,11 +110,42 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
     useEffect(() => {
         if (!isNativePlatform()) {
             setIsSupported(false);
+            setPermissionState('unavailable');
             setIsLoading(false);
             return;
         }
 
         initializePushNotifications();
+    }, []);
+
+    // Re-check permission state when app resumes (e.g. user returns from
+    // Android notification settings). If the OS permission was toggled while
+    // the app was backgrounded, we pick it up immediately.
+    useEffect(() => {
+        if (!isNativePlatform()) return;
+
+        let listener: { remove: () => Promise<void> } | undefined;
+
+        void App.addListener('appStateChange', async ({ isActive }) => {
+            if (!isActive) return;
+            try {
+                const check = await PushNotifications.checkPermissions();
+                const nextState = normalizePushPermissionState(check.receive);
+                setPermissionState(nextState);
+                const granted = nextState === 'granted';
+                setIsPermissionGranted(granted);
+
+                // If the user just enabled notifications via Settings, register now
+                if (granted) {
+                    await ensureAndroidPushChannel();
+                    await PushNotifications.register();
+                }
+            } catch {
+                // Non-fatal — will pick up on next resume
+            }
+        }).then((l) => { listener = l; });
+
+        return () => { void listener?.remove(); };
     }, []);
 
     const initializePushNotifications = async () => {
@@ -113,6 +157,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             setIsSupported(isAvailable);
 
             if (!isAvailable) {
+                setPermissionState('unavailable');
                 setIsLoading(false);
                 return;
             }
@@ -126,20 +171,17 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             // Always check current OS permission status first so we never
             // re-show the OS prompt when the user already granted access.
             const check = await PushNotifications.checkPermissions();
-            const alreadyGranted = check.receive === 'granted';
+            const nextPermissionState = normalizePushPermissionState(check.receive);
+            const alreadyGranted = nextPermissionState === 'granted';
+            setPermissionState(nextPermissionState);
             setIsPermissionGranted(alreadyGranted);
 
             if (alreadyGranted) {
                 // Permission already granted — just ensure token registration.
                 await PushNotifications.register();
-            } else if (hasCompletedPermissionsOnboarding()) {
-                // User completed onboarding but hasn't granted push yet —
-                // request once. If the OS previously recorded a hard deny
-                // this will be a no-op on Android 13+ (returns 'denied').
-                await requestPermission();
             }
-            // Otherwise: first-time user who hasn't been through onboarding.
-            // Don't prompt — let the onboarding step handle the first ask.
+            // If permission is not yet granted, wait for a contextual ask from
+            // onboarding, the in-app prompt, or the profile screen.
         } catch (error) {
             logger.error('Failed to initialize push notifications:', error);
         } finally {
@@ -165,6 +207,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             PushNotifications.addListener('registration', (token: any) => {
                 logger.debug('Push token received:', token.value);
                 setIsPermissionGranted(true);
+                setPermissionState('granted');
                 registerDevice(token.value, getPlatform()).catch(err =>
                     logger.error('Failed to auto-register token:', err)
                 );
@@ -180,10 +223,11 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
                 logger.debug('Push notification received:', notification);
                 addNotificationToState(notification);
 
-                // Show in-app toast and immediately remove the OS drawer entry
-                // to prevent the double-notification (drawer + toast) UX.
+                // Show an in-app toast and only clear the matching delivered
+                // notification instead of wiping the whole notification tray.
+                hapticLight();
                 showNotificationToast(notification);
-                void PushNotifications.removeAllDeliveredNotifications().catch(() => {/* non-fatal */});
+                void removeForegroundDuplicateNotification(notification);
             });
 
             // Handle notification action (tap)
@@ -232,7 +276,9 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         try {
             // Fast-path: if already granted, skip the OS prompt entirely.
             const check = await PushNotifications.checkPermissions();
-            if (check.receive === 'granted') {
+            const nextPermissionState = normalizePushPermissionState(check.receive);
+            setPermissionState(nextPermissionState);
+            if (nextPermissionState === 'granted') {
                 setIsPermissionGranted(true);
                 await ensureAndroidPushChannel();
                 await PushNotifications.register();
@@ -240,7 +286,9 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             }
 
             const result = await PushNotifications.requestPermissions();
-            const granted = result.receive === 'granted';
+            const updatedPermissionState = normalizePushPermissionState(result.receive);
+            const granted = updatedPermissionState === 'granted';
+            setPermissionState(updatedPermissionState);
             setIsPermissionGranted(granted);
 
             if (granted) {
@@ -332,19 +380,42 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         setNotifications([]);
     };
 
+    const removeForegroundDuplicateNotification = async (notification: any) => {
+        try {
+            const delivered = await PushNotifications.getDeliveredNotifications();
+            const notificationId = typeof notification?.id === 'string' ? notification.id : '';
+            const notificationTag = typeof notification?.tag === 'string' ? notification.tag : '';
+
+            const matching = delivered.notifications.filter((item) => {
+                if (notificationId && item.id === notificationId) return true;
+                if (notificationTag && item.tag === notificationTag) return true;
+                return false;
+            });
+
+            if (matching.length > 0) {
+                await PushNotifications.removeDeliveredNotifications({ notifications: matching });
+            }
+        } catch {
+            // Non-fatal: better to keep a tray item than to break foreground handling.
+        }
+    };
+
     const showNotificationToast = (notification: any) => {
         const title = notification.title || 'Notive';
         const body = notification.body || '';
-        const data = notification.data;
+        const data = notification.data || {};
         const deepLink = data?.link || data?.route;
+        const actionLabel = resolveNotificationActionLabel(data?.type, deepLink);
 
-        toast.notification(
+        toast.addToast({
             title,
-            body,
-            deepLink
-                ? { label: 'View', onClick: () => router.push(deepLink) }
+            description: body,
+            variant: 'notification',
+            duration: FOREGROUND_TOAST_DURATION_MS,
+            action: deepLink
+                ? { label: actionLabel, onClick: () => router.push(deepLink) }
                 : undefined,
-        );
+        });
     };
 
     const handleNotificationAction = async (notification: any) => {
@@ -401,6 +472,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             value={{
                 isSupported,
                 isPermissionGranted,
+                permissionState,
                 isLoading,
                 deviceTokens,
                 notifications,
@@ -421,4 +493,20 @@ export function usePushNotifications(): PushContextType {
         throw new Error('usePushNotifications must be used within PushNotificationProvider');
     }
     return context;
+}
+
+function normalizePushPermissionState(
+    value: 'prompt' | 'prompt-with-rationale' | 'granted' | 'denied'
+): PermissionStatus {
+    if (value === 'granted' || value === 'denied' || value === 'prompt-with-rationale') {
+        return value;
+    }
+    return 'prompt';
+}
+
+function resolveNotificationActionLabel(type: string | undefined, deepLink: string | undefined): string {
+    if (!deepLink) return 'Open';
+    if (type === 'reminder') return 'Write now';
+    if (type && SOCIAL_TOAST_TYPES.has(type)) return 'Open shared';
+    return 'Open';
 }

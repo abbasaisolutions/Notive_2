@@ -8,6 +8,7 @@ import { useAuth } from '@/context/auth-context';
 import { usePushNotifications } from '@/context/push-notification-context';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { hasCompletedOnboardingRequirements } from '@/utils/onboarding';
+import { openNativeNotificationSettings } from '@/services/native-notification-settings.service';
 import { FiBell, FiDownload, FiEdit3, FiLogOut, FiMessageCircle, FiShield } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
 import { SUPPORT_EMAIL } from '@/config/legal';
@@ -40,10 +41,16 @@ export default function ProfileClient() {
     const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { logout } = useAuth();
     const { stats, refreshStats } = useGamification();
-    const { isSupported: pushSupported, isPermissionGranted, requestPermission } = usePushNotifications();
+    const {
+        isSupported: pushSupported,
+        isPermissionGranted,
+        permissionState,
+        requestPermission,
+    } = usePushNotifications();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isRequestingPush, setIsRequestingPush] = useState(false);
     const [avatarFailed, setAvatarFailed] = useState(false);
+    const avatarUrl = typeof user?.avatarUrl === 'string' ? user.avatarUrl.trim() : '';
 
     const tabParam = searchParams.get('tab');
     const activeTab: ProfileTab = tabParam === 'privacy' ? 'privacy' : 'about';
@@ -51,6 +58,10 @@ export default function ProfileClient() {
     useEffect(() => {
         refreshStats();
     }, [refreshStats]);
+
+    useEffect(() => {
+        setAvatarFailed(false);
+    }, [avatarUrl]);
 
     const handleLogout = async () => {
         setIsLoggingOut(true);
@@ -61,6 +72,12 @@ export default function ProfileClient() {
     const handleRequestPush = async () => {
         setIsRequestingPush(true);
         await requestPermission();
+        setIsRequestingPush(false);
+    };
+
+    const handleOpenNotificationSettings = async () => {
+        setIsRequestingPush(true);
+        await openNativeNotificationSettings();
         setIsRequestingPush(false);
     };
 
@@ -77,7 +94,6 @@ export default function ProfileClient() {
     const safeUser = user!;
     const hasCompletedSetup = hasCompletedOnboardingRequirements(safeUser.profile);
     const avatarInitial = safeUser.name?.charAt(0).toUpperCase() || safeUser.email.charAt(0).toUpperCase();
-    const avatarUrl = typeof safeUser.avatarUrl === 'string' ? safeUser.avatarUrl.trim() : '';
     const hasAvatar = avatarUrl.length > 0;
     const showAvatarImage = hasAvatar && !avatarFailed;
     const xpProgress = stats ? ((stats.xp - getXPForLevel(stats.level)) / (getXPForLevel(stats.level + 1) - getXPForLevel(stats.level))) * 100 : 0;
@@ -89,10 +105,6 @@ export default function ProfileClient() {
     ].filter(Boolean) as string[];
     const support = getPinnedSupportSummary(safeUser.profile?.personalizationSignals);
     const isAdminUser = safeUser.role === 'ADMIN' || safeUser.role === 'SUPERADMIN';
-
-    useEffect(() => {
-        setAvatarFailed(false);
-    }, [avatarUrl]);
 
     return (
         <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
@@ -279,10 +291,12 @@ export default function ProfileClient() {
                                     <p className="workspace-heading text-sm font-semibold">Push Notifications</p>
                                     <p className="mt-1 text-sm leading-6 text-ink-secondary">
                                         {isPermissionGranted
-                                            ? 'Enabled — you\'ll get reminders and reflection prompts.'
-                                            : 'Get reminders and reflection prompts on your device.'}
+                                            ? 'Enabled — you\'ll get reminders, shared-memory activity, and reflection prompts.'
+                                            : permissionState === 'denied'
+                                                ? 'Notifications are turned off in your device settings. Tap below to re-enable them.'
+                                                : 'Get reminders, shared-memory activity, and reflection prompts on your device.'}
                                     </p>
-                                    {!isPermissionGranted && pushSupported && (
+                                    {!isPermissionGranted && pushSupported && permissionState !== 'denied' && (
                                         <button
                                             type="button"
                                             onClick={handleRequestPush}
@@ -292,6 +306,22 @@ export default function ProfileClient() {
                                             {isRequestingPush ? <Spinner size="sm" /> : null}
                                             {isRequestingPush ? 'Requesting…' : 'Enable notifications'}
                                         </button>
+                                    )}
+                                    {!isPermissionGranted && pushSupported && permissionState === 'denied' && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={handleOpenNotificationSettings}
+                                                disabled={isRequestingPush}
+                                                className="notebook-secondary-cta mt-3 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors hover:opacity-80 disabled:opacity-60"
+                                            >
+                                                {isRequestingPush ? <Spinner size="sm" /> : null}
+                                                {isRequestingPush ? 'Opening…' : 'Open notification settings'}
+                                            </button>
+                                            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700">
+                                                Notifications disabled in Android Settings
+                                            </span>
+                                        </>
                                     )}
                                     {isPermissionGranted && (
                                         <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[rgb(var(--success))]/25 bg-[rgb(var(--success))]/10 px-3 py-1 text-xs font-semibold text-[rgb(var(--success))]">

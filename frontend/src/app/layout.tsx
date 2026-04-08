@@ -9,6 +9,7 @@ import { SmartProvider } from "@/context/smart-context";
 import { GamificationProvider } from "@/context/gamification-context";
 import { ThemeProvider } from "@/context/theme-context";
 import { PushNotificationProvider } from "@/context/push-notification-context";
+import { PushNotificationPermissionPrompt } from "@/components/push-notification-permission-prompt";
 import { ToastProvider, ToastContainer } from "@/context/toast-context";
 import ErrorBoundary from "@/components/error-boundary";
 import ReducedMotionProvider from "@/components/ReducedMotionProvider";
@@ -172,6 +173,7 @@ export default function RootLayout({
                                                 </div>
                                                 <OfflineBanner />
                                                 <ToastContainer />
+                                                <PushNotificationPermissionPrompt />
                                             </SmartProvider>
                                         </GamificationProvider>
                                     </PushNotificationProvider>

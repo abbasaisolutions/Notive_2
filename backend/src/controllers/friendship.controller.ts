@@ -107,7 +107,7 @@ export const sendFriendRequest = async (req: Request, res: Response) => {
         pushService.sendPushNotification(addresseeId, {
             title: 'New friend request',
             body: `${senderName} wants to connect with you`,
-            data: { route: '/timeline?tab=shared' },
+            data: { type: 'friend_request', route: '/timeline?tab=shared' },
         }).catch(() => {});
 
         return res.status(201).json({ message: 'Friend request sent', status: 'PENDING' });
@@ -159,7 +159,7 @@ export const acceptFriendRequest = async (req: Request, res: Response) => {
         pushService.sendPushNotification(friendship.requesterId, {
             title: 'Friend request accepted!',
             body: `${acceptor?.name || 'Someone'} is now your friend`,
-            data: { route: '/timeline?tab=shared' },
+            data: { type: 'friend_accepted', route: '/timeline?tab=shared' },
         }).catch(() => {});
 
         return res.json({ message: 'Friend request accepted', status: 'ACCEPTED' });

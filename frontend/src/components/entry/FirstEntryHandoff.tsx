@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiEdit3, FiMic, FiStar } from 'react-icons/fi';
+import { MIN_WORDS_FOR_ENTRY_INSIGHTS } from '@/constants/entry-requirements';
 
 const TIPS = [
     { icon: FiEdit3, text: 'Write whatever comes to mind — no right or wrong.' },
     { icon: FiMic, text: 'Prefer talking? Tap the mic to speak your thoughts.' },
-    { icon: FiStar, text: 'After 130 words, I\u2019ll uncover patterns and insights for you.' },
+    { icon: FiStar, text: `After ${MIN_WORDS_FOR_ENTRY_INSIGHTS} words, I\u2019ll uncover patterns and insights for you.` },
 ];
 
 export default function FirstEntryHandoff({ onDismiss }: { onDismiss: () => void }) {

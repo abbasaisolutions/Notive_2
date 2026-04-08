@@ -21,6 +21,22 @@ interface DeviceTokenInput {
     osVersion?: string;
 }
 
+const SOCIAL_NOTIFICATION_TYPES = new Set([
+    'social',
+    'shared_memory',
+    'memory_share_request',
+    'shared_memory_response',
+    'share_reaction',
+    'friend_request',
+    'friend_accepted',
+]);
+
+const INSIGHT_NOTIFICATION_TYPES = new Set([
+    'insight',
+    'insights',
+    'insight_ready',
+]);
+
 // ── Firebase Admin Initialization ────────────────────────────────────────────
 // Initializes once on first use. No-ops when credentials are absent so
 // development still works without a service account file.
@@ -215,6 +231,10 @@ export class PushNotificationService {
 
     /** Send a single message via Firebase Cloud Messaging. */
     private async sendViaFcm(app: App, token: string, payload: PushNotificationPayload): Promise<void> {
+        const notificationType = payload.data?.type;
+        const androidChannelId = this.resolveAndroidChannelId(notificationType);
+        const androidTag = this.resolveAndroidTag(notificationType, payload.data);
+
         const message: Message = {
             token,
             // NOTE: We use data-only + platform notification blocks so we have
@@ -234,9 +254,7 @@ export class PushNotificationService {
                     icon: 'ic_stat_notive',           // monochrome status-bar icon
                     color: '#8A9A6F',                 // sage-green accent (brand)
                     // ── Channel ──────────────────────────────────────
-                    channelId: payload.data?.type === 'reminder'
-                        ? 'notive_reminders'
-                        : 'notive_default',
+                    channelId: androidChannelId,
                     // ── Sound & vibration ────────────────────────────
                     sound: payload.sound ?? 'default',
                     defaultVibrateTimings: true,
@@ -246,7 +264,7 @@ export class PushNotificationService {
                     // ── Behaviour ────────────────────────────────────
                     // Tag collapses multiple reminder notifications into one,
                     // preventing a stack of stale reminders.
-                    tag: payload.data?.type ?? 'notive',
+                    tag: androidTag,
                     // Ticker text shown briefly in the status bar on older devices
                     ticker: payload.title,
                     // Notification priority within the shade (MAX = heads-up pop)
@@ -269,6 +287,19 @@ export class PushNotificationService {
         };
 
         await getMessaging(app).send(message);
+    }
+
+    private resolveAndroidChannelId(type: string | undefined): string {
+        if (type === 'reminder') return 'notive_reminders';
+        if (type && SOCIAL_NOTIFICATION_TYPES.has(type)) return 'notive_social';
+        if (type && INSIGHT_NOTIFICATION_TYPES.has(type)) return 'notive_insights';
+        return 'notive_default';
+    }
+
+    private resolveAndroidTag(type: string | undefined, data?: Record<string, string>): string {
+        if (type === 'reminder') return 'reminder';
+        if (data?.bundleId) return `${type ?? 'notive'}:${data.bundleId}`;
+        return type ?? 'notive';
     }
 
     /** Console mock used when Firebase credentials are absent (development). */

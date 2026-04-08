@@ -258,10 +258,13 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
     };
 
     const styles = getStyles(toast.variant);
+    const slideDirection = toast.variant === 'notification'
+        ? 'slide-in-from-bottom-4'
+        : 'slide-in-from-top-2';
 
     return (
         <div
-            className={`pointer-events-auto animate-in slide-in-from-top-2 fade-in-0 duration-300 border rounded-lg p-4 shadow-lg ${styles.bg}`}
+            className={`pointer-events-auto animate-in ${slideDirection} fade-in-0 duration-300 border rounded-lg p-4 shadow-lg ${styles.bg}`}
             role="alert"
         >
             <div className="flex gap-3">
@@ -269,10 +272,10 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
                     {getIcon(toast.variant)}
                 </div>
 
-                <div className="flex-1">
-                    <h3 className={`font-semibold text-sm ${styles.title}`}>{toast.title}</h3>
+                <div className="flex-1 min-w-0">
+                    <h3 className={`font-semibold text-sm ${styles.title} truncate`}>{toast.title}</h3>
                     {toast.description && (
-                        <p className={`text-sm mt-1 ${styles.desc}`}>{toast.description}</p>
+                        <p className={`text-sm mt-1 line-clamp-2 ${styles.desc}`}>{toast.description}</p>
                     )}
                 </div>
 
@@ -282,7 +285,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
                             toast.action?.onClick();
                             onClose();
                         }}
-                        className={`flex-shrink-0 font-semibold text-sm hover:underline ${styles.button}`}
+                        className={`flex-shrink-0 font-semibold text-sm hover:underline whitespace-nowrap ${styles.button}`}
                     >
                         {toast.action.label}
                     </button>

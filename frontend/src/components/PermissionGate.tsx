@@ -51,7 +51,7 @@ export default function PermissionGate() {
                 if (cancelled) return;
                 const promptable: PermissionKind[] = [];
                 for (const [kind, status] of Object.entries(all) as [PermissionKind, PermissionStatus][]) {
-                    if (status === 'prompt') promptable.push(kind);
+                    if (status === 'prompt' || status === 'prompt-with-rationale') promptable.push(kind);
                 }
                 if (promptable.length > 0) {
                     setPending(promptable);

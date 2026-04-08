@@ -4,6 +4,7 @@
 import { aiRuntime, createLlmChatCompletion, hasLlmProvider, type AnalysisProvider } from '../config/ai';
 import analysisMemoryService, { type AnalysisMemoryContext } from './analysis-memory.service';
 import entryPersonalizationService, { type EntryPersonalizationSuggestions } from './entry-personalization.service';
+import { MIN_WORDS_FOR_ENTRY_INSIGHTS } from '../constants/entry-requirements';
 
 export interface SentimentResult {
     score: number; // -1 (negative) to 1 (positive)
@@ -82,6 +83,7 @@ const parsePositiveInt = (value: string | undefined, fallback: number) => {
 
 const llmConfidenceThreshold = parseFloatInRange(process.env.LLM_NLP_CONFIDENCE_THRESHOLD, 0.28, 0, 1);
 const llmMinWords = parsePositiveInt(process.env.LLM_NLP_MIN_WORDS, 80);
+const advancedAnalysisMinWords = Math.max(llmMinWords, MIN_WORDS_FOR_ENTRY_INSIGHTS);
 
 const POSITIVE_WORDS = new Set([
     'happy', 'joy', 'joyful', 'excited', 'thrilled', 'grateful', 'thankful', 'blessed', 'love',
@@ -565,7 +567,7 @@ export class NLPService {
         const words = content.split(/\s+/).filter(Boolean);
         const wordCount = words.length;
         const readingTime = Math.max(1, Math.ceil(wordCount / 200));
-        const preferAdvanced = options.preferAdvanced ?? (wordCount >= 130 || content.length >= 900);
+        const preferAdvanced = options.preferAdvanced ?? (wordCount >= advancedAnalysisMinWords || content.length >= 900);
 
         if (!content || content.trim().length < 5) {
             return {

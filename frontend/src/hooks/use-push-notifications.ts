@@ -56,6 +56,7 @@ export function usePushNotifications() {
         // Status
         isSupported: context.isSupported,
         isPermissionGranted: context.isPermissionGranted,
+        permissionState: context.permissionState,
         isLoading: context.isLoading,
 
         // Data

@@ -11,6 +11,7 @@ import useContextNavigation from '@/hooks/use-context-navigation';
 import useSpeechRecognition from '@/hooks/use-speech-recognition';
 import useUploadQueue from '@/hooks/use-upload-queue';
 import useTelemetry from '@/hooks/use-telemetry';
+import { MIN_WORDS_FOR_ENTRY_INSIGHTS } from '@/constants/entry-requirements';
 import { API_URL } from '@/constants/config';
 import { DEFAULT_VOICE_LANGUAGE_MODE, VOICE_ALLOW_BROWSER_FALLBACK, VOICE_BACKEND_TRANSCRIPTION_ENABLED } from '@/constants/voice';
 import { useGamification } from '@/context/gamification-context';
@@ -1193,13 +1194,13 @@ function NewEntryPageContent() {
         }
 
         const saveWordCount = content.trim().split(/\s+/).length;
-        if (saveWordCount < 130) {
+        if (saveWordCount < MIN_WORDS_FOR_ENTRY_INSIGHTS) {
             persistDraftSnapshot(true);
             if (!isAutoSave) {
                 hapticWarning();
                 toast.info(
                     'I still need to know more about this',
-                    `Add a bit more detail so I can give you meaningful insights (${saveWordCount}/130 words).`,
+                    `Add a bit more detail so I can give you meaningful insights (${saveWordCount}/${MIN_WORDS_FOR_ENTRY_INSIGHTS} words).`,
                 );
             }
             return;

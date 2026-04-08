@@ -16,7 +16,7 @@ import { isNativePlatform } from '@/utils/platform';
 
 export type PermissionKind = 'notifications' | 'microphone' | 'location';
 
-export type PermissionStatus = 'granted' | 'denied' | 'prompt' | 'unavailable';
+export type PermissionStatus = 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale' | 'unavailable';
 
 export interface PermissionResult {
     kind: PermissionKind;
@@ -46,6 +46,7 @@ async function checkNotificationPermission(): Promise<PermissionStatus> {
         const result = await PushNotifications.checkPermissions();
         if (result.receive === 'granted') return 'granted';
         if (result.receive === 'denied') return 'denied';
+        if (result.receive === 'prompt-with-rationale') return 'prompt-with-rationale';
         return 'prompt';
     } catch {
         return 'unavailable';
@@ -73,6 +74,7 @@ async function requestNotificationPermission(): Promise<PermissionStatus> {
             await PushNotifications.register();
             return 'granted';
         }
+        if (result.receive === 'prompt-with-rationale') return 'prompt-with-rationale';
         return 'denied';
     } catch {
         return 'unavailable';

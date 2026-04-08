@@ -376,7 +376,7 @@ export const createBundle = async (req: Request, res: Response) => {
             pushService.sendPushNotification(recipientId, {
                 title: 'New shared memories',
                 body: `${senderName} shared ${formatCountLabel(entryCount)} with you`,
-                data: { route: '/timeline?tab=shared', bundleId: bundle.id },
+                data: { type: 'shared_memory', route: '/timeline?tab=shared', bundleId: bundle.id },
             }).catch((err) => console.error('Push notification failed:', err));
         }
 
@@ -384,7 +384,7 @@ export const createBundle = async (req: Request, res: Response) => {
             pushService.sendPushNotification(recipientId, {
                 title: 'New share request',
                 body: `${senderName} wants to share ${formatCountLabel(entryCount)} with you`,
-                data: { route: '/timeline?tab=shared', bundleId: bundle.id },
+                data: { type: 'memory_share_request', route: '/timeline?tab=shared', bundleId: bundle.id },
             }).catch((err) => console.error('Push notification failed:', err));
         }
 
@@ -629,7 +629,7 @@ export const respondToShareRequest = async (req: Request, res: Response) => {
             body: nextStatus === MemoryShareAccessStatus.ACCEPTED
                 ? `${result.responderName} can now see your shared memories`
                 : `${result.responderName} declined your share request`,
-            data: { route: '/timeline?tab=shared' },
+            data: { type: 'shared_memory_response', route: '/timeline?tab=shared' },
         }).catch((err) => console.error('Push notification failed:', err));
 
         return res.json({
@@ -785,7 +785,7 @@ export const reactToBundle = async (req: Request, res: Response) => {
             pushService.sendPushNotification(recipient.bundle.senderId, {
                 title: 'Reaction to your shared memories',
                 body: `${reactor?.name || 'Someone'} felt "${reaction}"`,
-                data: { route: '/timeline?tab=shared', bundleId: id },
+                data: { type: 'share_reaction', route: '/timeline?tab=shared', bundleId: id },
             }).catch((err) => console.error('Push notification failed:', err));
         }
 

@@ -6,6 +6,7 @@ import { buildTagMetaList, normalizeTag, syncEntryTags } from '../services/tag-m
 import { upsertEntryAnalysisFromNlp, upsertEntryAnalysisFromPayload } from '../services/entry-analysis.service';
 import nlpService, { AnalysisResult } from '../services/nlp.service';
 import embeddingService from '../services/embedding.service';
+import { MIN_WORDS_FOR_ENTRY_INSIGHTS } from '../constants/entry-requirements';
 import { sanitizeHtml } from '../utils/html';
 import { buildEntryStorySignal, deriveExperienceEvidence, OpportunityEntry } from '../services/opportunity.service';
 import studentActionService from '../services/student-action.service';
@@ -622,7 +623,7 @@ export const createEntry = async (req: Request, res: Response) => {
                 .map(t => t.name)
                 .filter(tag => !providedTagKeys.has(tag.toLowerCase())),
             suggestions: nlpFallback?.suggestions || null,
-            ...(wordCount < 130 ? { insufficientContent: true } : {}),
+            ...(wordCount < MIN_WORDS_FOR_ENTRY_INSIGHTS ? { insufficientContent: true } : {}),
         });
     } catch (error) {
         console.error('Create entry error:', error);

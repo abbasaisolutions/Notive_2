@@ -1,0 +1,1 @@
+export const MIN_WORDS_FOR_ENTRY_INSIGHTS = 90;
