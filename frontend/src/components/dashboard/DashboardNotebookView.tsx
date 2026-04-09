@@ -1327,7 +1327,7 @@ export default function DashboardNotebookView({
                                     <span>Future {tense.future}%</span>
                                 </div>
                                 <div className="mt-1 flex items-center gap-2 text-[0.46rem] text-[rgb(140,140,140)]">
-                                    {voice?.questionFrequency !== undefined && <span>? {voice.questionFrequency}/entry</span>}
+                                    {voice?.questionFrequency !== undefined && <span>{voice.questionFrequency} questions/entry</span>}
                                     {voice?.readingLevel && <span className="ml-auto">{voice.readingLevel}</span>}
                                 </div>
                             </>
