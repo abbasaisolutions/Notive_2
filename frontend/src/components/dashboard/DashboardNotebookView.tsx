@@ -1313,21 +1313,21 @@ export default function DashboardNotebookView({
                     <p className="section-label">Writing voice</p>
                     {(() => {
                         const voice = journalIntel?.writingVoice;
-                        const tense = voice?.tenseDistribution ?? { past: 0.33, present: 0.34, future: 0.33 };
+                        const tense = voice?.tenseDistribution ?? { past: 33, present: 34, future: 33 };
                         return (
                             <>
                                 <div className="mt-1.5 flex h-[3px] rounded-full overflow-hidden">
-                                    <div className="h-full bg-[rgba(160,140,200,0.6)]" style={{ width: `${Math.round(tense.past * 100)}%` }} />
-                                    <div className="h-full bg-[rgb(138,154,111)]" style={{ width: `${Math.round(tense.present * 100)}%` }} />
-                                    <div className="h-full bg-[rgba(120,170,200,0.7)]" style={{ width: `${Math.round(tense.future * 100)}%` }} />
+                                    <div className="h-full bg-[rgba(160,140,200,0.6)]" style={{ width: `${tense.past}%` }} />
+                                    <div className="h-full bg-[rgb(138,154,111)]" style={{ width: `${tense.present}%` }} />
+                                    <div className="h-full bg-[rgba(120,170,200,0.7)]" style={{ width: `${tense.future}%` }} />
                                 </div>
                                 <div className="mt-1 flex justify-between text-[0.42rem] text-[rgb(150,150,150)]">
-                                    <span>Past {Math.round(tense.past * 100)}%</span>
-                                    <span>Now {Math.round(tense.present * 100)}%</span>
-                                    <span>Future {Math.round(tense.future * 100)}%</span>
+                                    <span>Past {tense.past}%</span>
+                                    <span>Now {tense.present}%</span>
+                                    <span>Future {tense.future}%</span>
                                 </div>
                                 <div className="mt-1 flex items-center gap-2 text-[0.46rem] text-[rgb(140,140,140)]">
-                                    {voice?.questionFrequency !== undefined && <span>? {Math.round(voice.questionFrequency * 100)}%</span>}
+                                    {voice?.questionFrequency !== undefined && <span>? {voice.questionFrequency}/entry</span>}
                                     {voice?.readingLevel && <span className="ml-auto">{voice.readingLevel}</span>}
                                 </div>
                             </>
