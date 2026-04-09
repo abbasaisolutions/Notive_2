@@ -14,7 +14,6 @@ import DailyGentleReflectionCard from '@/components/dashboard/DailyGentleReflect
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import { Surface } from '@/components/ui/surface';
 import UserAvatar from '@/components/ui/UserAvatar';
-import { useGamification } from '@/context/gamification-context';
 import type { GentleReflectionDraft } from '@/services/gentle-reflection.service';
 
 type DashboardAction = {
@@ -504,7 +503,6 @@ export default function DashboardNotebookView({
     profileTags = [],
 }: DashboardNotebookViewProps) {
     const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
-    const { stats: gamificationStats, isLoading: gamificationLoading } = useGamification();
     const weekWords = useMemo(() => countWordsThisWeek(entries), [entries]);
     const notesThisWeek = useMemo(() => countEntriesThisWeek(entries), [entries]);
     const writingDays = useMemo(() => countWritingDays(entries), [entries]);
@@ -555,48 +553,6 @@ export default function DashboardNotebookView({
         }
         return { currentStreak: current, bestStreak: Math.max(best, current) };
     }, [entries]);
-
-    const xpProgressPercent = useMemo(() => {
-        if (!gamificationStats) return 0;
-        const { xp, level } = gamificationStats;
-        const thresholds = [0, 100, 300, 600, 1000, 1500, 2500, 4000, 6000, 10000];
-        const levelStart = thresholds[Math.min(level - 1, 9)];
-        const levelEnd = thresholds[Math.min(level, 9)];
-        if (levelEnd <= levelStart) return 100;
-        return Math.round(((xp - levelStart) / (levelEnd - levelStart)) * 100);
-    }, [gamificationStats]);
-
-    const LEVEL_NAMES: Record<number, { name: string; short: string }> = {
-        1:  { name: 'First Page',      short: 'FP' },
-        2:  { name: 'Ink Finder',      short: 'IF' },
-        3:  { name: 'Moment Keeper',   short: 'MK' },
-        4:  { name: 'Pattern Seeker',  short: 'PS' },
-        5:  { name: 'Thread Weaver',   short: 'TW' },
-        6:  { name: 'Story Shaper',    short: 'SS' },
-        7:  { name: 'Deep Reflector',  short: 'DR' },
-        8:  { name: 'Quiet Architect', short: 'QA' },
-        9:  { name: 'Life Author',     short: 'LA' },
-        10: { name: 'Legacy Keeper',   short: 'LK' },
-    };
-    const currentLevel = gamificationStats ? LEVEL_NAMES[gamificationStats.level] ?? LEVEL_NAMES[1]! : LEVEL_NAMES[1]!;
-    const nextLevel = gamificationStats && gamificationStats.level < 10 ? LEVEL_NAMES[gamificationStats.level + 1] : null;
-
-    const nextBadge = useMemo(() => {
-        if (!gamificationStats) return null;
-        const earned = new Set(gamificationStats.badges);
-        const { currentStreak, totalEntries, totalWords: tw } = gamificationStats;
-        if (!earned.has('streak_3') && currentStreak > 0)
-            return { name: 'Rhythm of Thought', current: currentStreak, target: 3, icon: '🔥' };
-        if (!earned.has('entries_10') && totalEntries < 10)
-            return { name: 'Chronicle I', current: totalEntries, target: 10, icon: '📖' };
-        if (!earned.has('streak_7') && currentStreak >= 3 && currentStreak < 7)
-            return { name: 'Synchronized', current: currentStreak, target: 7, icon: '⚡' };
-        if (!earned.has('entries_50') && totalEntries < 50)
-            return { name: 'Life Historian', current: totalEntries, target: 50, icon: '✦' };
-        if (!earned.has('words_1000') && (tw ?? 0) < 1000)
-            return { name: 'Eloquent Mind', current: tw ?? 0, target: 1000, icon: '✍️' };
-        return null;
-    }, [gamificationStats]);
 
     const strongestEmotion = dashboardInsights?.emotionalFingerprint?.axes
         ? [...dashboardInsights.emotionalFingerprint.axes].sort((left, right) => right.score - left.score)[0] ?? null
@@ -1093,44 +1049,6 @@ export default function DashboardNotebookView({
         <>
             {glanceStrip}
 
-            {/* ── Gamification progress bar ── */}
-            {gamificationStats && !gamificationLoading && (
-                <div className="notebook-card rounded-[1.75rem] px-5 py-4 flex items-center gap-4">
-                    <div className="shrink-0 flex h-10 w-10 items-center justify-center rounded-full border-2 border-[rgba(138,154,111,0.6)] bg-[rgba(138,154,111,0.08)]">
-                        <span className="text-[0.6rem] font-bold text-[rgb(138,154,111)] leading-none text-center">{currentLevel.short}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1.5">
-                            <p className="section-label">{currentLevel.name}</p>
-                            <p className="text-[0.65rem] text-[rgb(107,107,107)]">{gamificationStats.xp} XP</p>
-                        </div>
-                        <div className="h-1.5 w-full rounded-full bg-[rgba(92,92,92,0.12)]">
-                            <div
-                                className="h-1.5 rounded-full bg-[rgba(138,154,111,0.85)] transition-all duration-700"
-                                style={{ width: `${xpProgressPercent}%` }}
-                            />
-                        </div>
-                        <div className="mt-1.5 flex items-center justify-between gap-2">
-                            {nextBadge && (
-                                <p className="text-[0.62rem] text-[rgb(107,107,107)]">
-                                    {nextBadge.icon} {nextBadge.current}/{nextBadge.target} → {nextBadge.name}
-                                </p>
-                            )}
-                            {nextLevel && (
-                                <p className="text-[0.58rem] text-[rgb(138,154,111)] font-medium">
-                                    Next: {nextLevel.name}
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                    {gamificationStats.badges.length > 0 && (
-                        <div className="shrink-0 text-center">
-                            <p className="text-lg font-semibold text-[rgb(var(--paper-ink))]">{gamificationStats.badges.length}</p>
-                            <p className="text-[0.6rem] text-[rgb(107,107,107)] uppercase tracking-wide">badges</p>
-                        </div>
-                    )}
-                </div>
-            )}
 
             <DailyCheckIn
                 hasCheckedInToday={hasCheckedInToday}
@@ -1341,7 +1259,7 @@ export default function DashboardNotebookView({
                         <span className="text-[0.5rem] text-[rgb(150,150,150)]">words</span>
                         {(journalIntel?.vocabulary.growthRate ?? 0) > 0 && (
                             <span className="ml-auto rounded-full bg-[rgba(138,154,111,0.1)] px-1.5 py-px text-[0.46rem] font-semibold text-[rgb(118,134,91)]">
-                                ↑{Math.round((journalIntel?.vocabulary.growthRate ?? 0) * 100)}%
+                                ↑{Math.round(journalIntel?.vocabulary.growthRate ?? 0)}%
                             </span>
                         )}
                     </div>
