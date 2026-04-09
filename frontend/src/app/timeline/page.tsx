@@ -19,6 +19,7 @@ import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useTelemetry from '@/hooks/use-telemetry';
 import { useToast } from '@/context/toast-context';
+import { NOTIFICATION_BADGE_REFRESH_EVENT, refreshNotificationBadge } from '@/hooks/use-notification-count';
 import { getMoodEmoji } from '@/constants/moods';
 import { FiArrowLeft, FiChevronDown, FiSearch, FiSliders } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo, buildSearchString } from '@/utils/navigation';
@@ -384,6 +385,9 @@ function SharedWithMeList({ bundles, loading, onRefresh }: {
                     : 'That sender can no longer unlock memories for you until you allow it later.',
             );
             await onRefresh();
+            // Backend marked the share-request notification as read —
+            // refresh the badge so the count updates instantly.
+            refreshNotificationBadge();
         } catch {
             toast.error('Couldn\u2019t complete that action. Try again?');
         }
@@ -415,7 +419,7 @@ function SharedWithMeList({ bundles, loading, onRefresh }: {
                 const senderName = b.sender.name || 'Someone';
                 const initial = senderName.charAt(0).toUpperCase();
                 const isPending = b.status === 'PENDING';
-                const isUnread = isPending || !b.readAt;
+                const isUnread = !b.readAt;
                 const relTime = formatSharedRelTime(b.sharedAt);
                 const isActing = activeSenderId === b.sender.id;
 
@@ -1444,16 +1448,54 @@ function TimelinePageContent() {
         setSharedLoading(false);
     }, [apiFetch]);
 
+    const refreshSharedUnreadCount = useCallback(async () => {
+        try {
+            const response = await apiFetch(`${API_URL}/memory-share/received?limit=1`);
+            if (!response.ok) return;
+            const data = await response.json();
+            setSharedUnreadCount(data.unreadCount ?? 0);
+        } catch {
+            // Non-fatal: the next poll / surface switch will catch up.
+        }
+    }, [apiFetch]);
+
+    const markSharedSurfaceRead = useCallback(async () => {
+        try {
+            const response = await apiFetch(`${API_URL}/memory-share/notifications/read`, {
+                method: 'PATCH',
+            });
+            if (response.ok) {
+                refreshNotificationBadge();
+            }
+        } catch {
+            // Non-fatal: opening Shared should still work even if badge clear fails.
+        }
+    }, [apiFetch]);
+
     useEffect(() => {
-        if (surface === 'shared') fetchSharedBundles();
-    }, [surface, fetchSharedBundles]);
+        if (surface !== 'shared') return;
+
+        void (async () => {
+            await markSharedSurfaceRead();
+            await fetchSharedBundles();
+        })();
+    }, [surface, markSharedSurfaceRead, fetchSharedBundles]);
 
     // Initial unread count (for badge)
     useEffect(() => {
-        apiFetch(`${API_URL}/memory-share/received?limit=1`)
-            .then(async (r) => { if (r.ok) { const d = await r.json(); setSharedUnreadCount(d.unreadCount ?? 0); } })
-            .catch(() => {});
-    }, [apiFetch]);
+        void refreshSharedUnreadCount();
+    }, [refreshSharedUnreadCount]);
+
+    useEffect(() => {
+        const handler = () => {
+            void refreshSharedUnreadCount();
+            if (surface === 'shared') {
+                void fetchSharedBundles();
+            }
+        };
+        window.addEventListener(NOTIFICATION_BADGE_REFRESH_EVENT, handler);
+        return () => window.removeEventListener(NOTIFICATION_BADGE_REFRESH_EVENT, handler);
+    }, [surface, refreshSharedUnreadCount, fetchSharedBundles]);
 
     const shareEntry = useMemo<ShareableEntry | null>(() => {
         if (!shareEntryId) return null;

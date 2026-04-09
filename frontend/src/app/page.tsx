@@ -32,7 +32,7 @@ export default function HomePage() {
                                 One honest note can be enough to make tomorrow feel less noisy.
                             </h2>
                             <p className="mt-3 max-w-xl text-sm leading-7 text-[rgb(76,70,62)] md:text-base">
-                                Start with what happened. Let Notive hold the thread, offer one calm next step, and keep the part of the day that helps you grow.
+                                Start with what happened. Let Notive hold the thread, offer one clear next step, and keep the part of the day that helps you grow.
                             </p>
                         </div>
 

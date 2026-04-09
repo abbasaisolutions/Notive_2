@@ -6,6 +6,19 @@ import { useApi } from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
 
 /**
+ * Lightweight event bus so any component can request a badge refresh
+ * without requiring a shared context. Call `refreshNotificationBadge()`
+ * from anywhere and every mounted `useNotificationCount` will re-poll.
+ */
+export const NOTIFICATION_BADGE_REFRESH_EVENT = 'notive:notification-badge-refresh';
+
+export function refreshNotificationBadge(): void {
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(NOTIFICATION_BADGE_REFRESH_EVENT));
+    }
+}
+
+/**
  * Polls the notification endpoint for unread count.
  * Returns `{ unreadCount, refresh }`.
  * Does not poll until the user is authenticated. Restarts cleanly when
@@ -53,6 +66,13 @@ export function useNotificationCount(intervalMs = 60_000) {
         timer.current = setInterval(refresh, intervalMs);
         return () => { if (timer.current) clearInterval(timer.current); };
     }, [refresh, intervalMs, accessToken]);
+
+    // Listen for external refresh requests (e.g. after viewing a shared bundle)
+    useEffect(() => {
+        const handler = () => { void refresh(); };
+        window.addEventListener(NOTIFICATION_BADGE_REFRESH_EVENT, handler);
+        return () => window.removeEventListener(NOTIFICATION_BADGE_REFRESH_EVENT, handler);
+    }, [refresh]);
 
     return { unreadCount, refresh };
 }

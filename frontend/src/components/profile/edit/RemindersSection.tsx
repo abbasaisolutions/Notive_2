@@ -100,7 +100,7 @@ export default function RemindersSection() {
             <div>
                 <p className="type-overline text-muted mb-1">Reminders</p>
                 <p className="text-sm text-soft">
-                    Get a gentle nudge to reflect each day. Notifications are sent to your mobile device.
+                    Set a daily reminder to capture what mattered. Notifications are sent to your mobile device.
                 </p>
             </div>
 
@@ -117,7 +117,7 @@ export default function RemindersSection() {
                             {reminder.enabled ? 'Reminders on' : 'Reminders off'}
                         </p>
                         <p className="text-xs text-muted mt-0.5">
-                            {reminder.enabled ? 'You\'ll get a push notification to reflect.' : 'Turn on to receive daily nudges.'}
+                            {reminder.enabled ? 'You\'ll get a push reminder to write.' : 'Turn on to receive a daily reminder.'}
                         </p>
                     </div>
                 </div>

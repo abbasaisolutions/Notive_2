@@ -236,7 +236,12 @@ function NewEntryPageContent() {
     const { loadDraft, saveDraft, clearDraft } = useEntryDraft(user?.id ?? null);
     const { backHref, backLabel, navigateBack } = useContextNavigation('/dashboard', 'dashboard');
     const toast = useToast();
-    const { isPermissionGranted: pushPermissionGranted, isLoading: pushLoading, requestPermission: requestPushPermission } = usePushNotifications();
+    const {
+        isPermissionGranted: pushPermissionGranted,
+        permissionState: pushPermissionState,
+        isLoading: pushLoading,
+        requestPermission: requestPushPermission,
+    } = usePushNotifications();
     const pushAskedRef = useRef(false);
     const modeParam = searchParams.get('mode');
     const isQuickMode = modeParam !== 'full';
@@ -1326,7 +1331,13 @@ function NewEntryPageContent() {
                 clearDraft();
                 // After the user's first-ever save, prompt for push permission with context.
                 // Guard: only once per session, and only if permission state is resolved.
-                if (!entryId && !pushPermissionGranted && !pushLoading && !pushAskedRef.current) {
+                if (
+                    !entryId
+                    && !pushPermissionGranted
+                    && (pushPermissionState === 'prompt' || pushPermissionState === 'prompt-with-rationale')
+                    && !pushLoading
+                    && !pushAskedRef.current
+                ) {
                     pushAskedRef.current = true;
                     void requestPushPermission();
                 }
@@ -1405,6 +1416,7 @@ function NewEntryPageContent() {
         voiceCapture,
         toast,
         pushPermissionGranted,
+        pushPermissionState,
         pushLoading,
         requestPushPermission,
     ]);

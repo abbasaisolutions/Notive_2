@@ -168,7 +168,7 @@ export default function LoginPage() {
                             <div className="relative h-[18rem] sm:h-[20rem]">
                                 <Image
                                     src={SIGNIN_MOBILE_HERO}
-                                    alt="Phone mockup of the Notive sign-in screen with welcome-back form fields, showing the calm notebook interface students return to on mobile."
+                                    alt="Phone mockup of the Notive sign-in screen with welcome-back form fields, showing the notebook-inspired interface people return to on mobile."
                                     fill
                                     priority
                                     sizes="100vw"
@@ -189,7 +189,7 @@ export default function LoginPage() {
                                             Return to your notebook.
                                         </h2>
                                         <p className="mt-2 text-sm leading-6 text-default">
-                                            Pick up the calmer thread you already started.
+                                            Pick up the thread you already started.
                                         </p>
                                     </div>
                                 </div>
@@ -202,7 +202,7 @@ export default function LoginPage() {
                         >
                             <Image
                                 src={SIGNIN_DESKTOP_HERO}
-                                alt="Phone mockup showing a teen opening Notive sign-in with an Action Brief notebook scene, signaling a calm notebook return before signing in."
+                                alt="Phone mockup showing a young person opening Notive sign-in with an Action Brief notebook scene, signaling a return to their notebook before signing in."
                                 fill
                                 priority
                                 sizes="(min-width: 1280px) 32vw, 44vw"
@@ -218,13 +218,13 @@ export default function LoginPage() {
                             <div className="absolute inset-x-0 bottom-0 p-6">
                                 <div className="max-w-md rounded-[1.6rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-5 backdrop-blur-sm">
                                     <p className="type-overline text-muted">
-                                        Return quietly
+                                        Welcome back
                                     </p>
                                     <h2 className="mt-3 text-[2rem] font-semibold leading-[1.05] tracking-[-0.04em] text-strong">
                                         Sign in to your notebook.
                                     </h2>
                                     <p className="mt-3 text-sm leading-7 text-default">
-                                        Come back to the notes you kept, the patterns you noticed, and the next move that already feels more manageable.
+                                        Come back to the notes you kept, the patterns you noticed, and the next move you can actually use.
                                     </p>
                                 </div>
                             </div>
@@ -406,7 +406,7 @@ export default function LoginPage() {
                                     Keep growing
                                 </p>
                                 <p className="mt-2 text-sm leading-7 text-default">
-                                    Every honest note can come back later as self-advocacy, resilience, or one calmer next move.
+                                    Every honest note can come back later as self-advocacy, resilience, or one clearer next move.
                                 </p>
                             </div>
                         </div>

@@ -8,19 +8,23 @@ import { hasCompletedPermissionsOnboarding } from '@/services/device-permissions
 import { openNativeNotificationSettings } from '@/services/native-notification-settings.service';
 import logger from '@/utils/logger';
 
-const DISMISS_KEY = 'notive_push_prompt_dismissed';
-const DISMISS_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // re-show after 7 days
+const PROMPT_COOLDOWN_KEY = 'notive_push_prompt_dismissed';
+const PROMPT_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // re-show after 7 days
 
-function wasDismissedRecently(): boolean {
+function isPromptCoolingDown(): boolean {
     try {
-        const ts = localStorage.getItem(DISMISS_KEY);
+        const ts = localStorage.getItem(PROMPT_COOLDOWN_KEY);
         if (!ts) return false;
-        return Date.now() - Number(ts) < DISMISS_EXPIRY_MS;
+        return Date.now() - Number(ts) < PROMPT_COOLDOWN_MS;
     } catch { return false; }
 }
 
-function persistDismissal(): void {
-    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* noop */ }
+function persistPromptCooldown(): void {
+    try { localStorage.setItem(PROMPT_COOLDOWN_KEY, String(Date.now())); } catch { /* noop */ }
+}
+
+function clearPromptCooldown(): void {
+    try { localStorage.removeItem(PROMPT_COOLDOWN_KEY); } catch { /* noop */ }
 }
 
 /**
@@ -38,26 +42,56 @@ export function PushNotificationPermissionPrompt() {
     const { user } = useAuth();
     const pathname = usePathname();
     const [showPrompt, setShowPrompt] = useState(false);
-    const [dismissed, setDismissed] = useState(() => wasDismissedRecently());
+    const [cooldownActive, setCooldownActive] = useState(() => isPromptCoolingDown());
     const canRequestInApp = permissionState === 'prompt' || permissionState === 'prompt-with-rationale';
     const hasCompletedOnboarding = Boolean(user?.profile?.onboardingCompletedAt) || hasCompletedPermissionsOnboarding();
     const shouldSuppressPrompt = pathname?.startsWith('/onboarding');
+    const shouldAutoPrompt = Boolean(
+        user
+        && hasCompletedOnboarding
+        && !shouldSuppressPrompt
+        && isSupported
+        && !isPermissionGranted
+        && !isLoading
+        && canRequestInApp,
+    );
 
     useEffect(() => {
-        // Only show after onboarding is complete so the permission ask stays contextual.
-        if (user && hasCompletedOnboarding && !shouldSuppressPrompt && isSupported && !isPermissionGranted && !isLoading && !dismissed) {
-            // Delay longer to let users interact first before prompting
-            const timer = setTimeout(() => {
-                setShowPrompt(true);
-            }, 6000);
-
-            return () => clearTimeout(timer);
+        if (isPermissionGranted) {
+            setShowPrompt(false);
+            setCooldownActive(false);
+            clearPromptCooldown();
+            return;
         }
-        // If permission was granted while this component is mounted, hide it
+
+        // Only auto-show while the OS still says we can request in-app.
+        // If notifications were denied in settings, we fall back to the
+        // explicit recovery path in Profile instead of showing a login-time modal.
+        if (!shouldAutoPrompt) {
+            if (!canRequestInApp && showPrompt) {
+                setShowPrompt(false);
+            }
+            return;
+        }
+
+        if (showPrompt || cooldownActive) {
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setShowPrompt(true);
+            persistPromptCooldown();
+            setCooldownActive(true);
+        }, 6000);
+
+        return () => clearTimeout(timer);
+    }, [canRequestInApp, cooldownActive, isPermissionGranted, shouldAutoPrompt, showPrompt]);
+
+    useEffect(() => {
         if (isPermissionGranted && showPrompt) {
             setShowPrompt(false);
         }
-    }, [user, hasCompletedOnboarding, shouldSuppressPrompt, isSupported, isPermissionGranted, isLoading, dismissed, showPrompt]);
+    }, [isPermissionGranted, showPrompt]);
 
     const handleRequestPermission = async () => {
         try {
@@ -65,8 +99,8 @@ export function PushNotificationPermissionPrompt() {
             if (granted) {
                 logger.debug('Push notification permission granted');
                 setShowPrompt(false);
-                // Clear any previous dismissal so we don't have stale state
-                try { localStorage.removeItem(DISMISS_KEY); } catch { /* noop */ }
+                setCooldownActive(false);
+                clearPromptCooldown();
             } else {
                 // User denied at OS level — treat like a dismiss so we don't nag
                 handleDismiss();
@@ -86,8 +120,8 @@ export function PushNotificationPermissionPrompt() {
 
     const handleDismiss = () => {
         setShowPrompt(false);
-        setDismissed(true);
-        persistDismissal();
+        setCooldownActive(true);
+        persistPromptCooldown();
     };
 
     if (!showPrompt) {
@@ -96,7 +130,7 @@ export function PushNotificationPermissionPrompt() {
 
     const title = canRequestInApp ? 'Stay in the loop' : 'Notifications are off';
     const body = canRequestInApp
-        ? 'Get gentle reminders to reflect, see when friends share memories with you, and know when your insights are ready.'
+        ? 'Get reminders to write, know when friends share memories with you, and see when insights are ready.'
         : 'Notifications are turned off in your device settings. Tap below to open settings and turn them back on.';
 
     return (

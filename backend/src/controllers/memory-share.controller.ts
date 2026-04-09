@@ -5,6 +5,14 @@ import { PushNotificationService } from '../services/push-notification.service';
 
 const pushService = new PushNotificationService(prisma);
 const SEARCH_SHARE_STATE_NONE = 'NONE' as const;
+const SHARED_NOTIFICATION_TYPES = [
+    'shared_memory',
+    'memory_share_request',
+    'memory_share_request_accepted',
+    'memory_share_request_declined',
+    'shared_memory_response',
+    'share_reaction',
+] as const;
 
 const maskEmail = (email: string) => {
     const [local, domain] = email.split('@');
@@ -430,11 +438,14 @@ export const listReceived = async (req: Request, res: Response) => {
 
         const unreadWhere = {
             recipientId: userId,
+            readAt: null,
+            status: {
+                in: [
+                    MemoryShareAccessStatus.PENDING,
+                    MemoryShareAccessStatus.ACCEPTED,
+                ],
+            },
             bundle: { status: 'ACTIVE' as const },
-            OR: [
-                { status: MemoryShareAccessStatus.PENDING },
-                { status: MemoryShareAccessStatus.ACCEPTED, readAt: null },
-            ],
         };
 
         const [records, total, unreadCount, pendingCount] = await Promise.all([
@@ -573,7 +584,10 @@ export const respondToShareRequest = async (req: Request, res: Response) => {
                     },
                 },
                 data: nextStatus === MemoryShareAccessStatus.ACCEPTED
-                    ? { status: MemoryShareAccessStatus.ACCEPTED }
+                    ? {
+                        status: MemoryShareAccessStatus.ACCEPTED,
+                        readAt: new Date(),
+                    }
                     : {
                         status: MemoryShareAccessStatus.DECLINED,
                         readAt: new Date(),
@@ -703,14 +717,31 @@ export const getBundleDetail = async (req: Request, res: Response) => {
         }
 
         if (recipientRecord && !recipientRecord.readAt) {
-            await prisma.sharedMemoryRecipient.updateMany({
-                where: {
-                    bundleId: id,
-                    recipientId: userId,
-                    status: MemoryShareAccessStatus.ACCEPTED,
-                },
-                data: { readAt: new Date() },
-            });
+            await prisma.$transaction([
+                // Mark the SharedMemoryRecipient row as read
+                prisma.sharedMemoryRecipient.updateMany({
+                    where: {
+                        bundleId: id,
+                        recipientId: userId,
+                        status: MemoryShareAccessStatus.ACCEPTED,
+                    },
+                    data: { readAt: new Date() },
+                }),
+                // Also mark the corresponding InAppNotification(s) as read
+                // so the badge count clears immediately.
+                prisma.inAppNotification.updateMany({
+                    where: {
+                        userId,
+                        type: { in: ['shared_memory', 'memory_share_request'] },
+                        readAt: null,
+                        data: {
+                            path: ['bundleId'],
+                            equals: id,
+                        },
+                    },
+                    data: { readAt: new Date() },
+                }),
+            ]);
         }
 
         return res.json({
@@ -720,6 +751,7 @@ export const getBundleDetail = async (req: Request, res: Response) => {
                 message: bundle.message,
                 items: bundle.items,
                 recipients: isSender ? bundle.recipients : undefined,
+                viewerReaction: !isSender ? recipientRecord?.reaction ?? null : null,
                 createdAt: bundle.createdAt,
             },
         });
@@ -762,6 +794,10 @@ export const reactToBundle = async (req: Request, res: Response) => {
             return res.status(403).json({ message: 'Accept this share request before reacting' });
         }
 
+        if (recipient.reaction === reaction) {
+            return res.json({ message: 'Reaction unchanged', reaction });
+        }
+
         await prisma.sharedMemoryRecipient.update({
             where: { id: recipient.id },
             data: { reaction },
@@ -792,6 +828,48 @@ export const reactToBundle = async (req: Request, res: Response) => {
         return res.json({ message: 'Reaction updated', reaction });
     } catch (error) {
         console.error('React to bundle error:', error);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+/**
+ * Mark shared-memory notifications and badges as read once the user opens the
+ * Shared surface in the app.
+ * PATCH /api/v1/memory-share/notifications/read
+ */
+export const markSharedNotificationsRead = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const readAt = new Date();
+
+        await prisma.$transaction([
+            prisma.sharedMemoryRecipient.updateMany({
+                where: {
+                    recipientId: userId,
+                    readAt: null,
+                    status: {
+                        in: [
+                            MemoryShareAccessStatus.PENDING,
+                            MemoryShareAccessStatus.ACCEPTED,
+                        ],
+                    },
+                    bundle: { status: 'ACTIVE' },
+                },
+                data: { readAt },
+            }),
+            prisma.inAppNotification.updateMany({
+                where: {
+                    userId,
+                    type: { in: [...SHARED_NOTIFICATION_TYPES] },
+                    readAt: null,
+                },
+                data: { readAt },
+            }),
+        ]);
+
+        return res.json({ message: 'Shared notifications marked as read' });
+    } catch (error) {
+        console.error('Mark shared notifications read error:', error);
         return res.status(500).json({ message: 'Internal server error' });
     }
 };

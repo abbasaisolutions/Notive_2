@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { useApi } from '@/hooks/use-api';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import { useToast } from '@/context/toast-context';
+import { refreshNotificationBadge } from '@/hooks/use-notification-count';
 import { API_URL } from '@/constants/config';
 
 /* ─── Types ────────────────────────────────────────────── */
@@ -28,6 +29,7 @@ type BundleDetail = {
     sender: BundleSender;
     message: string | null;
     items: BundleItem[];
+    viewerReaction: string | null;
     createdAt: string;
 };
 
@@ -80,6 +82,10 @@ function SharedBundleViewContent() {
                 }
                 const data = await r.json();
                 setBundle(data.bundle);
+                setReaction(data.bundle?.viewerReaction ?? null);
+                // Viewing the bundle marks it read on the backend —
+                // refresh the notification badge so the count updates.
+                refreshNotificationBadge();
             } catch {
                 setError('Couldn\u2019t load shared memories. Try refreshing.');
             }
@@ -98,8 +104,12 @@ function SharedBundleViewContent() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ reaction: newReaction }),
             });
-            if (r.ok) { setReaction(newReaction); }
-            else { toast.error('Couldn\u2019t send your reaction.'); }
+            if (r.ok) {
+                const data = await r.json().catch(() => null);
+                setReaction(data?.reaction ?? newReaction);
+            } else {
+                toast.error('Couldn\u2019t send your reaction.');
+            }
         } catch { toast.error('Couldn\u2019t send your reaction.'); }
         setReactSending(false);
     }, [bundleId, reaction, reactSending, apiFetch, toast]);

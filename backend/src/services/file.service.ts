@@ -12,6 +12,7 @@ interface S3StorageOptions {
     region: string;
     accessKeyId: string;
     secretAccessKey: string;
+    endpoint?: string; // Custom endpoint for R2/MinIO
 }
 
 class S3StorageEngine implements multer.StorageEngine {
@@ -44,9 +45,14 @@ class S3StorageEngine implements multer.StorageEngine {
     }
 
     private async uploadToS3(file: Express.Multer.File, key: string): Promise<string> {
-        const { bucket, region, accessKeyId, secretAccessKey } = this.options;
-        const host = `${bucket}.s3.${region}.amazonaws.com`;
-        const url = `https://${host}/${key}`;
+        const { bucket, region, accessKeyId, secretAccessKey, endpoint } = this.options;
+        // R2: endpoint = https://<account-id>.r2.cloudflarestorage.com
+        // S3: default bucket-style host
+        const host = endpoint
+            ? `${new URL(endpoint).host}`
+            : `${bucket}.s3.${region}.amazonaws.com`;
+        const basePath = endpoint ? `/${bucket}/${key}` : `/${key}`;
+        const url = `https://${host}${basePath}`;
         const date = new Date();
         const amzDate = date.toISOString().replace(/[:\-]|\.\d{3}/g, ''); // YYYYMMDDTHHMMSSZ
         const dateStamp = amzDate.slice(0, 8); // YYYYMMDD
@@ -57,7 +63,7 @@ class S3StorageEngine implements multer.StorageEngine {
 
         // 1. Canonical Request
         const method = 'PUT';
-        const canonicalUri = `/${key}`;
+        const canonicalUri = basePath;
         const canonicalQuerystring = '';
         const canonicalHeaders =
             `host:${host}\n` +
@@ -93,6 +99,11 @@ class S3StorageEngine implements multer.StorageEngine {
             }
         });
 
+        // Return the public URL if R2 public domain is set, otherwise the S3 URL
+        const publicDomain = process.env.R2_PUBLIC_DOMAIN;
+        if (publicDomain) {
+            return `https://${publicDomain}/${key}`;
+        }
         return url;
     }
 
@@ -133,9 +144,10 @@ const isS3Configured = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_A
 const storage = isS3Configured
     ? new S3StorageEngine({
         bucket: process.env.AWS_BUCKET_NAME!,
-        region: process.env.AWS_REGION || 'us-east-1',
+        region: process.env.AWS_REGION || 'auto',
         accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        endpoint: process.env.S3_ENDPOINT, // e.g. https://<account-id>.r2.cloudflarestorage.com
     })
     : localStorage;
 

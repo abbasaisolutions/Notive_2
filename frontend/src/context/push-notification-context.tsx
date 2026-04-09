@@ -10,6 +10,7 @@ import { isNativePlatform, getNativePlatform } from '@/utils/platform';
 import { type PermissionStatus } from '@/services/device-permissions.service';
 import { useToast } from '@/context/toast-context';
 import { hapticLight } from '@/services/haptics.service';
+import { refreshNotificationBadge } from '@/hooks/use-notification-count';
 
 export interface DeviceToken {
     id: string;
@@ -95,6 +96,17 @@ const ANDROID_PUSH_CHANNELS = [
     },
 ];
 
+function applyResolvedPushPermission(
+    nextPermissionState: PermissionStatus,
+    setPermissionState: (value: PermissionStatus) => void,
+    setIsPermissionGranted: (value: boolean) => void,
+): boolean {
+    setPermissionState(nextPermissionState);
+    const granted = nextPermissionState === 'granted';
+    setIsPermissionGranted(granted);
+    return granted;
+}
+
 export function PushNotificationProvider({ children }: { children: ReactNode }) {
     const { apiFetch } = useApi();
     const router = useRouter();
@@ -131,9 +143,11 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             try {
                 const check = await PushNotifications.checkPermissions();
                 const nextState = normalizePushPermissionState(check.receive);
-                setPermissionState(nextState);
-                const granted = nextState === 'granted';
-                setIsPermissionGranted(granted);
+                const granted = applyResolvedPushPermission(
+                    nextState,
+                    setPermissionState,
+                    setIsPermissionGranted,
+                );
 
                 // If the user just enabled notifications via Settings, register now
                 if (granted) {
@@ -172,9 +186,11 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             // re-show the OS prompt when the user already granted access.
             const check = await PushNotifications.checkPermissions();
             const nextPermissionState = normalizePushPermissionState(check.receive);
-            const alreadyGranted = nextPermissionState === 'granted';
-            setPermissionState(nextPermissionState);
-            setIsPermissionGranted(alreadyGranted);
+            const alreadyGranted = applyResolvedPushPermission(
+                nextPermissionState,
+                setPermissionState,
+                setIsPermissionGranted,
+            );
 
             if (alreadyGranted) {
                 // Permission already granted — just ensure token registration.
@@ -206,8 +222,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             // the onboarding flow's standalone device-permissions service).
             PushNotifications.addListener('registration', (token: any) => {
                 logger.debug('Push token received:', token.value);
-                setIsPermissionGranted(true);
-                setPermissionState('granted');
+                applyResolvedPushPermission('granted', setPermissionState, setIsPermissionGranted);
                 registerDevice(token.value, getPlatform()).catch(err =>
                     logger.error('Failed to auto-register token:', err)
                 );
@@ -227,6 +242,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
                 // notification instead of wiping the whole notification tray.
                 hapticLight();
                 showNotificationToast(notification);
+                refreshNotificationBadge();
                 void removeForegroundDuplicateNotification(notification);
             });
 
@@ -277,9 +293,11 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             // Fast-path: if already granted, skip the OS prompt entirely.
             const check = await PushNotifications.checkPermissions();
             const nextPermissionState = normalizePushPermissionState(check.receive);
-            setPermissionState(nextPermissionState);
-            if (nextPermissionState === 'granted') {
-                setIsPermissionGranted(true);
+            if (applyResolvedPushPermission(
+                nextPermissionState,
+                setPermissionState,
+                setIsPermissionGranted,
+            )) {
                 await ensureAndroidPushChannel();
                 await PushNotifications.register();
                 return true;
@@ -287,9 +305,11 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
 
             const result = await PushNotifications.requestPermissions();
             const updatedPermissionState = normalizePushPermissionState(result.receive);
-            const granted = updatedPermissionState === 'granted';
-            setPermissionState(updatedPermissionState);
-            setIsPermissionGranted(granted);
+            const granted = applyResolvedPushPermission(
+                updatedPermissionState,
+                setPermissionState,
+                setIsPermissionGranted,
+            );
 
             if (granted) {
                 await ensureAndroidPushChannel();

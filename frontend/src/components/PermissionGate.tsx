@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/auth-context';
+import { usePushNotifications } from '@/context/push-notification-context';
 import { isNativePlatform } from '@/utils/platform';
 import {
     checkAllPermissions,
@@ -34,6 +35,7 @@ const PERMISSION_META: Record<PermissionKind, { icon: typeof FiBell; label: stri
 
 export default function PermissionGate() {
     const { user } = useAuth();
+    const { isPermissionGranted: pushGranted } = usePushNotifications();
     const [pending, setPending] = useState<PermissionKind[]>([]);
     const [visible, setVisible] = useState(false);
 
@@ -51,6 +53,9 @@ export default function PermissionGate() {
                 if (cancelled) return;
                 const promptable: PermissionKind[] = [];
                 for (const [kind, status] of Object.entries(all) as [PermissionKind, PermissionStatus][]) {
+                    // Skip notifications if already granted via the push context
+                    // (avoids duplicating the dedicated push permission prompt).
+                    if (kind === 'notifications' && pushGranted) continue;
                     if (status === 'prompt' || status === 'prompt-with-rationale') promptable.push(kind);
                 }
                 if (promptable.length > 0) {
@@ -61,7 +66,7 @@ export default function PermissionGate() {
         }, 2000);
 
         return () => { cancelled = true; clearTimeout(timer); };
-    }, [user]);
+    }, [user, pushGranted]);
 
     const handleEnable = useCallback(async (kind: PermissionKind) => {
         const result = await requestPermission(kind);

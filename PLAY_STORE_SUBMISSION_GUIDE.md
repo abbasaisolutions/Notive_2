@@ -17,23 +17,23 @@ Use these values unless launch messaging changes:
 Recommended short description:
 
 ```text
-Private reflection for students. Capture moments, spot patterns, act calmly.
+Private notes for young people. Capture moments, spot patterns, move forward.
 ```
 
 Recommended full description:
 
 ```text
-Notive is a private reflection app for students and early-career people who want to keep real moments, understand what keeps repeating, and turn those patterns into stories they can use.
+Notive is a private notes app for young people who want to capture real moments, see what keeps repeating, and turn those patterns into stories and next steps they can use.
 
-Write or speak a note, save photos when they matter, and keep everything together in one calm place. Notive helps you capture school, work, friendship, and personal growth without turning journaling into homework.
+Write or speak a note, save photos when they matter, and keep everything together in one private workspace. Notive helps you capture school, work, friendship, and personal growth without turning journaling into homework.
 
-When you want help, Notive adds AI-powered reflection, pattern spotting, memory search, and gentle prompts. The goal is not more noise. It is one useful next step you can actually take.
+When you want help, Notive adds AI-powered reflection, pattern spotting, memory search, and useful prompts. The goal is not more noise. It is one useful next step you can actually take.
 
 Use Notive to journal with text or voice, spot recurring moods and themes, search past entries, revisit important moments, set reminders, and keep profile photos or entry images attached to the stories that matter.
 
 Privacy matters. Your notes are encrypted in transit, you can manage your data from the app, and you can request account deletion inside the app or on the web.
 
-Whether you are preparing for school, work, applications, or just trying to understand your own week a little better, Notive helps you turn reflection into clarity, confidence, and stronger stories.
+Whether you are figuring out school, work, relationships, applications, or what comes next, Notive helps you turn reflection into clarity, confidence, and stronger stories.
 ```
 
 ## Graphics and screenshots
@@ -42,7 +42,7 @@ Google Play currently requires a feature graphic that is `1024 x 500` in `JPEG` 
 
 Recommended screenshot set:
 
-1. Onboarding or first-run screen that shows the calm paper-style product identity.
+1. Onboarding or first-run screen that shows the warm paper-style product identity.
 2. Dashboard with journal summary, prompts, and one clear next-step surface.
 3. New entry screen showing text plus voice capture controls.
 4. Timeline or memory search showing filters and recall of older entries.

@@ -6,6 +6,7 @@ import {
     recentRecipients,
     createBundle,
     listReceived,
+    markSharedNotificationsRead,
     respondToShareRequest,
     getBundleDetail,
     reactToBundle,
@@ -30,6 +31,7 @@ router.get('/users/recent', recentRecipients);
 // Bundles
 router.post('/bundles', createBundle);
 router.get('/received', listReceived);
+router.patch('/notifications/read', markSharedNotificationsRead);
 router.patch('/requests/:senderId/respond', respondToShareRequest);
 router.get('/bundles/:id', getBundleDetail);
 router.patch('/bundles/:id/react', reactToBundle);

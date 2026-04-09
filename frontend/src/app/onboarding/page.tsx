@@ -34,10 +34,10 @@ import {
 import { isNativePlatform } from '@/utils/platform';
 
 const GOALS: Array<{ id: OnboardingGoal; icon: IconType; doodle: NotebookDoodleName; label: string; desc: string }> = [
-    { id: 'clarity', icon: FiCpu, doodle: 'steady-me', label: 'Clear mind', desc: 'Notice what matters and pick the next step.' },
-    { id: 'memory', icon: FiCamera, doodle: 'moon', label: 'Remember life', desc: 'Save moments, feelings, and details worth keeping.' },
-    { id: 'growth', icon: FiTrendingUp, doodle: 'see-my-growth', label: 'Grow', desc: 'Notice lessons, habits, and change over time.' },
-    { id: 'productivity', icon: FiZap, doodle: 'shape-my-future', label: 'Get things done', desc: 'Save wins, blockers, and stories you can use later.' },
+    { id: 'clarity', icon: FiCpu, doodle: 'steady-me', label: 'Get clarity', desc: 'Notice what matters and pick the next step.' },
+    { id: 'memory', icon: FiCamera, doodle: 'moon', label: 'Remember what matters', desc: 'Save moments, feelings, and details worth keeping.' },
+    { id: 'growth', icon: FiTrendingUp, doodle: 'see-my-growth', label: 'See your growth', desc: 'Notice lessons, habits, and change over time.' },
+    { id: 'productivity', icon: FiZap, doodle: 'shape-my-future', label: 'Move things forward', desc: 'Save wins, blockers, and stories you can use later.' },
 ];
 
 const TRACKS: Array<{ id: OnboardingTrack; label: string; desc: string }> = [
@@ -172,7 +172,7 @@ const PERMISSION_CARDS: Array<{
         kind: 'notifications',
         icon: FiBell,
         label: 'Notifications',
-        reason: 'Gentle nudges to write, daily reflections, and pattern alerts.',
+        reason: 'Reminders to write, shared-memory activity, and updates when insights are ready.',
     },
     {
         kind: 'microphone',

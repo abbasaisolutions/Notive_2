@@ -116,7 +116,7 @@ export default function TagCloud({ onSelectTag, selectedTag = null }: TagCloudPr
                             className={[
                                 'flex-shrink-0 rounded-full font-medium transition-colors border text-xs px-2.5 py-1',
                                 isSelected
-                                    ? 'bg-primary/20 border-primary/50 text-primary shadow-sm shadow-primary/10'
+                                    ? 'bg-primary/20 border-primary/50 text-primary shadow-sm shadow-primary/10 ring-1 ring-primary/30'
                                     : 'workspace-pill border-transparent text-ink-muted hover:text-strong hover:border-primary/20',
                             ].join(' ')}
                             style={moodColor && !isSelected ? { borderColor: `${moodColor}30` } : undefined}

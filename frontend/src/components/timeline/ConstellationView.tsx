@@ -2,11 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ActionBar, AppPanel, SectionHeader, TagPill } from '@/components/ui/surface';
 import { appendReturnTo } from '@/utils/navigation';
 import { type ConstellationModel } from '@/utils/timeline-signature';
-import { FiArrowRight, FiCompass, FiLayers, FiZap } from 'react-icons/fi';
+import { FiArrowRight, FiChevronDown, FiCompass, FiLayers, FiZap } from 'react-icons/fi';
+import { hapticTap } from '@/services/haptics.service';
 
 type ConstellationViewProps = {
     model: ConstellationModel;
@@ -32,6 +33,7 @@ const kindLabels: Record<string, string> = {
 
 export default function ConstellationView({ model, totalEntries, currentReturnTo }: ConstellationViewProps) {
     const [selectedNodeId, setSelectedNodeId] = useState<string>(model.nodes[1]?.id || model.nodes[0]?.id || 'center');
+    const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
 
     useEffect(() => {
         setSelectedNodeId(model.nodes[1]?.id || model.nodes[0]?.id || 'center');
@@ -39,6 +41,9 @@ export default function ConstellationView({ model, totalEntries, currentReturnTo
 
     const selectedNode = model.nodes.find((node) => node.id === selectedNodeId) || model.nodes[0];
     const relatedEntries = useMemo(() => selectedNode?.previewEntries || [], [selectedNode]);
+
+    // Reset expanded entry when selection changes
+    useEffect(() => { setExpandedEntryId(null); }, [selectedNodeId]);
 
     return (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_340px]">
@@ -82,6 +87,8 @@ export default function ConstellationView({ model, totalEntries, currentReturnTo
                     {model.nodes.map((node, index) => {
                         const isSelected = node.id === selectedNode?.id;
                         const isCenter = node.kind === 'center';
+                        const hasSelection = !!selectedNode && selectedNode.kind !== 'center';
+                        const isDimmed = hasSelection && !isSelected && !isCenter;
                         const size = node.size;
 
                         return (
@@ -89,10 +96,13 @@ export default function ConstellationView({ model, totalEntries, currentReturnTo
                                 key={node.id}
                                 type="button"
                                 initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: isSelected ? 1.06 : 1 }}
+                                animate={{
+                                    opacity: isDimmed ? 0.35 : 1,
+                                    scale: isSelected ? 1.12 : 1,
+                                }}
                                 transition={{ duration: 0.28, delay: Math.min(index * 0.03, 0.24) }}
-                                onClick={() => setSelectedNodeId(node.id)}
-                                className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border backdrop-blur-md transition-all ${nodeClasses[node.kind]} ${isSelected ? 'ring-2 ring-white/20' : ''}`}
+                                onClick={() => { hapticTap(); setSelectedNodeId(node.id); }}
+                                className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border backdrop-blur-md transition-all ${nodeClasses[node.kind]} ${isSelected ? 'ring-[3px] ring-white/40 shadow-[0_0_24px_rgba(255,255,255,0.25)]' : ''}`}
                                 style={{
                                     left: `${node.x}%`,
                                     top: `${node.y}%`,
@@ -140,28 +150,71 @@ export default function ConstellationView({ model, totalEntries, currentReturnTo
                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Linked entries</p>
                         <TagPill>{relatedEntries.length} shown</TagPill>
                     </div>
-                    <div className="space-y-3">
-                        {relatedEntries.length > 0 ? relatedEntries.map((entry) => (
-                            <Link
-                                key={entry.id}
-                                href={appendReturnTo(`/entry/view?id=${entry.id}`, currentReturnTo)}
-                                className="block rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
-                            >
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
-                                    {new Date(entry.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                </p>
-                                <h3 className="mt-2 text-sm font-semibold text-white">
-                                    {entry.title || 'Untitled entry'}
-                                </h3>
-                                <p className="mt-2 line-clamp-3 text-sm leading-6 text-ink-secondary">
-                                    {entry.contentSnippet}
-                                </p>
-                            </Link>
-                        )) : (
-                            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-sm text-ink-secondary">
+                    <div className="space-y-1.5">
+                        <AnimatePresence initial={false}>
+                        {relatedEntries.length > 0 ? relatedEntries.map((entry) => {
+                            const isExpanded = expandedEntryId === entry.id;
+                            return (
+                                <motion.div
+                                    key={entry.id}
+                                    layout
+                                    initial={{ opacity: 0, y: 6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -4 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden"
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => { hapticTap(); setExpandedEntryId(isExpanded ? null : entry.id); }}
+                                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-white/[0.04]"
+                                    >
+                                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-strong">
+                                            {entry.title || 'Untitled entry'}
+                                        </span>
+                                        <span className="flex-shrink-0 text-[11px] text-ink-muted">
+                                            {new Date(entry.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                        </span>
+                                        <motion.span
+                                            animate={{ rotate: isExpanded ? 180 : 0 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="flex-shrink-0 text-ink-muted"
+                                        >
+                                            <FiChevronDown size={14} />
+                                        </motion.span>
+                                    </button>
+
+                                    <AnimatePresence initial={false}>
+                                        {isExpanded && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="border-t border-white/[0.06] px-3 pb-3 pt-2">
+                                                    <p className="text-sm leading-6 text-ink-secondary line-clamp-4">
+                                                        {entry.contentSnippet}
+                                                    </p>
+                                                    <Link
+                                                        href={appendReturnTo(`/entry/view?id=${entry.id}`, currentReturnTo)}
+                                                        className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                                                    >
+                                                        Open entry <FiArrowRight size={12} />
+                                                    </Link>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </motion.div>
+                            );
+                        }) : (
+                            <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-sm text-ink-secondary">
                                 Matching entries will appear here once this signal has enough source material.
                             </div>
                         )}
+                        </AnimatePresence>
                     </div>
                 </div>
 

@@ -6,9 +6,9 @@ Date: March 28, 2026
 
 Do not position Notive as a generic AI journaling app.
 
-Position Notive as a private reflection-to-story platform for students and early-career people:
+Position Notive as a private reflection-to-story platform for young people figuring out life, relationships, school, work, and what comes next:
 
-"Capture real moments, see your patterns, and turn them into stories you can use in life, school, and work."
+"Capture real moments, see your patterns, and build a story you can use."
 
 This fits the product better than a broad "mental health companion" claim and gives Notive a sharper wedge in a crowded journaling market.
 
@@ -52,8 +52,8 @@ Personal intelligence for your own story.
 
 Primary:
 
-- students
-- early-career users
+- teens and young adults
+- people navigating school, work, relationships, identity, and what comes next
 - ambitious reflective users who want personal growth and practical outcomes
 
 Secondary:
@@ -111,7 +111,7 @@ Save real moments. See your patterns. Build stories for life, school, and work.
 
 ### Founder Pitch Version
 
-Most journaling tools help you capture the past. Notive helps you capture it, understand it, and reuse it. We help students and early-career people turn reflection into practical story capital for growth, applications, and interviews.
+Most journaling tools help you capture the past. Notive helps you capture it, understand it, and reuse it. We help young people turn reflection into practical story capital for growth, applications, interviews, and better decisions.
 
 ### Differentiator Line
 
@@ -128,9 +128,9 @@ We do not prescribe a better life. We reveal the patterns, proof, and stories al
 
 Keep the tone:
 
-- calm
 - observant
 - capable
+- supportive
 - hopeful
 - grounded
 
@@ -141,17 +141,17 @@ Avoid sounding:
 - productivity-bro
 - overly generic AI
 
-The best voice for Notive is: gentle, intelligent, useful.
+The best voice for Notive is: confident, supportive, useful.
 
 ## Go-To-Market Wedge
 
 ### Best Initial Wedge
 
-Students and early-career users who want to:
+Young people who want to:
 
 - reflect privately
 - understand themselves better
-- build stronger stories for resumes, interviews, statements, and portfolios
+- build stronger stories and next steps for school, work, applications, and life decisions
 
 This wedge is tighter than general wellness and more differentiated than generic journaling.
 
@@ -192,7 +192,7 @@ Support with:
 
 ### 2. Top Acquisition Channels
 
-- LinkedIn content aimed at students, grads, and early-career users
+- LinkedIn content aimed at young adults, grads, and early-career segments when relevant
 - TikTok or short-form demos showing "note to interview story" transformations
 - partnerships with career centers, student programs, and coaches
 - founder-led demos for schools, bootcamps, and creator communities
@@ -268,7 +268,7 @@ personal reflection first, practical story value second.
 
 If I had to compress Notive into one market-ready sentence, I would use:
 
-"Notive is a private reflection app that helps students and early-career people turn real moments into patterns and patterns into stories they can use."
+"Notive is a private reflection app that helps young people turn real moments into patterns and patterns into stories they can use."
 
 ## Market Signals Referenced
 

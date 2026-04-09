@@ -248,13 +248,13 @@ export default function RegisterPage() {
                             <div className="absolute inset-x-0 bottom-0 p-6">
                                 <div className="max-w-md rounded-[1.6rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-5 backdrop-blur-sm">
                                     <p className="type-overline text-muted">
-                                        Quiet notebook
+                                        Private notebook
                                     </p>
                                     <h2 className="mt-3 text-[2rem] font-semibold leading-[1.05] tracking-[-0.04em] text-strong">
                                         One note today. One clearer tomorrow.
                                     </h2>
                                     <p className="mt-3 text-sm leading-7 text-default">
-                                        Start by dropping what happened. Notive keeps the thread, offers one calm next step, and saves the part that helps you grow.
+                                        Start by dropping what happened. Notive keeps the thread, offers one clear next step, and saves the part that helps you grow.
                                     </p>
                                 </div>
                             </div>

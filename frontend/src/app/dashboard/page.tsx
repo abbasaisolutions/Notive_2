@@ -425,14 +425,14 @@ const buildGentleReflectionFocus = (input: {
     const visual = getGentleReflectionVisual(reflection);
 
     return {
-        eyebrow: 'Gentle Reflection',
+        eyebrow: 'Daily Prompt',
         title: compactText(reflection.title, 76),
         body: firstSentence(reflection.body, 132),
         evidence: firstSentence(reflection.evidence, 116),
         evidenceFallback: 'Based on your recent notes.',
         panels: [
             {
-                label: 'Today’s nudge',
+                label: 'Today’s prompt',
                 value: compactText(reflection.prompt, 94),
             },
             ...(reflection.strengthLabel
@@ -466,7 +466,7 @@ const buildStarterFocus = (input: {
     eyebrow: 'Start light',
     title: 'One honest note is enough.',
     body: compactText(input.homeAction.intro || 'You do not need a full story to begin.', 128),
-    evidenceFallback: 'A gentle place to start based on your setup so far.',
+    evidenceFallback: 'A clear place to start based on your setup so far.',
     panels: [
         {
             label: 'Starter prompt',
@@ -1170,8 +1170,8 @@ export default function DashboardPage() {
                     <DashboardNoticeCard
                         compact
                         eyebrow="Still learning"
-                        title="Daily insight is warming up."
-                        body="Once Notive can compare a few connected note patterns, this space starts showing its magic."
+                        title="Daily insight is still building."
+                        body="Once Notive can compare a few connected note patterns, this space starts showing clearer signals."
                     />
                 )}
 
