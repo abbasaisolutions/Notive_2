@@ -247,7 +247,7 @@ export class PushNotificationService {
             },
             data: payload.data ?? {},
             android: {
-                // high priority wakes the device for heads-up display (like WhatsApp)
+                // high priority wakes the device for heads-up display
                 priority: 'high',
                 notification: {
                     // ── Icon & colour ────────────────────────────────
@@ -259,7 +259,7 @@ export class PushNotificationService {
                     sound: payload.sound ?? 'default',
                     defaultVibrateTimings: true,
                     // ── Visibility ───────────────────────────────────
-                    // PUBLIC so title+body show on lock screen (like WhatsApp).
+                    // PUBLIC so title+body show on lock screen.
                     visibility: 'public',
                     // ── Behaviour ────────────────────────────────────
                     // Tag collapses multiple reminder notifications into one,

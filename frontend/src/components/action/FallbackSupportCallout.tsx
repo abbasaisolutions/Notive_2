@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { TagPill } from '@/components/ui/surface';
 import { cn } from '@/utils/cn';
 import { useToast } from '@/context/toast-context';
+import { clipCompactPillByLimit, COMPACT_PILL_LIMITS } from '@/utils/tags';
 import type { StudentFallbackSupport } from './types';
 import SupportOutcomeStrip from './SupportOutcomeStrip';
 
@@ -75,20 +76,26 @@ export default function FallbackSupportCallout({
             <div className="mt-3 flex flex-wrap gap-2">
                 {fallback.channelLabel && (
                     isNotebook ? (
-                        <span className={cn(chipClass, 'border-[rgba(217,210,199,0.9)] bg-white/55 text-[rgb(var(--paper-ink-muted))]')}>
-                            {fallback.channelLabel}
+                        <span
+                            title={fallback.channelLabel}
+                            className={cn(chipClass, 'max-w-[8rem] truncate border-[rgba(217,210,199,0.9)] bg-white/55 text-[rgb(var(--paper-ink-muted))]')}
+                        >
+                            {clipCompactPillByLimit(fallback.channelLabel, COMPACT_PILL_LIMITS.supportMeta)}
                         </span>
                     ) : (
-                        <TagPill>{fallback.channelLabel}</TagPill>
+                        <TagPill title={fallback.channelLabel} className="max-w-[8rem] truncate">{clipCompactPillByLimit(fallback.channelLabel, COMPACT_PILL_LIMITS.supportMeta)}</TagPill>
                     )
                 )}
                 {fallback.relationship && (
                     isNotebook ? (
-                        <span className={cn(chipClass, 'border-[rgba(217,210,199,0.9)] bg-white/55 text-[rgb(var(--paper-ink-muted))]')}>
-                            {fallback.relationship}
+                        <span
+                            title={fallback.relationship}
+                            className={cn(chipClass, 'max-w-[8rem] truncate border-[rgba(217,210,199,0.9)] bg-white/55 text-[rgb(var(--paper-ink-muted))]')}
+                        >
+                            {clipCompactPillByLimit(fallback.relationship, COMPACT_PILL_LIMITS.supportMeta)}
                         </span>
                     ) : (
-                        <TagPill>{fallback.relationship}</TagPill>
+                        <TagPill title={fallback.relationship} className="max-w-[8rem] truncate">{clipCompactPillByLimit(fallback.relationship, COMPACT_PILL_LIMITS.supportMeta)}</TagPill>
                     )
                 )}
             </div>

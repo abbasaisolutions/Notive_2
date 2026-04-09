@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { NotebookDoodle, type NotebookDoodleName, type NotebookAccentName } from '@/components/dashboard/NotebookDoodles';
 import type { StorySignal } from '@/utils/story-engine';
+import { clipCompactPillByLimit, COMPACT_PILL_LIMITS } from '@/utils/tags';
 
 type NotiveDoodle = 'knot' | 'ladder' | 'sprout' | 'steady-me' | 'reach-someone' | 'see-my-growth' | 'shape-my-future';
 
@@ -203,8 +204,11 @@ export default function NotiveNoticedPanel({
 
                     {/* CTA inline */}
                     <div className="mt-1 flex items-center gap-1">
-                        <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(141,123,105,0.22)] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.1em] text-[rgba(141,123,105,0.7)]">
-                            {nextMove}
+                        <span
+                            title={nextMove}
+                            className="inline-flex max-w-[7.5rem] items-center gap-1 truncate rounded-full border border-[rgba(141,123,105,0.22)] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.1em] text-[rgba(141,123,105,0.7)] min-[376px]:max-w-[8.5rem]"
+                        >
+                            {clipCompactPillByLimit(nextMove, COMPACT_PILL_LIMITS.timelineNextMove)}
                         </span>
                         <ConnectionDots entryTags={entryTags} tagCounts={tagCounts} />
                     </div>

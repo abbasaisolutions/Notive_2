@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import useApi from '@/hooks/use-api';
 import { FiCheck } from 'react-icons/fi';
 import { Spinner, EmptyState } from '@/components/ui';
+import { clipCompactPillByLimit, COMPACT_PILL_LIMITS } from '@/utils/tags';
 
 interface ImportCandidate {
     id: string;
@@ -373,9 +374,10 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                                                         {candidate.tags.slice(0, 3).map((tag) => (
                                                             <span
                                                                 key={`${candidate.id}-${tag}`}
-                                                                className="workspace-pill-muted rounded-full px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-ink-secondary"
+                                                                title={`#${tag}`}
+                                                                className="workspace-pill-muted inline-flex max-w-[8.5rem] items-center truncate rounded-full px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-ink-secondary"
                                                             >
-                                                                #{tag}
+                                                                {clipCompactPillByLimit(`#${tag}`, COMPACT_PILL_LIMITS.importTag)}
                                                             </span>
                                                         ))}
                                                     </div>

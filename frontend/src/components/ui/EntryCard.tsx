@@ -9,6 +9,7 @@ import { getMoodColor, getMoodEmoji, normalizeMood } from '@/constants/moods';
 import { FiPlay } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import { formatStoryConfidence, storyStatusClassName, storyStatusLabel, type StorySignal } from '@/utils/story-engine';
+import { clipCompactPillByLimit, COMPACT_PILL_LIMITS } from '@/utils/tags';
 
 interface EntryCardProps {
     entry: {
@@ -149,8 +150,8 @@ export default function EntryCard({ entry, delay = 0 }: EntryCardProps) {
                             </span>
                         )}
                         {entry.tags.slice(0, 3).map(tag => (
-                            <span key={tag} className="text-xs text-primary/90 bg-primary/10 px-2 py-1 rounded-md border border-primary/30 group-hover:border-primary/50 transition-all">
-                                #{tag}
+                            <span key={tag} title={`#${tag}`} className="inline-flex max-w-[8.5rem] items-center truncate rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-xs text-primary/90 transition-all group-hover:border-primary/50">
+                                {clipCompactPillByLimit(`#${tag}`, COMPACT_PILL_LIMITS.entryCardTag)}
                             </span>
                         ))}
                         {entry.tags.length > 3 && (

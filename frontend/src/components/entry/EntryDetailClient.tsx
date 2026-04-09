@@ -12,13 +12,13 @@ import { getMoodEmoji, normalizeMood } from '@/constants/moods';
 import { AppPanel, TagPill } from '@/components/ui/surface';
 import { ConfirmDialog, ErrorState, Spinner } from '@/components/ui';
 import { formatStoryConfidence, storyFieldLabel, storyStatusClassName, storyStatusLabel, type StorySignal } from '@/utils/story-engine';
-import { FiArrowLeft, FiArrowRight, FiBriefcase, FiMic } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiBriefcase, FiMic, FiShare2 } from 'react-icons/fi';
 import ActionBriefPanel from '@/components/action/ActionBriefPanel';
 import BridgeCard from '@/components/action/BridgeCard';
 import SafetyBanner from '@/components/safety/SafetyBanner';
 import type { StudentActionResponse } from '@/components/action/types';
 import useTelemetry from '@/hooks/use-telemetry';
-import { isCardTag } from '@/utils/tags';
+import { clipCompactPillByLimit, COMPACT_PILL_LIMITS, isCardTag } from '@/utils/tags';
 import { useToast } from '@/context/toast-context';
 import ShareMemorySheet, { type ShareableEntry } from '@/components/share/ShareMemorySheet';
 
@@ -340,10 +340,13 @@ function EntryDetailContent() {
 
                     <div className="flex items-center gap-2">
                         <button
+                            type="button"
                             onClick={() => setShowShareSheet(true)}
-                            className="workspace-pill rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] transition-all hover:opacity-85"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(107,143,113,0.28)] bg-[rgb(107,143,113)] px-3.5 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_10px_24px_rgba(107,143,113,0.22)] transition-all hover:-translate-y-[1px] hover:bg-[rgb(96,131,102)]"
+                            aria-label="Share this memory"
                         >
-                            Share
+                            <FiShare2 size={14} aria-hidden="true" />
+                            <span className="whitespace-nowrap">Share Memory</span>
                         </button>
                         <Link
                             href={withCurrentReturnTo(`/entry/edit?id=${id}`)}
@@ -417,9 +420,10 @@ function EntryDetailContent() {
                     {entry.tags.filter(isCardTag).slice(0, 3).map((tag) => (
                         <span
                             key={tag}
-                            className="workspace-pill rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-ink-secondary"
+                            title={`#${tag}`}
+                            className="workspace-pill inline-flex max-w-[11rem] items-center truncate rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-ink-secondary"
                         >
-                            #{tag}
+                            {clipCompactPillByLimit(`#${tag}`, COMPACT_PILL_LIMITS.entryDetailTag)}
                         </span>
                     ))}
                 </div>

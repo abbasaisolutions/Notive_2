@@ -15,6 +15,7 @@ import { FiArrowLeft } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
 import { getChapterIconComponent } from '@/constants/chapter-icons';
 import { formatStoryConfidence, storyStatusClassName, storyStatusLabel, type StorySignal } from '@/utils/story-engine';
+import { clipCompactPillByLimit, COMPACT_PILL_LIMITS } from '@/utils/tags';
 
 interface Chapter {
     id: string;
@@ -226,7 +227,9 @@ function ChapterDetailContent() {
                                                 </>
                                             )}
                                             {entry.tags.slice(0, 4).map((tag) => (
-                                                <TagPill key={tag}>#{tag}</TagPill>
+                                                <TagPill key={tag} title={`#${tag}`} className="max-w-[12rem] truncate">
+                                                    {clipCompactPillByLimit(`#${tag}`, COMPACT_PILL_LIMITS.chapterTag)}
+                                                </TagPill>
                                             ))}
                                         </div>
                                     </div>

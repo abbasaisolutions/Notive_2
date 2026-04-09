@@ -420,11 +420,28 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         }
     };
 
+    const markNotificationRead = async (notificationId: string | undefined) => {
+        if (!notificationId) return;
+
+        try {
+            const response = await apiFetch(`/notifications/${notificationId}/read`, {
+                method: 'PATCH',
+            });
+
+            if (response.ok) {
+                refreshNotificationBadge();
+            }
+        } catch {
+            // Non-fatal: destination screens can retry the read mutation.
+        }
+    };
+
     const showNotificationToast = (notification: any) => {
         const title = notification.title || 'Notive';
         const body = notification.body || '';
         const data = notification.data || {};
         const deepLink = data?.link || data?.route;
+        const notificationId = typeof data?.notificationId === 'string' ? data.notificationId : undefined;
         const actionLabel = resolveNotificationActionLabel(data?.type, deepLink);
 
         toast.addToast({
@@ -433,7 +450,13 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             variant: 'notification',
             duration: FOREGROUND_TOAST_DURATION_MS,
             action: deepLink
-                ? { label: actionLabel, onClick: () => router.push(deepLink) }
+                ? {
+                    label: actionLabel,
+                    onClick: () => {
+                        void markNotificationRead(notificationId);
+                        router.push(deepLink);
+                    },
+                }
                 : undefined,
         });
     };
@@ -441,7 +464,9 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
     const handleNotificationAction = async (notification: any) => {
         // Handle deep linking or navigation based on notification data
         const data = notification.notification?.data || notification.data;
+        const notificationId = typeof data?.notificationId === 'string' ? data.notificationId : undefined;
         const deepLink = data?.link || data?.route;
+        void markNotificationRead(notificationId);
         if (deepLink) {
             router.push(deepLink);
         }
@@ -527,6 +552,7 @@ function normalizePushPermissionState(
 function resolveNotificationActionLabel(type: string | undefined, deepLink: string | undefined): string {
     if (!deepLink) return 'Open';
     if (type === 'reminder') return 'Write now';
+    if (type === 'shared_memory' || type === 'share_reaction') return 'View memories';
     if (type && SOCIAL_TOAST_TYPES.has(type)) return 'Open shared';
     return 'Open';
 }

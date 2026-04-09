@@ -80,7 +80,7 @@ const getCompletionCopy = (summary: ShareDeliverySummary, recipientNames: string
     if (summary.pendingCount > 0 && summary.acceptedCount === 0) {
         return {
             title: `Request sent to ${recipientNames}`,
-            body: 'They will need to accept before the memories appear in Shared.',
+            body: "They'll need to accept before these memories appear in Shared.",
         };
     }
 
@@ -93,7 +93,7 @@ const getCompletionCopy = (summary: ShareDeliverySummary, recipientNames: string
 
     return {
         title: `Shared with ${recipientNames}`,
-        body: 'They will see it next time they open their timeline.',
+        body: "They'll see it in Shared the next time they open Notive.",
     };
 };
 
@@ -114,7 +114,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
     const [message, setMessage] = useState('');
     const [sending, setSending] = useState(false);
     const [completionTitle, setCompletionTitle] = useState('Shared');
-    const [completionBody, setCompletionBody] = useState('They will see it next time they open their timeline.');
+    const [completionBody, setCompletionBody] = useState("They'll see it in Shared the next time they open Notive.");
     const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
 
     const goForward = () => { setDirection(1); setStep((current) => current + 1); };
@@ -247,14 +247,14 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
             setStep(3);
 
             if (delivery.pendingCount > 0 && delivery.acceptedCount === 0) {
-                toast.success('Share request sent', 'They will need to accept before the memories appear.');
+                toast.success('Share request sent', "They'll need to accept before these memories appear in Shared.");
             } else if (delivery.pendingCount > 0) {
                 toast.success(
                     'Shared and pending approval',
                     `${delivery.acceptedCount} ${delivery.acceptedCount === 1 ? 'person can' : 'people can'} see it now. ${delivery.pendingCount} ${delivery.pendingCount === 1 ? 'person is' : 'people are'} waiting on approval.`,
                 );
             } else {
-                toast.success('Memories shared', 'They will see them next time they open Notive.');
+                toast.success('Memories shared', "They'll see them in Shared the next time they open Notive.");
             }
         } catch {
             toast.error('Couldn\u2019t complete the share. Try again?');

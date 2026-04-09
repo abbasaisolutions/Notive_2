@@ -143,13 +143,15 @@ export function TagPill({
     children,
     tone = 'default',
     className,
+    title,
 }: {
     children: React.ReactNode;
     tone?: TagTone;
     className?: string;
+    title?: string;
 }) {
     return (
-        <span className={cn('inline-flex items-center rounded-full border px-2.5 py-1 text-xs uppercase tracking-[0.1em]', tagToneClasses[tone], className)}>
+        <span title={title} className={cn('inline-flex items-center rounded-full border px-2.5 py-1 text-xs uppercase tracking-[0.1em]', tagToneClasses[tone], className)}>
             {children}
         </span>
     );

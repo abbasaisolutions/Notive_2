@@ -32,6 +32,7 @@ import { appendReturnTo } from '@/utils/navigation';
 import { normalizeTag, isValidTag } from '@/utils/tags';
 import { useToast } from '@/context/toast-context';
 import { usePushNotifications } from '@/context/push-notification-context';
+import { refreshNotificationBadge } from '@/hooks/use-notification-count';
 import { Spinner } from '@/components/ui';
 import FirstEntryHandoff from '@/components/entry/FirstEntryHandoff';
 import { prepareImageForUpload } from '@/utils/image-upload';
@@ -248,6 +249,7 @@ function NewEntryPageContent() {
     const isWhisperRequested = modeParam === 'whisper';
     const isWhisperMode = isWhisperRequested || (!modeParam && new Date().getHours() >= 22);
     const entrySource = searchParams.get('source');
+    const reminderNotificationId = searchParams.get('notificationId') || '';
     const isGentleReflectionEntry = entrySource === GENTLE_REFLECTION_SOURCE;
     const gentleReflectionId = searchParams.get(GENTLE_REFLECTION_ID_PARAM) || '';
     const gentleReflectionTags = parseGentleReflectionTags(searchParams.get(GENTLE_REFLECTION_TAGS_PARAM));
@@ -307,6 +309,7 @@ function NewEntryPageContent() {
     const pendingVoicePreviewRef = useRef<string>('');
     const appliedVoiceJobIdsRef = useRef<Set<string>>(new Set());
     const completionTrackedVoiceJobIdsRef = useRef<Set<string>>(new Set());
+    const reminderNotificationReadRef = useRef<string | null>(null);
 
     const {
         extractedData,
@@ -340,6 +343,30 @@ function NewEntryPageContent() {
     useEffect(() => {
         contentRef.current = content;
     }, [content]);
+
+    useEffect(() => {
+        if (authLoading || !isAuthenticated || !reminderNotificationId) return;
+        if (reminderNotificationReadRef.current === reminderNotificationId) return;
+
+        reminderNotificationReadRef.current = reminderNotificationId;
+
+        void (async () => {
+            try {
+                const response = await apiFetch(`${API_URL}/notifications/${reminderNotificationId}/read`, {
+                    method: 'PATCH',
+                });
+
+                if (response.ok) {
+                    refreshNotificationBadge();
+                    return;
+                }
+            } catch {
+                // Ignore transient errors — reminder notifications remain idempotent.
+            }
+
+            reminderNotificationReadRef.current = null;
+        })();
+    }, [apiFetch, authLoading, isAuthenticated, reminderNotificationId]);
 
     const canRecordVoiceAudio = typeof window !== 'undefined'
         && !!navigator.mediaDevices?.getUserMedia

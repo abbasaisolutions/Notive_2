@@ -148,7 +148,7 @@ function SharedBundleViewContent() {
         <div className="mx-auto max-w-2xl px-4 py-6">
             {/* Header */}
             <div className="mb-6 flex items-center gap-3">
-                <Link href="/timeline?tab=shared" className="text-[0.78rem] font-medium text-[rgb(107,143,113)] hover:underline">
+                <Link href="/timeline?view=shared" className="text-[0.78rem] font-medium text-[rgb(107,143,113)] hover:underline">
                     &larr; Back
                 </Link>
             </div>

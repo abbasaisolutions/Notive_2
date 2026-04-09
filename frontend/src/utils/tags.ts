@@ -12,6 +12,72 @@ export const normalizeTag = (tag: string): string =>
         .replace(/^-|-$/g, '')
         .slice(0, 32);
 
+export const clipCompactPillLabel = (label: string, maxWords: number, maxChars: number): string => {
+    const trimmedLabel = label.trim();
+    if (!trimmedLabel) return trimmedLabel;
+
+    const prefix = /^[#+]/.test(trimmedLabel) ? trimmedLabel.charAt(0) : '';
+    const body = prefix ? trimmedLabel.slice(1) : trimmedLabel;
+    const wordCount = body.split(/[\s-]+/).filter(Boolean).length;
+
+    let visibleBody = body;
+    if (wordCount > maxWords) {
+        const tokens = body.split(/([\s-]+)/);
+        let collectedWords = 0;
+        let nextBody = '';
+
+        for (const token of tokens) {
+            if (!token) continue;
+
+            if (/[\s-]+/.test(token)) {
+                if (collectedWords > 0 && collectedWords < maxWords) {
+                    nextBody += token;
+                }
+                continue;
+            }
+
+            if (collectedWords >= maxWords) break;
+
+            nextBody += token;
+            collectedWords += 1;
+        }
+
+        visibleBody = nextBody.trim().replace(/[\s-]+$/g, '');
+    }
+
+    const candidate = `${prefix}${visibleBody}`;
+    if (wordCount <= maxWords && candidate.length <= maxChars) {
+        return candidate;
+    }
+
+    const maxBodyChars = Math.max(1, maxChars - prefix.length - 3);
+    const clippedBody = visibleBody
+        .slice(0, maxBodyChars)
+        .trimEnd()
+        .replace(/[\s-]+$/g, '');
+
+    return `${prefix}${clippedBody}...`;
+};
+
+export const COMPACT_PILL_LIMITS = {
+    timelineTag: { maxWords: 2, maxChars: 16 },
+    timelineSkill: { maxWords: 2, maxChars: 16 },
+    timelineLesson: { maxWords: 2, maxChars: 20 },
+    timelineNextMove: { maxWords: 2, maxChars: 18 },
+    entryDetailTag: { maxWords: 3, maxChars: 24 },
+    chapterTag: { maxWords: 3, maxChars: 24 },
+    importTag: { maxWords: 2, maxChars: 16 },
+    entryCardTag: { maxWords: 2, maxChars: 16 },
+    bridgePrimary: { maxWords: 2, maxChars: 18 },
+    bridgeMeta: { maxWords: 2, maxChars: 16 },
+    supportMeta: { maxWords: 2, maxChars: 16 },
+} as const;
+
+export const clipCompactPillByLimit = (
+    label: string,
+    limit: { maxWords: number; maxChars: number },
+): string => clipCompactPillLabel(label, limit.maxWords, limit.maxChars);
+
 /**
  * Stopwords list — tags made entirely of these words are not meaningful.
  * SYNC: backend/src/services/tagging.service.ts → STOPWORDS (authoritative)

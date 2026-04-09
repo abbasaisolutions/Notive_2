@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { FiShare2 } from 'react-icons/fi';
 import { getMoodColor, getMoodEmoji, normalizeMood } from '@/constants/moods';
 import { EmptyState } from '@/components/ui';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
@@ -11,7 +12,7 @@ import { buildTimelineMonthGroups } from '@/utils/timeline-groups';
 import { storyStatusLabel, type StorySignal } from '@/utils/story-engine';
 import NotiveNoticedPanel, { type NotiveInsight } from './NotiveNoticedPanel';
 
-import { isCardTag } from '@/utils/tags';
+import { clipCompactPillByLimit, COMPACT_PILL_LIMITS, isCardTag } from '@/utils/tags';
 
 export interface TopEmotion {
     emotion: string;
@@ -408,17 +409,38 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                     {/* Tags + Skills + Lessons + Share — unified single row */}
                                                     {(() => {
                                                         const hasPills = entryTags.length > 0 || displaySkills.length > 0 || displayLessons.length > 0;
-                                                        const allPills: { key: string; label: string; type: 'tag' | 'skill' | 'lesson' }[] = [
-                                                            ...entryTags.map(t => ({ key: `t-${t}`, label: `#${t}`, type: 'tag' as const })),
-                                                            ...displaySkills.map(s => ({ key: `s-${s}`, label: `+${s}`, type: 'skill' as const })),
-                                                            ...displayLessons.map(l => ({ key: `l-${l}`, label: l, type: 'lesson' as const })),
+                                                        const allPills: { key: string; label: string; fullLabel: string; type: 'tag' | 'skill' | 'lesson' }[] = [
+                                                            ...entryTags.map(t => {
+                                                                const fullLabel = `#${t}`;
+                                                                return {
+                                                                    key: `t-${t}`,
+                                                                    fullLabel,
+                                                                    label: clipCompactPillByLimit(fullLabel, COMPACT_PILL_LIMITS.timelineTag),
+                                                                    type: 'tag' as const,
+                                                                };
+                                                            }),
+                                                            ...displaySkills.map(s => {
+                                                                const fullLabel = `+${s}`;
+                                                                return {
+                                                                    key: `s-${s}`,
+                                                                    fullLabel,
+                                                                    label: clipCompactPillByLimit(fullLabel, COMPACT_PILL_LIMITS.timelineSkill),
+                                                                    type: 'skill' as const,
+                                                                };
+                                                            }),
+                                                            ...displayLessons.map(l => ({
+                                                                key: `l-${l}`,
+                                                                fullLabel: l,
+                                                                label: clipCompactPillByLimit(l, COMPACT_PILL_LIMITS.timelineLesson),
+                                                                type: 'lesson' as const,
+                                                            })),
                                                         ];
                                                         const visible = allPills.slice(0, 4);
                                                         const overflowCount = allPills.length - visible.length;
 
                                                         const pillClass = (type: 'tag' | 'skill' | 'lesson') => {
-                                                            if (type === 'skill') return 'text-[0.6rem] font-semibold text-success bg-success/15 border border-success/35 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0';
-                                                            if (type === 'lesson') return 'text-[0.6rem] font-semibold text-accent bg-accent/15 border border-accent/35 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0';
+                                                            if (type === 'skill') return 'text-[0.6rem] font-semibold text-success bg-success/15 border border-success/35 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[6rem] min-[376px]:max-w-[7rem]';
+                                                            if (type === 'lesson') return 'text-[0.6rem] font-semibold text-accent bg-accent/15 border border-accent/35 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[6.75rem] min-[376px]:max-w-[7.75rem]';
                                                             return 'text-[0.6rem] font-medium text-primary/75 bg-primary/8 border border-primary/20 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[5rem] min-[376px]:max-w-[6rem]';
                                                         };
 
@@ -427,7 +449,7 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                         return (
                                                             <div className="flex items-center gap-1 mt-1.5 overflow-x-auto flex-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                                                 {visible.map(pill => (
-                                                                    <span key={pill.key} className={pillClass(pill.type)}>
+                                                                    <span key={pill.key} className={pillClass(pill.type)} title={pill.fullLabel}>
                                                                         {pill.label}
                                                                     </span>
                                                                 ))}
@@ -450,15 +472,12 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                                     <button
                                                                         type="button"
                                                                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShareEntry(entry.id); }}
-                                                                        className="ml-auto flex-shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(var(--brand),0.06)] text-[rgb(107,143,113)] transition-colors hover:bg-[rgba(var(--brand),0.16)]"
+                                                                        className="ml-auto flex-shrink-0 inline-flex items-center gap-1 rounded-full border border-[rgba(107,143,113,0.24)] bg-[rgba(107,143,113,0.1)] px-2 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(107,143,113)] transition-colors hover:bg-[rgba(107,143,113,0.18)]"
                                                                         title="Share this memory"
                                                                         aria-label="Share this memory"
                                                                     >
-                                                                        <svg width="10" height="10" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                                                                            <path d="M2 7.5V11.5C2 12.05 2.45 12.5 3 12.5H11C11.55 12.5 12 12.05 12 11.5V7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                                                                            <path d="M7 1.5V9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                                                                            <path d="M4.5 4L7 1.5L9.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                                                                        </svg>
+                                                                        <FiShare2 size={11} aria-hidden="true" />
+                                                                        <span className="whitespace-nowrap">Share</span>
                                                                     </button>
                                                                 )}
                                                             </div>

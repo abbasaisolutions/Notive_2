@@ -100,14 +100,14 @@ export const sendFriendRequest = async (req: Request, res: Response) => {
                 userId: addresseeId,
                 type: 'friend_request',
                 title: `${senderName} sent you a friend request`,
-                data: { requesterId, senderName },
+                data: { requesterId, senderName, route: '/timeline?view=shared' },
             },
         });
 
         pushService.sendPushNotification(addresseeId, {
             title: 'New friend request',
             body: `${senderName} wants to connect with you`,
-            data: { type: 'friend_request', route: '/timeline?tab=shared' },
+            data: { type: 'friend_request', route: '/timeline?view=shared' },
         }).catch(() => {});
 
         return res.status(201).json({ message: 'Friend request sent', status: 'PENDING' });
@@ -136,30 +136,43 @@ export const acceptFriendRequest = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Pending friend request not found' });
         }
 
-        await prisma.friendship.update({
-            where: { id },
-            data: { status: 'ACCEPTED' },
-        });
-
-        // Notify requester
+        // Notify requester and clear the incoming request notification for the addressee.
         const acceptor = await prisma.user.findUnique({
             where: { id: userId },
             select: { name: true },
         });
 
-        await prisma.inAppNotification.create({
-            data: {
-                userId: friendship.requesterId,
-                type: 'friend_accepted',
-                title: `${acceptor?.name || 'Someone'} accepted your friend request`,
-                data: { userId, acceptorName: acceptor?.name },
-            },
-        });
+        await prisma.$transaction([
+            prisma.friendship.update({
+                where: { id },
+                data: { status: 'ACCEPTED' },
+            }),
+            prisma.inAppNotification.updateMany({
+                where: {
+                    userId,
+                    type: 'friend_request',
+                    readAt: null,
+                    data: {
+                        path: ['requesterId'],
+                        equals: friendship.requesterId,
+                    },
+                },
+                data: { readAt: new Date() },
+            }),
+            prisma.inAppNotification.create({
+                data: {
+                    userId: friendship.requesterId,
+                    type: 'friend_accepted',
+                    title: `${acceptor?.name || 'Someone'} accepted your friend request`,
+                    data: { userId, acceptorName: acceptor?.name, route: '/timeline?view=shared' },
+                },
+            }),
+        ]);
 
         pushService.sendPushNotification(friendship.requesterId, {
             title: 'Friend request accepted!',
             body: `${acceptor?.name || 'Someone'} is now your friend`,
-            data: { type: 'friend_accepted', route: '/timeline?tab=shared' },
+            data: { type: 'friend_accepted', route: '/timeline?view=shared' },
         }).catch(() => {});
 
         return res.json({ message: 'Friend request accepted', status: 'ACCEPTED' });
@@ -187,10 +200,24 @@ export const declineFriendRequest = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Pending friend request not found' });
         }
 
-        await prisma.friendship.update({
-            where: { id },
-            data: { status: 'DECLINED' },
-        });
+        await prisma.$transaction([
+            prisma.friendship.update({
+                where: { id },
+                data: { status: 'DECLINED' },
+            }),
+            prisma.inAppNotification.updateMany({
+                where: {
+                    userId,
+                    type: 'friend_request',
+                    readAt: null,
+                    data: {
+                        path: ['requesterId'],
+                        equals: friendship.requesterId,
+                    },
+                },
+                data: { readAt: new Date() },
+            }),
+        ]);
 
         return res.json({ message: 'Friend request declined' });
     } catch (error) {

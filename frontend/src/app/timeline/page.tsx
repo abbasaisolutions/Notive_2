@@ -8,6 +8,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 const ConstellationView = dynamic(() => import('@/components/timeline/ConstellationView'), { ssr: false });
 const TagCloud = dynamic(() => import('@/components/insights/TagCloud'));
 import TimelineView from '@/components/timeline/TimelineView';
+import TimelineLoadingState from '@/components/timeline/TimelineLoadingState';
 import ShareMemorySheet from '@/components/share/ShareMemorySheet';
 import type { ShareableEntry } from '@/components/share/ShareMemorySheet';
 import type { NotiveInsight } from '@/components/timeline/NotiveNoticedPanel';
@@ -83,6 +84,23 @@ type SharedBundle = {
     sharedAt: string;
     status: 'PENDING' | 'ACCEPTED';
 };
+
+type IncomingFriendRequest = {
+    id: string;
+    user: { id: string; name: string | null; avatarUrl: string | null };
+    status: 'PENDING';
+    createdAt: string;
+};
+
+type SharedActivityNotification = {
+    id: string;
+    type: string;
+    title: string;
+    body: string | null;
+    data: Record<string, unknown> | null;
+    readAt: string | null;
+    createdAt: string;
+};
 type TimelineFilterState = {
     query: string;
     sourceFilter: SourceFilter;
@@ -130,6 +148,15 @@ const DAY_PART_FILTER_ALIASES: Record<string, string> = {
     'late night': 'Late night',
     'late-night': 'Late night',
 };
+
+const DISPLAYABLE_SHARED_ACTIVITY_TYPES = new Set([
+    'reminder',
+    'friend_accepted',
+    'memory_share_request_accepted',
+    'memory_share_request_declined',
+    'shared_memory_response',
+    'share_reaction',
+]);
 
 const normalizeSourceFilter = (value: string | null): SourceFilter => {
     if (value === 'notive' || value === 'instagram' || value === 'facebook') return value;
@@ -183,6 +210,12 @@ const normalizeDayPartFilter = (value: string | null): string => {
 
 const normalizeTimelineSurface = (value: string | null): TimelineSurface =>
     value === 'constellation' ? 'constellation' : value === 'shared' ? 'shared' : 'timeline';
+
+const resolveTimelineSurfaceParam = (searchParams: { get: (key: string) => string | null }): string | null => {
+    const view = searchParams.get('view');
+    if (view) return view;
+    return searchParams.get('tab') === 'shared' ? 'shared' : null;
+};
 
 const canUseLocalStorage = () => typeof window !== 'undefined' && !!window.localStorage;
 
@@ -352,10 +385,11 @@ const MOOD_COLORS_SHARED: Record<string, string> = {
     motivated: '#8B5CF6',
 };
 
-function SharedWithMeList({ bundles, loading, onRefresh }: {
+function SharedWithMeList({ bundles, loading, onRefresh, allowEmptyState = true }: {
     bundles: SharedBundle[];
     loading: boolean;
     onRefresh: () => Promise<void> | void;
+    allowEmptyState?: boolean;
 }) {
     const { apiFetch } = useApi();
     const toast = useToast();
@@ -379,10 +413,10 @@ function SharedWithMeList({ bundles, loading, onRefresh }: {
             }
 
             toast.success(
-                decision === 'ACCEPT' ? 'Share request accepted' : 'Share request denied',
+                decision === 'ACCEPT' ? 'Share request accepted' : 'Share request declined',
                 decision === 'ACCEPT'
-                    ? 'The shared memories are ready in your Shared tab now.'
-                    : 'That sender can no longer unlock memories for you until you allow it later.',
+                    ? 'These memories are ready in Shared now.'
+                    : "They can't share more memories with you unless you approve a future request.",
             );
             await onRefresh();
             // Backend marked the share-request notification as read —
@@ -403,12 +437,16 @@ function SharedWithMeList({ bundles, loading, onRefresh }: {
     }
 
     if (bundles.length === 0) {
+        if (!allowEmptyState) {
+            return null;
+        }
+
         return (
             <EmptyState
                 doodle="steady-me"
                 doodleAccent="sage"
                 title="Nothing shared yet"
-                subtitle="When someone shares their memories with you, they will appear here."
+                subtitle="When someone shares memories with you, they'll show up here."
             />
         );
     }
@@ -486,7 +524,7 @@ function SharedWithMeList({ bundles, loading, onRefresh }: {
                                     onClick={() => void respondToRequest(b.sender.id, 'DECLINE')}
                                     className="workspace-button-outline rounded-xl px-4 py-2 text-[0.72rem] font-semibold disabled:opacity-50"
                                 >
-                                    {isActing ? 'Saving...' : 'Deny'}
+                                    {isActing ? 'Saving...' : 'Decline'}
                                 </button>
                                 <button
                                     type="button"
@@ -506,6 +544,266 @@ function SharedWithMeList({ bundles, loading, onRefresh }: {
                                 Open shared memories
                             </button>
                         )}
+                    </motion.div>
+                );
+            })}
+        </div>
+    );
+}
+
+function FriendRequestsList({ requests, loading, onRefresh }: {
+    requests: IncomingFriendRequest[];
+    loading: boolean;
+    onRefresh: () => Promise<void> | void;
+}) {
+    const { apiFetch } = useApi();
+    const toast = useToast();
+    const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
+
+    const handleDecision = useCallback(async (requestId: string, decision: 'accept' | 'decline') => {
+        setActiveRequestId(requestId);
+        try {
+            const response = await apiFetch(`${API_URL}/friendships/${requestId}/${decision}`, {
+                method: 'PATCH',
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                toast.error(data.message || 'Couldn\'t update this friend request. Try again?');
+                setActiveRequestId(null);
+                return;
+            }
+
+            toast.success(
+                decision === 'accept' ? 'Friend request accepted' : 'Friend request declined',
+                decision === 'accept'
+                    ? 'They can now share memories with you in Shared.'
+                    : 'That request has been cleared from your inbox.',
+            );
+            await onRefresh();
+            refreshNotificationBadge();
+        } catch {
+            toast.error('Couldn\'t complete that action. Try again?');
+        }
+        setActiveRequestId(null);
+    }, [apiFetch, onRefresh, toast]);
+
+    if (loading && requests.length === 0) {
+        return (
+            <div className="flex items-center justify-center py-8">
+                <Spinner size="md" />
+            </div>
+        );
+    }
+
+    if (requests.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="space-y-3 py-4">
+            <div className="mb-2 flex items-center justify-between gap-3">
+                <div>
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-[rgb(107,143,113)]">Friend requests</p>
+                    <p className="mt-1 text-[0.78rem] text-[rgb(130,130,130)]">People who want to connect before sharing memories.</p>
+                </div>
+                <TagPill tone="primary">{requests.length}</TagPill>
+            </div>
+
+            {requests.map((request) => {
+                const senderName = request.user.name || 'Someone';
+                const initial = senderName.charAt(0).toUpperCase();
+                const relTime = formatSharedRelTime(request.createdAt);
+                const isActing = activeRequestId === request.id;
+
+                return (
+                    <motion.div
+                        key={request.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-2xl border border-[rgba(107,143,113,0.25)] bg-[rgba(107,143,113,0.04)] p-4"
+                    >
+                        <div className="flex items-center gap-3">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-sm font-bold text-[rgb(107,143,113)]">
+                                {initial}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="h-2 w-2 shrink-0 rounded-full bg-[rgb(107,143,113)]" />
+                                    <span className="truncate text-[0.82rem] font-semibold text-[rgb(var(--paper-ink))]">
+                                        {senderName}
+                                    </span>
+                                    <span className="shrink-0 rounded-full border border-[rgba(217,119,6,0.18)] bg-[rgba(245,158,11,0.08)] px-2 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.08em] text-[rgb(180,83,9)]">
+                                        Needs response
+                                    </span>
+                                    <span className="ml-auto shrink-0 text-[0.65rem] text-[rgb(130,130,130)]">{relTime}</span>
+                                </div>
+                                <p className="mt-0.5 text-[0.75rem] text-[rgb(130,130,130)]">
+                                    {senderName} wants to connect so you can share memories with each other.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="mt-3 flex gap-2">
+                            <button
+                                type="button"
+                                disabled={isActing}
+                                onClick={() => void handleDecision(request.id, 'decline')}
+                                className="workspace-button-outline rounded-xl px-4 py-2 text-[0.72rem] font-semibold disabled:opacity-50"
+                            >
+                                {isActing ? 'Saving...' : 'Decline'}
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isActing}
+                                onClick={() => void handleDecision(request.id, 'accept')}
+                                className="workspace-button-primary rounded-xl px-4 py-2 text-[0.72rem] font-semibold disabled:opacity-50"
+                            >
+                                {isActing ? 'Saving...' : 'Accept'}
+                            </button>
+                        </div>
+                    </motion.div>
+                );
+            })}
+        </div>
+    );
+}
+
+function resolveSharedActivityHref(notification: SharedActivityNotification): string | null {
+    if (notification.type === 'reminder') {
+        return `/entry/new?source=reminder&notificationId=${notification.id}`;
+    }
+
+    const route = typeof notification.data?.route === 'string'
+        ? notification.data.route
+        : typeof notification.data?.link === 'string'
+            ? notification.data.link
+            : null;
+
+    if (notification.type === 'share_reaction' && typeof notification.data?.bundleId === 'string') {
+        return `/shared/view?id=${notification.data.bundleId}`;
+    }
+
+    return route;
+}
+
+function resolveSharedActivityActionLabel(notification: SharedActivityNotification): string {
+    if (notification.type === 'reminder') return 'Write now';
+    if (notification.type === 'share_reaction') return 'View memories';
+    return 'Open';
+}
+
+function SharedActivityList({ notifications, loading, onRefresh }: {
+    notifications: SharedActivityNotification[];
+    loading: boolean;
+    onRefresh: () => Promise<void> | void;
+}) {
+    const { apiFetch } = useApi();
+    const toast = useToast();
+    const router = useRouter();
+    const [activeNotificationId, setActiveNotificationId] = useState<string | null>(null);
+
+    const handleOpen = useCallback(async (notification: SharedActivityNotification) => {
+        const href = resolveSharedActivityHref(notification);
+
+        if (!notification.readAt) {
+            setActiveNotificationId(notification.id);
+            try {
+                const response = await apiFetch(`${API_URL}/notifications/${notification.id}/read`, {
+                    method: 'PATCH',
+                });
+
+                if (response.ok) {
+                    refreshNotificationBadge();
+                    await onRefresh();
+                }
+            } catch {
+                toast.error('Couldn\'t update that notification. Try again?');
+                setActiveNotificationId(null);
+                return;
+            }
+            setActiveNotificationId(null);
+        }
+
+        if (href) {
+            router.push(href);
+        }
+    }, [apiFetch, onRefresh, router, toast]);
+
+    if (loading && notifications.length === 0) {
+        return (
+            <div className="flex items-center justify-center py-8">
+                <Spinner size="md" />
+            </div>
+        );
+    }
+
+    if (notifications.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="space-y-3 py-4">
+            <div className="mb-2 flex items-center justify-between gap-3">
+                <div>
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-[rgb(107,143,113)]">Activity</p>
+                    <p className="mt-1 text-[0.78rem] text-[rgb(130,130,130)]">Reminders and updates that do not live inside bundle cards.</p>
+                </div>
+                <TagPill>{notifications.length}</TagPill>
+            </div>
+
+            {notifications.map((notification) => {
+                const href = resolveSharedActivityHref(notification);
+                const isUnread = !notification.readAt;
+                const isActing = activeNotificationId === notification.id;
+                const actionLabel = href
+                    ? resolveSharedActivityActionLabel(notification)
+                    : isUnread
+                        ? 'Mark seen'
+                        : 'Seen';
+                const isActionDisabled = isActing || (!href && !isUnread);
+
+                return (
+                    <motion.div
+                        key={notification.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`rounded-2xl border p-4 transition-colors ${
+                            isUnread
+                                ? 'border-[rgba(107,143,113,0.25)] bg-[rgba(107,143,113,0.04)]'
+                                : 'border-[rgba(92,92,92,0.12)] bg-white/60'
+                        }`}
+                    >
+                        <div className="flex items-start gap-3">
+                            <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-[0.72rem] font-bold text-[rgb(107,143,113)]">
+                                {notification.type === 'reminder' ? 'R' : 'i'}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                    {isUnread && <span className="h-2 w-2 shrink-0 rounded-full bg-[rgb(107,143,113)]" />}
+                                    <span className="truncate text-[0.82rem] font-semibold text-[rgb(var(--paper-ink))]">
+                                        {notification.title}
+                                    </span>
+                                    <span className="ml-auto shrink-0 text-[0.65rem] text-[rgb(130,130,130)]">
+                                        {formatSharedRelTime(notification.createdAt)}
+                                    </span>
+                                </div>
+                                {notification.body && (
+                                    <p className="mt-1 text-[0.75rem] text-[rgb(130,130,130)]">{notification.body}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="mt-3 flex gap-2">
+                            <button
+                                type="button"
+                                disabled={isActionDisabled}
+                                onClick={() => void handleOpen(notification)}
+                                className="workspace-button-outline rounded-xl px-4 py-2 text-[0.72rem] font-semibold disabled:opacity-50"
+                            >
+                                {isActing ? 'Opening...' : actionLabel}
+                            </button>
+                        </div>
                     </motion.div>
                 );
             })}
@@ -575,7 +873,7 @@ function TimelinePageContent() {
         normalizeDayPartFilter(searchParams.get('dayPart'))
     );
     const [surface, setSurface] = useState<TimelineSurface>(
-        normalizeTimelineSurface(searchParams.get('view'))
+        normalizeTimelineSurface(resolveTimelineSurfaceParam(searchParams))
     );
     const [lifeAreaOptions, setLifeAreaOptions] = useState<string[]>([]);
     const [tagCounts, setTagCounts] = useState<Record<string, number>>({});
@@ -610,6 +908,10 @@ function TimelinePageContent() {
     const [sharedBundles, setSharedBundles] = useState<SharedBundle[]>([]);
     const [sharedLoading, setSharedLoading] = useState(false);
     const [sharedUnreadCount, setSharedUnreadCount] = useState(0);
+    const [incomingFriendRequests, setIncomingFriendRequests] = useState<IncomingFriendRequest[]>([]);
+    const [friendRequestsLoading, setFriendRequestsLoading] = useState(false);
+    const [sharedActivityNotifications, setSharedActivityNotifications] = useState<SharedActivityNotification[]>([]);
+    const [sharedActivityLoading, setSharedActivityLoading] = useState(false);
 
     const restoreInitRef = useRef(false);
     const entriesRef = useRef<Entry[]>([]);
@@ -877,7 +1179,7 @@ function TimelinePageContent() {
         setEndDateFilter(normalizedRange.endDate);
         setWeekdayFilter(normalizeWeekdayFilter(searchParams.get('weekday')));
         setDayPartFilter(normalizeDayPartFilter(searchParams.get('dayPart')));
-        setSurface(normalizeTimelineSurface(searchParams.get('view')));
+        setSurface(normalizeTimelineSurface(resolveTimelineSurfaceParam(searchParams)));
     }, [searchParams]);
 
     useEffect(() => {
@@ -1442,7 +1744,7 @@ function TimelinePageContent() {
             if (r.ok) {
                 const data = await r.json();
                 setSharedBundles(data.bundles ?? []);
-                setSharedUnreadCount(data.unreadCount ?? 0);
+                setSharedUnreadCount(data.total ?? 0);
             }
         } catch { /* ignore */ }
         setSharedLoading(false);
@@ -1453,33 +1755,67 @@ function TimelinePageContent() {
             const response = await apiFetch(`${API_URL}/memory-share/received?limit=1`);
             if (!response.ok) return;
             const data = await response.json();
-            setSharedUnreadCount(data.unreadCount ?? 0);
+            setSharedUnreadCount(data.total ?? 0);
         } catch {
             // Non-fatal: the next poll / surface switch will catch up.
         }
     }, [apiFetch]);
 
-    const markSharedSurfaceRead = useCallback(async () => {
+    const fetchIncomingFriendRequests = useCallback(async () => {
+        setFriendRequestsLoading(true);
         try {
-            const response = await apiFetch(`${API_URL}/memory-share/notifications/read`, {
-                method: 'PATCH',
-            });
-            if (response.ok) {
-                refreshNotificationBadge();
-            }
+            const response = await apiFetch(`${API_URL}/friendships?status=PENDING`);
+            if (!response.ok) return;
+            const data = await response.json();
+            setIncomingFriendRequests(Array.isArray(data.friendships) ? data.friendships : []);
         } catch {
-            // Non-fatal: opening Shared should still work even if badge clear fails.
+            // Non-fatal: Shared should still render bundle activity if friend requests fail.
         }
+        setFriendRequestsLoading(false);
+    }, [apiFetch]);
+
+    const fetchSharedActivityNotifications = useCallback(async () => {
+        setSharedActivityLoading(true);
+        try {
+            const response = await apiFetch(`${API_URL}/notifications?limit=20`);
+            if (!response.ok) return;
+            const data = await response.json();
+            const notifications: unknown[] = Array.isArray(data.notifications) ? data.notifications : [];
+
+            setSharedActivityNotifications(
+                notifications
+                    .filter((notification): notification is Record<string, unknown> => typeof notification === 'object' && notification !== null)
+                    .filter((notification) => DISPLAYABLE_SHARED_ACTIVITY_TYPES.has(String(notification.type || '')))
+                    .map((notification) => ({
+                        id: String(notification.id || ''),
+                        type: String(notification.type || ''),
+                        title: String(notification.title || 'Notification'),
+                        body: typeof notification.body === 'string' ? notification.body : null,
+                        data: notification.data && typeof notification.data === 'object' && !Array.isArray(notification.data)
+                            ? notification.data as Record<string, unknown>
+                            : null,
+                        readAt: typeof notification.readAt === 'string' ? notification.readAt : null,
+                        createdAt: typeof notification.createdAt === 'string' ? notification.createdAt : new Date().toISOString(),
+                    }))
+                    .filter((notification) => notification.id.length > 0)
+            );
+        } catch {
+            // Non-fatal: Shared should still render bundles and requests if activity load fails.
+        }
+        setSharedActivityLoading(false);
     }, [apiFetch]);
 
     useEffect(() => {
         if (surface !== 'shared') return;
 
         void (async () => {
-            await markSharedSurfaceRead();
-            await fetchSharedBundles();
+            await Promise.all([
+                fetchSharedBundles(),
+                fetchIncomingFriendRequests(),
+                fetchSharedActivityNotifications(),
+            ]);
         })();
-    }, [surface, markSharedSurfaceRead, fetchSharedBundles]);
+    }, [surface, fetchSharedBundles, fetchIncomingFriendRequests, fetchSharedActivityNotifications]);
 
     // Initial unread count (for badge)
     useEffect(() => {
@@ -1491,11 +1827,13 @@ function TimelinePageContent() {
             void refreshSharedUnreadCount();
             if (surface === 'shared') {
                 void fetchSharedBundles();
+                void fetchIncomingFriendRequests();
+                void fetchSharedActivityNotifications();
             }
         };
         window.addEventListener(NOTIFICATION_BADGE_REFRESH_EVENT, handler);
         return () => window.removeEventListener(NOTIFICATION_BADGE_REFRESH_EVENT, handler);
-    }, [surface, refreshSharedUnreadCount, fetchSharedBundles]);
+    }, [surface, refreshSharedUnreadCount, fetchSharedBundles, fetchIncomingFriendRequests, fetchSharedActivityNotifications]);
 
     const shareEntry = useMemo<ShareableEntry | null>(() => {
         if (!shareEntryId) return null;
@@ -1752,11 +2090,7 @@ function TimelinePageContent() {
     };
 
     if (authLoading || isLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Spinner size="md" />
-            </div>
-        );
+        return <TimelineLoadingState />;
     }
 
     if (!isAuthenticated) {
@@ -2312,11 +2646,29 @@ function TimelinePageContent() {
                                 />
                             </>
                         ) : surface === 'shared' ? (
-                            <SharedWithMeList
-                                bundles={sharedBundles}
-                                loading={sharedLoading}
-                                onRefresh={fetchSharedBundles}
-                            />
+                            <>
+                                <FriendRequestsList
+                                    requests={incomingFriendRequests}
+                                    loading={friendRequestsLoading}
+                                    onRefresh={fetchIncomingFriendRequests}
+                                />
+                                <SharedActivityList
+                                    notifications={sharedActivityNotifications}
+                                    loading={sharedActivityLoading}
+                                    onRefresh={fetchSharedActivityNotifications}
+                                />
+                                <SharedWithMeList
+                                    bundles={sharedBundles}
+                                    loading={sharedLoading}
+                                    onRefresh={fetchSharedBundles}
+                                    allowEmptyState={
+                                        !friendRequestsLoading
+                                        && incomingFriendRequests.length === 0
+                                        && !sharedActivityLoading
+                                        && sharedActivityNotifications.length === 0
+                                    }
+                                />
+                            </>
                         ) : (
                             <ConstellationView
                                 model={timelineSummary.constellation}
@@ -2373,11 +2725,7 @@ function TimelinePageContent() {
 
 export default function TimelinePage() {
     return (
-        <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center">
-                <Spinner size="md" />
-            </div>
-        }>
+        <Suspense fallback={<TimelineLoadingState />}>
             <TimelinePageContent />
         </Suspense>
     );

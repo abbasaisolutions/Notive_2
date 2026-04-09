@@ -131,14 +131,40 @@ export class ReminderService {
             const localDate = getLocalDate(reminder.timezone, now);
             const copy = selectNotification(category, reminder.userId, localDate);
 
+            const notification = await this.prisma.inAppNotification.create({
+                data: {
+                    userId: reminder.userId,
+                    type: 'reminder',
+                    title: copy.title,
+                    body: copy.body,
+                    data: {
+                        category,
+                        localDate,
+                        route: '/entry/new?source=reminder',
+                    },
+                },
+                select: { id: true },
+            });
+
+            const reminderLink = `/entry/new?source=reminder&notificationId=${notification.id}`;
+
             const result = await this.pushService.sendPushNotification(reminder.userId, {
                 title: copy.title,
                 body: copy.body,
-                data: { type: 'reminder', link: '/entry/new' },
+                data: {
+                    type: 'reminder',
+                    link: reminderLink,
+                    route: reminderLink,
+                    notificationId: notification.id,
+                },
             }).catch(() => null);
 
             if ((result?.sent ?? 0) > 0) {
                 dispatched++;
+            } else {
+                await this.prisma.inAppNotification.delete({
+                    where: { id: notification.id },
+                }).catch(() => {});
             }
         }
 

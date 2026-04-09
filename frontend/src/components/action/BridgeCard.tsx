@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AppPanel, TagPill } from '@/components/ui/surface';
 import { cn } from '@/utils/cn';
 import { useToast } from '@/context/toast-context';
+import { clipCompactPillByLimit, COMPACT_PILL_LIMITS } from '@/utils/tags';
 import FallbackSupportCallout from './FallbackSupportCallout';
 import SupportMemoryCallout from './SupportMemoryCallout';
 import type { StudentBridgeDraft } from './types';
@@ -16,19 +17,25 @@ function BridgeTag({
     children,
     tone = 'default',
     variant = 'default',
+    title,
+    className,
 }: {
     children: React.ReactNode;
     tone?: 'default' | 'primary';
     variant?: BridgeCardVariant;
+    title?: string;
+    className?: string;
 }) {
     if (variant === 'notebook') {
         return (
             <span
+                title={title}
                 className={cn(
                     'inline-flex items-center rounded-full border px-2.5 py-1 text-xs uppercase tracking-[0.1em]',
                     tone === 'primary'
                         ? 'border-[rgba(240,205,184,0.72)] bg-[rgba(240,205,184,0.24)] text-[rgb(var(--paper-ink))]'
-                        : 'border-[rgba(217,210,199,0.9)] bg-white/55 text-[rgb(var(--paper-ink-muted))]'
+                        : 'border-[rgba(217,210,199,0.9)] bg-white/55 text-[rgb(var(--paper-ink-muted))]',
+                    className,
                 )}
             >
                 {children}
@@ -36,7 +43,7 @@ function BridgeTag({
         );
     }
 
-    return <TagPill tone={tone === 'primary' ? 'primary' : 'default'}>{children}</TagPill>;
+    return <TagPill title={title} className={className} tone={tone === 'primary' ? 'primary' : 'default'}>{children}</TagPill>;
 }
 
 export default function BridgeCard({
@@ -82,9 +89,32 @@ export default function BridgeCard({
         <>
             <div className="flex flex-wrap items-center gap-2">
                 <BridgeTag variant={variant}>Bridge Builder</BridgeTag>
-                <BridgeTag tone="primary" variant={variant}>{bridge.recommendedRecipient}</BridgeTag>
-                {bridge.channelLabel && <BridgeTag variant={variant}>{bridge.channelLabel}</BridgeTag>}
-                {bridge.relationship && <BridgeTag variant={variant}>{bridge.relationship}</BridgeTag>}
+                <BridgeTag
+                    tone="primary"
+                    variant={variant}
+                    title={bridge.recommendedRecipient}
+                    className="max-w-[10rem] truncate"
+                >
+                    {clipCompactPillByLimit(bridge.recommendedRecipient, COMPACT_PILL_LIMITS.bridgePrimary)}
+                </BridgeTag>
+                {bridge.channelLabel && (
+                    <BridgeTag
+                        variant={variant}
+                        title={bridge.channelLabel}
+                        className="max-w-[8rem] truncate"
+                    >
+                        {clipCompactPillByLimit(bridge.channelLabel, COMPACT_PILL_LIMITS.bridgeMeta)}
+                    </BridgeTag>
+                )}
+                {bridge.relationship && (
+                    <BridgeTag
+                        variant={variant}
+                        title={bridge.relationship}
+                        className="max-w-[8rem] truncate"
+                    >
+                        {clipCompactPillByLimit(bridge.relationship, COMPACT_PILL_LIMITS.bridgeMeta)}
+                    </BridgeTag>
+                )}
             </div>
 
             <div>
