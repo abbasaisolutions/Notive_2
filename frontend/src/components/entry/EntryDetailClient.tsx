@@ -11,7 +11,7 @@ import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { getMoodEmoji, normalizeMood } from '@/constants/moods';
 import { AppPanel, TagPill } from '@/components/ui/surface';
 import { ConfirmDialog, ErrorState, Spinner } from '@/components/ui';
-import { formatStoryConfidence, storyFieldLabel, storyStatusClassName, storyStatusLabel, type StorySignal } from '@/utils/story-engine';
+import { storyFieldLabel, type StorySignal } from '@/utils/story-engine';
 import { FiArrowLeft, FiArrowRight, FiBriefcase, FiMic, FiShare2 } from 'react-icons/fi';
 import ActionBriefPanel from '@/components/action/ActionBriefPanel';
 import BridgeCard from '@/components/action/BridgeCard';
@@ -21,6 +21,8 @@ import useTelemetry from '@/hooks/use-telemetry';
 import { clipCompactPillByLimit, COMPACT_PILL_LIMITS, isCardTag } from '@/utils/tags';
 import { useToast } from '@/context/toast-context';
 import ShareMemorySheet, { type ShareableEntry } from '@/components/share/ShareMemorySheet';
+import MemoryInsightStrip from '@/components/entry/MemoryInsightStrip';
+import type { MemoryNotiveInsight, MemoryTopEmotion } from '@/components/entry/memory-insight-types';
 
 
 interface Entry {
@@ -36,6 +38,12 @@ interface Entry {
     source?: 'NOTIVE' | 'INSTAGRAM' | 'FACEBOOK';
     createdAt: string;
     updatedAt: string;
+    analysisLine?: string | null;
+    takeawayLine?: string | null;
+    notiveInsights?: MemoryNotiveInsight[] | null;
+    topEmotions?: MemoryTopEmotion[];
+    depthLabel?: string | null;
+    growthRatio?: number | null;
     storySignal?: StorySignal;
 }
 
@@ -270,7 +278,6 @@ function EntryDetailContent() {
     const wordCount = entry.content.trim() ? entry.content.trim().split(/\s+/).length : 0;
     const readingTime = Math.max(1, Math.ceil(wordCount / 200));
     const createdAt = new Date(entry.createdAt);
-    const updatedAt = new Date(entry.updatedAt);
     const storySignal = entry.storySignal;
     const sourceLabel = entry.source === 'INSTAGRAM'
         ? 'Instagram import'
@@ -428,18 +435,65 @@ function EntryDetailContent() {
                     ))}
                 </div>
 
+                {entryAction && (
+                    <div className="mb-4">
+                        <SafetyBanner risk={entryAction.risk} safetyCard={entryAction.safetyCard} surface="entry" entryId={entry.id} />
+                    </div>
+                )}
+
+                <AppPanel className="mb-6 space-y-5">
+                    <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Your note</p>
+                        <p className="text-sm text-ink-secondary">Start with what you wrote, then use the compact summary below for the rest of the context.</p>
+                    </div>
+
+                    {safeHtml ? (
+                        <div
+                            className="prose max-w-none prose-headings:text-[rgb(var(--text-primary))] prose-p:text-ink-secondary prose-strong:text-[rgb(var(--text-primary))] prose-li:text-ink-secondary prose-a:text-primary prose-blockquote:text-ink-secondary"
+                            dangerouslySetInnerHTML={{ __html: safeHtml }}
+                        />
+                    ) : (
+                        <p className="text-ink-secondary whitespace-pre-wrap leading-relaxed">{entry.content}</p>
+                    )}
+
+                    {entry.audioUrl && (
+                        <div className="workspace-soft-panel flex items-center gap-4 rounded-2xl p-4">
+                            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                                <FiMic size={24} className="text-primary" aria-hidden="true" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-xs text-ink-secondary font-bold uppercase tracking-[0.12em] mb-1">Voice Note</p>
+                                <audio controls src={entry.audioUrl} className="w-full h-8 opacity-80" />
+                            </div>
+                        </div>
+                    )}
+
+                    {entry.coverImage && (
+                        <div className="rounded-2xl overflow-hidden">
+                            <img src={entry.coverImage} alt={entry.title || 'Cover'} className="w-full h-64 md:h-80 object-cover" />
+                        </div>
+                    )}
+                </AppPanel>
+
+                <MemoryInsightStrip
+                    className="mb-6"
+                    label="About this memory"
+                    description="Important context first, without making you read through larger action panels."
+                    analysisLine={entry.analysisLine}
+                    takeawayLine={entry.takeawayLine}
+                    notiveInsights={entry.notiveInsights}
+                    topEmotions={entry.topEmotions}
+                    depthLabel={entry.depthLabel}
+                    growthRatio={entry.growthRatio}
+                    storySignal={storySignal}
+                />
+
                 {storySignal && (
-                    <AppPanel className="mb-5 space-y-3" tone="soft">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="space-y-2">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.12em] ${storyStatusClassName[storySignal.status]}`}>
-                                        {storyStatusLabel[storySignal.status]}
-                                    </span>
-                                    <TagPill>{storySignal.completenessScore}% ready</TagPill>
-                                    <TagPill>{formatStoryConfidence(storySignal.confidence)} confidence</TagPill>
-                                </div>
-                                <p className="text-xs text-ink-secondary">{storyMessage}</p>
+                    <AppPanel className="mb-6 space-y-3" tone="soft">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="space-y-1">
+                                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Turn this into a story</p>
+                                <p className="text-sm text-ink-secondary">{storyMessage}</p>
                             </div>
 
                             <div className="flex flex-wrap gap-2">
@@ -469,64 +523,51 @@ function EntryDetailContent() {
                     </AppPanel>
                 )}
 
-                {entryAction && (
-                    <div className="mb-8 space-y-4">
-                        <SafetyBanner risk={entryAction.risk} safetyCard={entryAction.safetyCard} surface="entry" entryId={entry.id} />
+                {entryAction && (entryAction.brief || entryAction.bridge) && (
+                    <div className="mb-6 space-y-3">
                         {entryAction.brief && (
-                            <div>
-                                <p className="mb-3 text-xs uppercase tracking-[0.14em] text-ink-muted">Use This Note</p>
-                                <ActionBriefPanel
-                                    brief={entryAction.brief}
-                                    surface="entry"
-                                    entryId={entry.id}
-                                    openEntryHref={(entryId) => withCurrentReturnTo(`/entry/view?id=${entryId}`)}
-                                />
-                            </div>
+                            <details className="workspace-soft-panel rounded-2xl px-4 py-4">
+                                <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Use this note</p>
+                                        <p className="mt-1 text-sm text-ink-secondary">Open when you want concrete ways to apply this memory.</p>
+                                    </div>
+                                    <span className="text-xs font-semibold uppercase tracking-[0.08em] text-primary">Open</span>
+                                </summary>
+                                <div className="mt-4">
+                                    <ActionBriefPanel
+                                        brief={entryAction.brief}
+                                        surface="entry"
+                                        entryId={entry.id}
+                                        openEntryHref={(entryId) => withCurrentReturnTo(`/entry/view?id=${entryId}`)}
+                                    />
+                                </div>
+                            </details>
                         )}
+
                         {entryAction.bridge && (
-                            <div>
-                                <p className="mb-3 text-xs uppercase tracking-[0.14em] text-ink-muted">Bridge This Note</p>
-                                <BridgeCard
-                                    bridge={entryAction.bridge}
-                                    surface="entry"
-                                    entryId={entry.id}
-                                    openEntryHref={(entryId) => withCurrentReturnTo(`/entry/view?id=${entryId}`)}
-                                    onCopyDraft={() => handleEntryBridgeCopy(entryAction.bridge?.recommendedRecipient || 'trusted contact')}
-                                    variant="notebook"
-                                />
-                            </div>
+                            <details className="workspace-soft-panel rounded-2xl px-4 py-4">
+                                <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Bridge this note</p>
+                                        <p className="mt-1 text-sm text-ink-secondary">Open when you want help turning the memory into outreach or connection.</p>
+                                    </div>
+                                    <span className="text-xs font-semibold uppercase tracking-[0.08em] text-primary">Open</span>
+                                </summary>
+                                <div className="mt-4">
+                                    <BridgeCard
+                                        bridge={entryAction.bridge}
+                                        surface="entry"
+                                        entryId={entry.id}
+                                        openEntryHref={(entryId) => withCurrentReturnTo(`/entry/view?id=${entryId}`)}
+                                        onCopyDraft={() => handleEntryBridgeCopy(entryAction.bridge?.recommendedRecipient || 'trusted contact')}
+                                        variant="notebook"
+                                    />
+                                </div>
+                            </details>
                         )}
                     </div>
                 )}
-
-                {entry.coverImage && (
-                    <div className="mb-8 rounded-2xl overflow-hidden">
-                        <img src={entry.coverImage} alt={entry.title || 'Cover'} className="w-full h-64 md:h-80 object-cover" />
-                    </div>
-                )}
-
-                {entry.audioUrl && (
-                    <div className="workspace-soft-panel mb-8 flex items-center gap-4 rounded-2xl p-4">
-                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                            <FiMic size={24} className="text-primary" aria-hidden="true" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-xs text-ink-secondary font-bold uppercase tracking-[0.12em] mb-1">Voice Note</p>
-                            <audio controls src={entry.audioUrl} className="w-full h-8 opacity-80" />
-                        </div>
-                    </div>
-                )}
-
-                <div className="workspace-panel rounded-2xl p-4 md:p-6">
-                    {safeHtml ? (
-                        <div
-                            className="prose max-w-none prose-headings:text-[rgb(var(--text-primary))] prose-p:text-ink-secondary prose-strong:text-[rgb(var(--text-primary))] prose-li:text-ink-secondary prose-a:text-primary prose-blockquote:text-ink-secondary"
-                            dangerouslySetInnerHTML={{ __html: safeHtml }}
-                        />
-                    ) : (
-                        <p className="text-ink-secondary whitespace-pre-wrap leading-relaxed">{entry.content}</p>
-                    )}
-                </div>
 
                 {(isLoadingRelated || relatedEntries.length > 0) && (
                     <AppPanel className="mt-6 space-y-3">
@@ -592,5 +633,4 @@ export default function EntryDetailClient() {
         </Suspense>
     );
 }
-
 

@@ -799,7 +799,7 @@ export default function DashboardPage() {
         const res = await apiFetch(`${API_URL}/entries`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content, mood, title: 'Quick check-in', tags: ['check-in'] }),
+            body: JSON.stringify({ content, mood, title: 'Quick check-in', tags: ['check-in'], entryMode: 'quick' }),
         });
         if (!res.ok) {
             const errorData = await res.json().catch(() => null);

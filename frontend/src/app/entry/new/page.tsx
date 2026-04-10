@@ -1228,7 +1228,7 @@ function NewEntryPageContent() {
         }
 
         const saveCharacterCount = normalizedContent.length;
-        if (saveCharacterCount < MIN_CHARACTERS_FOR_ENTRY_SAVE) {
+        if (!isQuickMode && saveCharacterCount < MIN_CHARACTERS_FOR_ENTRY_SAVE) {
             persistDraftSnapshot(true);
             if (!isAutoSave) {
                 hapticWarning();
@@ -1268,6 +1268,7 @@ function NewEntryPageContent() {
                     title: finalTitle,
                     content,
                     contentHtml,
+                    entryMode: isQuickMode ? 'quick' : 'full',
                     mood: finalMood,
                     category,
                     lifeArea,
@@ -1600,7 +1601,7 @@ function NewEntryPageContent() {
     const displayTitle = titleOverride || extractedData?.title || '';
     const displayMood = moodOverride || extractedData?.primaryEmotion?.emotion || null;
     const displayTags = tagsOverride.length > 0 ? tagsOverride : (extractedData?.suggestedTags || []);
-    const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+        const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
     const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
     const availableLifeAreas = LIFE_AREA_OPTIONS.filter((item) => item.category === category);
     const starterPrompt = getStarterPrompt(new Date(), displayMood);

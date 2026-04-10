@@ -14,6 +14,8 @@ import {
 import { useToast } from '@/context/toast-context';
 import { normalizeTag, isValidTag } from '@/utils/tags';
 import { MIN_CHARACTERS_FOR_ENTRY_SAVE } from '@/constants/entry-requirements';
+import type { StorySignal } from '@/utils/story-engine';
+import type { MemoryNotiveInsight, MemoryTopEmotion } from '@/components/entry/memory-insight-types';
 
 type ApiFetch = (path: string, options?: RequestInit & { retryOnUnauthorized?: boolean }) => Promise<Response>;
 
@@ -28,6 +30,35 @@ type UseEntryEditArgs = {
 type CollectionOption = {
     id: string;
     name: string;
+};
+
+type EditableEntryResponse = {
+    title?: string | null;
+    content?: string | null;
+    contentHtml?: string | null;
+    mood?: string | null;
+    tags?: string[];
+    category?: string | null;
+    lifeArea?: string | null;
+    chapterId?: string | null;
+    coverImage?: string | null;
+    analysisLine?: string | null;
+    takeawayLine?: string | null;
+    notiveInsights?: MemoryNotiveInsight[] | null;
+    topEmotions?: MemoryTopEmotion[];
+    depthLabel?: string | null;
+    growthRatio?: number | null;
+    storySignal?: StorySignal;
+};
+
+const isQuickCheckInEntry = (title: string, tags: string[]) => {
+    const normalizedTitle = title.trim().toLowerCase();
+    if (normalizedTitle === 'quick check-in' || normalizedTitle === 'quick check in') return true;
+
+    return tags.some((tag) => {
+        const normalizedTag = tag.trim().toLowerCase();
+        return normalizedTag === 'check-in' || normalizedTag === 'daily-checkin' || normalizedTag === 'daily check-in';
+    });
 };
 
 export function useEntryEdit({
@@ -49,12 +80,64 @@ export function useEntryEdit({
     const [collections, setCollections] = useState<CollectionOption[]>([]);
     const [tagInput, setTagInput] = useState('');
     const [coverImage, setCoverImage] = useState<string | null>(null);
+    const [analysisLine, setAnalysisLine] = useState<string | null>(null);
+    const [takeawayLine, setTakeawayLine] = useState<string | null>(null);
+    const [notiveInsights, setNotiveInsights] = useState<MemoryNotiveInsight[] | null>(null);
+    const [topEmotions, setTopEmotions] = useState<MemoryTopEmotion[]>([]);
+    const [depthLabel, setDepthLabel] = useState<string | null>(null);
+    const [growthRatio, setGrowthRatio] = useState<number | null>(null);
+    const [storySignal, setStorySignal] = useState<StorySignal | undefined>(undefined);
     const [isUploading, setIsUploading] = useState(false);
     const toast = useToast();
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
+    const isShortEntryAllowed = isQuickCheckInEntry(title, tags);
+
+    const applyEntryData = useCallback((entry: EditableEntryResponse) => {
+        const entryCategory = normalizeCategory(entry.category);
+        const normalizedInsights = Array.isArray(entry.notiveInsights)
+            ? entry.notiveInsights
+                .map((insight) => {
+                    if (!insight || typeof insight.text !== 'string' || !insight.text.trim()) return null;
+
+                    return {
+                        type: insight.type === 'lesson' || insight.type === 'strength' ? insight.type : 'thread',
+                        text: insight.text.trim(),
+                        ...(typeof insight.doodle === 'string' && insight.doodle ? { doodle: insight.doodle } : {}),
+                    } satisfies MemoryNotiveInsight;
+                })
+                .filter((insight): insight is MemoryNotiveInsight => Boolean(insight))
+            : null;
+        const normalizedTopEmotions = Array.isArray(entry.topEmotions)
+            ? entry.topEmotions
+                .filter((emotion) => emotion && typeof emotion.emotion === 'string' && typeof emotion.intensity === 'number')
+                .map((emotion) => ({
+                    emotion: emotion.emotion.trim(),
+                    intensity: emotion.intensity,
+                }))
+                .filter((emotion) => emotion.emotion)
+            : [];
+
+        setTitle(entry.title || '');
+        setContent(entry.content || '');
+        setInitialContent(entry.content || '');
+        setContentHtml(entry.contentHtml || '');
+        setMood(entry.mood ?? null);
+        setTags(Array.isArray(entry.tags) ? entry.tags : []);
+        setCategory(entryCategory);
+        setLifeArea(normalizeLifeArea(entry.lifeArea, entryCategory));
+        setChapterId(entry.chapterId || null);
+        setCoverImage(entry.coverImage || null);
+        setAnalysisLine(typeof entry.analysisLine === 'string' ? entry.analysisLine : null);
+        setTakeawayLine(typeof entry.takeawayLine === 'string' ? entry.takeawayLine : null);
+        setNotiveInsights(normalizedInsights);
+        setTopEmotions(normalizedTopEmotions);
+        setDepthLabel(typeof entry.depthLabel === 'string' ? entry.depthLabel : null);
+        setGrowthRatio(typeof entry.growthRatio === 'number' ? entry.growthRatio : null);
+        setStorySignal(entry.storySignal);
+    }, []);
 
     useEffect(() => {
         if (!id) {
@@ -77,17 +160,7 @@ export function useEntryEdit({
                 const entry = data.entry;
 
                 if (!mounted) return;
-                const entryCategory = normalizeCategory(entry.category);
-                setTitle(entry.title || '');
-                setContent(entry.content || '');
-                setInitialContent(entry.content || '');
-                setContentHtml(entry.contentHtml || '');
-                setMood(entry.mood);
-                setTags(entry.tags || []);
-                setCategory(entryCategory);
-                setLifeArea(normalizeLifeArea(entry.lifeArea, entryCategory));
-                setChapterId(entry.chapterId || null);
-                setCoverImage(entry.coverImage || null);
+                applyEntryData(entry);
             } catch (err: any) {
                 if (controller.signal.aborted) return;
                 setError(err.message || 'Couldn\u2019t load this note.');
@@ -101,7 +174,7 @@ export function useEntryEdit({
             mounted = false;
             controller.abort();
         };
-    }, [id, userReady, apiFetch, navigateToFallback]);
+    }, [id, userReady, apiFetch, navigateToFallback, applyEntryData]);
 
     useEffect(() => {
         if (!userReady) return;
@@ -202,7 +275,7 @@ export function useEntryEdit({
         const normalizedContent = data.content.trim();
         const canSaveShortExistingContent = normalizedContent === initialContent.trim();
 
-        if (!id || (normalizedContent.length < MIN_CHARACTERS_FOR_ENTRY_SAVE && !canSaveShortExistingContent)) return;
+        if (!id || (normalizedContent.length < MIN_CHARACTERS_FOR_ENTRY_SAVE && !canSaveShortExistingContent && !isShortEntryAllowed)) return;
 
         const response = await apiFetch(`${API_URL}/entries/${id}`, {
             method: 'PUT',
@@ -214,8 +287,12 @@ export function useEntryEdit({
             throw new Error(await getErrorMessage(response, 'Couldn\u2019t save your note.'));
         }
 
+        const responseData = await response.json().catch(() => null);
+        if (responseData?.entry) {
+            applyEntryData(responseData.entry);
+        }
         setLastSaved(new Date());
-    }, [id, apiFetch, initialContent]);
+    }, [id, apiFetch, initialContent, isShortEntryAllowed, applyEntryData]);
 
     const autoSavePayload = useMemo(() => ({
         title,
@@ -235,6 +312,7 @@ export function useEntryEdit({
         enabled: !isLoading && (
             content.trim().length >= MIN_CHARACTERS_FOR_ENTRY_SAVE
             || content.trim() === initialContent.trim()
+            || isShortEntryAllowed
         ),
     });
 
@@ -249,6 +327,7 @@ export function useEntryEdit({
         if (
             normalizedContent.length < MIN_CHARACTERS_FOR_ENTRY_SAVE
             && normalizedContent !== initialContent.trim()
+            && !isShortEntryAllowed
         ) {
             setError(`Please write at least ${MIN_CHARACTERS_FOR_ENTRY_SAVE} characters before saving.`);
             return;
@@ -278,7 +357,7 @@ export function useEntryEdit({
         } finally {
             setIsSaving(false);
         }
-    }, [content, title, contentHtml, mood, tags, coverImage, category, lifeArea, chapterId, saveEntry, navigateAfterSave, initialContent]);
+    }, [content, title, contentHtml, mood, tags, coverImage, category, lifeArea, chapterId, saveEntry, navigateAfterSave, initialContent, isShortEntryAllowed]);
 
     return {
         title,
@@ -299,6 +378,13 @@ export function useEntryEdit({
         setTagInput,
         coverImage,
         setCoverImage,
+        analysisLine,
+        takeawayLine,
+        notiveInsights,
+        topEmotions,
+        depthLabel,
+        growthRatio,
+        storySignal,
         isUploading,
         isSaving,
         isLoading,

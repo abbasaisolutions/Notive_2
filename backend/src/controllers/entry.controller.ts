@@ -32,6 +32,8 @@ const normalizeToken = (value: string): string =>
         .trim();
 
 const VALID_CATEGORIES = new Set(['PERSONAL', 'PROFESSIONAL']);
+const QUICK_CHECKIN_TITLES = new Set(['quick check-in', 'quick check in']);
+const QUICK_CHECKIN_TAGS = new Set(['check-in', 'daily-checkin', 'daily check-in']);
 
 const isJsonObject = (value: unknown): value is Prisma.JsonObject =>
     !!value && typeof value === 'object' && !Array.isArray(value);
@@ -81,6 +83,27 @@ const normalizedStringArray = (value: unknown): string[] => {
         .filter((item): item is string => typeof item === 'string')
         .map((item) => item.trim())
         .filter(Boolean);
+};
+
+const isQuickEntryLike = (input: {
+    title?: string | null;
+    tags?: string[] | null;
+    entryMode?: string | null;
+}): boolean => {
+    if (input.entryMode === 'quick') return true;
+
+    const normalizedTitle = typeof input.title === 'string'
+        ? input.title.trim().toLowerCase()
+        : '';
+    if (normalizedTitle && QUICK_CHECKIN_TITLES.has(normalizedTitle)) {
+        return true;
+    }
+
+    const normalizedTags = Array.isArray(input.tags)
+        ? input.tags.map((tag) => String(tag).trim().toLowerCase())
+        : [];
+
+    return normalizedTags.some((tag) => QUICK_CHECKIN_TAGS.has(tag));
 };
 
 const attachEntryStorySignal = <T extends {
@@ -466,10 +489,13 @@ const mergeNlpInsightsIntoAnalysis = (
 export const createEntry = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
-        const { title, content, contentHtml, mood, tags, coverImage, chapterId, autoTag, analysis, category, lifeArea, locationLat, locationLng, locationName } = req.body;
+        const { title, content, contentHtml, mood, tags, coverImage, chapterId, entryMode, autoTag, analysis, category, lifeArea, locationLat, locationLng, locationName } = req.body;
 
         if (!content) {
             return res.status(400).json({ message: 'Content is required' });
+        }
+        if (!isQuickEntryLike({ title, tags, entryMode }) && content.trim().length < MIN_CHARACTERS_FOR_ENTRY_SAVE) {
+            return res.status(400).json({ message: `Content must be at least ${MIN_CHARACTERS_FOR_ENTRY_SAVE} characters.` });
         }
         if (category !== undefined && !VALID_CATEGORIES.has(String(category))) {
             return res.status(400).json({ message: 'Invalid category. Use PERSONAL or PROFESSIONAL.' });
@@ -826,7 +852,7 @@ export const updateEntry = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
         const { id } = req.params;
-        const { title, content, contentHtml, mood, tags, coverImage, chapterId, analysis, category, lifeArea, locationLat, locationLng, locationName } = req.body;
+        const { title, content, contentHtml, mood, tags, coverImage, chapterId, entryMode, analysis, category, lifeArea, locationLat, locationLng, locationName } = req.body;
 
         // Check if entry exists and belongs to user
         const existing = await prisma.entry.findFirst({
@@ -864,7 +890,15 @@ export const updateEntry = async (req: Request, res: Response) => {
         const nextContent = content !== undefined ? content : existing.content;
         const contentChanged = content !== undefined && content !== existing.content;
 
-        if (contentChanged && nextContent.trim().length < MIN_CHARACTERS_FOR_ENTRY_SAVE) {
+        const nextTitleCandidate = title !== undefined ? title : existing.title;
+        const nextTagsCandidate = tags !== undefined ? (Array.isArray(tags) ? tags : []) : existing.tags;
+        const shouldAllowShortContent = isQuickEntryLike({
+            title: nextTitleCandidate,
+            tags: nextTagsCandidate,
+            entryMode,
+        });
+
+        if (contentChanged && nextContent.trim().length < MIN_CHARACTERS_FOR_ENTRY_SAVE && !shouldAllowShortContent) {
             return res.status(400).json({
                 message: `Content must be at least ${MIN_CHARACTERS_FOR_ENTRY_SAVE} characters.`,
             });

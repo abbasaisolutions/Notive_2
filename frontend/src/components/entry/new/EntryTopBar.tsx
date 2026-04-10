@@ -1,7 +1,7 @@
 'use client';
 
 import { type ReactNode } from 'react';
-import { MIN_WORDS_FOR_ENTRY_INSIGHTS } from '@/constants/entry-requirements';
+import { MIN_CHARACTERS_FOR_ENTRY_SAVE, MIN_WORDS_FOR_ENTRY_INSIGHTS } from '@/constants/entry-requirements';
 import { FiAlertTriangle, FiArrowLeft, FiCloud, FiMic, FiRefreshCw, FiZap } from 'react-icons/fi';
 
 type EntryTopBarProps = {
@@ -58,6 +58,16 @@ export default function EntryTopBar({
         : isQuickMode
             ? 'Get the real version down. Details can wait.'
             : 'Write first. Organize and polish only if they help later.';
+    const saveRuleLabel = `${MIN_CHARACTERS_FOR_ENTRY_SAVE} chars to save`;
+    const progressLabel = isQuickMode
+        ? wordCount > 0
+            ? `${wordCount} words`
+            : studioPrompt.split('.')[0]
+        : wordCount > 0
+            ? wordCount >= MIN_WORDS_FOR_ENTRY_INSIGHTS
+                ? `${wordCount} words · insights ready`
+                : `${wordCount} words · ${saveRuleLabel}`
+            : `${saveRuleLabel} · ${MIN_WORDS_FOR_ENTRY_INSIGHTS} words for insights`;
 
     const statusSignals = [
         error
@@ -119,13 +129,9 @@ export default function EntryTopBar({
                         <div className="min-w-0">
                             <p className="text-[10px] uppercase tracking-[0.16em] text-ink-muted font-semibold leading-none">{studioLabel}</p>
                             <p className={`mt-0.5 text-[0.65rem] leading-none ${
-                                wordCount >= MIN_WORDS_FOR_ENTRY_INSIGHTS ? 'text-[rgb(var(--paper-sage))]' : 'text-ink-muted'
+                                !isQuickMode && wordCount >= MIN_WORDS_FOR_ENTRY_INSIGHTS ? 'text-[rgb(var(--paper-sage))]' : 'text-ink-muted'
                             }`}>
-                                {wordCount > 0
-                                    ? wordCount >= MIN_WORDS_FOR_ENTRY_INSIGHTS
-                                        ? `${wordCount} words ✓`
-                                        : `${wordCount} / ${MIN_WORDS_FOR_ENTRY_INSIGHTS} words`
-                                    : studioPrompt.split('.')[0]}
+                                {progressLabel}
                             </p>
                         </div>
                     </div>

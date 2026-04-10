@@ -35,6 +35,21 @@ const TENSE_COLORS = {
     future: 'rgba(199,216,232,0.85)',  // sky
 };
 
+const TENSE_COPY = {
+    past: {
+        label: 'Past',
+        helper: 'Replaying what already happened',
+    },
+    present: {
+        label: 'Present',
+        helper: 'Describing what feels true right now',
+    },
+    future: {
+        label: 'Future',
+        helper: 'Thinking ahead or imagining what comes next',
+    },
+} as const;
+
 /**
  * WritingVoiceCard — combined writing style + emotional fingerprint DNA card.
  * Shows tense distribution as a stacked bar, reading level, emotional range as
@@ -43,6 +58,10 @@ const TENSE_COLORS = {
 export default function WritingVoiceCard({ writingVoice, emotionalRange }: WritingVoiceCardProps) {
     const { readingLevel, readingGrade, questionFrequency, firstPersonRatio, tenseDistribution } = writingVoice;
     const { uniqueEmotions, dominantEmotion, rarestEmotion, complexityScore, emotionFrequency } = emotionalRange;
+    const tenseOrder = ['past', 'present', 'future'] as const;
+    const dominantTense = tenseOrder.reduce((current, tense) => (
+        tenseDistribution[tense] > tenseDistribution[current] ? tense : current
+    ), 'present' as (typeof tenseOrder)[number]);
 
     // Voice character description
     const voiceLabel = questionFrequency > 1.5
@@ -77,31 +96,44 @@ export default function WritingVoiceCard({ writingVoice, emotionalRange }: Writi
                 </span>
             </div>
 
-            {/* ── Time lens: tense distribution bar ── */}
+            {/* ── Time lens: clearer split view ── */}
             <div className="mb-4">
-                <p className="notebook-muted text-[0.65rem] mb-1.5">Time lens — where your mind goes</p>
-                <div className="flex h-4 rounded-full overflow-hidden">
-                    {(['past', 'present', 'future'] as const).map((tense) => (
-                        <motion.div
-                            key={tense}
-                            className="h-full"
-                            style={{ backgroundColor: TENSE_COLORS[tense] }}
-                            initial={{ width: 0 }}
-                            animate={{ width: `${tenseDistribution[tense]}%` }}
-                            transition={{ duration: 0.8, ease: 'easeOut' }}
-                        />
-                    ))}
+                <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="notebook-muted text-[0.65rem]">Time lens</p>
+                    <span className="notebook-chip rounded-full px-2 py-0.5 text-[0.55rem]">
+                        Mostly {TENSE_COPY[dominantTense].label.toLowerCase()}-focused
+                    </span>
                 </div>
-                <div className="flex justify-between mt-1">
-                    <span className="text-[0.6rem]" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
-                        Past {tenseDistribution.past}%
-                    </span>
-                    <span className="text-[0.6rem]" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
-                        Present {tenseDistribution.present}%
-                    </span>
-                    <span className="text-[0.6rem]" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
-                        Future {tenseDistribution.future}%
-                    </span>
+                <p className="notebook-muted text-[0.58rem] leading-5">
+                    This is a split of where your writing leans, not a score. The three bars together make up 100%.
+                </p>
+                <div className="mt-3 space-y-2.5">
+                    {tenseOrder.map((tense, index) => (
+                        <div key={tense} className="rounded-[1rem] bg-[rgba(var(--paper-border),0.08)] px-3 py-2.5">
+                            <div className="mb-1.5 flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className="text-[0.72rem] font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                        {TENSE_COPY[tense].label}
+                                    </p>
+                                    <p className="text-[0.55rem] leading-4" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                                        {TENSE_COPY[tense].helper}
+                                    </p>
+                                </div>
+                                <span className="text-[0.68rem] font-semibold tabular-nums" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                    {tenseDistribution[tense]}%
+                                </span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-[rgba(var(--paper-border),0.18)]">
+                                <motion.div
+                                    className="h-full rounded-full"
+                                    style={{ backgroundColor: TENSE_COLORS[tense] }}
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${tenseDistribution[tense]}%` }}
+                                    transition={{ delay: index * 0.08, duration: 0.55, ease: 'easeOut' }}
+                                />
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
 
@@ -159,7 +191,7 @@ export default function WritingVoiceCard({ writingVoice, emotionalRange }: Writi
                         {questionFrequency}/entry
                     </p>
                     <p className="notebook-muted text-[0.55rem]">
-                        questions
+                        questions asked
                     </p>
                 </div>
                 <div className="notebook-card-soft rounded-xl px-2 py-2 text-center">
@@ -167,7 +199,7 @@ export default function WritingVoiceCard({ writingVoice, emotionalRange }: Writi
                         {Math.round(firstPersonRatio * 100)}%
                     </p>
                     <p className="notebook-muted text-[0.55rem]">
-                        self-referential
+                        uses I / me
                     </p>
                 </div>
             </div>

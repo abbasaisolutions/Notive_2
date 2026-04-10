@@ -55,15 +55,13 @@ export const resetPasswordSchema = z.object({
 
 export const createEntrySchema = z.object({
     title: trimmedString.max(500).optional().nullable(),
-    content: trimmedString.min(
-        MIN_CHARACTERS_FOR_ENTRY_SAVE,
-        `Content must be at least ${MIN_CHARACTERS_FOR_ENTRY_SAVE} characters.`
-    ),
+    content: trimmedString.min(1, 'Content is required'),
     contentHtml: z.string().optional(),
     mood: trimmedString.max(50).optional().nullable(),
     tags: z.array(z.string().trim().max(80)).max(30).optional(),
     coverImage: z.string().max(2000).optional().nullable(),
     chapterId: z.string().optional().nullable(),
+    entryMode: z.enum(['quick', 'full']).optional(),
     autoTag: z.boolean().optional(),
     analysis: z.record(z.string(), z.unknown()).optional().nullable(),
     category: z.enum(['PERSONAL', 'PROFESSIONAL']).optional(),
