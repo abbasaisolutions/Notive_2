@@ -15,15 +15,8 @@ const DEFAULT_PHRASES = [
 
 const WRITING_DURATION = 2.8;
 const WRITING_DELAY = 0.7;
-// SVG path for the word "Notive" in a handwriting/cursive style
-// Hand-traced calligraphic letters with proper proportions for writing animation
-const WRITING_PATH = `
-M35 50 Q40 35 45 50 Q50 65 55 50 Q60 40 65 50 L70 65
-M75 35 L75 65 Q75 70 80 70 L85 70 Q90 70 90 65 L90 50
-M100 65 L100 50 Q100 40 105 40 Q110 40 110 50 L110 65
-M120 50 Q120 40 125 40 Q132 40 132 50 Q132 65 120 65 Q132 65 132 50
-M145 50 L150 65 L155 50
-M160 65 L160 50 Q160 40 165 40 Q170 40 170 50 L170 65`;
+// Placeholder for writing animation (using text instead of complex path)
+const WRITING_TEXT = 'Notive';
 
 interface NotiveLoadingScreenProps {
     phrases?: string[];
@@ -175,41 +168,46 @@ function EnhancedLoaderArt({
                 <path d="M28 56H124" stroke="rgba(138,154,111,0.22)" strokeWidth="1.5" strokeLinecap="round" />
                 <path d="M28 84H124" stroke="rgba(92,92,92,0.14)" strokeWidth="1.4" strokeLinecap="round" />
 
-                {/* Animate the word 'Notive' being written by hand */}
-                <motion.path
-                    d={WRITING_PATH}
+                {/* "Notive" text with stroke animation */}
+                <motion.text
+                    x="50%"
+                    y="50"
+                    textAnchor="middle"
+                    fontSize="28"
+                    fontWeight="600"
+                    fontFamily="'Georgia', serif"
+                    fill="rgba(138,154,111,0.85)"
                     stroke="rgba(138,154,111,0.85)"
-                    strokeWidth="2.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                    initial={prefersReducedMotion ? { pathLength: 1, opacity: 1 } : { pathLength: 0, opacity: 0.95 }}
-                    animate={prefersReducedMotion ? { pathLength: 1, opacity: 1 } : { pathLength: [0, 1] }}
+                    strokeWidth="0"
+                    initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0 }}
+                    animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1 }}
                     transition={prefersReducedMotion
                         ? { duration: 0 }
-                        : { duration: WRITING_DURATION, repeat: Infinity, repeatDelay: WRITING_DELAY, ease: 'easeInOut' }}
-                />
+                        : { duration: 0.1, repeat: Infinity, repeatDelay: WRITING_DURATION + WRITING_DELAY }}
+                >
+                    {WRITING_TEXT}
+                </motion.text>
 
-                {/* Feather pen following the text */}
+                {/* Animated feather pen icon that moves across the text */}
                 <motion.g
-                    initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0 }}
-                    animate={prefersReducedMotion ? { opacity: 0 } : { opacity: [1, 1, 0] }}
+                    initial={prefersReducedMotion ? { x: 140 } : { x: 20 }}
+                    animate={prefersReducedMotion ? { x: 140 } : { x: [20, 140] }}
                     transition={prefersReducedMotion
                         ? { duration: 0 }
                         : { duration: WRITING_DURATION, repeat: Infinity, repeatDelay: WRITING_DELAY, ease: 'easeInOut' }}
                 >
                     {/* Feather quill shape */}
-                    <motion.path
-                        d="M170 40 Q172 42 174 45 L168 50 Q166 48 164 45 Z"
-                        fill="rgba(231,168,150,0.85)"
-                        stroke="rgba(181,104,93,0.7)"
-                        strokeWidth="0.8"
-                    />
-                    {/* Feather detail */}
-                    <motion.path
-                        d="M172 42 Q173 43 174 44"
-                        stroke="rgba(138,154,111,0.6)"
+                    <path
+                        d="M 0 35 Q 1 37 2 40 L -2 42 Q -3 40 -4 37 Z"
+                        fill="rgba(231,168,150,0.9)"
+                        stroke="rgba(181,104,93,0.8)"
                         strokeWidth="0.6"
+                    />
+                    {/* Feather vane detail */}
+                    <path
+                        d="M 1 37 Q 1.5 38 2 39"
+                        stroke="rgba(138,154,111,0.7)"
+                        strokeWidth="0.5"
                     />
                 </motion.g>
             </motion.svg>
