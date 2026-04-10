@@ -705,15 +705,53 @@ function buildWritingVoice(entries: IntelEntry[]): WritingVoice {
         questionFrequency: entries.length > 0 ? Math.round((totalQuestions / entries.length) * 100) / 100 : 0,
         exclamationFrequency: entries.length > 0 ? Math.round((totalExclamations / entries.length) * 100) / 100 : 0,
         firstPersonRatio: totalWords > 0 ? Math.round((firstPersonCount / totalWords) * 100) / 100 : 0,
-        tenseDistribution: {
-            past: Math.round((pastCount / tenseTotal) * 100),
-            present: Math.round((presentCount / tenseTotal) * 100),
-            future: Math.round((futureCount / tenseTotal) * 100),
-        },
+        tenseDistribution: normalizeTenseDistribution({
+            past: pastCount,
+            present: presentCount,
+            future: futureCount,
+            total: tenseTotal,
+        }),
     };
 }
 
 // ── Helpers ──────────────────────────────────────────────────
+
+/**
+ * Normalize tense distribution percentages to sum to exactly 100%.
+ * Avoids rounding errors that cause bars to not fill completely.
+ */
+function normalizeTenseDistribution(counts: { past: number; present: number; future: number; total: number }) {
+    const { past, present, future, total } = counts;
+    if (total === 0) return { past: 0, present: 0, future: 0 };
+
+    const pastPct = (past / total) * 100;
+    const presentPct = (present / total) * 100;
+    const futurePct = (future / total) * 100;
+
+    // Round all three, but ensure they sum to 100
+    let pastRounded = Math.round(pastPct);
+    let presentRounded = Math.round(presentPct);
+    let futureRounded = Math.round(futurePct);
+
+    let sum = pastRounded + presentRounded + futureRounded;
+    const diff = 100 - sum;
+
+    // Distribute rounding error to the largest value
+    if (diff !== 0) {
+        const values = [
+            { key: 'past' as const, value: pastRounded },
+            { key: 'present' as const, value: presentRounded },
+            { key: 'future' as const, value: futureRounded },
+        ];
+        const largest = values.reduce((max, v) => v.value > max.value ? v : max);
+
+        if (largest.key === 'past') pastRounded += diff;
+        else if (largest.key === 'present') presentRounded += diff;
+        else futureRounded += diff;
+    }
+
+    return { past: pastRounded, present: presentRounded, future: futureRounded };
+}
 
 function tokenize(text: string): string[] {
     return text.toLowerCase().split(/\W+/).filter((t) => t.length > 1);
