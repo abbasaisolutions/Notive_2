@@ -6,7 +6,7 @@ import { buildTagMetaList, normalizeTag, syncEntryTags } from '../services/tag-m
 import { upsertEntryAnalysisFromNlp, upsertEntryAnalysisFromPayload } from '../services/entry-analysis.service';
 import nlpService, { AnalysisResult } from '../services/nlp.service';
 import embeddingService from '../services/embedding.service';
-import { MIN_WORDS_FOR_ENTRY_INSIGHTS } from '../constants/entry-requirements';
+import { MIN_CHARACTERS_FOR_ENTRY_SAVE, MIN_WORDS_FOR_ENTRY_INSIGHTS } from '../constants/entry-requirements';
 import { sanitizeHtml } from '../utils/html';
 import { buildEntryStorySignal, deriveExperienceEvidence, OpportunityEntry } from '../services/opportunity.service';
 import studentActionService from '../services/student-action.service';
@@ -863,6 +863,12 @@ export const updateEntry = async (req: Request, res: Response) => {
         const nextTitle = title !== undefined ? title : existing.title;
         const nextContent = content !== undefined ? content : existing.content;
         const contentChanged = content !== undefined && content !== existing.content;
+
+        if (contentChanged && nextContent.trim().length < MIN_CHARACTERS_FOR_ENTRY_SAVE) {
+            return res.status(400).json({
+                message: `Content must be at least ${MIN_CHARACTERS_FOR_ENTRY_SAVE} characters.`,
+            });
+        }
 
         let nlpFallback: AnalysisResult | null = null;
         if (!hasPayloadAiInsights && contentChanged) {

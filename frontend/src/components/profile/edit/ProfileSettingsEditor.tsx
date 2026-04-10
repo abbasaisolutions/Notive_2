@@ -660,10 +660,16 @@ export function ProfileSettingsEditor() {
         } as NonNullable<typeof user>);
     };
 
-    const saveAvatar = async (nextAvatarUrl: string) => {
+    // Save avatar and persist to backend immediately after upload/crop
+    const saveAvatar = async (nextAvatarUrl: string, opts?: { auto?: boolean }) => {
         const previousAvatarUrl = profileDraft.avatarUrl;
+        const previousSavedAvatarUrl = savedProfileDraft.avatarUrl;
 
         setProfileDraft((current) => ({
+            ...current,
+            avatarUrl: nextAvatarUrl,
+        }));
+        setSavedProfileDraft((current) => ({
             ...current,
             avatarUrl: nextAvatarUrl,
         }));
@@ -722,11 +728,18 @@ export function ProfileSettingsEditor() {
                 }));
             }
 
-            setNotice({ type: 'success', text: nextAvatarUrl ? 'Profile photo updated.' : 'Profile photo removed.' });
+            // Only show notice if not auto-save (manual removal/change)
+            if (!opts?.auto) {
+                setNotice({ type: 'success', text: nextAvatarUrl ? 'Profile photo updated.' : 'Profile photo removed.' });
+            }
         } catch (error: any) {
             setProfileDraft((current) => ({
                 ...current,
                 avatarUrl: previousAvatarUrl,
+            }));
+            setSavedProfileDraft((current) => ({
+                ...current,
+                avatarUrl: previousSavedAvatarUrl,
             }));
             setNotice({
                 type: 'error',
@@ -1288,7 +1301,8 @@ export function ProfileSettingsEditor() {
                                 setProfileDraft((current) => updater(current));
                                 resetNoticeState();
                             }}
-                            onAvatarChange={saveAvatar}
+                            // Save avatar immediately after upload/crop
+                            onAvatarChange={(url) => saveAvatar(url, { auto: true })}
                             onLifeGoalsDraftChange={setLifeGoalsDraft}
                             onAddLifeGoal={handleAddLifeGoal}
                             onRemoveLifeGoal={handleRemoveLifeGoal}

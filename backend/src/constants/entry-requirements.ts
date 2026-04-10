@@ -1,1 +1,2 @@
+export const MIN_CHARACTERS_FOR_ENTRY_SAVE = 60;
 export const MIN_WORDS_FOR_ENTRY_INSIGHTS = 90;

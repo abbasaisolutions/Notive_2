@@ -11,7 +11,7 @@ import useContextNavigation from '@/hooks/use-context-navigation';
 import useSpeechRecognition from '@/hooks/use-speech-recognition';
 import useUploadQueue from '@/hooks/use-upload-queue';
 import useTelemetry from '@/hooks/use-telemetry';
-import { MIN_WORDS_FOR_ENTRY_INSIGHTS } from '@/constants/entry-requirements';
+import { MIN_CHARACTERS_FOR_ENTRY_SAVE } from '@/constants/entry-requirements';
 import { API_URL } from '@/constants/config';
 import { DEFAULT_VOICE_LANGUAGE_MODE, VOICE_ALLOW_BROWSER_FALLBACK, VOICE_BACKEND_TRANSCRIPTION_ENABLED } from '@/constants/voice';
 import { useGamification } from '@/context/gamification-context';
@@ -1220,19 +1220,21 @@ function NewEntryPageContent() {
     }, [audioUrl, content, isQuickMode, navigateBack, pendingSync, persistDraftSnapshot, tagsOverride.length, titleOverride, trackEvent]);
 
     const handleSave = useCallback(async (isAutoSave = false) => {
-        if (!content.trim()) {
+        const normalizedContent = content.trim();
+
+        if (!normalizedContent) {
             if (!isAutoSave) setError('Write or say one line before saving.');
             return;
         }
 
-        const saveWordCount = content.trim().split(/\s+/).length;
-        if (saveWordCount < MIN_WORDS_FOR_ENTRY_INSIGHTS) {
+        const saveCharacterCount = normalizedContent.length;
+        if (saveCharacterCount < MIN_CHARACTERS_FOR_ENTRY_SAVE) {
             persistDraftSnapshot(true);
             if (!isAutoSave) {
                 hapticWarning();
                 toast.info(
-                    'I still need to know more about this',
-                    `Add a bit more detail so I can give you meaningful insights (${saveWordCount}/${MIN_WORDS_FOR_ENTRY_INSIGHTS} words).`,
+                    'Write a little more before saving',
+                    `Memories need at least ${MIN_CHARACTERS_FOR_ENTRY_SAVE} characters to save (${saveCharacterCount}/${MIN_CHARACTERS_FOR_ENTRY_SAVE}).`,
                 );
             }
             return;

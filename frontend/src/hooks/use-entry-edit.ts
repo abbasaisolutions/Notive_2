@@ -13,6 +13,7 @@ import {
 } from '@/constants/life-areas';
 import { useToast } from '@/context/toast-context';
 import { normalizeTag, isValidTag } from '@/utils/tags';
+import { MIN_CHARACTERS_FOR_ENTRY_SAVE } from '@/constants/entry-requirements';
 
 type ApiFetch = (path: string, options?: RequestInit & { retryOnUnauthorized?: boolean }) => Promise<Response>;
 
@@ -38,6 +39,7 @@ export function useEntryEdit({
 }: UseEntryEditArgs) {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
+    const [initialContent, setInitialContent] = useState('');
     const [contentHtml, setContentHtml] = useState('');
     const [mood, setMood] = useState<string | null>(null);
     const [tags, setTags] = useState<string[]>([]);
@@ -78,6 +80,7 @@ export function useEntryEdit({
                 const entryCategory = normalizeCategory(entry.category);
                 setTitle(entry.title || '');
                 setContent(entry.content || '');
+                setInitialContent(entry.content || '');
                 setContentHtml(entry.contentHtml || '');
                 setMood(entry.mood);
                 setTags(entry.tags || []);
@@ -196,7 +199,10 @@ export function useEntryEdit({
         lifeArea: string;
         chapterId: string | null;
     }) => {
-        if (!id || !data.content.trim()) return;
+        const normalizedContent = data.content.trim();
+        const canSaveShortExistingContent = normalizedContent === initialContent.trim();
+
+        if (!id || (normalizedContent.length < MIN_CHARACTERS_FOR_ENTRY_SAVE && !canSaveShortExistingContent)) return;
 
         const response = await apiFetch(`${API_URL}/entries/${id}`, {
             method: 'PUT',
@@ -209,7 +215,7 @@ export function useEntryEdit({
         }
 
         setLastSaved(new Date());
-    }, [id, apiFetch]);
+    }, [id, apiFetch, initialContent]);
 
     const autoSavePayload = useMemo(() => ({
         title,
@@ -226,12 +232,25 @@ export function useEntryEdit({
     const { isSaving: isAutoSaving, hasUnsavedChanges } = useAutoSave({
         data: autoSavePayload,
         onSave: saveEntry,
-        enabled: !isLoading,
+        enabled: !isLoading && (
+            content.trim().length >= MIN_CHARACTERS_FOR_ENTRY_SAVE
+            || content.trim() === initialContent.trim()
+        ),
     });
 
     const handleSave = useCallback(async () => {
-        if (!content.trim()) {
+        const normalizedContent = content.trim();
+
+        if (!normalizedContent) {
             setError('Please write something before saving.');
+            return;
+        }
+
+        if (
+            normalizedContent.length < MIN_CHARACTERS_FOR_ENTRY_SAVE
+            && normalizedContent !== initialContent.trim()
+        ) {
+            setError(`Please write at least ${MIN_CHARACTERS_FOR_ENTRY_SAVE} characters before saving.`);
             return;
         }
 
@@ -259,7 +278,7 @@ export function useEntryEdit({
         } finally {
             setIsSaving(false);
         }
-    }, [content, title, contentHtml, mood, tags, coverImage, category, lifeArea, chapterId, saveEntry, navigateAfterSave]);
+    }, [content, title, contentHtml, mood, tags, coverImage, category, lifeArea, chapterId, saveEntry, navigateAfterSave, initialContent]);
 
     return {
         title,

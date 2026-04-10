@@ -1,5 +1,6 @@
 import { z } from 'zod/v4';
 import { Request, Response, NextFunction } from 'express';
+import { MIN_CHARACTERS_FOR_ENTRY_SAVE } from '../constants/entry-requirements';
 
 // --- Reusable primitives ---
 
@@ -54,7 +55,10 @@ export const resetPasswordSchema = z.object({
 
 export const createEntrySchema = z.object({
     title: trimmedString.max(500).optional().nullable(),
-    content: trimmedString.min(1, 'Content is required'),
+    content: trimmedString.min(
+        MIN_CHARACTERS_FOR_ENTRY_SAVE,
+        `Content must be at least ${MIN_CHARACTERS_FOR_ENTRY_SAVE} characters.`
+    ),
     contentHtml: z.string().optional(),
     mood: trimmedString.max(50).optional().nullable(),
     tags: z.array(z.string().trim().max(80)).max(30).optional(),
@@ -70,7 +74,7 @@ export const createEntrySchema = z.object({
 });
 
 export const updateEntrySchema = createEntrySchema.partial().omit({ content: true }).extend({
-    content: trimmedString.min(1).optional(),
+    content: trimmedString.min(1, 'Content is required').optional(),
 });
 
 // --- Reminder schemas ---
