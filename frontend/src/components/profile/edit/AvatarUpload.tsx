@@ -126,6 +126,7 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
                             <img
                                 src={avatarUrl}
                                 alt="Profile photo"
+                                crossOrigin="anonymous"
                                 className="h-full w-full object-cover"
                                 onError={() => setPreviewFailed(true)}
                             />

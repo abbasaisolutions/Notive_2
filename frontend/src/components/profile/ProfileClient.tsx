@@ -121,6 +121,7 @@ export default function ProfileClient() {
                                     <img
                                         src={avatarUrl}
                                         alt={`${safeUser.name || 'User'} avatar`}
+                                        crossOrigin="anonymous"
                                         className="h-full w-full object-cover"
                                         onError={() => setAvatarFailed(true)}
                                     />

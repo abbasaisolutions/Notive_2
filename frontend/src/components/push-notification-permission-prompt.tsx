@@ -8,23 +8,20 @@ import { hasCompletedPermissionsOnboarding } from '@/services/device-permissions
 import { openNativeNotificationSettings } from '@/services/native-notification-settings.service';
 import logger from '@/utils/logger';
 
-const PROMPT_COOLDOWN_KEY = 'notive_push_prompt_dismissed';
-const PROMPT_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // re-show after 7 days
+const PROMPT_DISMISSED_KEY = 'notive_push_prompt_dismissed';
 
-function isPromptCoolingDown(): boolean {
-    try {
-        const ts = localStorage.getItem(PROMPT_COOLDOWN_KEY);
-        if (!ts) return false;
-        return Date.now() - Number(ts) < PROMPT_COOLDOWN_MS;
-    } catch { return false; }
+/** Once the user dismisses the prompt it stays dismissed permanently.
+ *  They can always enable notifications from Profile → Settings. */
+function isPromptDismissed(): boolean {
+    try { return localStorage.getItem(PROMPT_DISMISSED_KEY) === '1'; } catch { return false; }
 }
 
-function persistPromptCooldown(): void {
-    try { localStorage.setItem(PROMPT_COOLDOWN_KEY, String(Date.now())); } catch { /* noop */ }
+function persistPromptDismissed(): void {
+    try { localStorage.setItem(PROMPT_DISMISSED_KEY, '1'); } catch { /* noop */ }
 }
 
-function clearPromptCooldown(): void {
-    try { localStorage.removeItem(PROMPT_COOLDOWN_KEY); } catch { /* noop */ }
+function clearPromptDismissed(): void {
+    try { localStorage.removeItem(PROMPT_DISMISSED_KEY); } catch { /* noop */ }
 }
 
 /**
@@ -42,7 +39,7 @@ export function PushNotificationPermissionPrompt() {
     const { user } = useAuth();
     const pathname = usePathname();
     const [showPrompt, setShowPrompt] = useState(false);
-    const [cooldownActive, setCooldownActive] = useState(() => isPromptCoolingDown());
+    const [dismissed, setDismissed] = useState(() => isPromptDismissed());
     const canRequestInApp = permissionState === 'prompt' || permissionState === 'prompt-with-rationale';
     const hasCompletedOnboarding = Boolean(user?.profile?.onboardingCompletedAt) || hasCompletedPermissionsOnboarding();
     const shouldSuppressPrompt = pathname?.startsWith('/onboarding');
@@ -59,14 +56,12 @@ export function PushNotificationPermissionPrompt() {
     useEffect(() => {
         if (isPermissionGranted) {
             setShowPrompt(false);
-            setCooldownActive(false);
-            clearPromptCooldown();
+            setDismissed(false);
+            clearPromptDismissed();
             return;
         }
 
         // Only auto-show while the OS still says we can request in-app.
-        // If notifications were denied in settings, we fall back to the
-        // explicit recovery path in Profile instead of showing a login-time modal.
         if (!shouldAutoPrompt) {
             if (!canRequestInApp && showPrompt) {
                 setShowPrompt(false);
@@ -74,18 +69,16 @@ export function PushNotificationPermissionPrompt() {
             return;
         }
 
-        if (showPrompt || cooldownActive) {
+        if (showPrompt || dismissed) {
             return;
         }
 
         const timer = setTimeout(() => {
             setShowPrompt(true);
-            persistPromptCooldown();
-            setCooldownActive(true);
         }, 6000);
 
         return () => clearTimeout(timer);
-    }, [canRequestInApp, cooldownActive, isPermissionGranted, shouldAutoPrompt, showPrompt]);
+    }, [canRequestInApp, dismissed, isPermissionGranted, shouldAutoPrompt, showPrompt]);
 
     useEffect(() => {
         if (isPermissionGranted && showPrompt) {
@@ -99,10 +92,10 @@ export function PushNotificationPermissionPrompt() {
             if (granted) {
                 logger.debug('Push notification permission granted');
                 setShowPrompt(false);
-                setCooldownActive(false);
-                clearPromptCooldown();
+                setDismissed(false);
+                clearPromptDismissed();
             } else {
-                // User denied at OS level — treat like a dismiss so we don't nag
+                // User denied at OS level — dismiss permanently
                 handleDismiss();
                 logger.debug('Push notification permission denied');
             }
@@ -120,8 +113,8 @@ export function PushNotificationPermissionPrompt() {
 
     const handleDismiss = () => {
         setShowPrompt(false);
-        setCooldownActive(true);
-        persistPromptCooldown();
+        setDismissed(true);
+        persistPromptDismissed();
     };
 
     if (!showPrompt) {

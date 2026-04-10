@@ -47,7 +47,7 @@ export default function CropModal({ imageUrl, onConfirm, onCancel }: CropModalPr
     }
 
     return createPortal((
-        <div className="fixed inset-0 z-[120] bg-black/65 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[10000] bg-black/65 backdrop-blur-sm">
             <div
                 className="absolute inset-0 flex items-center justify-center p-4 sm:p-6"
                 onClick={onCancel}

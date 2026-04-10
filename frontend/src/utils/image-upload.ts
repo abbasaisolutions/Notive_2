@@ -6,7 +6,11 @@ const ACCEPTED_IMAGE_UPLOAD_TYPES = [
     'image/webp',
 ] as const;
 
-export const ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR = ACCEPTED_IMAGE_UPLOAD_TYPES.join(',');
+/**
+ * Use `image/*` so Android file pickers always open correctly.
+ * Specific MIME-type validation still happens in `isAcceptedImageType()`.
+ */
+export const ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR = 'image/*';
 export const MAX_IMAGE_SOURCE_BYTES = 15 * 1024 * 1024; // 15 MB
 
 type ImageUploadPreset = 'avatar' | 'entry';

@@ -29,6 +29,7 @@ export default function UserAvatar({ avatarUrl, name, size = 28, className = '' 
                 <img
                     src={avatarUrl!}
                     alt={name || 'User'}
+                    crossOrigin="anonymous"
                     className="h-full w-full object-cover"
                     onError={(e) => {
                         // Fallback to initial if image fails to load
