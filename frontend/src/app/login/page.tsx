@@ -18,6 +18,7 @@ import {
 } from '@/components/marketing/NotiveShowcase';
 import { unwrapSetupReturnTo } from '@/utils/redirect';
 import { resolvePostAuthDestination } from '@/utils/auth-routing';
+import { isNativeCapacitorPlatform } from '@/utils/sso';
 
 type LoginFieldErrors = {
     email?: string;
@@ -148,6 +149,14 @@ export default function LoginPage() {
         setError('Google sign-in didn’t finish. Please try again.');
     };
 
+    if (isNativeCapacitorPlatform() && (authLoading || !!user)) {
+        return (
+            <div className="page-paper-canvas min-h-screen" style={quietNotebookPageStyle}>
+                <NotiveLoadingScreen phrases={LOGIN_PHRASES} phraseInterval={3400} />
+            </div>
+        );
+    }
+
     if (loginSuccess) {
         return (
             <div className="page-paper-canvas min-h-screen" style={quietNotebookPageStyle}>
@@ -272,31 +281,53 @@ export default function LoginPage() {
                             </div>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-5">
-                            {notice && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    role="status"
-                                    aria-live="polite"
-                                    className="px-4 py-3 rounded-xl text-sm bg-[rgba(var(--paper-sky),0.32)] border border-[rgba(var(--paper-border),0.14)] text-strong"
-                                >
-                                    {notice}
-                                </motion.div>
-                            )}
-                            {error && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    role="alert"
-                                    aria-live="assertive"
-                                    className="px-4 py-3 rounded-xl text-sm bg-[rgba(var(--paper-apricot),0.32)] border border-[rgba(var(--paper-border),0.14)] text-strong"
-                                >
-                                    {error}
-                                </motion.div>
-                            )}
+                        {notice && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                role="status"
+                                aria-live="polite"
+                                className="mt-5 px-4 py-3 rounded-xl text-sm bg-[rgba(var(--paper-sky),0.32)] border border-[rgba(var(--paper-border),0.14)] text-strong"
+                            >
+                                {notice}
+                            </motion.div>
+                        )}
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                role="alert"
+                                aria-live="assertive"
+                                className="mt-5 px-4 py-3 rounded-xl text-sm bg-[rgba(var(--paper-apricot),0.32)] border border-[rgba(var(--paper-border),0.14)] text-strong"
+                            >
+                                {error}
+                            </motion.div>
+                        )}
 
-                            <SlideUp delay={0.1}>
+                        <SlideUp delay={0.1} className="mt-6">
+                            <GoogleSsoPanel
+                                mode="login"
+                                isLoading={isLoading}
+                                onSuccess={handleGoogleSuccess}
+                                onError={handleGoogleError}
+                            />
+                        </SlideUp>
+
+                        <SlideUp delay={0.2} className="relative my-7">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t" style={{ borderColor: 'rgba(var(--paper-border), 0.4)' }}></div>
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase tracking-[0.16em]">
+                                <span
+                                    className="px-4 text-xs font-semibold bg-[rgba(var(--bg-elevated),0.92)] text-muted"
+                                >
+                                    Or sign in with email
+                                </span>
+                            </div>
+                        </SlideUp>
+
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <SlideUp delay={0.3}>
                                 <Input
                                     id="email"
                                     label="Email"
@@ -315,7 +346,7 @@ export default function LoginPage() {
                                 />
                             </SlideUp>
 
-                            <SlideUp delay={0.2}>
+                            <SlideUp delay={0.4}>
                                 <Input
                                     id="password"
                                     label="Password"
@@ -334,40 +365,18 @@ export default function LoginPage() {
                                 />
                             </SlideUp>
 
-                            <SlideUp delay={0.3} className="flex items-center justify-end text-sm">
+                            <SlideUp delay={0.5} className="flex items-center justify-end text-sm">
                                 <Link href="/forgot-password" className="text-primary hover:text-primary/80 transition-colors">
                                     Forgot password?
                                 </Link>
                             </SlideUp>
 
-                            <SlideUp delay={0.4}>
+                            <SlideUp delay={0.6}>
                                 <Button type="submit" className="w-full" isLoading={isLoading}>
                                     Sign In
                                 </Button>
                             </SlideUp>
                         </form>
-
-                        <SlideUp delay={0.5} className="relative my-7">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t" style={{ borderColor: 'rgba(var(--paper-border), 0.4)' }}></div>
-                            </div>
-                            <div className="relative flex justify-center text-xs uppercase tracking-[0.16em]">
-                                <span
-                                    className="px-4 text-xs font-semibold bg-[rgba(var(--bg-elevated),0.92)] text-muted"
-                                >
-                                    Or continue with
-                                </span>
-                            </div>
-                        </SlideUp>
-
-                        <SlideUp delay={0.6}>
-                            <GoogleSsoPanel
-                                mode="login"
-                                isLoading={isLoading}
-                                onSuccess={handleGoogleSuccess}
-                                onError={handleGoogleError}
-                            />
-                        </SlideUp>
 
                         <SlideUp delay={0.7}>
                             <p className="text-center mt-6 text-sm text-soft">
@@ -376,7 +385,7 @@ export default function LoginPage() {
                                     href={registerHref}
                                     className="font-semibold text-strong transition-colors hover:opacity-70"
                                 >
-                                    Create one
+                                    Sign up with Google
                                 </Link>
                             </p>
                             <p className="mt-3 text-center text-xs leading-6 text-muted">

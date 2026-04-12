@@ -13,7 +13,7 @@ services:
       retries: 3
 
   postgres:
-    image: ankane/pgvector:v0.8.0
+    image: ankane/pgvector:latest
     ports:
       - "5432:5432"
     environment:

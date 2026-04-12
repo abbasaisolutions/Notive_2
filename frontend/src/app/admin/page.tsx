@@ -14,7 +14,7 @@ import { Spinner } from '@/components/ui';
 type TrackFilter = 'all' | 'personal' | 'professional' | 'blended' | 'unknown';
 type StageFilter = 'all' | 'not_started' | 'in_progress' | 'completed';
 type RoleFilter = 'all' | 'USER' | 'ADMIN' | 'SUPERADMIN';
-type AdminActionType = 'role' | 'ban' | 'revoke';
+type AdminActionType = 'role' | 'ban' | 'revoke' | 'delete';
 
 type User = {
     id: string;
@@ -68,7 +68,8 @@ type SupportIssue = {
 
 type UserDetail = User & {
     avatarUrl?: string | null;
-    googleId?: string | null;
+    hasPassword?: boolean;
+    hasGoogle?: boolean;
     createdAt: string;
     updatedAt: string;
     socialConnections: Array<{
@@ -247,6 +248,7 @@ export default function AdminPage() {
     const [retrievalDebug, setRetrievalDebug] = useState<RetrievalDebugResponse | null>(null);
     const [retrievalDebugError, setRetrievalDebugError] = useState('');
     const [isRetrievalDebugLoading, setIsRetrievalDebugLoading] = useState(false);
+    const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
 
     const viewerRole = user?.role || 'USER';
     const isSuperAdmin = viewerRole === 'SUPERADMIN';
@@ -261,6 +263,7 @@ export default function AdminPage() {
         setPendingAction(null);
         setIsSubmittingAction(false);
         setActionError('');
+        setDeleteConfirmEmail('');
     };
 
     const fetchUsers = async () => {
@@ -449,9 +452,19 @@ export default function AdminPage() {
                         supportNote: trimmedSupportNote || undefined,
                     }),
                 });
-            } else {
+            } else if (pendingAction.type === 'revoke') {
                 response = await apiFetch(`/admin/users/${selectedUser.id}/revoke-sessions`, {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        reason: trimmedReason,
+                        supportNote: trimmedSupportNote || undefined,
+                    }),
+                });
+            } else {
+                // delete
+                response = await apiFetch(`/admin/users/${selectedUser.id}`, {
+                    method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         reason: trimmedReason,
@@ -466,7 +479,11 @@ export default function AdminPage() {
             setDetailNotice(data?.message || `${pendingAction.label} completed`);
             resetActionDrafts();
             void fetchUsers();
-            void fetchUserDetails(selectedUser.id);
+            if (pendingAction.type === 'delete') {
+                closeDetail();
+            } else {
+                void fetchUserDetails(selectedUser.id);
+            }
         } catch (err: any) {
             setActionError(err.message || 'Couldn\u2019t complete that action.');
         } finally {
@@ -489,7 +506,9 @@ export default function AdminPage() {
                 ? selectedUser?.isBanned
                     ? 'Restore access for this account and allow sign-in again.'
                     : 'Suspend this account and block new sessions until access is restored.'
-                : 'Remove all active refresh sessions so the user must sign in again on every device.'
+                : pendingAction.type === 'delete'
+                    ? 'Permanently delete this account and all associated data. This cannot be undone.'
+                    : 'Remove all active refresh sessions so the user must sign in again on every device.'
         : null;
 
     useEffect(() => {
@@ -861,6 +880,38 @@ export default function AdminPage() {
 
                                         <div className="space-y-4">
                                             <AppPanel className="space-y-4">
+                                                <SectionHeader kicker="User Access" title="Auth and session info" description="Authentication method, status, and session overview." />
+                                                <div className="space-y-3 text-sm text-ink-secondary">
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div className="rounded-2xl workspace-soft-panel p-4">
+                                                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Auth method</p>
+                                                            <p className="mt-2 workspace-heading">
+                                                                {selectedUser.hasGoogle && selectedUser.hasPassword
+                                                                    ? 'Google + Password'
+                                                                    : selectedUser.hasGoogle
+                                                                        ? 'Google SSO'
+                                                                        : selectedUser.hasPassword
+                                                                            ? 'Email / Password'
+                                                                            : 'Unknown'}
+                                                            </p>
+                                                        </div>
+                                                        <div className="rounded-2xl workspace-soft-panel p-4">
+                                                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Status</p>
+                                                            <p className="mt-2 workspace-heading">{selectedUser.isBanned ? 'Suspended' : 'Active'}</p>
+                                                        </div>
+                                                        <div className="rounded-2xl workspace-soft-panel p-4">
+                                                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Active sessions</p>
+                                                            <p className="mt-2 workspace-heading">{selectedUser._count.refreshTokens}</p>
+                                                        </div>
+                                                        <div className="rounded-2xl workspace-soft-panel p-4">
+                                                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Joined</p>
+                                                            <p className="mt-2 workspace-heading">{formatDate(selectedUser.createdAt)}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </AppPanel>
+
+                                            <AppPanel className="space-y-4">
                                                 <SectionHeader kicker="Admin Actions" title="Account controls" description="Super admins handle role changes. Admins can still review and manage normal user issues." />
                                                 <div className="space-y-3">
                                                     {selectedUser.supportSummary.permissions.canChangeRole ? (
@@ -995,6 +1046,32 @@ export default function AdminPage() {
                                                     )}
                                                 </div>
                                             </AppPanel>
+
+                                            {selectedUser.supportSummary.permissions.canDelete && selectedUser.role !== 'SUPERADMIN' && selectedUser.id !== user?.id && (
+                                                <AppPanel className="space-y-4">
+                                                    <SectionHeader kicker="Danger Zone" title="Delete account" description="Permanently remove this account and all data. This cannot be undone." />
+                                                    <div className="space-y-3 rounded-2xl border border-red-300/40 bg-red-50/30 p-4">
+                                                        <p className="text-sm text-ink-secondary">
+                                                            Type <strong>{selectedUser.email}</strong> to confirm deletion.
+                                                        </p>
+                                                        <input
+                                                            type="text"
+                                                            value={deleteConfirmEmail}
+                                                            onChange={(event) => setDeleteConfirmEmail(event.target.value)}
+                                                            placeholder={selectedUser.email}
+                                                            className="workspace-input w-full rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-400/35"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => stageAdminAction({ type: 'delete', label: 'Account deletion' })}
+                                                            disabled={deleteConfirmEmail.trim().toLowerCase() !== selectedUser.email.toLowerCase() || isSubmittingAction}
+                                                            className="w-full rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                                        >
+                                                            Review Account Deletion
+                                                        </button>
+                                                    </div>
+                                                </AppPanel>
+                                            )}
 
                                             <AppPanel className="space-y-4">
                                                 <SectionHeader kicker="Identity" title="Account info" description="Helpful for login, setup, and import questions." />

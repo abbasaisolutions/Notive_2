@@ -95,11 +95,12 @@ export const sendFriendRequest = async (req: Request, res: Response) => {
         });
         const senderName = requester?.name || 'Someone';
 
-        await prisma.inAppNotification.create({
+        const friendReqNotif = await prisma.inAppNotification.create({
             data: {
                 userId: addresseeId,
                 type: 'friend_request',
-                title: `${senderName} sent you a friend request`,
+                title: 'New friend request',
+                body: `${senderName} wants to connect with you`,
                 data: { requesterId, senderName, route: '/timeline?view=shared' },
             },
         });
@@ -107,7 +108,7 @@ export const sendFriendRequest = async (req: Request, res: Response) => {
         pushService.sendPushNotification(addresseeId, {
             title: 'New friend request',
             body: `${senderName} wants to connect with you`,
-            data: { type: 'friend_request', route: '/timeline?view=shared' },
+            data: { type: 'friend_request', route: '/timeline?view=shared', notificationId: friendReqNotif.id },
         }).catch(() => {});
 
         return res.status(201).json({ message: 'Friend request sent', status: 'PENDING' });
@@ -142,37 +143,39 @@ export const acceptFriendRequest = async (req: Request, res: Response) => {
             select: { name: true },
         });
 
-        await prisma.$transaction([
-            prisma.friendship.update({
-                where: { id },
-                data: { status: 'ACCEPTED' },
-            }),
-            prisma.inAppNotification.updateMany({
-                where: {
-                    userId,
-                    type: 'friend_request',
-                    readAt: null,
-                    data: {
-                        path: ['requesterId'],
-                        equals: friendship.requesterId,
-                    },
-                },
-                data: { readAt: new Date() },
-            }),
-            prisma.inAppNotification.create({
+        const acceptorName = acceptor?.name || 'Someone';
+
+        // Use sequential operations so we can capture the notification ID for push
+        await prisma.friendship.update({
+            where: { id },
+            data: { status: 'ACCEPTED' },
+        });
+        await prisma.inAppNotification.updateMany({
+            where: {
+                userId,
+                type: 'friend_request',
+                readAt: null,
                 data: {
-                    userId: friendship.requesterId,
-                    type: 'friend_accepted',
-                    title: `${acceptor?.name || 'Someone'} accepted your friend request`,
-                    data: { userId, acceptorName: acceptor?.name, route: '/timeline?view=shared' },
+                    path: ['requesterId'],
+                    equals: friendship.requesterId,
                 },
-            }),
-        ]);
+            },
+            data: { readAt: new Date() },
+        });
+        const friendAcceptNotif = await prisma.inAppNotification.create({
+            data: {
+                userId: friendship.requesterId,
+                type: 'friend_accepted',
+                title: 'Friend request accepted!',
+                body: `${acceptorName} is now your friend`,
+                data: { userId, acceptorName, route: '/timeline?view=shared' },
+            },
+        });
 
         pushService.sendPushNotification(friendship.requesterId, {
             title: 'Friend request accepted!',
-            body: `${acceptor?.name || 'Someone'} is now your friend`,
-            data: { type: 'friend_accepted', route: '/timeline?view=shared' },
+            body: `${acceptorName} is now your friend`,
+            data: { type: 'friend_accepted', route: '/timeline?view=shared', notificationId: friendAcceptNotif.id },
         }).catch(() => {});
 
         return res.json({ message: 'Friend request accepted', status: 'ACCEPTED' });

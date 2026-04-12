@@ -784,6 +784,7 @@ export const getUserDetails = async (req: Request, res: Response) => {
                 id: true,
                 email: true,
                 name: true,
+                password: true,
                 avatarUrl: true,
                 role: true,
                 isBanned: true,
@@ -891,9 +892,14 @@ export const getUserDetails = async (req: Request, res: Response) => {
             evidenceRollup,
         });
 
+        // Strip sensitive fields, expose only booleans for auth method visibility
+        const { password: _pw, googleId: _gid, ...safeUser } = user;
+
         return res.json({
             user: {
-                ...user,
+                ...safeUser,
+                hasPassword: Boolean(_pw),
+                hasGoogle: Boolean(_gid),
                 profileContext,
                 evidenceRollup,
                 supportSummary,
@@ -1016,6 +1022,13 @@ export const toggleUserBan = async (req: Request, res: Response) => {
             select: { id: true, email: true, isBanned: true },
         });
 
+        // When banning, immediately revoke all sessions (defense-in-depth)
+        let revokedSessions = 0;
+        if (updatedUser.isBanned) {
+            const result = await prisma.refreshToken.deleteMany({ where: { userId } });
+            revokedSessions = result.count;
+        }
+
         await recordAdminAuditEvent({
             actorId: currentUserId,
             actorRole: req.userRole,
@@ -1028,11 +1041,14 @@ export const toggleUserBan = async (req: Request, res: Response) => {
                 nextValue: updatedUser.isBanned,
                 reason: auditReason,
                 supportNote: auditSupportNote,
+                ...(revokedSessions > 0 ? { revokedSessions } : {}),
             },
         });
 
         return res.json({
-            message: updatedUser.isBanned ? 'User banned' : 'User unbanned',
+            message: updatedUser.isBanned
+                ? `User banned (${revokedSessions} session${revokedSessions !== 1 ? 's' : ''} revoked)`
+                : 'User unbanned',
             user: updatedUser,
         });
     } catch (error) {

@@ -17,11 +17,12 @@ import { initSessionTracker } from '@/services/app-session-tracker.service';
 import { API_URL } from '@/constants/config';
 import { extractNativeAppPath } from '@/utils/native-app-links';
 import { isNativeCapacitorPlatform } from '@/utils/sso';
+import { resolveAuthenticatedPublicEntryDestination } from '@/utils/public-entry-routing';
 
 export default function AppChrome() {
     const router = useRouter();
     const pathname = usePathname();
-    const { user, accessToken } = useAuth();
+    const { user, accessToken, isLoading: authLoading } = useAuth();
     const { stats, refreshStats } = useGamification();
     const hideNav = shouldHideGlobalNav(pathname);
     const hideAuxiliary = hideNav || pathname?.startsWith('/entry/new') || pathname?.startsWith('/entry/edit');
@@ -47,6 +48,24 @@ export default function AppChrome() {
     }, [user, accessToken]);
 
     // Deep link handler (native only)
+    useEffect(() => {
+        if (!isNativeCapacitorPlatform()) {
+            return;
+        }
+
+        if (authLoading || !user) {
+            return;
+        }
+
+        const currentQuery = typeof window !== 'undefined' ? window.location.search : '';
+        const destination = resolveAuthenticatedPublicEntryDestination(pathname, currentQuery, user);
+        if (!destination) {
+            return;
+        }
+
+        router.replace(destination);
+    }, [authLoading, pathname, router, user]);
+
     useEffect(() => {
         if (!isNativeCapacitorPlatform()) {
             return;

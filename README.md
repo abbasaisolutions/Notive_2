@@ -1,19 +1,24 @@
 # Notive
 
-A modern, local-first journaling application with voice input, mood tracking, retrieval-powered memory search, and optional AI guidance.
+A local-first journaling platform with voice transcription, mood tracking, semantic memory search, pattern recognition, and optional AI reflections -- for life, school, and work.
 
 Notive is developed and owned by AbbasAI Solutions, LLC.
 
 ## Features
 
-- 📝 **Rich Text Editor** with voice input support
-- 🎭 **Mood Tracking** with AI-powered analysis
+- 📝 **Rich Text Editor** with inline voice transcription
+- 🎙️ **Voice Transcription** powered by Faster Whisper (local STT service)
+- 🎭 **Mood Tracking** with NLP-powered sentiment and entity detection
+- 🔍 **Semantic Memory Search** with local embeddings and reranking
+- 🧠 **AskNotive** -- AI-driven reflections and pattern recognition
 - 📚 **Chapter Organization** for categorizing entries
-- 🔐 **Secure Authentication** with Google OAuth support
-- 📊 **Analytics Dashboard** to track your journaling habits
-- 🎯 **Gamification** with XP and achievements
+- 📅 **Timeline & Calendar Views** to browse entries by date
+- 📂 **Portfolio Collections** for curating stories and highlights
+- 🔔 **Push Notifications & Reminders** via Firebase Cloud Messaging
+- 📥 **Import** from social platforms and archive exports
+- 📊 **Analytics Dashboard** to track journaling habits and patterns
+- 🔐 **Secure Authentication** with Google SSO (primary) and legacy email support
 - 📱 **Mobile Support** via Capacitor (iOS & Android)
-- 🌐 **Social Sharing** for selected entries
 
 ## Prerequisites
 
@@ -27,7 +32,9 @@ To run this project, you need to install the following tools on your machine:
 
 - `frontend/`: Next.js 14 application (React, Tailwind CSS, TypeScript)
 - `backend/`: Node.js Express application (TypeScript, Prisma)
-- `similarity-service/`: Local retrieval and reranking microservice
+- `backend/nlp_service/`: Deterministic NLP microservice (Python, spaCy)
+- `similarity-service/`: Local embedding and reranking microservice
+- `stt-service/`: Speech-to-text microservice (Python, Faster Whisper)
 - `docker-compose.yml`: Local infrastructure and ML services
 
 ## Quick Start
@@ -76,6 +83,7 @@ Required environment variables:
 - `NEXT_PUBLIC_APP_URL`: Public frontend URL (production example: `https://notive.abbasaisolutions.com`)
 - `NEXT_PUBLIC_API_URL`: Backend API URL (default: http://localhost:8000/api/v1)
 - `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: Google OAuth client ID (optional)
+- `FIREBASE_SERVICE_ACCOUNT`: Firebase service-account JSON string (required for push notifications in production; falls back to console.log in dev)
 
 ### 4. Start the Database
 
@@ -85,9 +93,18 @@ Make sure Docker Desktop is running, then:
 docker-compose up -d
 ```
 
-This starts a PostgreSQL database on port 5432.
-This also starts MongoDB, Redis, the deterministic NLP service, and the local similarity service.
-The similarity service now defaults to the validated local CPU mix: ONNX embeddings plus a torch reranker.
+This starts six services:
+
+| Service            | Port  | Purpose                                       |
+|--------------------|-------|-----------------------------------------------|
+| PostgreSQL         | 5432  | Primary relational database (pgvector)        |
+| MongoDB            | 27017 | Document store for analytics and logs         |
+| Redis              | 6379  | Caching and rate limiting                     |
+| NLP service        | 8001  | Sentiment, entity, and mood detection (spaCy) |
+| Similarity service | 8002  | Local embeddings and reranking (ONNX + torch) |
+| STT service        | 8003  | Speech-to-text transcription (Faster Whisper) |
+
+The similarity service defaults to the validated local CPU mix: ONNX embeddings plus a torch reranker.
 
 ### 5. Run Database Migrations
 
@@ -277,7 +294,7 @@ Pushes to `main` now trigger [`.github/workflows/android-release.yml`](./.github
 - uploads the bundle as a GitHub Actions artifact
 - uploads it to the Google Play `internal` track when `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` is configured
 
-The current checked-in Android release is `1104 (1.1.4)`. If you want the next Play upload to use a new version, bump `frontend/android/gradle.properties` first or run one of:
+The current checked-in Android release is `1117 (1.1.17)`. If you want the next Play upload to use a new version, bump `frontend/android/gradle.properties` first or run one of:
 
 - `npm run android:version:patch`
 - `npm run android:version:minor`
@@ -341,11 +358,20 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions for va
 
 ### Backend
 - **Runtime**: Node.js with Express
-- **Database**: PostgreSQL with Prisma ORM
+- **Language**: TypeScript with Zod validation
+- **Database**: PostgreSQL with Prisma ORM + MongoDB for analytics
+- **Cache**: Redis
 - **Authentication**: JWT with refresh tokens
+- **Push Notifications**: Firebase Cloud Messaging (firebase-admin)
 - **File Upload**: Multer
+- **Monitoring**: Sentry
 - **Local Retrieval**: Sentence Transformers + pgvector
 - **Optional Generation**: OpenAI-compatible chat provider
+
+### Microservices
+- **NLP Service**: Python / spaCy -- sentiment analysis, entity extraction, mood detection (port 8001)
+- **Similarity Service**: Python / Sentence Transformers -- ONNX embeddings + torch reranker (port 8002)
+- **STT Service**: Python / Faster Whisper -- speech-to-text transcription (port 8003)
 
 ## Contributing
 

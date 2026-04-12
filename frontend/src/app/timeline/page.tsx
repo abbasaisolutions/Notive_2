@@ -101,6 +101,30 @@ type SharedActivityNotification = {
     readAt: string | null;
     createdAt: string;
 };
+
+type EntryShareStats = Record<string, {
+    shareCount: number;
+    reactions: Array<{ name: string; reaction: string }>;
+}>;
+
+type SentBundleRecipient = {
+    id: string;
+    name: string | null;
+    avatarUrl: string | null;
+    status: string;
+    readAt: string | null;
+    reaction: string | null;
+};
+
+type SentBundle = {
+    bundleId: string;
+    itemCount: number;
+    firstItemTitle: string | null;
+    firstItemMood: string | null;
+    message: string | null;
+    createdAt: string;
+    recipients: SentBundleRecipient[];
+};
 type TimelineFilterState = {
     query: string;
     sourceFilter: SourceFilter;
@@ -378,6 +402,12 @@ function StoryArcMomentCard({
 
 /* ─── Shared With Me list (inline) ─────────────────────── */
 
+const REACTION_LABELS: Record<string, { emoji: string; label: string }> = {
+    grateful: { emoji: '🤝', label: 'Grateful' },
+    inspired: { emoji: '✨', label: 'Inspired' },
+    understood: { emoji: '💛', label: 'Understood' },
+};
+
 const MOOD_COLORS_SHARED: Record<string, string> = {
     happy: '#F59E0B', excited: '#EF4444', calm: '#6B8F71',
     thoughtful: '#6366F1', tired: '#94A3B8', sad: '#3B82F6',
@@ -451,99 +481,223 @@ function SharedWithMeList({ bundles, loading, onRefresh, allowEmptyState = true 
         );
     }
 
+    const newBundles = bundles.filter((b) => !b.readAt);
+    const pastBundles = bundles.filter((b) => b.readAt);
+
     return (
-        <div className="space-y-3 py-4">
-            {bundles.map((b) => {
-                const senderName = b.sender.name || 'Someone';
-                const initial = senderName.charAt(0).toUpperCase();
-                const isPending = b.status === 'PENDING';
-                const isUnread = !b.readAt;
-                const relTime = formatSharedRelTime(b.sharedAt);
-                const isActing = activeSenderId === b.sender.id;
+        <div className="space-y-4 py-4">
+            {/* ── New / unread bundles (full card) ── */}
+            {newBundles.length > 0 && (
+                <div className="space-y-3">
+                    {newBundles.map((b) => {
+                        const senderName = b.sender.name || 'Someone';
+                        const initial = senderName.charAt(0).toUpperCase();
+                        const isPending = b.status === 'PENDING';
+                        const relTime = formatSharedRelTime(b.sharedAt);
+                        const isActing = activeSenderId === b.sender.id;
+
+                        return (
+                            <motion.div
+                                key={b.bundleId}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="block w-full rounded-2xl border border-[rgba(107,143,113,0.25)] bg-[rgba(107,143,113,0.04)] p-4 text-left"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-sm font-bold text-[rgb(107,143,113)]">
+                                        {initial}
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-2 w-2 shrink-0 rounded-full bg-[rgb(107,143,113)]" />
+                                            <span className="truncate text-[0.82rem] font-semibold text-[rgb(var(--paper-ink))]">
+                                                {senderName}
+                                            </span>
+                                            {isPending && (
+                                                <span className="shrink-0 rounded-full border border-[rgba(217,119,6,0.18)] bg-[rgba(245,158,11,0.08)] px-2 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.08em] text-[rgb(180,83,9)]">
+                                                    Needs response
+                                                </span>
+                                            )}
+                                            <span className="ml-auto shrink-0 text-[0.65rem] text-[rgb(130,130,130)]">{relTime}</span>
+                                        </div>
+                                        <p className="mt-0.5 text-[0.75rem] text-[rgb(130,130,130)]">
+                                            {isPending
+                                                ? `${senderName} wants to share ${b.itemCount} ${b.itemCount === 1 ? 'memory' : 'memories'}`
+                                                : `${b.itemCount} ${b.itemCount === 1 ? 'memory' : 'memories'} shared`}
+                                        </p>
+                                    </div>
+                                </div>
+                                {!isPending && b.firstItem && (
+                                    <div className="mt-2 rounded-xl border border-[rgba(92,92,92,0.08)] bg-[rgba(248,244,237,0.5)] px-3 py-2">
+                                        <div className="flex items-center gap-1.5">
+                                            {b.firstItem.mood && (
+                                                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: MOOD_COLORS_SHARED[b.firstItem.mood] || '#94A3B8' }} />
+                                            )}
+                                            <span className="truncate text-[0.72rem] font-medium text-[rgb(var(--paper-ink))]">
+                                                {b.firstItem.title || 'Untitled'}
+                                            </span>
+                                        </div>
+                                        <p className="mt-0.5 line-clamp-1 text-[0.68rem] text-[rgb(150,150,150)]">{b.firstItem.contentPreview}</p>
+                                        {b.itemCount > 1 && (
+                                            <p className="mt-1 text-[0.65rem] font-medium text-[rgb(107,143,113)]">+{b.itemCount - 1} more</p>
+                                        )}
+                                    </div>
+                                )}
+                                {b.message && (
+                                    <p className="mt-2 line-clamp-2 text-[0.72rem] italic text-[rgb(130,130,130)]">&ldquo;{b.message}&rdquo;</p>
+                                )}
+
+                                {isPending ? (
+                                    <div className="mt-3 flex gap-2">
+                                        <button
+                                            type="button"
+                                            disabled={isActing}
+                                            onClick={() => void respondToRequest(b.sender.id, 'DECLINE')}
+                                            className="workspace-button-outline rounded-xl px-4 py-2 text-[0.72rem] font-semibold disabled:opacity-50"
+                                        >
+                                            {isActing ? 'Saving...' : 'Decline'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={isActing}
+                                            onClick={() => void respondToRequest(b.sender.id, 'ACCEPT')}
+                                            className="workspace-button-primary rounded-xl px-4 py-2 text-[0.72rem] font-semibold disabled:opacity-50"
+                                        >
+                                            {isActing ? 'Saving...' : 'Accept'}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="mt-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => router.push(`/shared/view?id=${b.bundleId}`)}
+                                            className="inline-flex rounded-xl border border-[rgba(107,143,113,0.22)] bg-[rgba(107,143,113,0.06)] px-3 py-2 text-[0.72rem] font-semibold text-[rgb(107,143,113)] transition hover:bg-[rgba(107,143,113,0.1)]"
+                                        >
+                                            Open shared memories
+                                        </button>
+                                    </div>
+                                )}
+                            </motion.div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* ── Past bundles (compact: title + reaction only) ── */}
+            {pastBundles.length > 0 && (
+                <div className="space-y-2">
+                    {newBundles.length > 0 && (
+                        <p className="mt-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-[rgb(160,160,160)]">
+                            Past shared memories
+                        </p>
+                    )}
+                    {pastBundles.map((b) => {
+                        const senderName = b.sender.name || 'Someone';
+                        const initial = senderName.charAt(0).toUpperCase();
+                        const title = b.firstItem?.title || 'Untitled';
+                        const reaction = b.reaction && REACTION_LABELS[b.reaction] ? REACTION_LABELS[b.reaction] : null;
+
+                        return (
+                            <motion.div
+                                key={b.bundleId}
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex cursor-pointer items-center gap-3 rounded-xl border border-[rgba(92,92,92,0.1)] bg-white/60 px-3 py-2.5 transition-colors hover:bg-white/80"
+                                onClick={() => router.push(`/shared/view?id=${b.bundleId}`)}
+                            >
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgba(107,143,113,0.12)] text-[0.65rem] font-bold text-[rgb(107,143,113)]">
+                                    {initial}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5">
+                                        {b.firstItem?.mood && (
+                                            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: MOOD_COLORS_SHARED[b.firstItem.mood] || '#94A3B8' }} />
+                                        )}
+                                        <span className="truncate text-[0.75rem] font-medium text-[rgb(var(--paper-ink))]">
+                                            {title}
+                                        </span>
+                                        {b.itemCount > 1 && (
+                                            <span className="shrink-0 text-[0.62rem] text-[rgb(160,160,160)]">+{b.itemCount - 1}</span>
+                                        )}
+                                    </div>
+                                    <p className="text-[0.65rem] text-[rgb(160,160,160)]">
+                                        from {senderName} · {formatSharedRelTime(b.sharedAt)}
+                                    </p>
+                                </div>
+                                {reaction && (
+                                    <span className="shrink-0 rounded-full border border-[rgba(107,143,113,0.12)] bg-[rgba(107,143,113,0.05)] px-2 py-0.5 text-[0.62rem] font-medium text-[rgb(107,143,113)]">
+                                        {reaction.emoji} {reaction.label}
+                                    </span>
+                                )}
+                            </motion.div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function SentBundlesList({ bundles, loading }: {
+    bundles: SentBundle[];
+    loading: boolean;
+}) {
+    const router = useRouter();
+
+    // Only show bundles that have at least one reaction
+    const withReactions = bundles.filter((b) =>
+        b.recipients.some((r) => r.reaction),
+    );
+
+    if (loading && withReactions.length === 0) return null;
+    if (withReactions.length === 0) return null;
+
+    return (
+        <div className="space-y-2 py-4">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-[rgb(107,143,113)]">
+                Reactions on your memories
+            </p>
+            {withReactions.map((b) => {
+                const title = b.firstItemTitle || 'Untitled';
+                const reactions = b.recipients.filter((r) => r.reaction);
 
                 return (
                     <motion.div
                         key={b.bundleId}
-                        initial={{ opacity: 0, y: 10 }}
+                        initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`block w-full rounded-2xl border p-4 text-left transition-colors ${
-                            isUnread
-                                ? 'border-[rgba(107,143,113,0.25)] bg-[rgba(107,143,113,0.04)]'
-                                : 'border-[rgba(92,92,92,0.12)] bg-white/60 hover:bg-white/80'
-                        }`}
+                        className="cursor-pointer rounded-xl border border-[rgba(92,92,92,0.1)] bg-white/60 px-3 py-2.5 transition-colors hover:bg-white/80"
+                        onClick={() => router.push(`/shared/view?id=${b.bundleId}`)}
                     >
-                        <div className="flex items-center gap-3">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-sm font-bold text-[rgb(107,143,113)]">
-                                {initial}
+                        <div className="flex items-center gap-2">
+                            {b.firstItemMood && (
+                                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: MOOD_COLORS_SHARED[b.firstItemMood] || '#94A3B8' }} />
+                            )}
+                            <span className="truncate text-[0.75rem] font-medium text-[rgb(var(--paper-ink))]">
+                                {title}
                             </span>
-                            <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2">
-                                    {isUnread && <span className="h-2 w-2 shrink-0 rounded-full bg-[rgb(107,143,113)]" />}
-                                    <span className="truncate text-[0.82rem] font-semibold text-[rgb(var(--paper-ink))]">
-                                        {senderName}
-                                    </span>
-                                    {isPending && (
-                                        <span className="shrink-0 rounded-full border border-[rgba(217,119,6,0.18)] bg-[rgba(245,158,11,0.08)] px-2 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.08em] text-[rgb(180,83,9)]">
-                                            Needs response
-                                        </span>
-                                    )}
-                                    <span className="ml-auto shrink-0 text-[0.65rem] text-[rgb(130,130,130)]">{relTime}</span>
-                                </div>
-                                <p className="mt-0.5 text-[0.75rem] text-[rgb(130,130,130)]">
-                                    {isPending
-                                        ? `${senderName} wants to share ${b.itemCount} ${b.itemCount === 1 ? 'memory' : 'memories'}`
-                                        : `${b.itemCount} ${b.itemCount === 1 ? 'memory' : 'memories'} shared`}
-                                </p>
-                            </div>
+                            {b.itemCount > 1 && (
+                                <span className="shrink-0 text-[0.62rem] text-[rgb(160,160,160)]">+{b.itemCount - 1}</span>
+                            )}
+                            <span className="ml-auto shrink-0 text-[0.62rem] text-[rgb(160,160,160)]">
+                                {formatSharedRelTime(b.createdAt)}
+                            </span>
                         </div>
-                        {!isPending && b.firstItem && (
-                            <div className="mt-2 rounded-xl border border-[rgba(92,92,92,0.08)] bg-[rgba(248,244,237,0.5)] px-3 py-2">
-                                <div className="flex items-center gap-1.5">
-                                    {b.firstItem.mood && (
-                                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: MOOD_COLORS_SHARED[b.firstItem.mood] || '#94A3B8' }} />
-                                    )}
-                                    <span className="truncate text-[0.72rem] font-medium text-[rgb(var(--paper-ink))]">
-                                        {b.firstItem.title || 'Untitled'}
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {reactions.map((r) => {
+                                const display = r.reaction && REACTION_LABELS[r.reaction] ? REACTION_LABELS[r.reaction] : null;
+                                if (!display) return null;
+                                const recipientName = r.name || 'Someone';
+                                return (
+                                    <span
+                                        key={r.id}
+                                        className="inline-flex items-center gap-1 rounded-full border border-[rgba(107,143,113,0.12)] bg-[rgba(107,143,113,0.05)] px-2 py-0.5 text-[0.62rem] font-medium text-[rgb(107,143,113)]"
+                                    >
+                                        {display.emoji} {recipientName}
                                     </span>
-                                </div>
-                                <p className="mt-0.5 line-clamp-1 text-[0.68rem] text-[rgb(150,150,150)]">{b.firstItem.contentPreview}</p>
-                                {b.itemCount > 1 && (
-                                    <p className="mt-1 text-[0.65rem] font-medium text-[rgb(107,143,113)]">+{b.itemCount - 1} more</p>
-                                )}
-                            </div>
-                        )}
-                        {b.message && (
-                            <p className="mt-2 line-clamp-2 text-[0.72rem] italic text-[rgb(130,130,130)]">&ldquo;{b.message}&rdquo;</p>
-                        )}
-
-                        {isPending ? (
-                            <div className="mt-3 flex gap-2">
-                                <button
-                                    type="button"
-                                    disabled={isActing}
-                                    onClick={() => void respondToRequest(b.sender.id, 'DECLINE')}
-                                    className="workspace-button-outline rounded-xl px-4 py-2 text-[0.72rem] font-semibold disabled:opacity-50"
-                                >
-                                    {isActing ? 'Saving...' : 'Decline'}
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={isActing}
-                                    onClick={() => void respondToRequest(b.sender.id, 'ACCEPT')}
-                                    className="workspace-button-primary rounded-xl px-4 py-2 text-[0.72rem] font-semibold disabled:opacity-50"
-                                >
-                                    {isActing ? 'Saving...' : 'Accept'}
-                                </button>
-                            </div>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={() => router.push(`/shared/view?id=${b.bundleId}`)}
-                                className="mt-3 inline-flex rounded-xl border border-[rgba(107,143,113,0.22)] bg-[rgba(107,143,113,0.06)] px-3 py-2 text-[0.72rem] font-semibold text-[rgb(107,143,113)] transition hover:bg-[rgba(107,143,113,0.1)]"
-                            >
-                                Open shared memories
-                            </button>
-                        )}
+                                );
+                            })}
+                        </div>
                     </motion.div>
                 );
             })}
@@ -743,12 +897,9 @@ function SharedActivityList({ notifications, loading, onRefresh }: {
     }
 
     return (
-        <div className="space-y-3 py-4">
-            <div className="mb-2 flex items-center justify-between gap-3">
-                <div>
-                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-[rgb(107,143,113)]">Activity</p>
-                    <p className="mt-1 text-[0.78rem] text-[rgb(130,130,130)]">Reminders and updates that do not live inside bundle cards.</p>
-                </div>
+        <div className="space-y-1.5 py-3">
+            <div className="mb-1 flex items-center gap-2">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[rgb(107,143,113)]">Activity</p>
                 <TagPill>{notifications.length}</TagPill>
             </div>
 
@@ -766,42 +917,36 @@ function SharedActivityList({ notifications, loading, onRefresh }: {
                 return (
                     <motion.div
                         key={notification.id}
-                        initial={{ opacity: 0, y: 10 }}
+                        initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`rounded-2xl border p-4 transition-colors ${
+                        className={`rounded-xl border px-3 py-2 transition-colors ${
                             isUnread
                                 ? 'border-[rgba(107,143,113,0.25)] bg-[rgba(107,143,113,0.04)]'
-                                : 'border-[rgba(92,92,92,0.12)] bg-white/60'
+                                : 'border-[rgba(92,92,92,0.1)] bg-white/60'
                         }`}
                     >
-                        <div className="flex items-start gap-3">
-                            <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-[0.72rem] font-bold text-[rgb(107,143,113)]">
-                                {notification.type === 'reminder' ? 'R' : 'i'}
-                            </span>
+                        <div className="flex items-center gap-2.5">
+                            {isUnread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[rgb(107,143,113)]" />}
                             <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2">
-                                    {isUnread && <span className="h-2 w-2 shrink-0 rounded-full bg-[rgb(107,143,113)]" />}
-                                    <span className="truncate text-[0.82rem] font-semibold text-[rgb(var(--paper-ink))]">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="truncate text-[0.75rem] font-semibold text-[rgb(var(--paper-ink))]">
                                         {notification.title}
                                     </span>
-                                    <span className="ml-auto shrink-0 text-[0.65rem] text-[rgb(130,130,130)]">
+                                    <span className="ml-auto shrink-0 text-[0.6rem] text-[rgb(160,160,160)]">
                                         {formatSharedRelTime(notification.createdAt)}
                                     </span>
                                 </div>
                                 {notification.body && (
-                                    <p className="mt-1 text-[0.75rem] text-[rgb(130,130,130)]">{notification.body}</p>
+                                    <p className="mt-0.5 text-[0.68rem] leading-snug text-[rgb(140,140,140)]">{notification.body}</p>
                                 )}
                             </div>
-                        </div>
-
-                        <div className="mt-3 flex gap-2">
                             <button
                                 type="button"
                                 disabled={isActionDisabled}
-                                onClick={() => void handleOpen(notification)}
-                                className="workspace-button-outline rounded-xl px-4 py-2 text-[0.72rem] font-semibold disabled:opacity-50"
+                                onClick={(e) => { e.stopPropagation(); void handleOpen(notification); }}
+                                className="shrink-0 rounded-lg border border-[rgba(107,143,113,0.2)] bg-[rgba(107,143,113,0.06)] px-2.5 py-1 text-[0.65rem] font-semibold text-[rgb(107,143,113)] transition hover:bg-[rgba(107,143,113,0.12)] disabled:opacity-40"
                             >
-                                {isActing ? 'Opening...' : actionLabel}
+                                {isActing ? '...' : actionLabel}
                             </button>
                         </div>
                     </motion.div>
@@ -912,6 +1057,9 @@ function TimelinePageContent() {
     const [friendRequestsLoading, setFriendRequestsLoading] = useState(false);
     const [sharedActivityNotifications, setSharedActivityNotifications] = useState<SharedActivityNotification[]>([]);
     const [sharedActivityLoading, setSharedActivityLoading] = useState(false);
+    const [sentBundles, setSentBundles] = useState<SentBundle[]>([]);
+    const [sentBundlesLoading, setSentBundlesLoading] = useState(false);
+    const [entryShareStats, setEntryShareStats] = useState<EntryShareStats>({});
 
     const restoreInitRef = useRef(false);
     const entriesRef = useRef<Entry[]>([]);
@@ -1028,6 +1176,16 @@ function TimelinePageContent() {
         setTimelineSummary((data?.summary || EMPTY_TIMELINE_SIGNATURE_SUMMARY) as TimelineSignatureSummary);
     }, [apiFetch, buildTimelineFilterParams]);
 
+    const fetchEntryShareStats = useCallback(async () => {
+        try {
+            const r = await apiFetch(`${API_URL}/memory-share/entry-share-stats`);
+            if (r.ok) {
+                const data = await r.json();
+                setEntryShareStats(data.stats ?? {});
+            }
+        } catch { /* ignore */ }
+    }, [apiFetch]);
+
     const fetchEntriesPage = useCallback(async ({
         page,
         replace,
@@ -1142,6 +1300,7 @@ function TimelinePageContent() {
                 await Promise.all([
                     fetchEntriesPage({ page: 1, replace: true, signal: controller.signal }),
                     fetchTimelineSummary(controller.signal),
+                    fetchEntryShareStats(),
                 ]);
             } catch (error) {
                 if (controller.signal.aborted) return;
@@ -1162,7 +1321,7 @@ function TimelinePageContent() {
             mounted = false;
             controller.abort();
         };
-    }, [fetchEntriesPage, fetchTimelineSummary, user]);
+    }, [fetchEntriesPage, fetchTimelineSummary, fetchEntryShareStats, user]);
 
     useEffect(() => {
         setSourceFilter(normalizeSourceFilter(searchParams.get('source')));
@@ -1761,6 +1920,18 @@ function TimelinePageContent() {
         }
     }, [apiFetch]);
 
+    const fetchSentBundles = useCallback(async () => {
+        setSentBundlesLoading(true);
+        try {
+            const r = await apiFetch(`${API_URL}/memory-share/sent?limit=20`);
+            if (r.ok) {
+                const data = await r.json();
+                setSentBundles(Array.isArray(data.bundles) ? data.bundles : []);
+            }
+        } catch { /* ignore */ }
+        setSentBundlesLoading(false);
+    }, [apiFetch]);
+
     const fetchIncomingFriendRequests = useCallback(async () => {
         setFriendRequestsLoading(true);
         try {
@@ -1811,11 +1982,12 @@ function TimelinePageContent() {
         void (async () => {
             await Promise.all([
                 fetchSharedBundles(),
+                fetchSentBundles(),
                 fetchIncomingFriendRequests(),
                 fetchSharedActivityNotifications(),
             ]);
         })();
-    }, [surface, fetchSharedBundles, fetchIncomingFriendRequests, fetchSharedActivityNotifications]);
+    }, [surface, fetchSharedBundles, fetchSentBundles, fetchIncomingFriendRequests, fetchSharedActivityNotifications]);
 
     // Initial unread count (for badge)
     useEffect(() => {
@@ -1827,13 +1999,14 @@ function TimelinePageContent() {
             void refreshSharedUnreadCount();
             if (surface === 'shared') {
                 void fetchSharedBundles();
+                void fetchSentBundles();
                 void fetchIncomingFriendRequests();
                 void fetchSharedActivityNotifications();
             }
         };
         window.addEventListener(NOTIFICATION_BADGE_REFRESH_EVENT, handler);
         return () => window.removeEventListener(NOTIFICATION_BADGE_REFRESH_EVENT, handler);
-    }, [surface, refreshSharedUnreadCount, fetchSharedBundles, fetchIncomingFriendRequests, fetchSharedActivityNotifications]);
+    }, [surface, refreshSharedUnreadCount, fetchSharedBundles, fetchSentBundles, fetchIncomingFriendRequests, fetchSharedActivityNotifications]);
 
     const shareEntry = useMemo<ShareableEntry | null>(() => {
         if (!shareEntryId) return null;
@@ -2643,6 +2816,7 @@ function TimelinePageContent() {
                                     seasonAnchorsByMonthKey={seasonAnchorsByMonthKey}
                                     onShareEntry={setShareEntryId}
                                     focusedEntryId={focusedEntryId}
+                                    entryShareStats={entryShareStats}
                                 />
                             </>
                         ) : surface === 'shared' ? (
@@ -2666,7 +2840,13 @@ function TimelinePageContent() {
                                         && incomingFriendRequests.length === 0
                                         && !sharedActivityLoading
                                         && sharedActivityNotifications.length === 0
+                                        && !sentBundlesLoading
+                                        && sentBundles.length === 0
                                     }
+                                />
+                                <SentBundlesList
+                                    bundles={sentBundles}
+                                    loading={sentBundlesLoading}
                                 />
                             </>
                         ) : (
@@ -2716,7 +2896,7 @@ function TimelinePageContent() {
                 <ShareMemorySheet
                     initialEntry={shareEntry}
                     allEntries={shareAllEntries}
-                    onClose={() => { setShareEntryId(null); fetchSharedBundles(); }}
+                    onClose={() => { setShareEntryId(null); fetchSharedBundles(); fetchEntryShareStats(); }}
                 />
             )}
         </div>

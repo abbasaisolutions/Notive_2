@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
+import { deleteFile } from '../services/file.service';
 import taggingService, { isValidTag } from '../services/tagging.service';
 import { Prisma, TagSource } from '@prisma/client';
 import { buildTagMetaList, normalizeTag, syncEntryTags } from '../services/tag-manager.service';
@@ -959,6 +960,11 @@ export const updateEntry = async (req: Request, res: Response) => {
             },
         });
 
+        // Clean up old cover image if replaced
+        if (coverImage !== undefined && existing.coverImage && coverImage !== existing.coverImage) {
+            void deleteFile(existing.coverImage);
+        }
+
         if (tagMeta) {
             await syncEntryTags({
                 entryId: entry.id,
@@ -1052,6 +1058,11 @@ export const deleteEntry = async (req: Request, res: Response) => {
             where: { id },
             data: { deletedAt: new Date() },
         });
+
+        // Clean up uploaded cover image from storage
+        if (existing.coverImage) {
+            void deleteFile(existing.coverImage);
+        }
 
         return res.status(200).json({ message: 'Entry deleted successfully' });
     } catch (error) {

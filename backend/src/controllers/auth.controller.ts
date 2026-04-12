@@ -54,7 +54,15 @@ const parseBirthDate = (value: unknown): Date | null => {
 };
 
 // --- REGISTER ---
+// Public email/password registration is disabled.
+// All new accounts must use Google SSO. This endpoint is preserved
+// for a potential future admin-created-account flow.
 export const register = async (req: Request, res: Response) => {
+    return res.status(403).json({
+        message: 'Public registration is disabled. Please use Google Sign-In to create an account.',
+    });
+
+    // --- Legacy registration logic (preserved, unreachable) ---
     try {
         const { email, password, name, birthDate } = req.body;
         const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
@@ -445,6 +453,9 @@ export const resetPassword = async (req: Request, res: Response) => {
                 resetTokenExpiry: null
             }
         });
+
+        // Invalidate all existing sessions after password reset
+        await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
 
         return res.status(200).json({ message: 'Password reset successfully' });
 

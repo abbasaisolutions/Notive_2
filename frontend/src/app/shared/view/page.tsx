@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useApi } from '@/hooks/use-api';
+import { useAuth } from '@/context/auth-context';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import { useToast } from '@/context/toast-context';
 import { refreshNotificationBadge } from '@/hooks/use-notification-count';
@@ -13,6 +14,14 @@ import { API_URL } from '@/constants/config';
 /* ─── Types ────────────────────────────────────────────── */
 
 type BundleSender = { id: string; name: string | null; avatarUrl: string | null };
+
+type BundleRecipient = {
+    recipientId: string;
+    status: string;
+    readAt: string | null;
+    reaction: string | null;
+    recipient: { id: string; name: string | null; avatarUrl: string | null };
+};
 
 type BundleItem = {
     id: string;
@@ -29,6 +38,7 @@ type BundleDetail = {
     sender: BundleSender;
     message: string | null;
     items: BundleItem[];
+    recipients?: BundleRecipient[];
     viewerReaction: string | null;
     createdAt: string;
 };
@@ -48,6 +58,8 @@ const REACTIONS = [
     { value: 'understood', label: 'Understood', emoji: '💛' },
 ] as const;
 
+const REACTION_MAP = Object.fromEntries(REACTIONS.map((r) => [r.value, r]));
+
 const avatarInitial = (name: string | null) => (name || '?').charAt(0).toUpperCase();
 
 /* ─── Page ─────────────────────────────────────────────── */
@@ -56,6 +68,7 @@ function SharedBundleViewContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const { apiFetch } = useApi();
+    const { user } = useAuth();
     const { isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const toast = useToast();
 
@@ -66,7 +79,6 @@ function SharedBundleViewContent() {
     const [reaction, setReaction] = useState<string | null>(null);
     const [reactSending, setReactSending] = useState(false);
 
-    // Fetch bundle detail — only after auth is confirmed
     useEffect(() => {
         if (authLoading || !isAuthenticated) return;
         if (!bundleId) { setError('No bundle ID'); setLoading(false); return; }
@@ -83,8 +95,6 @@ function SharedBundleViewContent() {
                 const data = await r.json();
                 setBundle(data.bundle);
                 setReaction(data.bundle?.viewerReaction ?? null);
-                // Viewing the bundle marks it read on the backend —
-                // refresh the notification badge so the count updates.
                 refreshNotificationBadge();
             } catch {
                 setError('Couldn\u2019t load shared memories. Try refreshing.');
@@ -93,7 +103,6 @@ function SharedBundleViewContent() {
         })();
     }, [bundleId, apiFetch, authLoading, isAuthenticated]);
 
-    // React to bundle
     const handleReact = useCallback(async (value: string) => {
         if (!bundleId || reactSending) return;
         setReactSending(true);
@@ -114,15 +123,7 @@ function SharedBundleViewContent() {
         setReactSending(false);
     }, [bundleId, reaction, reactSending, apiFetch, toast]);
 
-    if (authLoading || !isAuthenticated) {
-        return (
-            <div className="flex min-h-[50vh] items-center justify-center">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[rgba(107,143,113,0.3)] border-t-[rgb(107,143,113)]" />
-            </div>
-        );
-    }
-
-    if (loading) {
+    if (authLoading || !isAuthenticated || loading) {
         return (
             <div className="flex min-h-[50vh] items-center justify-center">
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-[rgba(107,143,113,0.3)] border-t-[rgb(107,143,113)]" />
@@ -141,6 +142,7 @@ function SharedBundleViewContent() {
         );
     }
 
+    const isSender = bundle.recipients !== undefined;
     const senderName = bundle.sender.name || 'Someone';
     const relativeTime = formatRelativeTime(bundle.createdAt);
 
@@ -153,18 +155,47 @@ function SharedBundleViewContent() {
                 </Link>
             </div>
 
-            {/* Sender info */}
-            <div className="mb-6 flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-sm font-bold text-[rgb(107,143,113)]">
-                    {avatarInitial(bundle.sender.name)}
-                </span>
-                <div>
-                    <p className="text-[0.85rem] font-semibold text-[rgb(var(--paper-ink))]">{senderName}</p>
-                    <p className="text-[0.7rem] text-[rgb(130,130,130)]">
-                        shared {bundle.items.length} {bundle.items.length === 1 ? 'memory' : 'memories'} &middot; {relativeTime}
+            {/* Sender / viewer info */}
+            {isSender ? (
+                <div className="mb-6">
+                    <p className="text-[0.85rem] font-semibold text-[rgb(var(--paper-ink))]">
+                        You shared {bundle.items.length} {bundle.items.length === 1 ? 'memory' : 'memories'}
                     </p>
+                    <p className="mt-0.5 text-[0.7rem] text-[rgb(130,130,130)]">{relativeTime}</p>
+
+                    {/* Shared with list */}
+                    {bundle.recipients && bundle.recipients.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            <span className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[rgb(130,130,130)]">
+                                Shared with
+                            </span>
+                            {bundle.recipients.map((r) => (
+                                <span
+                                    key={r.recipientId}
+                                    className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(92,92,92,0.1)] bg-[rgba(248,244,237,0.5)] px-2.5 py-1 text-[0.7rem] font-medium text-[rgb(var(--paper-ink))]"
+                                >
+                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-[0.55rem] font-bold text-[rgb(107,143,113)]">
+                                        {avatarInitial(r.recipient.name)}
+                                    </span>
+                                    {r.recipient.name || 'Someone'}
+                                </span>
+                            ))}
+                        </div>
+                    )}
                 </div>
-            </div>
+            ) : (
+                <div className="mb-6 flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-sm font-bold text-[rgb(107,143,113)]">
+                        {avatarInitial(bundle.sender.name)}
+                    </span>
+                    <div>
+                        <p className="text-[0.85rem] font-semibold text-[rgb(var(--paper-ink))]">{senderName}</p>
+                        <p className="text-[0.7rem] text-[rgb(130,130,130)]">
+                            shared {bundle.items.length} {bundle.items.length === 1 ? 'memory' : 'memories'} &middot; {relativeTime}
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* Sender message */}
             {bundle.message && (
@@ -212,27 +243,87 @@ function SharedBundleViewContent() {
                 ))}
             </div>
 
-            {/* Reactions */}
-            <div className="mt-8 mb-12">
-                <p className="mb-3 text-center text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[rgb(130,130,130)]">How does this make you feel?</p>
-                <div className="flex justify-center gap-3">
-                    {REACTIONS.map((r) => (
-                        <button
-                            key={r.value}
-                            type="button"
-                            disabled={reactSending}
-                            onClick={() => handleReact(r.value)}
-                            className={`rounded-full border px-4 py-2 text-[0.78rem] font-medium transition-colors ${
-                                reaction === r.value
-                                    ? 'border-[rgba(107,143,113,0.4)] bg-[rgba(107,143,113,0.1)] text-[rgb(107,143,113)]'
-                                    : 'border-[rgba(92,92,92,0.15)] bg-white/60 text-[rgb(var(--paper-ink))] hover:border-[rgba(107,143,113,0.3)]'
-                            }`}
-                        >
-                            {r.emoji} {r.label}
-                        </button>
-                    ))}
+            {/* Sender: recipient reactions overview */}
+            {isSender && bundle.recipients && bundle.recipients.length > 0 && (
+                <div className="mt-8 mb-12">
+                    <p className="mb-4 text-center text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[rgb(130,130,130)]">
+                        Responses
+                    </p>
+                    <div className="space-y-2">
+                        {bundle.recipients.map((r) => {
+                            const reactionInfo = r.reaction ? REACTION_MAP[r.reaction] : null;
+                            const recipientName = r.recipient.name || 'Someone';
+                            return (
+                                <div
+                                    key={r.recipientId}
+                                    className="flex items-center gap-3 rounded-xl border border-[rgba(92,92,92,0.1)] bg-[rgba(248,244,237,0.4)] px-4 py-3"
+                                >
+                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-[0.7rem] font-bold text-[rgb(107,143,113)]">
+                                        {avatarInitial(r.recipient.name)}
+                                    </span>
+                                    <span className="min-w-0 flex-1 truncate text-[0.82rem] font-medium text-[rgb(var(--paper-ink))]">
+                                        {recipientName}
+                                    </span>
+                                    {reactionInfo ? (
+                                        <span className="shrink-0 rounded-full border border-[rgba(107,143,113,0.2)] bg-[rgba(107,143,113,0.06)] px-3 py-1 text-[0.72rem] font-medium text-[rgb(107,143,113)]">
+                                            {reactionInfo.emoji} {reactionInfo.label}
+                                        </span>
+                                    ) : r.readAt ? (
+                                        <span className="shrink-0 text-[0.7rem] text-[rgb(160,160,160)]">
+                                            Seen
+                                        </span>
+                                    ) : (
+                                        <span className="shrink-0 text-[0.7rem] italic text-[rgb(180,180,180)]">
+                                            Not opened yet
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
+            )}
+
+            {/* Recipient: reaction buttons */}
+            {!isSender && (
+                <div className="mt-8 mb-12">
+                    <p className="mb-3 text-center text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[rgb(130,130,130)]">
+                        How does this make you feel?
+                    </p>
+                    <div className="flex justify-center gap-3">
+                        {REACTIONS.map((r) => {
+                            const isSelected = reaction === r.value;
+                            return (
+                                <motion.button
+                                    key={r.value}
+                                    type="button"
+                                    disabled={reactSending}
+                                    onClick={() => handleReact(r.value)}
+                                    whileTap={{ scale: 0.93 }}
+                                    animate={isSelected ? { scale: [1, 1.08, 1] } : {}}
+                                    transition={{ duration: 0.25 }}
+                                    className={`rounded-full border px-4 py-2 text-[0.78rem] font-medium transition-all duration-200 ${
+                                        isSelected
+                                            ? 'border-[rgba(107,143,113,0.5)] bg-[rgba(107,143,113,0.12)] text-[rgb(107,143,113)] shadow-[0_0_0_2px_rgba(107,143,113,0.1)]'
+                                            : 'border-[rgba(92,92,92,0.15)] bg-white/60 text-[rgb(var(--paper-ink))] hover:border-[rgba(107,143,113,0.3)] hover:bg-[rgba(107,143,113,0.04)]'
+                                    }`}
+                                >
+                                    {r.emoji} {r.label}
+                                </motion.button>
+                            );
+                        })}
+                    </div>
+                    {reaction && (
+                        <motion.p
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mt-3 text-center text-[0.68rem] text-[rgb(107,143,113)]"
+                        >
+                            Your reaction has been shared
+                        </motion.p>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

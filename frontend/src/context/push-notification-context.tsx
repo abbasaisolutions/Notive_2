@@ -243,7 +243,8 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
                 hapticLight();
                 showNotificationToast(notification);
                 refreshNotificationBadge();
-                void removeForegroundDuplicateNotification(notification);
+                // Keep the system tray notification so the user can tap it later
+                // if they miss the 6-second in-app toast.
             });
 
             // Handle notification action (tap)

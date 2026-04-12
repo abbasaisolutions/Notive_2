@@ -180,6 +180,17 @@ export class PushNotificationService {
         });
     }
 
+    /** Get unread notification count for a user (used for iOS badge). */
+    private async getUnreadBadgeCount(userId: string): Promise<number> {
+        try {
+            return await this.prisma.inAppNotification.count({
+                where: { userId, readAt: null },
+            });
+        } catch {
+            return 0;
+        }
+    }
+
     /**
      * Send a push notification to all active devices for a user.
      * Uses FCM when Firebase credentials are configured; logs to console otherwise.
@@ -190,6 +201,12 @@ export class PushNotificationService {
         platform?: 'android' | 'ios'
     ): Promise<{ sent: number; failed: number; failedTokens: string[] }> {
         const tokens = await this.getUserActiveTokens(userId, platform);
+
+        // Set iOS badge count from actual unread notifications
+        if (!payload.badge) {
+            const unreadCount = await this.getUnreadBadgeCount(userId);
+            payload.badge = String(unreadCount);
+        }
 
         if (tokens.length === 0) {
             return { sent: 0, failed: 0, failedTokens: [] };

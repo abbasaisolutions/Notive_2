@@ -161,7 +161,11 @@ export class ReminderService {
 
             if ((result?.sent ?? 0) > 0) {
                 dispatched++;
-            } else {
+            } else if ((result?.failed ?? 0) > 0 && result?.sent === 0) {
+                // All tokens failed (dead/expired) — remove orphan in-app notification
+                // since there's no way the user will see a push for it.
+                // If sent===0 AND failed===0 (no tokens at all), keep the in-app
+                // notification as a fallback for when the user opens the app.
                 await this.prisma.inAppNotification.delete({
                     where: { id: notification.id },
                 }).catch(() => {});

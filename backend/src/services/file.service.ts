@@ -40,7 +40,13 @@ class S3StorageEngine implements multer.StorageEngine {
     }
 
     _removeFile(req: Request, file: Express.Multer.File, cb: (error: Error | null) => void): void {
-        // Deletion not strictly required for MVP upload flow, implemented as no-op or TODO
+        if (file.path) {
+            const key = this.extractKeyFromUrl(file.path);
+            if (key) {
+                this.deleteFromS3(key).then(() => cb(null)).catch((err) => cb(err));
+                return;
+            }
+        }
         cb(null);
     }
 
@@ -105,6 +111,54 @@ class S3StorageEngine implements multer.StorageEngine {
             return `https://${publicDomain}/${key}`;
         }
         return url;
+    }
+
+    async deleteFromS3(key: string): Promise<void> {
+        const { bucket, region, accessKeyId, secretAccessKey, endpoint } = this.options;
+        const host = endpoint
+            ? `${new URL(endpoint).host}`
+            : `${bucket}.s3.${region}.amazonaws.com`;
+        const basePath = endpoint ? `/${bucket}/${key}` : `/${key}`;
+        const url = `https://${host}${basePath}`;
+        const date = new Date();
+        const amzDate = date.toISOString().replace(/[:\-]|\.\d{3}/g, '');
+        const dateStamp = amzDate.slice(0, 8);
+
+        const payloadHash = crypto.createHash('sha256').update('').digest('hex');
+
+        const method = 'DELETE';
+        const canonicalHeaders =
+            `host:${host}\n` +
+            `x-amz-content-sha256:${payloadHash}\n` +
+            `x-amz-date:${amzDate}\n`;
+        const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
+        const canonicalRequest = `${method}\n${basePath}\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
+
+        const algorithm = 'AWS4-HMAC-SHA256';
+        const credentialScope = `${dateStamp}/${region}/s3/aws4_request`;
+        const stringToSign = `${algorithm}\n${amzDate}\n${credentialScope}\n${crypto.createHash('sha256').update(canonicalRequest).digest('hex')}`;
+
+        const kDate = crypto.createHmac('sha256', `AWS4${secretAccessKey}`).update(dateStamp).digest();
+        const kRegion = crypto.createHmac('sha256', kDate).update(region).digest();
+        const kService = crypto.createHmac('sha256', kRegion).update('s3').digest();
+        const kSigning = crypto.createHmac('sha256', kService).update('aws4_request').digest();
+
+        const signature = crypto.createHmac('sha256', kSigning).update(stringToSign).digest('hex');
+        const authorization = `${algorithm} Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+        await axios.delete(url, {
+            headers: {
+                'x-amz-date': amzDate,
+                'x-amz-content-sha256': payloadHash,
+                'Authorization': authorization,
+            },
+        });
+    }
+
+    extractKeyFromUrl(url: string): string | null {
+        // Match uploads/<filename> from the URL
+        const match = url.match(/(uploads\/[^?#]+)/);
+        return match ? match[1] : null;
     }
 
     private streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
@@ -193,5 +247,31 @@ export class LocalFileService {
         // Handle case where filename might be just the basename or relative path
         const basename = path.basename(filename);
         return `${protocol}://${host}/uploads/${basename}`;
+    }
+}
+
+/**
+ * Delete a previously uploaded file by URL.
+ * Swallows errors — cleanup should never block entry operations.
+ */
+export async function deleteFile(fileUrl: string): Promise<void> {
+    try {
+        if (!fileUrl) return;
+
+        if (isS3Configured && storage instanceof S3StorageEngine) {
+            const key = storage.extractKeyFromUrl(fileUrl);
+            if (key) {
+                await storage.deleteFromS3(key);
+            }
+        } else {
+            // Local disk: extract basename and unlink
+            const basename = path.basename(fileUrl);
+            const filePath = path.join(uploadDir, basename);
+            if (fs.existsSync(filePath)) {
+                await fs.promises.unlink(filePath);
+            }
+        }
+    } catch (err) {
+        console.error(`[File cleanup] Failed to delete ${fileUrl}:`, err);
     }
 }

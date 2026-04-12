@@ -6,11 +6,13 @@ import {
     recentRecipients,
     createBundle,
     listReceived,
+    listSent,
     markSharedNotificationsRead,
     respondToShareRequest,
     getBundleDetail,
     reactToBundle,
     revokeBundle,
+    entryShareStats,
 } from '../controllers/memory-share.controller';
 
 const router = Router();
@@ -31,6 +33,8 @@ router.get('/users/recent', recentRecipients);
 // Bundles
 router.post('/bundles', createBundle);
 router.get('/received', listReceived);
+router.get('/sent', listSent);
+router.get('/entry-share-stats', entryShareStats);
 router.patch('/notifications/read', markSharedNotificationsRead);
 router.patch('/requests/:senderId/respond', respondToShareRequest);
 router.get('/bundles/:id', getBundleDetail);

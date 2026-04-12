@@ -14,6 +14,12 @@ const SHARED_NOTIFICATION_TYPES = [
     'share_reaction',
 ] as const;
 
+const REACTION_DISPLAY: Record<string, { emoji: string; label: string }> = {
+    grateful: { emoji: '🤝', label: 'Grateful' },
+    inspired: { emoji: '✨', label: 'Inspired' },
+    understood: { emoji: '💛', label: 'Understood' },
+};
+
 const maskEmail = (email: string) => {
     const [local, domain] = email.split('@');
     if (!local || !domain) return '***';
@@ -366,7 +372,8 @@ export const createBundle = async (req: Request, res: Response) => {
                 ...acceptedRecipientIds.map((recipientId) => ({
                     userId: recipientId,
                     type: 'shared_memory',
-                    title: `${senderName} shared ${formatCountLabel(entryCount)} with you`,
+                    title: 'New shared memories',
+                    body: `${senderName} shared ${formatCountLabel(entryCount)} with you`,
                     data: {
                         bundleId: newBundle.id,
                         senderId: userId,
@@ -378,8 +385,8 @@ export const createBundle = async (req: Request, res: Response) => {
                 ...pendingRecipientIds.map((recipientId) => ({
                     userId: recipientId,
                     type: 'memory_share_request',
-                    title: `${senderName} wants to share ${formatCountLabel(entryCount)} with you`,
-                    body: 'Open Shared to accept or decline this request.',
+                    title: 'New share request',
+                    body: `${senderName} wants to share ${formatCountLabel(entryCount)} with you`,
                     data: {
                         bundleId: newBundle.id,
                         senderId: userId,
@@ -394,14 +401,31 @@ export const createBundle = async (req: Request, res: Response) => {
                 await tx.inAppNotification.createMany({ data: notifications });
             }
 
-            return newBundle;
+            return { newBundle, notifications };
         });
+
+        // Build notificationId lookup for push payloads
+        const inAppRows = bundle.notifications.length > 0
+            ? await prisma.inAppNotification.findMany({
+                where: {
+                    type: { in: ['shared_memory', 'memory_share_request'] },
+                    data: { path: ['bundleId'], equals: bundle.newBundle.id },
+                },
+                select: { id: true, userId: true },
+            })
+            : [];
+        const notifIdByUser = new Map(inAppRows.map((r) => [r.userId, r.id]));
 
         for (const recipientId of acceptedRecipientIds) {
             pushService.sendPushNotification(recipientId, {
                 title: 'New shared memories',
                 body: `${senderName} shared ${formatCountLabel(entryCount)} with you`,
-                data: { type: 'shared_memory', route: `/shared/view?id=${bundle.id}`, bundleId: bundle.id },
+                data: {
+                    type: 'shared_memory',
+                    route: `/shared/view?id=${bundle.newBundle.id}`,
+                    bundleId: bundle.newBundle.id,
+                    ...(notifIdByUser.get(recipientId) ? { notificationId: notifIdByUser.get(recipientId)! } : {}),
+                },
             }).catch((err) => console.error('Push notification failed:', err));
         }
 
@@ -409,16 +433,21 @@ export const createBundle = async (req: Request, res: Response) => {
             pushService.sendPushNotification(recipientId, {
                 title: 'New share request',
                 body: `${senderName} wants to share ${formatCountLabel(entryCount)} with you`,
-                data: { type: 'memory_share_request', route: '/timeline?view=shared', bundleId: bundle.id },
+                data: {
+                    type: 'memory_share_request',
+                    route: '/timeline?view=shared',
+                    bundleId: bundle.newBundle.id,
+                    ...(notifIdByUser.get(recipientId) ? { notificationId: notifIdByUser.get(recipientId)! } : {}),
+                },
             }).catch((err) => console.error('Push notification failed:', err));
         }
 
         return res.status(201).json({
             bundle: {
-                id: bundle.id,
+                id: bundle.newBundle.id,
                 itemCount: entries.length,
                 recipientCount: recipientIds.length,
-                createdAt: bundle.createdAt,
+                createdAt: bundle.newBundle.createdAt,
             },
             delivery: {
                 acceptedCount: acceptedRecipientIds.length,
@@ -434,6 +463,7 @@ export const createBundle = async (req: Request, res: Response) => {
 
 /**
  * List bundles shared with me, including pending first-share requests.
+ * Unread bundles appear first, followed by recently read bundles (last 30 days).
  * GET /api/v1/memory-share/received?page=1&limit=20
  */
 export const listReceived = async (req: Request, res: Response) => {
@@ -442,11 +472,11 @@ export const listReceived = async (req: Request, res: Response) => {
         const page = Math.max(1, Number(req.query.page) || 1);
         const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
 
-        // Ephemeral: only show bundles the recipient has NOT yet opened.
-        // Once readAt is set (viewed), the bundle disappears from the list.
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
         const where = {
             recipientId: userId,
-            readAt: null,
             status: {
                 in: [
                     MemoryShareAccessStatus.PENDING,
@@ -454,12 +484,18 @@ export const listReceived = async (req: Request, res: Response) => {
                 ],
             },
             bundle: { status: 'ACTIVE' as const },
+            // Show unread bundles + read bundles from the last 30 days
+            OR: [
+                { readAt: null },
+                { readAt: { gte: thirtyDaysAgo } },
+            ],
         };
 
         const [records, total, pendingCount] = await Promise.all([
             prisma.sharedMemoryRecipient.findMany({
                 where,
-                orderBy: { createdAt: 'desc' },
+                // Unread first (nulls first), then by date
+                orderBy: [{ readAt: 'desc' }, { createdAt: 'desc' }],
                 skip: (page - 1) * limit,
                 take: limit,
                 include: {
@@ -502,7 +538,7 @@ export const listReceived = async (req: Request, res: Response) => {
                 contentPreview: record.bundle.items[0].snapshotContent.slice(0, 120),
                 mood: record.bundle.items[0].snapshotMood,
             } : null,
-            readAt: record.readAt,
+            readAt: record.readAt?.toISOString() ?? null,
             reaction: record.status === MemoryShareAccessStatus.ACCEPTED ? record.reaction : null,
             sharedAt: record.createdAt,
             status: record.status,
@@ -511,6 +547,72 @@ export const listReceived = async (req: Request, res: Response) => {
         return res.json({ bundles, total, pendingCount, page, limit });
     } catch (error) {
         console.error('List received error:', error);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+/**
+ * List bundles I sent, with recipient reactions.
+ * GET /api/v1/memory-share/sent?page=1&limit=20
+ */
+export const listSent = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const page = Math.max(1, Number(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+
+        const [bundles, total] = await Promise.all([
+            prisma.sharedMemoryBundle.findMany({
+                where: { senderId: userId, status: 'ACTIVE' },
+                orderBy: { createdAt: 'desc' },
+                skip: (page - 1) * limit,
+                take: limit,
+                include: {
+                    items: {
+                        select: { snapshotTitle: true, snapshotMood: true, sortOrder: true },
+                        orderBy: { sortOrder: 'asc' },
+                        take: 1,
+                    },
+                    _count: { select: { items: true } },
+                    recipients: {
+                        select: {
+                            recipientId: true,
+                            status: true,
+                            readAt: true,
+                            reaction: true,
+                            recipient: { select: { id: true, name: true, avatarUrl: true } },
+                        },
+                    },
+                },
+            }),
+            prisma.sharedMemoryBundle.count({
+                where: { senderId: userId, status: 'ACTIVE' },
+            }),
+        ]);
+
+        return res.json({
+            bundles: bundles.map((bundle) => ({
+                bundleId: bundle.id,
+                itemCount: bundle._count.items,
+                firstItemTitle: bundle.items[0]?.snapshotTitle ?? null,
+                firstItemMood: bundle.items[0]?.snapshotMood ?? null,
+                message: bundle.message,
+                createdAt: bundle.createdAt,
+                recipients: bundle.recipients.map((r) => ({
+                    id: r.recipientId,
+                    name: r.recipient.name,
+                    avatarUrl: r.recipient.avatarUrl,
+                    status: r.status,
+                    readAt: r.readAt?.toISOString() ?? null,
+                    reaction: r.reaction,
+                })),
+            })),
+            total,
+            page,
+            limit,
+        });
+    } catch (error) {
+        console.error('List sent error:', error);
         return res.status(500).json({ message: 'Internal server error' });
     }
 };
@@ -644,13 +746,16 @@ export const respondToShareRequest = async (req: Request, res: Response) => {
                 data: { readAt: new Date() },
             });
 
-            await tx.inAppNotification.create({
+            const responseNotification = await tx.inAppNotification.create({
                 data: {
                     userId: senderId,
                     type: nextStatus === MemoryShareAccessStatus.ACCEPTED
                         ? 'memory_share_request_accepted'
                         : 'memory_share_request_declined',
-                    title: `${responder?.name || 'Someone'} ${nextStatus === MemoryShareAccessStatus.ACCEPTED ? 'accepted' : 'declined'} your memory share request`,
+                    title: nextStatus === MemoryShareAccessStatus.ACCEPTED
+                        ? 'Share request accepted'
+                        : 'Share request declined',
+                    body: `${responder?.name || 'Someone'} ${nextStatus === MemoryShareAccessStatus.ACCEPTED ? 'can now see your shared memories' : 'declined your share request'}`,
                     data: {
                         recipientId: userId,
                         recipientName: responder?.name,
@@ -664,6 +769,7 @@ export const respondToShareRequest = async (req: Request, res: Response) => {
             return {
                 pendingBundleCount,
                 responderName: responder?.name || 'Someone',
+                notificationId: responseNotification.id,
             };
         });
 
@@ -674,7 +780,11 @@ export const respondToShareRequest = async (req: Request, res: Response) => {
             body: nextStatus === MemoryShareAccessStatus.ACCEPTED
                 ? `${result.responderName} can now see your shared memories`
                 : `${result.responderName} declined your share request`,
-            data: { type: 'shared_memory_response', route: '/timeline?view=shared' },
+            data: {
+                type: 'shared_memory_response',
+                route: '/timeline?view=shared',
+                notificationId: result.notificationId,
+            },
         }).catch((err) => console.error('Push notification failed:', err));
 
         return res.json({
@@ -840,19 +950,58 @@ export const reactToBundle = async (req: Request, res: Response) => {
                 select: { name: true },
             });
 
-            await prisma.inAppNotification.create({
-                data: {
+            const reactorName = reactor?.name || 'Someone';
+            const display = REACTION_DISPLAY[reaction] ?? { emoji: '', label: reaction };
+            const friendlyBody = `${reactorName} felt ${display.label} ${display.emoji}`;
+
+            // Deduplicate: update existing reaction notification for this bundle+reactor
+            // instead of creating a new one each time they change their reaction.
+            const existingReactionNotif = await prisma.inAppNotification.findFirst({
+                where: {
                     userId: recipient.bundle.senderId,
                     type: 'share_reaction',
-                    title: `${reactor?.name || 'Someone'} reacted "${reaction}" to your shared memories`,
-                    data: { bundleId: id, reactorId: userId, reaction, route: `/shared/view?id=${id}` },
+                    data: {
+                        path: ['bundleId'],
+                        equals: id,
+                    },
                 },
+                orderBy: { createdAt: 'desc' },
             });
+
+            let notificationId: string;
+            if (existingReactionNotif) {
+                await prisma.inAppNotification.update({
+                    where: { id: existingReactionNotif.id },
+                    data: {
+                        title: 'Reaction to your shared memories',
+                        body: friendlyBody,
+                        readAt: null, // Re-surface as unread
+                        data: { bundleId: id, reactorId: userId, reaction, route: `/shared/view?id=${id}` },
+                    },
+                });
+                notificationId = existingReactionNotif.id;
+            } else {
+                const newNotif = await prisma.inAppNotification.create({
+                    data: {
+                        userId: recipient.bundle.senderId,
+                        type: 'share_reaction',
+                        title: 'Reaction to your shared memories',
+                        body: friendlyBody,
+                        data: { bundleId: id, reactorId: userId, reaction, route: `/shared/view?id=${id}` },
+                    },
+                });
+                notificationId = newNotif.id;
+            }
 
             pushService.sendPushNotification(recipient.bundle.senderId, {
                 title: 'Reaction to your shared memories',
-                body: `${reactor?.name || 'Someone'} felt "${reaction}"`,
-                data: { type: 'share_reaction', route: `/shared/view?id=${id}`, bundleId: id },
+                body: friendlyBody,
+                data: {
+                    type: 'share_reaction',
+                    route: `/shared/view?id=${id}`,
+                    bundleId: id,
+                    notificationId,
+                },
             }).catch((err) => console.error('Push notification failed:', err));
         }
 
@@ -908,14 +1057,97 @@ export const revokeBundle = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Bundle not found' });
         }
 
-        await prisma.sharedMemoryBundle.update({
-            where: { id },
-            data: { status: 'REVOKED' },
-        });
+        await prisma.$transaction([
+            prisma.sharedMemoryBundle.update({
+                where: { id },
+                data: { status: 'REVOKED' },
+            }),
+            // Clean up stale notifications that would deep-link to this revoked bundle
+            prisma.inAppNotification.deleteMany({
+                where: {
+                    type: { in: ['shared_memory', 'memory_share_request', 'share_reaction'] },
+                    readAt: null,
+                    data: {
+                        path: ['bundleId'],
+                        equals: id,
+                    },
+                },
+            }),
+        ]);
 
         return res.json({ message: 'Shared memory revoked' });
     } catch (error) {
         console.error('Revoke bundle error:', error);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+/**
+ * Get share stats for entries the current user has shared.
+ * Returns share count and reactions per entry ID.
+ * GET /api/v1/memory-share/entry-share-stats
+ */
+export const entryShareStats = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+
+        const items = await prisma.sharedMemoryItem.findMany({
+            where: {
+                bundle: {
+                    senderId: userId,
+                    status: 'ACTIVE',
+                },
+            },
+            select: {
+                entryId: true,
+                bundleId: true,
+                bundle: {
+                    select: {
+                        recipients: {
+                            where: { status: MemoryShareAccessStatus.ACCEPTED },
+                            select: {
+                                reaction: true,
+                                recipient: { select: { name: true } },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        // Aggregate per entry
+        const stats: Record<string, {
+            shareCount: number;
+            reactions: Array<{ name: string; reaction: string }>;
+        }> = {};
+
+        const seenBundles: Record<string, Set<string>> = {};
+
+        for (const item of items) {
+            if (!stats[item.entryId]) {
+                stats[item.entryId] = { shareCount: 0, reactions: [] };
+                seenBundles[item.entryId] = new Set();
+            }
+
+            // Count unique bundles per entry (one share action = one bundle)
+            if (!seenBundles[item.entryId].has(item.bundleId)) {
+                seenBundles[item.entryId].add(item.bundleId);
+                stats[item.entryId].shareCount++;
+            }
+
+            for (const r of item.bundle.recipients) {
+                if (r.reaction) {
+                    stats[item.entryId].reactions.push({
+                        name: r.recipient.name || 'Someone',
+                        reaction: r.reaction,
+                    });
+                }
+            }
+        }
+
+        return res.json({ stats });
+    } catch (error) {
+        console.error('Entry share stats error:', error);
         return res.status(500).json({ message: 'Internal server error' });
     }
 };

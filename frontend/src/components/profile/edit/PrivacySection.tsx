@@ -163,7 +163,7 @@ export function PrivacySection({
                                 </button>
                             </div>
                             <p className="mt-4 text-xs leading-6 text-ink-secondary">
-                                Photo attachments are coming soon.
+                                Cover images and media are stored privately and never shared.
                             </p>
                         </div>
                         <div className="workspace-soft-panel rounded-[1.4rem] p-5">

@@ -44,6 +44,11 @@ interface Entry {
     growthRatio?: number | null;
 }
 
+interface EntryShareStat {
+    shareCount: number;
+    reactions: Array<{ name: string; reaction: string }>;
+}
+
 interface TimelineViewProps {
     entries: Entry[];
     tagCounts?: Record<string, number>;
@@ -54,7 +59,14 @@ interface TimelineViewProps {
     }>;
     onShareEntry?: (entryId: string) => void;
     focusedEntryId?: string | null;
+    entryShareStats?: Record<string, EntryShareStat>;
 }
+
+const REACTION_EMOJI: Record<string, string> = {
+    grateful: '🤝',
+    inspired: '✨',
+    understood: '💛',
+};
 
 const formatDate = (value: string) =>
     new Date(value).toLocaleDateString(undefined, {
@@ -233,7 +245,7 @@ function EmotionBars({ emotions }: { emotions: TopEmotion[] }) {
     );
 }
 
-export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByMonthKey = {}, onShareEntry, focusedEntryId }: TimelineViewProps) {
+export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByMonthKey = {}, onShareEntry, focusedEntryId, entryShareStats = {} }: TimelineViewProps) {
     const pathname = usePathname();
     const groupedEntries = useMemo(() => buildTimelineMonthGroups(entries), [entries]);
     const currentReturnTo = buildCurrentReturnTo(pathname, typeof window !== 'undefined' ? window.location.search : '');
@@ -304,6 +316,7 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                 const entryTags = (entry.tags || []).filter(isCardTag);
                                 const displaySkills = (entry.skills || []).filter(isCardTag);
                                 const displayLessons = (entry.lessons || []).filter(isCardTag);
+                                const shareStat = entryShareStats[entry.id];
 
                                 return (
                                     <motion.article
@@ -477,12 +490,35 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                                         aria-label="Share this memory"
                                                                     >
                                                                         <FiShare2 size={11} aria-hidden="true" />
-                                                                        <span className="whitespace-nowrap">Share</span>
+                                                                        <span className="whitespace-nowrap">
+                                                                            {shareStat && shareStat.shareCount > 0
+                                                                                ? `Shared${shareStat.shareCount > 1 ? ` ${shareStat.shareCount}x` : ''}`
+                                                                                : 'Share'}
+                                                                        </span>
                                                                     </button>
                                                                 )}
                                                             </div>
                                                         );
                                                     })()}
+
+                                                    {/* Reactions received on this shared memory */}
+                                                    {shareStat && shareStat.reactions.length > 0 && (
+                                                        <div className="flex flex-wrap items-center gap-1 mt-1">
+                                                            {shareStat.reactions.slice(0, 3).map((r, i) => (
+                                                                <span
+                                                                    key={`${r.name}-${r.reaction}-${i}`}
+                                                                    className="inline-flex items-center gap-0.5 rounded-full bg-[rgba(107,143,113,0.08)] px-1.5 py-0.5 text-[0.55rem] font-medium text-[rgb(107,143,113)]"
+                                                                >
+                                                                    {REACTION_EMOJI[r.reaction] || ''} {r.name}
+                                                                </span>
+                                                            ))}
+                                                            {shareStat.reactions.length > 3 && (
+                                                                <span className="text-[0.55rem] text-[rgb(160,160,160)]">
+                                                                    +{shareStat.reactions.length - 3}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
 
                                                     {/* ⑥ + ⑦ Notive Noticed panel (tiered reveal + evolving CTA inside) */}
                                                     {(entry.notiveInsights?.length || entry.reflection || (entry.skills?.length ?? 0) > 0 || (entry.lessons?.length ?? 0) > 0 || entry.storySignal) && (

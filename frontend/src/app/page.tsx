@@ -3,14 +3,34 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import NotiveLogo from '@/components/ui/NotiveLogo';
+import NotiveLoadingScreen from '@/components/ui/NotiveLoadingScreen';
+import { useAuth } from '@/context/auth-context';
 import {
     QuietNotebookHero,
     RealStudentsRealMoves,
     quietNotebookPageStyle,
     quietNotebookPanelStyle,
 } from '@/components/marketing/NotiveShowcase';
+import { isNativeCapacitorPlatform } from '@/utils/sso';
+
+const HOME_LAUNCH_PHRASES = [
+    'Opening your notebook\u2026',
+    'Taking you back home\u2026',
+    'Picking up where you left off\u2026',
+];
 
 export default function HomePage() {
+    const { user, isLoading: authLoading } = useAuth();
+    const shouldHoldNativeHome = isNativeCapacitorPlatform() && (authLoading || !!user);
+
+    if (shouldHoldNativeHome) {
+        return (
+            <main className="page-paper-canvas min-h-screen" style={quietNotebookPageStyle}>
+                <NotiveLoadingScreen phrases={HOME_LAUNCH_PHRASES} phraseInterval={3000} />
+            </main>
+        );
+    }
+
     return (
         <main className="page-paper-canvas min-h-screen px-3 py-3 md:px-5 md:py-5" style={quietNotebookPageStyle}>
             <div className="mx-auto max-w-7xl">
