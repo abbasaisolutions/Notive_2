@@ -54,6 +54,7 @@ import {
 } from '@/utils/gentle-reflection';
 import { deriveWriterDNA } from '@/services/writer-dna.service';
 import { getInsightTier, Gate, WhatsComingCard, EmptyDashboard } from '@/components/dashboard/ColdStartGate';
+import FirstVisitWalkthrough from '@/components/dashboard/FirstVisitWalkthrough';
 // Dead-branch visualization components — dynamic to exclude from initial bundle
 const PrimeTimePrediction = dynamic(() => import('@/components/dashboard/PrimeTimePrediction'));
 const WritingRhythmCalendar = dynamic(() => import('@/components/dashboard/WritingRhythmCalendar'));
@@ -611,23 +612,33 @@ export default function DashboardPage() {
 
                 const entryCount = fetchedEntriesCount;
 
-                // Fetch dashboard insights (non-blocking, secondary call)
+                // Fetch the combined insights bundle — one backend call that runs
+                // dashboard-insights and journal-intelligence builders over the same
+                // Prisma rows (replaces the old split /dashboard-insights +
+                // /journal-intelligence pair).
                 if (entryCount >= 3) {
                     setDashboardInsightsLoaded(false);
+                    setJournalIntelLoaded(false);
                     scheduleDeferred(120, () => {
-                        apiFetch(`${API_URL}/analytics/dashboard-insights`, { signal: controller.signal })
+                        apiFetch(`${API_URL}/analytics/insights-bundle`, { signal: controller.signal })
                             .then(async (r) => {
                                 if (!mounted || !r.ok) return;
                                 const data = await r.json().catch(() => null);
-                                if (mounted && data) setDashboardInsights(data);
+                                if (!mounted || !data) return;
+                                if (data.dashboardInsights) setDashboardInsights(data.dashboardInsights);
+                                if (data.intelligence) setJournalIntel(data.intelligence);
                             })
                             .catch(() => { /* non-critical */ })
                             .finally(() => {
-                                if (mounted) setDashboardInsightsLoaded(true);
+                                if (mounted) {
+                                    setDashboardInsightsLoaded(true);
+                                    setJournalIntelLoaded(true);
+                                }
                             });
                     });
                 } else if (mounted) {
                     setDashboardInsightsLoaded(true);
+                    setJournalIntelLoaded(true);
                 }
 
                 // Fetch LLM hero insight only after enough notes exist and core context is on screen.
@@ -661,22 +672,9 @@ export default function DashboardPage() {
                     });
                 }
 
-                // Journal intelligence and deeper synthesis arrive after the core notebook is visible.
+                // Weekly digest + support map arrive after the core notebook is visible.
+                // Journal intelligence is already populated by the insights-bundle call above.
                 if (entryCount >= 3) {
-                    setJournalIntelLoaded(false);
-                    scheduleDeferred(220, () => {
-                        apiFetch(`${API_URL}/analytics/journal-intelligence`, { signal: controller.signal })
-                            .then(async (r) => {
-                                if (!mounted || !r.ok) return;
-                                const data = await r.json().catch(() => null);
-                                if (mounted && data?.intelligence) setJournalIntel(data.intelligence);
-                            })
-                            .catch(() => { /* non-critical */ })
-                            .finally(() => {
-                                if (mounted) setJournalIntelLoaded(true);
-                            });
-                    });
-
                     scheduleDeferred(360, () => {
                         apiFetch(`${API_URL}/ai/weekly-digest`, { signal: controller.signal })
                             .then(async (r) => {
@@ -1109,6 +1107,7 @@ export default function DashboardPage() {
                             </p>
                         </section>
                         <EmptyDashboard writeHref={newEntryHref} />
+                        <FirstVisitWalkthrough />
                     </>
                 )}
 

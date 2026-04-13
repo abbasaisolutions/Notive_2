@@ -3,7 +3,8 @@ import { createHash } from 'crypto';
 import prisma from '../config/prisma';
 import { buildProfileContextSummary } from '../services/profile-context.service';
 import { buildAnalyticsSummary, type AnalyticsPeriod } from '../services/analytics-summary.service';
-import { buildDashboardInsights, type InsightEntry, type InsightAnalysis } from '../services/dashboard-insights.service';
+import { buildDashboardInsights } from '../services/dashboard-insights.service';
+import { fetchInsightInputs } from '../services/insight-inputs.service';
 import { evaluatePromptLearningModels } from '../services/prompt-learning-evaluation.service';
 import { buildPromptExperimentReport } from '../services/prompt-experiment-report.service';
 import { applyPromptPolicyPerformanceFeedback } from '../services/prompt-learning-policy-feedback.service';
@@ -161,30 +162,39 @@ export const getStats = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
 
-        // Total entries
-        const totalEntries = await prisma.entry.count({
-            where: { userId, deletedAt: null },
-        });
-
-        // Total chapters
-        const totalChapters = await prisma.chapter.count({
-            where: { userId },
-        });
-
-        // Entries this week
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
-        const entriesThisWeek = await prisma.entry.count({
-            where: { userId, deletedAt: null, createdAt: { gte: weekAgo } },
-        });
+
+        // Run all independent queries in parallel
+        const [totalEntries, totalChapters, entriesThisWeek, entries, profile] = await Promise.all([
+            prisma.entry.count({ where: { userId, deletedAt: null } }),
+            prisma.chapter.count({ where: { userId } }),
+            prisma.entry.count({ where: { userId, deletedAt: null, createdAt: { gte: weekAgo } } }),
+            // Single fetch used for both streak and word count (cap at 730 days — 2 years is plenty)
+            prisma.entry.findMany({
+                where: { userId, deletedAt: null },
+                orderBy: { createdAt: 'desc' },
+                take: 730,
+                select: { createdAt: true, content: true },
+            }),
+            prisma.userProfile.findUnique({
+                where: { userId },
+                select: {
+                    primaryGoal: true,
+                    focusArea: true,
+                    experienceLevel: true,
+                    writingPreference: true,
+                    starterPrompt: true,
+                    importPreference: true,
+                    lifeGoals: true,
+                    outputGoals: true,
+                    onboardingCompletedAt: true,
+                    updatedAt: true,
+                },
+            }),
+        ]);
 
         // Calculate streak (consecutive days with entries)
-        const entries = await prisma.entry.findMany({
-            where: { userId, deletedAt: null },
-            orderBy: { createdAt: 'desc' },
-            select: { createdAt: true },
-        });
-
         let currentStreak = 0;
         let longestStreak = 0;
         let tempStreak = 0;
@@ -197,7 +207,6 @@ export const getStats = async (req: Request, res: Response) => {
             const entryDate = entry.createdAt.toDateString();
 
             if (!lastDate) {
-                // First entry - check if it's today or yesterday to start streak
                 if (entryDate === today || entryDate === yesterday) {
                     currentStreak = 1;
                     tempStreak = 1;
@@ -216,7 +225,6 @@ export const getStats = async (req: Request, res: Response) => {
                 longestStreak = Math.max(longestStreak, tempStreak);
                 tempStreak = 1;
             }
-            // If same day, continue counting
 
             lastDate = entryDate;
         }
@@ -230,30 +238,10 @@ export const getStats = async (req: Request, res: Response) => {
         }
 
         // Words written (approximate)
-        const allContent = await prisma.entry.findMany({
-            where: { userId, deletedAt: null },
-            select: { content: true },
-        });
-        const totalWords = allContent.reduce(
-            (acc: number, entry: (typeof allContent)[number]) => acc + entry.content.split(/\s+/).length,
+        const totalWords = entries.reduce(
+            (acc, entry) => acc + entry.content.split(/\s+/).length,
             0
         );
-
-        const profile = await prisma.userProfile.findUnique({
-            where: { userId },
-            select: {
-                primaryGoal: true,
-                focusArea: true,
-                experienceLevel: true,
-                writingPreference: true,
-                starterPrompt: true,
-                importPreference: true,
-                lifeGoals: true,
-                outputGoals: true,
-                onboardingCompletedAt: true,
-                updatedAt: true,
-            },
-        });
 
         return res.json({
             totalEntries,
@@ -277,8 +265,11 @@ export const getMoodTrends = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
 
+        const twelveMonthsAgo = new Date();
+        twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
+
         const entries = await prisma.entry.findMany({
-            where: { userId, deletedAt: null, mood: { not: null } },
+            where: { userId, deletedAt: null, mood: { not: null }, createdAt: { gte: twelveMonthsAgo } },
             select: { mood: true },
         });
 
@@ -537,65 +528,8 @@ export const getPromptExperimentReport = async (req: Request, res: Response) => 
 export const getDashboardInsights = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
-
-        const [entries, analyses] = await Promise.all([
-            prisma.entry.findMany({
-                where: { userId, deletedAt: null },
-                orderBy: { createdAt: 'desc' },
-                select: {
-                    id: true,
-                    title: true,
-                    content: true,
-                    mood: true,
-                    tags: true,
-                    skills: true,
-                    lessons: true,
-                    reflection: true,
-                    createdAt: true,
-                },
-            }),
-            prisma.entryAnalysis.findMany({
-                where: { userId },
-                select: {
-                    entryId: true,
-                    sentimentScore: true,
-                    sentimentLabel: true,
-                    emotions: true,
-                    entities: true,
-                    topics: true,
-                    keywords: true,
-                    suggestedMood: true,
-                    wordCount: true,
-                },
-            }),
-        ]);
-
-        const insightEntries: InsightEntry[] = entries.map((e) => ({
-            id: e.id,
-            title: e.title,
-            content: e.content,
-            mood: e.mood,
-            tags: e.tags || [],
-            skills: e.skills || [],
-            lessons: e.lessons || [],
-            reflection: (e as Record<string, unknown>).reflection as string | null ?? null,
-            createdAt: e.createdAt,
-        }));
-
-        const insightAnalyses: InsightAnalysis[] = analyses.map((a) => ({
-            entryId: a.entryId,
-            sentimentScore: a.sentimentScore,
-            sentimentLabel: a.sentimentLabel,
-            emotions: a.emotions as Record<string, number> | null,
-            entities: a.entities as string[] | null,
-            topics: a.topics || [],
-            keywords: a.keywords || [],
-            suggestedMood: a.suggestedMood,
-            wordCount: a.wordCount,
-        }));
-
-        const insights = buildDashboardInsights(insightEntries, insightAnalyses);
-
+        const { entries, analyses } = await fetchInsightInputs(userId!, { take: 150 });
+        const insights = buildDashboardInsights(entries, analyses);
         return res.json(insights);
     } catch (error) {
         console.error('Get dashboard insights error:', error);

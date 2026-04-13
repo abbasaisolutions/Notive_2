@@ -140,7 +140,7 @@ export class ReminderService {
                     data: {
                         category,
                         localDate,
-                        route: '/entry/new?source=reminder',
+                        link: '/entry/new?source=reminder',
                     },
                 },
                 select: { id: true },
@@ -154,7 +154,6 @@ export class ReminderService {
                 data: {
                     type: 'reminder',
                     link: reminderLink,
-                    route: reminderLink,
                     notificationId: notification.id,
                 },
             }).catch(() => null);

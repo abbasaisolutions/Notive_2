@@ -1,10 +1,7 @@
 import { Request, Response } from 'express';
-import prisma from '../config/prisma';
-import {
-    buildJournalIntelligence,
-    type IntelEntry,
-    type IntelAnalysis,
-} from '../services/journal-intelligence.service';
+import { buildJournalIntelligence } from '../services/journal-intelligence.service';
+import { buildDashboardInsights } from '../services/dashboard-insights.service';
+import { fetchInsightInputs } from '../services/insight-inputs.service';
 
 /**
  * GET /api/v1/analytics/journal-intelligence
@@ -18,18 +15,7 @@ export const getJournalIntelligence = async (req: Request, res: Response) => {
         const since = new Date();
         since.setDate(since.getDate() - days);
 
-        const entries = await prisma.entry.findMany({
-            where: { userId, createdAt: { gte: since } },
-            select: {
-                id: true,
-                content: true,
-                mood: true,
-                tags: true,
-                lifeArea: true,
-                createdAt: true,
-            },
-            orderBy: { createdAt: 'desc' },
-        });
+        const { entries, analyses } = await fetchInsightInputs(userId!, { since });
 
         if (entries.length < 3) {
             return res.json({
@@ -40,47 +26,44 @@ export const getJournalIntelligence = async (req: Request, res: Response) => {
             });
         }
 
-        const entryIds = entries.map((e) => e.id);
-
-        const analyses = await prisma.entryAnalysis.findMany({
-            where: { entryId: { in: entryIds } },
-            select: {
-                entryId: true,
-                sentimentScore: true,
-                emotions: true,
-                entities: true,
-                topics: true,
-                keywords: true,
-                suggestedMood: true,
-                wordCount: true,
-            },
-        });
-
-        const intelEntries: IntelEntry[] = entries.map((e) => ({
-            id: e.id,
-            content: e.content,
-            mood: e.mood,
-            tags: e.tags,
-            lifeArea: e.lifeArea,
-            createdAt: e.createdAt,
-        }));
-
-        const intelAnalyses: IntelAnalysis[] = analyses.map((a) => ({
-            entryId: a.entryId,
-            sentimentScore: a.sentimentScore,
-            emotions: a.emotions as Record<string, number> | null,
-            entities: a.entities as string[] | null,
-            topics: Array.isArray(a.topics) ? a.topics as string[] : [],
-            keywords: Array.isArray(a.keywords) ? a.keywords as string[] : [],
-            suggestedMood: a.suggestedMood,
-            wordCount: a.wordCount,
-        }));
-
-        const intelligence = buildJournalIntelligence(intelEntries, intelAnalyses);
+        const intelligence = buildJournalIntelligence(entries, analyses);
 
         return res.json({ intelligence });
     } catch (error) {
         console.error('Journal intelligence error:', error);
         return res.status(500).json({ message: 'Failed to compute journal intelligence' });
+    }
+};
+
+/**
+ * GET /api/v1/analytics/insights-bundle
+ * One-shot fetcher: loads entry + analysis rows once and runs both the
+ * dashboard-insights and journal-intelligence builders over them.
+ *
+ * Replaces two sequential frontend calls to /dashboard-insights and
+ * /journal-intelligence that were re-running the same Postgres query.
+ */
+export const getInsightsBundle = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        // take: 150 matches the old /dashboard-insights cap; journal-intelligence
+        // previously used a 90-day window, but limiting by count + ordering desc
+        // keeps the same recency bias with a single query.
+        const { entries, analyses } = await fetchInsightInputs(userId!, { take: 150 });
+
+        const dashboardInsights = buildDashboardInsights(entries, analyses);
+
+        const intelligence = entries.length >= 3
+            ? buildJournalIntelligence(entries, analyses)
+            : null;
+
+        return res.json({
+            dashboardInsights,
+            intelligence,
+            entryCount: entries.length,
+        });
+    } catch (error) {
+        console.error('Insights bundle error:', error);
+        return res.status(500).json({ message: 'Failed to compute insights bundle' });
     }
 };

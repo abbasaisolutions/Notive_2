@@ -828,10 +828,10 @@ function resolveSharedActivityHref(notification: SharedActivityNotification): st
         return `/entry/new?source=reminder&notificationId=${notification.id}`;
     }
 
-    const route = typeof notification.data?.route === 'string'
-        ? notification.data.route
-        : typeof notification.data?.link === 'string'
-            ? notification.data.link
+    const route = typeof notification.data?.link === 'string'
+        ? notification.data.link
+        : typeof notification.data?.route === 'string'
+            ? notification.data.route
             : null;
 
     if (notification.type === 'share_reaction' && typeof notification.data?.bundleId === 'string') {

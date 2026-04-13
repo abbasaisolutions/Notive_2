@@ -12,6 +12,8 @@
  */
 
 import { MOOD_SCORES, MOOD_ALIAS_MAP } from '../utils/mood';
+import { EMOTION_LEXICON } from '../utils/emotion-lexicon';
+import type { InsightInputEntry, InsightInputAnalysis } from '../types/insight-inputs';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -91,31 +93,10 @@ export type DashboardInsightsData = {
     vocabularyExpansion: VocabularyExpansion | null;
 };
 
-// ── Input types ──────────────────────────────────────────────
+// ── Input types (re-exports of the shared shapes) ────────────
 
-export type InsightEntry = {
-    id: string;
-    title: string | null;
-    content: string;
-    mood: string | null;
-    tags: string[];
-    skills: string[];
-    lessons: string[];
-    reflection: string | null;
-    createdAt: Date;
-};
-
-export type InsightAnalysis = {
-    entryId: string;
-    sentimentScore: number | null;
-    sentimentLabel: string | null;
-    emotions: Record<string, number> | null;
-    entities: string[] | null;
-    topics: string[];
-    keywords: string[];
-    suggestedMood: string | null;
-    wordCount: number | null;
-};
+export type InsightEntry = InsightInputEntry;
+export type InsightAnalysis = InsightInputAnalysis;
 
 // ── Constants ────────────────────────────────────────────────
 
@@ -137,24 +118,6 @@ const DEPTH_LEVELS: Array<{ label: string; minScore: number }> = [
     { label: 'Pattern-finding', minScore: 60 },
     { label: 'Integrating', minScore: 80 },
 ];
-
-// Emotion words dictionary for vocabulary tracking
-const EMOTION_WORDS = new Set([
-    'happy', 'sad', 'anxious', 'calm', 'frustrated', 'grateful', 'motivated', 'tired',
-    'thoughtful', 'excited', 'hopeful', 'proud', 'lonely', 'overwhelmed', 'peaceful',
-    'nervous', 'confident', 'confused', 'angry', 'joyful', 'melancholy', 'restless',
-    'content', 'bittersweet', 'nostalgic', 'inspired', 'vulnerable', 'empowered',
-    'conflicted', 'grounded', 'scattered', 'serene', 'agitated', 'tender', 'resilient',
-    'helpless', 'determined', 'apathetic', 'euphoric', 'grief', 'relief', 'shame',
-    'guilt', 'envy', 'jealous', 'compassion', 'empathy', 'awe', 'wonder', 'dread',
-    'bliss', 'resentment', 'irritated', 'yearning', 'longing', 'wistful', 'giddy',
-    'somber', 'elated', 'disillusioned', 'fulfilled', 'hollow', 'numb', 'alive',
-    'fragile', 'brave', 'defeated', 'triumphant', 'ambivalent', 'tormented',
-    'liberated', 'suffocated', 'exhilarated', 'devastated', 'ecstatic', 'desolate',
-    'gratitude', 'anguish', 'serenity', 'fury', 'adoration', 'contempt', 'curiosity',
-    'disgust', 'fear', 'surprise', 'trust', 'anticipation', 'acceptance', 'worry',
-    'stress', 'burnout', 'exhausted', 'energized', 'recharged', 'drained',
-]);
 
 // ── Core computation functions ───────────────────────────────
 
@@ -281,12 +244,12 @@ export function buildReflectionDepthScore(entries: InsightEntry[]): ReflectionDe
     let score = 0;
 
     // Signal: entries with lessons (0-25 points)
-    const withLessons = recent.filter((e) => e.lessons.length > 0).length;
+    const withLessons = recent.filter((e) => (e.lessons?.length ?? 0) > 0).length;
     const lessonRatio = withLessons / recent.length;
     score += lessonRatio * 25;
 
     // Signal: entries with skills (0-20 points)
-    const withSkills = recent.filter((e) => e.skills.length > 0).length;
+    const withSkills = recent.filter((e) => (e.skills?.length ?? 0) > 0).length;
     const skillRatio = withSkills / recent.length;
     score += skillRatio * 20;
 
@@ -438,7 +401,7 @@ export function buildContradictions(
 
             results.push({
                 entryId: entry.id,
-                entryTitle: entry.title,
+                entryTitle: entry.title ?? null,
                 entryDate: entry.createdAt.toISOString(),
                 statedMood: statedLabel,
                 detectedSentiment: detectedLabel,
@@ -516,7 +479,7 @@ export function buildVocabularyExpansion(entries: InsightEntry[]): VocabularyExp
         for (const entry of items) {
             const tokens = entry.content.toLowerCase().split(/\W+/).filter(Boolean);
             for (const token of tokens) {
-                if (EMOTION_WORDS.has(token)) words.add(token);
+                if (EMOTION_LEXICON.has(token)) words.add(token);
             }
             // Also count mood selections
             if (entry.mood) words.add(entry.mood.toLowerCase());

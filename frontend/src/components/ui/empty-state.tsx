@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import type { NotebookDoodleName, NotebookAccentName } from '@/components/dashboard/NotebookDoodles';
 
@@ -8,12 +9,18 @@ interface EmptyStateProps {
     doodle?: NotebookDoodleName;
     doodleAccent?: NotebookAccentName;
     title: string;
+    /** Body text (also accepted as `description` for backwards compatibility) */
     subtitle?: string;
+    description?: string;
+    /** Structured action object */
     action?: {
         label: string;
         href?: string;
         onClick?: () => void;
     };
+    /** Shorthand props for a simple link action (backwards compatible with surface.EmptyState) */
+    actionLabel?: string;
+    actionHref?: string;
     className?: string;
 }
 
@@ -23,14 +30,20 @@ export function EmptyState({
     doodleAccent = 'sage',
     title,
     subtitle,
+    description,
     action,
+    actionLabel,
+    actionHref,
     className = '',
 }: EmptyStateProps) {
+    const body = subtitle ?? description;
+    const resolvedAction = action ?? (actionLabel && actionHref ? { label: actionLabel, href: actionHref } : undefined);
+
     return (
         <div
             className={`
                 flex flex-col items-center justify-center
-                py-16 px-4 gap-4
+                py-16 px-4 gap-4 text-center
                 ${className}
             `}
         >
@@ -54,26 +67,27 @@ export function EmptyState({
                 </svg>
             )}
 
-            <div className="text-center">
-                <h3 className="text-lg font-semibold text-[rgb(var(--text-primary))] mb-1">{title}</h3>
-                {subtitle && <p className="text-ink-secondary text-sm max-w-sm">{subtitle}</p>}
+            <div>
+                <h3 className="text-lg font-semibold text-strong mb-1">{title}</h3>
+                {body && <p className="text-ink-secondary text-sm max-w-sm">{body}</p>}
             </div>
 
-            {action && (
-                <div className="mt-4">
-                    {action.href ? (
-                        <a
-                            href={action.href}
-                            className="workspace-button-primary inline-flex rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors"
+            {resolvedAction && (
+                <div className="mt-2">
+                    {resolvedAction.href ? (
+                        <Link
+                            href={resolvedAction.href}
+                            className="inline-flex items-center rounded-xl border border-primary/30 bg-primary/12 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary hover:bg-primary/20 transition-colors"
                         >
-                            {action.label}
-                        </a>
+                            {resolvedAction.label}
+                        </Link>
                     ) : (
                         <button
-                            onClick={action.onClick}
+                            type="button"
+                            onClick={resolvedAction.onClick}
                             className="workspace-button-outline rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors"
                         >
-                            {action.label}
+                            {resolvedAction.label}
                         </button>
                     )}
                 </div>

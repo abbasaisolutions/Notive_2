@@ -26,10 +26,9 @@ import {
 import { buildDeviceContextForInsights } from './device-signal.service';
 import {
     buildJournalIntelligence,
-    type IntelEntry,
-    type IntelAnalysis,
     type JournalIntelligence,
 } from './journal-intelligence.service';
+import { fetchInsightInputs } from './insight-inputs.service';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -199,8 +198,8 @@ function buildGrowthSignalPrompt(ctx: InsightContext): string | null {
     if (recent.length > 0 && older.length > 0) {
         const recentAvgLen = recent.reduce((s, e) => s + e.content.length, 0) / recent.length;
         const olderAvgLen = older.reduce((s, e) => s + e.content.length, 0) / older.length;
-        const recentLessons = recent.filter((e) => e.lessons.length > 0).length;
-        const olderLessons = older.filter((e) => e.lessons.length > 0).length;
+        const recentLessons = recent.filter((e) => (e.lessons?.length ?? 0) > 0).length;
+        const olderLessons = older.filter((e) => (e.lessons?.length ?? 0) > 0).length;
         signals.push(`Writing evolution: Recent entries avg ${Math.round(recentAvgLen)} chars vs earlier ${Math.round(olderAvgLen)} chars. Recent entries with lessons: ${recentLessons}/${recent.length} vs earlier: ${olderLessons}/${older.length}`);
     }
 
@@ -294,7 +293,7 @@ function buildBlindSpotPrompt(ctx: InsightContext): string | null {
     // Check for topic imbalances
     const hasMoodEntries = entries.filter((e) => e.mood).length;
     const hasReflection = entries.filter((e) => e.reflection && e.reflection.trim().length > 20).length;
-    const hasLessons = entries.filter((e) => e.lessons.length > 0).length;
+    const hasLessons = entries.filter((e) => (e.lessons?.length ?? 0) > 0).length;
 
     // Add journal intelligence for deeper blind spot detection
     let extraProfile = '';
@@ -591,53 +590,12 @@ export async function getHeroInsight(userId: string): Promise<GeneratedInsight |
  * Generate a fresh insight, score it, and persist to DashboardInsight.
  */
 async function generateAndCacheInsight(userId: string): Promise<GeneratedInsight | null> {
-    // Fetch user data
-    const [entries, analyses] = await Promise.all([
-        prisma.entry.findMany({
-            where: { userId, deletedAt: null },
-            orderBy: { createdAt: 'desc' },
-            take: 100,
-            select: {
-                id: true, title: true, content: true, mood: true,
-                tags: true, skills: true, lessons: true, reflection: true,
-                createdAt: true,
-            },
-        }),
-        prisma.entryAnalysis.findMany({
-            where: { userId },
-            select: {
-                entryId: true, sentimentScore: true, sentimentLabel: true,
-                emotions: true, entities: true, topics: true, keywords: true,
-                suggestedMood: true, wordCount: true,
-            },
-        }),
-    ]);
+    const { entries: insightEntries, analyses: insightAnalyses } = await fetchInsightInputs(
+        userId,
+        { take: 100 }
+    );
 
-    if (entries.length < MIN_ENTRIES_FOR_INSIGHTS) return null;
-
-    const insightEntries: InsightEntry[] = entries.map((e) => ({
-        id: e.id,
-        title: e.title,
-        content: e.content,
-        mood: e.mood,
-        tags: e.tags || [],
-        skills: e.skills || [],
-        lessons: e.lessons || [],
-        reflection: (e as Record<string, unknown>).reflection as string | null ?? null,
-        createdAt: e.createdAt,
-    }));
-
-    const insightAnalyses: InsightAnalysis[] = analyses.map((a) => ({
-        entryId: a.entryId,
-        sentimentScore: a.sentimentScore,
-        sentimentLabel: a.sentimentLabel,
-        emotions: a.emotions as Record<string, number> | null,
-        entities: a.entities as string[] | null,
-        topics: a.topics || [],
-        keywords: a.keywords || [],
-        suggestedMood: a.suggestedMood,
-        wordCount: a.wordCount,
-    }));
+    if (insightEntries.length < MIN_ENTRIES_FOR_INSIGHTS) return null;
 
     const insightsData = buildDashboardInsights(insightEntries, insightAnalyses);
 
@@ -646,25 +604,7 @@ async function generateAndCacheInsight(userId: string): Promise<GeneratedInsight
         buildDeviceContextForInsights(userId, 14).catch(() => null),
         (() => {
             try {
-                const intelEntries: IntelEntry[] = entries.map((e) => ({
-                    id: e.id,
-                    content: e.content,
-                    mood: e.mood,
-                    tags: e.tags || [],
-                    lifeArea: null,
-                    createdAt: e.createdAt,
-                }));
-                const intelAnalyses: IntelAnalysis[] = analyses.map((a) => ({
-                    entryId: a.entryId,
-                    sentimentScore: a.sentimentScore,
-                    emotions: a.emotions as Record<string, number> | null,
-                    entities: a.entities as string[] | null,
-                    topics: Array.isArray(a.topics) ? a.topics as string[] : [],
-                    keywords: Array.isArray(a.keywords) ? a.keywords as string[] : [],
-                    suggestedMood: a.suggestedMood,
-                    wordCount: a.wordCount,
-                }));
-                return buildJournalIntelligence(intelEntries, intelAnalyses);
+                return buildJournalIntelligence(insightEntries, insightAnalyses);
             } catch {
                 return null;
             }

@@ -15,6 +15,12 @@ import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import { Surface } from '@/components/ui/surface';
 import UserAvatar from '@/components/ui/UserAvatar';
 import type { GentleReflectionDraft } from '@/services/gentle-reflection.service';
+import {
+    getLifeBalanceRingFill,
+    getLifeBalanceScoreLabel,
+    getVisibleLifeBalanceAreas,
+    LIFE_BALANCE_RING_CIRCUMFERENCE,
+} from '@/components/dashboard/life-balance';
 
 type DashboardAction = {
     label: string;
@@ -209,9 +215,9 @@ type DashboardNotebookViewProps = {
         } | null;
         resilience: { narrative: string } | null;
         reflectionDepth: { level?: number; levelLabel: string; score?: number; progressToNext?: number } | null;
-        correlations: Array<{ topic: string; direction: 'lifter' | 'drain' }>;
+        correlations: Array<{ topic: string; direction: 'lifter' | 'drain'; delta: number; occurrences: number }>;
         contradictions: Array<{ description: string }>;
-        triggerMap: Array<{ entity: string; direction: 'lifter' | 'drain' }>;
+        triggerMap: Array<{ entity: string; direction: 'lifter' | 'drain'; avgMoodDelta: number; occurrences: number }>;
     } | null;
     journalIntel: DashboardJournalIntel | null;
     weeklyDigest: DashboardWeeklyDigest | null;
@@ -432,6 +438,118 @@ const getMoodMicroShift = (entries: DashboardNotebookViewProps['entries']): {
     return { type: 'steady', mood: latest.mood, streak };
 };
 
+type HeatmapCell = { key: string; date: Date; count: number; level: 0 | 1 | 2 | 3 | 4 };
+
+const HEATMAP_WEEKS = 26; // ~6 months so it fits comfortably on mobile
+
+const buildActivityHeatmap = (entries: DashboardNotebookViewProps['entries']): HeatmapCell[][] => {
+    const counts = new Map<string, number>();
+    for (const entry of entries) {
+        const d = new Date(entry.createdAt);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    // Anchor: end of current week (Saturday), walk back HEATMAP_WEEKS weeks
+    const end = new Date();
+    end.setHours(0, 0, 0, 0);
+    end.setDate(end.getDate() + (6 - end.getDay()));
+    const start = new Date(end);
+    start.setDate(start.getDate() - (HEATMAP_WEEKS * 7 - 1));
+
+    const weeks: HeatmapCell[][] = [];
+    for (let w = 0; w < HEATMAP_WEEKS; w++) {
+        const week: HeatmapCell[] = [];
+        for (let d = 0; d < 7; d++) {
+            const date = new Date(start);
+            date.setDate(start.getDate() + w * 7 + d);
+            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            const count = counts.get(key) ?? 0;
+            const level: HeatmapCell['level'] = count === 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : count === 3 ? 3 : 4;
+            week.push({ key, date, count, level });
+        }
+        weeks.push(week);
+    }
+    return weeks;
+};
+
+type PeriodDelta = {
+    hasSignal: boolean;
+    currentEntries: number;
+    previousEntries: number;
+    entriesDelta: number;
+    currentWritingDays: number;
+    previousWritingDays: number;
+    writingDaysDelta: number;
+    currentAvgMood: number | null;
+    previousAvgMood: number | null;
+    moodDelta: number | null;
+    currentTopMood: string | null;
+    previousTopMood: string | null;
+    periodLabel: string;
+};
+
+const MOOD_SCORE_LOOKUP: Record<string, number> = {
+    happy: 8, grateful: 8, motivated: 8, calm: 7, thoughtful: 6, tired: 4,
+    frustrated: 3, anxious: 3, sad: 2,
+};
+
+const buildPeriodDelta = (entries: DashboardNotebookViewProps['entries']): PeriodDelta => {
+    const now = new Date();
+    const currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const previousEnd = currentStart;
+
+    const current = entries.filter((e) => new Date(e.createdAt) >= currentStart);
+    const previous = entries.filter((e) => {
+        const d = new Date(e.createdAt);
+        return d >= previousStart && d < previousEnd;
+    });
+
+    const moodAvg = (list: typeof entries): number | null => {
+        const scores = list
+            .map((e) => (e.mood ? MOOD_SCORE_LOOKUP[e.mood.toLowerCase()] ?? null : null))
+            .filter((s): s is number => s !== null);
+        if (scores.length === 0) return null;
+        return scores.reduce((sum, s) => sum + s, 0) / scores.length;
+    };
+
+    const topMood = (list: typeof entries): string | null => {
+        const counts = new Map<string, number>();
+        for (const e of list) {
+            if (!e.mood) continue;
+            const key = e.mood.toLowerCase();
+            counts.set(key, (counts.get(key) ?? 0) + 1);
+        }
+        const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+        return sorted[0]?.[0] ?? null;
+    };
+
+    const daysSet = (list: typeof entries) =>
+        new Set(list.map((e) => new Date(e.createdAt).toISOString().slice(0, 10))).size;
+
+    const currentAvgMood = moodAvg(current);
+    const previousAvgMood = moodAvg(previous);
+
+    return {
+        hasSignal: previous.length >= 3 && current.length >= 1,
+        currentEntries: current.length,
+        previousEntries: previous.length,
+        entriesDelta: current.length - previous.length,
+        currentWritingDays: daysSet(current),
+        previousWritingDays: daysSet(previous),
+        writingDaysDelta: daysSet(current) - daysSet(previous),
+        currentAvgMood,
+        previousAvgMood,
+        moodDelta: currentAvgMood !== null && previousAvgMood !== null
+            ? currentAvgMood - previousAvgMood
+            : null,
+        currentTopMood: topMood(current),
+        previousTopMood: topMood(previous),
+        periodLabel: previousStart.toLocaleDateString('en-US', { month: 'long' }),
+    };
+};
+
 const getWritingEnergy = (entries: DashboardNotebookViewProps['entries']): {
     thisWeek: number; lastWeek: number; trend: 'up' | 'down' | 'same';
 } | null => {
@@ -503,6 +621,7 @@ export default function DashboardNotebookView({
     profileTags = [],
 }: DashboardNotebookViewProps) {
     const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
+    const [heatmapTap, setHeatmapTap] = useState<HeatmapCell | null>(null);
     const weekWords = useMemo(() => countWordsThisWeek(entries), [entries]);
     const notesThisWeek = useMemo(() => countEntriesThisWeek(entries), [entries]);
     const writingDays = useMemo(() => countWritingDays(entries), [entries]);
@@ -514,6 +633,12 @@ export default function DashboardNotebookView({
     const zodiacSign = useMemo(() => (userBirthDate ? getZodiacSign(userBirthDate) : null), [userBirthDate]);
     const moodShift = useMemo(() => getMoodMicroShift(entries), [entries]);
     const writingEnergy = useMemo(() => getWritingEnergy(entries), [entries]);
+    const activityHeatmap = useMemo(() => buildActivityHeatmap(entries), [entries]);
+    const heatmapTotal = useMemo(
+        () => activityHeatmap.reduce((sum, week) => sum + week.reduce((s, cell) => s + cell.count, 0), 0),
+        [activityHeatmap]
+    );
+    const periodDelta = useMemo(() => buildPeriodDelta(entries), [entries]);
     const latestEntry = entries[0] || null;
     const daysSinceLastEntry = useMemo(() => {
         if (!latestEntry) return null;
@@ -669,10 +794,17 @@ export default function DashboardNotebookView({
             leadSignal: storyOverview?.topSkills?.[0] || storyOverview?.topLessons?.[0] || null,
         };
     }, [entries.length, storyOverview]);
-    const lifeBalanceLine = journalIntel?.lifeBalance
+    const visibleLifeBalanceAreas = useMemo(
+        () => getVisibleLifeBalanceAreas(journalIntel?.lifeBalance.areas),
+        [journalIntel?.lifeBalance.areas]
+    );
+    const hasLifeBalanceSignal = visibleLifeBalanceAreas.length > 0;
+    const lifeBalanceScoreLabel = getLifeBalanceScoreLabel(journalIntel?.lifeBalance.balanceScore ?? 0);
+    const lifeBalanceRingFill = getLifeBalanceRingFill(journalIntel?.lifeBalance.balanceScore ?? 0);
+    const lifeBalanceLine = hasLifeBalanceSignal && journalIntel?.lifeBalance
         ? journalIntel.lifeBalance.neglectedArea
-            ? `${formatNotebookLabel(journalIntel.lifeBalance.dominantArea)} has taken most of the page lately. ${formatNotebookLabel(journalIntel.lifeBalance.neglectedArea)} has been quieter.`
-            : `${formatNotebookLabel(journalIntel.lifeBalance.dominantArea)} is carrying most of the notebook lately.`
+            ? `${formatNotebookLabel(journalIntel.lifeBalance.dominantArea)} has been most present lately. ${formatNotebookLabel(journalIntel.lifeBalance.neglectedArea)} has been quieter.`
+            : `${formatNotebookLabel(journalIntel.lifeBalance.dominantArea)} has been most present in the notebook lately.`
         : null;
     const peopleLine = journalIntel?.peopleMap.people?.[0]
         ? `${journalIntel.peopleMap.people[0].name} keeps showing up in ${journalIntel.peopleMap.people[0].count} ${journalIntel.peopleMap.people[0].count === 1 ? 'note' : 'notes'}.`
@@ -696,12 +828,15 @@ export default function DashboardNotebookView({
         vocabularyLine,
     ].filter((item): item is string => Boolean(item)).slice(0, 3);
     const emotionalThreadPoints = recentEmotionEntries.length >= 2
-        ? recentEmotionEntries.map((entry, index) => ({
-            x: 22 + (index * 356) / Math.max(1, recentEmotionEntries.length - 1),
-            y: MOOD_THREAD_Y[entry.mood ?? ''] ?? 56,
-            label: new Date(entry.createdAt).toLocaleDateString('en-US', { weekday: 'short' }),
-            mood: entry.mood ?? null,
-        }))
+        ? recentEmotionEntries.map((entry, index) => {
+            const moodKey = entry.mood ? entry.mood.toLowerCase() : '';
+            return {
+                x: 22 + (index * 356) / Math.max(1, recentEmotionEntries.length - 1),
+                y: MOOD_THREAD_Y[moodKey] ?? 56,
+                label: new Date(entry.createdAt).toLocaleDateString('en-US', { weekday: 'short' }),
+                mood: moodKey || null,
+            };
+        })
         : FALLBACK_THREAD_POINTS.map((value, index) => ({
             x: 22 + (index * 356) / Math.max(1, FALLBACK_THREAD_POINTS.length - 1),
             y: value,
@@ -1085,12 +1220,12 @@ export default function DashboardNotebookView({
                         {moodShift ? (
                             moodShift.type === 'shift' ? (
                                 <p className="mt-0.5 text-[0.73rem] leading-5 text-[rgb(var(--paper-ink))]">
-                                    {MOOD_EMOJI[moodShift.from] ?? '·'} → {MOOD_EMOJI[moodShift.to] ?? '·'}
-                                    <span className="block text-[0.65rem] text-[rgb(107,107,107)]">{moodShift.from} → {moodShift.to}</span>
+                                    {MOOD_EMOJI[moodShift.from.toLowerCase()] ?? '·'} → {MOOD_EMOJI[moodShift.to.toLowerCase()] ?? '·'}
+                                    <span className="block text-[0.65rem] text-[rgb(107,107,107)]">{toTitleCase(moodShift.from)} → {toTitleCase(moodShift.to)}</span>
                                 </p>
                             ) : (
                                 <p className="mt-0.5 text-[0.73rem] leading-5 text-[rgb(var(--paper-ink))]">
-                                    {MOOD_EMOJI[moodShift.mood] ?? '·'} {moodShift.mood}
+                                    {MOOD_EMOJI[moodShift.mood.toLowerCase()] ?? '·'} {toTitleCase(moodShift.mood)}
                                     <span className="block text-[0.65rem] text-[rgb(107,107,107)]">{moodShift.streak}× in a row</span>
                                 </p>
                             )
@@ -1163,23 +1298,130 @@ export default function DashboardNotebookView({
             </div>
         </>
     ) : activeTab === 'growth' ? (
-        <div className="space-y-2.5">
+        <div className="space-y-2.5" data-snapshot-root>
+            <style>{`
+                @media print {
+                    body * { visibility: hidden !important; }
+                    [data-snapshot-root], [data-snapshot-root] * { visibility: visible !important; }
+                    [data-snapshot-root] { position: absolute !important; left: 0; top: 0; width: 100%; padding: 24px; }
+                    [data-print-hide] { display: none !important; }
+                }
+            `}</style>
             {/* Identity: traits + archetype */}
-            <div>
-                <p className="section-label">Growth</p>
-                {writerDNA.traits.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                        {writerDNA.traits.map((trait) => (
-                            <span key={trait.label} className="notebook-chip rounded-full px-2 py-0.5 text-[0.62rem] font-medium">
-                                {toTitleCase(String(trait.label).replace(/[_-]+/g, ' '))}
-                            </span>
-                        ))}
-                    </div>
-                )}
-                <p className="mt-1 text-[0.72rem] italic font-serif text-[rgb(140,140,140)]">
-                    &ldquo;{writerDNA.archetype.oneLiner}&rdquo;
-                </p>
+            <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                    <p className="section-label">Growth</p>
+                    {writerDNA.traits.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                            {writerDNA.traits.map((trait) => (
+                                <span key={trait.label} className="notebook-chip rounded-full px-2 py-0.5 text-[0.62rem] font-medium">
+                                    {toTitleCase(String(trait.label).replace(/[_-]+/g, ' '))}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                    <p className="mt-1 text-[0.72rem] italic font-serif text-[rgb(140,140,140)]">
+                        &ldquo;{writerDNA.archetype.oneLiner}&rdquo;
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    data-print-hide
+                    onClick={() => { if (typeof window !== 'undefined') window.print(); }}
+                    className="shrink-0 rounded-full border border-[rgba(92,92,92,0.15)] bg-[rgba(255,255,255,0.6)] px-2.5 py-1 text-[0.6rem] font-medium text-[rgb(107,107,107)] transition-colors hover:bg-[rgba(138,154,111,0.1)] hover:text-[rgb(118,134,91)]"
+                    aria-label="Save Growth snapshot as PDF"
+                >
+                    ⤓ Save snapshot
+                </button>
             </div>
+
+            {/* Period comparison — this month vs last month */}
+            {periodDelta.hasSignal ? (
+                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                    <div className="flex items-baseline justify-between">
+                        <p className="section-label">This month vs {periodDelta.periodLabel}</p>
+                        {periodDelta.currentTopMood && (
+                            <span className="text-[0.55rem] text-[rgb(140,140,140)]">
+                                {MOOD_EMOJI[periodDelta.currentTopMood] ?? '·'} {toTitleCase(periodDelta.currentTopMood)}
+                            </span>
+                        )}
+                    </div>
+                    <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+                        {(() => {
+                            const formatDelta = (delta: number, previous: number) => {
+                                if (delta === 0) return { text: 'steady', tone: 'neutral' as const };
+                                const sign = delta > 0 ? '+' : '';
+                                const tone: 'up' | 'down' = delta > 0 ? 'up' : 'down';
+                                const pct = previous > 0 ? Math.round((delta / previous) * 100) : null;
+                                return {
+                                    text: pct !== null ? `${sign}${delta} (${sign}${pct}%)` : `${sign}${delta}`,
+                                    tone,
+                                };
+                            };
+                            const entriesD = formatDelta(periodDelta.entriesDelta, periodDelta.previousEntries);
+                            const daysD = formatDelta(periodDelta.writingDaysDelta, periodDelta.previousWritingDays);
+                            const moodDeltaRounded = periodDelta.moodDelta !== null
+                                ? Math.round(periodDelta.moodDelta * 10) / 10
+                                : null;
+                            const moodTone: 'up' | 'down' | 'neutral' =
+                                moodDeltaRounded === null || moodDeltaRounded === 0 ? 'neutral'
+                                    : moodDeltaRounded > 0 ? 'up' : 'down';
+                            const toneClass = (tone: 'up' | 'down' | 'neutral') =>
+                                tone === 'up' ? 'text-[rgb(118,134,91)]'
+                                    : tone === 'down' ? 'text-[rgb(170,130,80)]'
+                                        : 'text-[rgb(140,140,140)]';
+
+                            return (
+                                <>
+                                    <div className="rounded-[0.85rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.55)] px-2 py-1.5">
+                                        <p className="text-[0.48rem] uppercase tracking-wider text-[rgb(150,150,150)]">Notes</p>
+                                        <p className="mt-0.5 text-[0.9rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">
+                                            {periodDelta.currentEntries}
+                                        </p>
+                                        <p className={`text-[0.52rem] font-medium tabular-nums ${toneClass(entriesD.tone)}`}>
+                                            {entriesD.text}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-[0.85rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.55)] px-2 py-1.5">
+                                        <p className="text-[0.48rem] uppercase tracking-wider text-[rgb(150,150,150)]">Days</p>
+                                        <p className="mt-0.5 text-[0.9rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">
+                                            {periodDelta.currentWritingDays}
+                                        </p>
+                                        <p className={`text-[0.52rem] font-medium tabular-nums ${toneClass(daysD.tone)}`}>
+                                            {daysD.text}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-[0.85rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.55)] px-2 py-1.5">
+                                        <p className="text-[0.48rem] uppercase tracking-wider text-[rgb(150,150,150)]">Mood</p>
+                                        <p className="mt-0.5 text-[0.9rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">
+                                            {periodDelta.currentAvgMood !== null
+                                                ? periodDelta.currentAvgMood.toFixed(1)
+                                                : '—'}
+                                        </p>
+                                        <p className={`text-[0.52rem] font-medium tabular-nums ${toneClass(moodTone)}`}>
+                                            {moodDeltaRounded === null ? 'no data'
+                                                : moodDeltaRounded === 0 ? 'steady'
+                                                    : `${moodDeltaRounded > 0 ? '+' : ''}${moodDeltaRounded.toFixed(1)}`}
+                                        </p>
+                                    </div>
+                                </>
+                            );
+                        })()}
+                    </div>
+                    {periodDelta.previousTopMood && periodDelta.currentTopMood && periodDelta.previousTopMood !== periodDelta.currentTopMood && (
+                        <p className="mt-1.5 text-[0.6rem] leading-4 text-[rgb(140,140,140)]">
+                            Top mood moved from {toTitleCase(periodDelta.previousTopMood)} to {toTitleCase(periodDelta.currentTopMood)}.
+                        </p>
+                    )}
+                </div>
+            ) : entries.length > 0 ? (
+                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2 pb-1.5">
+                    <p className="section-label">Month-over-month</p>
+                    <p className="mt-0.5 text-[0.6rem] leading-4 text-[rgb(150,150,150)]">
+                        Your first month-over-month comparison unlocks once last month has a few notes to compare against.
+                    </p>
+                </div>
+            ) : null}
 
             {/* Core growth signals — 3 gauge rings */}
             <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
@@ -1188,16 +1430,16 @@ export default function DashboardNotebookView({
                     {(() => {
                         const depth = dashboardInsights?.reflectionDepth;
                         const level = depth?.level ?? 0;
-                        const score = depth?.score ?? 0;
+                        const score = Math.max(0, Math.min(100, depth?.score ?? 0));
                         return (
                             <div className="flex flex-col items-center gap-0.5 px-2 py-1">
                                 <div className="relative h-9 w-9">
                                     <svg viewBox="0 0 32 32" className="h-9 w-9 -rotate-90">
                                         <circle cx="16" cy="16" r="13" fill="none" stroke="rgba(92,92,92,0.06)" strokeWidth="2.5" />
                                         <circle cx="16" cy="16" r="13" fill="none" stroke="rgb(138,154,111)" strokeWidth="2.5" strokeLinecap="round"
-                                            strokeDasharray={`${score * 81.7} 81.7`} />
+                                            strokeDasharray={`${(score / 100) * 81.7} 81.7`} />
                                     </svg>
-                                    <span className="absolute inset-0 flex items-center justify-center text-[0.6rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">{level}</span>
+                                    <span className="absolute inset-0 flex items-center justify-center text-[0.6rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">L{level}</span>
                                 </div>
                                 <span className="text-[0.52rem] font-semibold text-[rgb(var(--paper-ink))]">Depth</span>
                                 <span className="text-[0.44rem] text-[rgb(150,150,150)]">{depth?.levelLabel ?? 'Surface'}</span>
@@ -1227,7 +1469,7 @@ export default function DashboardNotebookView({
                     {/* Emotional Intelligence */}
                     {(() => {
                         const eq = journalIntel?.emotionalRange;
-                        const complexity = eq?.complexityScore ?? 0;
+                        const complexity = Math.max(0, Math.min(100, eq?.complexityScore ?? 0));
                         const uniqueCount = eq?.uniqueEmotions ?? 0;
                         return (
                             <div className="flex flex-col items-center gap-0.5 px-2 py-1">
@@ -1235,12 +1477,12 @@ export default function DashboardNotebookView({
                                     <svg viewBox="0 0 32 32" className="h-9 w-9 -rotate-90">
                                         <circle cx="16" cy="16" r="13" fill="none" stroke="rgba(92,92,92,0.06)" strokeWidth="2.5" />
                                         <circle cx="16" cy="16" r="13" fill="none" stroke="rgb(160,140,200)" strokeWidth="2.5" strokeLinecap="round"
-                                            strokeDasharray={`${complexity * 81.7} 81.7`} />
+                                            strokeDasharray={`${(complexity / 100) * 81.7} 81.7`} />
                                     </svg>
                                     <span className="absolute inset-0 flex items-center justify-center text-[0.55rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">{uniqueCount}</span>
                                 </div>
                                 <span className="text-[0.52rem] font-semibold text-[rgb(var(--paper-ink))]">EQ</span>
-                                <span className="text-[0.44rem] text-[rgb(150,150,150)]">{complexity >= 0.7 ? 'Complex' : complexity >= 0.4 ? 'Growing' : 'Building'}</span>
+                                <span className="text-[0.44rem] text-[rgb(150,150,150)]">{complexity >= 70 ? 'Complex' : complexity >= 40 ? 'Growing' : 'Building'}</span>
                             </div>
                         );
                     })()}
@@ -1287,7 +1529,7 @@ export default function DashboardNotebookView({
                     <div className="mt-1.5 flex items-center gap-1.5">
                         <span className="text-[0.46rem] text-[rgb(150,150,150)]">Depth</span>
                         <div className="flex-1 h-[3px] rounded-full bg-[rgba(92,92,92,0.06)] overflow-hidden">
-                            <div className="h-full rounded-full bg-[rgb(138,154,111)]" style={{ width: `${Math.min(100, Math.round((journalIntel?.gratitude.depthScore ?? 0) * 100))}%` }} />
+                            <div className="h-full rounded-full bg-[rgb(138,154,111)]" style={{ width: `${Math.min(100, Math.max(0, Math.round(journalIntel?.gratitude.depthScore ?? 0)))}%` }} />
                         </div>
                     </div>
                 </div>
@@ -1295,7 +1537,7 @@ export default function DashboardNotebookView({
                 <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
                     <p className="section-label">Life balance</p>
                     <div className="mt-1.5 space-y-[3px]">
-                        {(journalIntel?.lifeBalance.areas ?? []).filter(a => a.score > 0).sort((a, b) => b.score - a.score).slice(0, 4).map((area) => (
+                        {visibleLifeBalanceAreas.slice(0, 4).map((area) => (
                             <div key={area.area} className="flex items-center gap-1.5">
                                 <span className="w-[2.8rem] text-[0.46rem] text-[rgb(140,140,140)] truncate">{formatNotebookLabel(area.area)}</span>
                                 <div className="flex-1 h-[3px] rounded-full bg-[rgba(92,92,92,0.05)] overflow-hidden">
@@ -1304,7 +1546,7 @@ export default function DashboardNotebookView({
                             </div>
                         ))}
                     </div>
-                    {!journalIntel?.lifeBalance.areas?.length && (
+                    {!hasLifeBalanceSignal && (
                         <p className="mt-1 text-[0.5rem] text-[rgb(170,170,170)]">More entries reveal balance.</p>
                     )}
                 </div>
@@ -1327,7 +1569,9 @@ export default function DashboardNotebookView({
                                     <span>Future {tense.future}%</span>
                                 </div>
                                 <div className="mt-1 flex items-center gap-2 text-[0.46rem] text-[rgb(140,140,140)]">
-                                    {voice?.questionFrequency !== undefined && <span>{voice.questionFrequency} questions/entry</span>}
+                                    {voice?.questionFrequency !== undefined && (
+                                        <span>{voice.questionFrequency.toFixed(1)} Q/entry</span>
+                                    )}
                                     {voice?.readingLevel && <span className="ml-auto">{voice.readingLevel}</span>}
                                 </div>
                             </>
@@ -1382,6 +1626,18 @@ export default function DashboardNotebookView({
                         See this as a story for college/apps →
                     </Link>
                 </div>
+            </div>
+        </div>
+    ) : entries.length < 3 ? (
+        <div className="space-y-2.5">
+            <div className="app-paper-soft rounded-[1.1rem] px-3 pt-4 pb-3.5 text-center">
+                <p className="section-label">Patterns</p>
+                <p className="mt-2 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                    Your rhythms, moods and anchors will show up here once you have a few entries to compare.
+                </p>
+                <p className="mt-1 text-[0.62rem] leading-4 text-[rgb(150,150,150)]">
+                    {entries.length === 0 ? 'Start with a short note from today.' : `${3 - entries.length} more ${3 - entries.length === 1 ? 'entry' : 'entries'} to unlock patterns.`}
+                </p>
             </div>
         </div>
     ) : (
@@ -1457,61 +1713,195 @@ export default function DashboardNotebookView({
                 <p className="mt-1.5 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">{emotionalThreadLine}</p>
             </div>
 
-            {/* ── When you write + Writing windows — 2-col ── */}
-            <div className="grid gap-2 sm:grid-cols-2">
+            {/* ── Activity heatmap — macro rhythm view ── */}
+            {entries.length >= 5 ? (
                 <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
-                    <p className="section-label">When you write</p>
-                    <div className="mt-2 flex items-end justify-between gap-0.5 px-0.5">
-                        {weekdayCounts.map((day) => {
-                            const barH = highestWeekdayCount > 0
-                                ? Math.max(4, Math.round((day.count / highestWeekdayCount) * 36))
-                                : 4;
-                            const isActive = day.count > 0;
-                            return (
-                                <div key={day.short} className="flex flex-col items-center gap-1" style={{ flex: 1 }}>
-                                    <span className={`text-[0.52rem] tabular-nums ${isActive ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-transparent'}`}>
-                                        {day.count}
-                                    </span>
-                                    <div
-                                        className={`w-full max-w-[18px] rounded-t-[3px] ${isActive ? 'bg-[rgb(138,154,111)]' : 'bg-[rgba(92,92,92,0.07)]'}`}
-                                        style={{ height: `${barH}px` }}
-                                    />
-                                    <span className={`text-[0.55rem] ${isActive ? 'font-medium text-[rgb(var(--paper-ink))]' : 'text-[rgb(170,170,170)]'}`}>
-                                        {day.short}
-                                    </span>
-                                </div>
-                            );
-                        })}
+                    <div className="flex items-baseline justify-between">
+                        <p className="section-label">Writing rhythm</p>
+                        <span className="text-[0.58rem] text-[rgb(140,140,140)] tabular-nums">
+                            {heatmapTotal} {heatmapTotal === 1 ? 'note' : 'notes'} · 6 months
+                        </span>
                     </div>
-                    <p className="mt-2 text-[0.68rem] leading-4 text-[rgb(107,107,107)]">{writingRhythmLine}</p>
+                    <div className="mt-2 overflow-x-auto">
+                        <svg
+                            viewBox={`0 0 ${HEATMAP_WEEKS * 10 + 14} ${7 * 10 + 14}`}
+                            className="w-full"
+                            style={{ minWidth: '260px', maxHeight: '100px' }}
+                            aria-label={`Writing activity heatmap showing ${heatmapTotal} notes over the last ${HEATMAP_WEEKS} weeks`}
+                        >
+                            {['M', 'W', 'F'].map((label, i) => (
+                                <text
+                                    key={label}
+                                    x={0}
+                                    y={14 + (i * 2 + 1) * 10 + 7}
+                                    fontSize="6.5"
+                                    fill="rgba(92,92,92,0.5)"
+                                >
+                                    {label}
+                                </text>
+                            ))}
+                            {activityHeatmap.map((week, wi) => (
+                                <g key={`w-${wi}`}>
+                                    {week.map((cell, di) => {
+                                        const isFuture = cell.date > new Date();
+                                        const fill = isFuture
+                                            ? 'rgba(92,92,92,0.03)'
+                                            : cell.level === 0 ? 'rgba(92,92,92,0.08)'
+                                                : cell.level === 1 ? 'rgba(138,154,111,0.35)'
+                                                    : cell.level === 2 ? 'rgba(138,154,111,0.55)'
+                                                        : cell.level === 3 ? 'rgba(138,154,111,0.78)'
+                                                            : 'rgba(118,134,91,0.95)';
+                                        const isSelected = heatmapTap?.key === cell.key;
+                                        return (
+                                            <rect
+                                                key={cell.key}
+                                                x={14 + wi * 10}
+                                                y={14 + di * 10}
+                                                width={8}
+                                                height={8}
+                                                rx={1.5}
+                                                fill={fill}
+                                                stroke={isSelected ? 'rgb(118,134,91)' : 'none'}
+                                                strokeWidth={isSelected ? 1.2 : 0}
+                                                style={{ cursor: isFuture ? 'default' : 'pointer' }}
+                                                onClick={() => {
+                                                    if (isFuture) return;
+                                                    setHeatmapTap(isSelected ? null : cell);
+                                                }}
+                                            >
+                                                <title>{cell.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}: {cell.count} {cell.count === 1 ? 'note' : 'notes'}</title>
+                                            </rect>
+                                        );
+                                    })}
+                                </g>
+                            ))}
+                        </svg>
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between">
+                        <span className="text-[0.55rem] text-[rgb(150,150,150)]">
+                            {heatmapTap
+                                ? `${heatmapTap.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${heatmapTap.count} ${heatmapTap.count === 1 ? 'note' : 'notes'}`
+                                : currentStreak > 0 ? `${currentStreak}-day streak · tap a square` : 'Tap a square to see details'}
+                        </span>
+                        <div className="flex items-center gap-1 text-[0.55rem] text-[rgb(150,150,150)]">
+                            <span>less</span>
+                            {[0, 1, 2, 3, 4].map((level) => (
+                                <span
+                                    key={level}
+                                    className="inline-block h-[7px] w-[7px] rounded-[1.5px]"
+                                    style={{
+                                        backgroundColor: level === 0 ? 'rgba(92,92,92,0.08)'
+                                            : level === 1 ? 'rgba(138,154,111,0.35)'
+                                                : level === 2 ? 'rgba(138,154,111,0.55)'
+                                                    : level === 3 ? 'rgba(138,154,111,0.78)'
+                                                        : 'rgba(118,134,91,0.95)',
+                                    }}
+                                />
+                            ))}
+                            <span>more</span>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                    <p className="section-label">Writing rhythm</p>
+                    <p className="mt-1 text-[0.65rem] leading-4 text-[rgb(150,150,150)]">
+                        Your rhythm appears after a few more entries.
+                    </p>
+                </div>
+            )}
+
+            {/* ── When you write (days + windows merged) ── */}
+            <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                <div className="flex items-baseline justify-between">
+                    <p className="section-label">When you write</p>
+                    <span className="text-[0.52rem] text-[rgb(170,170,170)] uppercase tracking-wider">days · windows</span>
                 </div>
 
-                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
-                    <p className="section-label">Writing windows</p>
-                    <div className="mt-2 space-y-2">
-                        {writingWindowCounts.map((bucket) => {
-                            const pct = highestWindowCount > 0 ? Math.max(4, Math.round((bucket.count / highestWindowCount) * 100)) : 4;
-                            const isTop = bucket.count === highestWindowCount && bucket.count > 0;
-                            return (
-                                <div key={bucket.label} className="flex items-center gap-2">
-                                    <span className={`w-[3.2rem] text-[0.62rem] ${isTop ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-[rgb(140,140,140)]'}`}>
-                                        {bucket.label}
-                                    </span>
-                                    <div className="flex-1 h-[0.45rem] rounded-full bg-[rgba(92,92,92,0.05)] overflow-hidden">
-                                        <div
-                                            className={`h-full rounded-full ${isTop ? 'bg-[rgb(138,154,111)]' : 'bg-[rgba(138,154,111,0.4)]'}`}
-                                            style={{ width: `${pct}%` }}
-                                        />
-                                    </div>
-                                    <span className={`w-4 text-right text-[0.55rem] tabular-nums ${isTop ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-[rgb(170,170,170)]'}`}>
-                                        {bucket.count || '–'}
-                                    </span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <p className="mt-2 text-[0.62rem] leading-4 text-[rgb(138,154,111)]">{writingRhythmPrompt}</p>
+                {/* Weekday bars */}
+                <div className="mt-2 flex items-end justify-between gap-0.5 px-0.5">
+                    {weekdayCounts.map((day) => {
+                        const barH = highestWeekdayCount > 0
+                            ? Math.max(4, Math.round((day.count / highestWeekdayCount) * 36))
+                            : 4;
+                        const isActive = day.count > 0;
+                        const content = (
+                            <>
+                                <span className={`text-[0.52rem] tabular-nums ${isActive ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-transparent'}`}>
+                                    {day.count}
+                                </span>
+                                <div
+                                    className={`w-full max-w-[18px] rounded-t-[3px] ${isActive ? 'bg-[rgb(138,154,111)]' : 'bg-[rgba(92,92,92,0.07)]'}`}
+                                    style={{ height: `${barH}px` }}
+                                />
+                                <span className={`text-[0.55rem] ${isActive ? 'font-medium text-[rgb(var(--paper-ink))]' : 'text-[rgb(170,170,170)]'}`}>
+                                    {day.short}
+                                </span>
+                            </>
+                        );
+                        return isActive ? (
+                            <Link
+                                key={day.short}
+                                href={`/timeline?weekday=${day.full.toLowerCase()}`}
+                                className="flex flex-col items-center gap-1 rounded-[0.4rem] py-0.5 transition-colors hover:bg-[rgba(138,154,111,0.08)]"
+                                style={{ flex: 1 }}
+                            >
+                                {content}
+                            </Link>
+                        ) : (
+                            <div key={day.short} className="flex flex-col items-center gap-1" style={{ flex: 1 }}>
+                                {content}
+                            </div>
+                        );
+                    })}
                 </div>
+
+                {/* Divider */}
+                <div className="mt-3 mb-2 h-px bg-[rgba(92,92,92,0.08)]" />
+
+                {/* Time-of-day windows */}
+                <div className="space-y-[0.45rem]">
+                    {writingWindowCounts.map((bucket) => {
+                        const pct = highestWindowCount > 0 ? Math.max(4, Math.round((bucket.count / highestWindowCount) * 100)) : 4;
+                        const isTop = bucket.count === highestWindowCount && bucket.count > 0;
+                        const isActive = bucket.count > 0;
+                        const row = (
+                            <>
+                                <span className={`w-[3.2rem] text-[0.62rem] ${isTop ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-[rgb(140,140,140)]'}`}>
+                                    {bucket.label}
+                                </span>
+                                <div className="flex-1 h-[0.4rem] rounded-full bg-[rgba(92,92,92,0.05)] overflow-hidden">
+                                    <div
+                                        className={`h-full rounded-full ${isTop ? 'bg-[rgb(138,154,111)]' : 'bg-[rgba(138,154,111,0.4)]'}`}
+                                        style={{ width: `${pct}%` }}
+                                    />
+                                </div>
+                                <span className={`w-4 text-right text-[0.55rem] tabular-nums ${isTop ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-[rgb(170,170,170)]'}`}>
+                                    {bucket.count || '–'}
+                                </span>
+                            </>
+                        );
+                        return isActive ? (
+                            <Link
+                                key={bucket.label}
+                                href={`/timeline?dayPart=${encodeURIComponent(bucket.phrase)}`}
+                                className="flex items-center gap-2 rounded-[0.5rem] -mx-1 px-1 py-0.5 transition-colors hover:bg-[rgba(138,154,111,0.06)]"
+                            >
+                                {row}
+                            </Link>
+                        ) : (
+                            <div key={bucket.label} className="flex items-center gap-2">
+                                {row}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Combined footer: insight + nudge */}
+                <p className="mt-2.5 text-[0.68rem] leading-4 text-[rgb(107,107,107)]">{writingRhythmLine}</p>
+                {writingRhythmPrompt && writingRhythmPrompt !== writingRhythmLine && (
+                    <p className="mt-1 text-[0.62rem] leading-4 text-[rgb(138,154,111)]">{writingRhythmPrompt}</p>
+                )}
             </div>
 
             {/* ── Emotional fingerprint — ranked bars ── */}
@@ -1528,9 +1918,14 @@ export default function DashboardNotebookView({
                             return sortedAxes.map((axis, i) => {
                                 const barWidth = maxScore > 0 ? Math.max(6, Math.round((axis.score / maxScore) * 100)) : 6;
                                 const isTop = i === 0;
+                                const emotionKey = String(axis.emotion).toLowerCase();
                                 return (
-                                    <div key={axis.emotion} className="flex items-center gap-1.5">
-                                        <span className="w-[1.1rem] text-center text-[0.72rem] leading-none">{MOOD_EMOJI[axis.emotion] ?? '·'}</span>
+                                    <Link
+                                        key={axis.emotion}
+                                        href={`/timeline?mood=${encodeURIComponent(emotionKey)}`}
+                                        className="flex items-center gap-1.5 rounded-[0.5rem] -mx-1 px-1 py-0.5 transition-colors hover:bg-[rgba(138,154,111,0.06)]"
+                                    >
+                                        <span className="w-[1.1rem] text-center text-[0.72rem] leading-none">{MOOD_EMOJI[emotionKey] ?? '·'}</span>
                                         <span className={`w-[3.5rem] text-[0.6rem] truncate ${isTop ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-[rgb(130,130,130)]'}`}>
                                             {toTitleCase(axis.emotion)}
                                         </span>
@@ -1546,7 +1941,7 @@ export default function DashboardNotebookView({
                                         <span className={`w-6 text-right text-[0.52rem] tabular-nums ${isTop ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-[rgb(170,170,170)]'}`}>
                                             {axis.entryCount}×
                                         </span>
-                                    </div>
+                                    </Link>
                                 );
                             });
                         })()}
@@ -1558,9 +1953,9 @@ export default function DashboardNotebookView({
             )}
 
             {/* ── Life balance + Resilience — 2-col ── */}
-            {(journalIntel?.lifeBalance || dashboardInsights?.resilience) && (
+            {(hasLifeBalanceSignal || dashboardInsights?.resilience) && (
                 <div className="grid gap-2 sm:grid-cols-2">
-                    {journalIntel?.lifeBalance && (
+                    {hasLifeBalanceSignal && journalIntel?.lifeBalance && (
                         <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
                             <p className="section-label">Life balance</p>
                             <div className="mt-2 flex items-center gap-3">
@@ -1570,21 +1965,27 @@ export default function DashboardNotebookView({
                                         <circle
                                             cx="18" cy="18" r="15" fill="none"
                                             stroke="rgb(138,154,111)" strokeWidth="3.5" strokeLinecap="round"
-                                            strokeDasharray={`${journalIntel.lifeBalance.balanceScore * 94.2} 94.2`}
+                                            strokeDasharray={`${lifeBalanceRingFill} ${LIFE_BALANCE_RING_CIRCUMFERENCE}`}
                                         />
                                     </svg>
                                     <span className="absolute inset-0 flex items-center justify-center text-[0.56rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">
-                                        {Math.round(journalIntel.lifeBalance.balanceScore * 100)}
+                                        {lifeBalanceScoreLabel}
                                     </span>
                                 </div>
                                 <div className="min-w-0 space-y-0.5">
-                                    <p className="text-[0.68rem] leading-4 text-[rgb(var(--paper-ink))]">
-                                        <span className="font-semibold">{formatNotebookLabel(journalIntel.lifeBalance.dominantArea)}</span> dominates
-                                    </p>
+                                    <Link
+                                        href={`/timeline?lifeArea=${encodeURIComponent(journalIntel.lifeBalance.dominantArea)}`}
+                                        className="block text-[0.68rem] leading-4 text-[rgb(var(--paper-ink))] transition-opacity hover:opacity-70"
+                                    >
+                                        <span className="font-semibold">{formatNotebookLabel(journalIntel.lifeBalance.dominantArea)}</span> shows up most often
+                                    </Link>
                                     {journalIntel.lifeBalance.neglectedArea && (
-                                        <p className="text-[0.6rem] leading-4 text-[rgb(140,140,140)]">
+                                        <Link
+                                            href={`/timeline?lifeArea=${encodeURIComponent(journalIntel.lifeBalance.neglectedArea)}`}
+                                            className="block text-[0.6rem] leading-4 text-[rgb(140,140,140)] transition-opacity hover:opacity-70"
+                                        >
                                             {formatNotebookLabel(journalIntel.lifeBalance.neglectedArea)} is quieter lately
-                                        </p>
+                                        </Link>
                                     )}
                                 </div>
                             </div>
@@ -1608,20 +2009,32 @@ export default function DashboardNotebookView({
                     {(supportAnchorCards.length > 0 || supportivePeople.length > 0 || groundingAnchors.length > 0) && (
                         <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
                             <p className="section-label">Who steadies you</p>
+                            {supportMap?.summary && (
+                                <p className="mt-1 text-[0.62rem] leading-4 text-[rgb(130,130,130)]">
+                                    {compactText(supportMap.summary, 120)}
+                                </p>
+                            )}
                             {supportAnchorCards.length > 0 ? (
-                                <div className="mt-2 space-y-1.5">
+                                <div className="mt-2 space-y-2">
                                     {supportAnchorCards.slice(0, 3).map((anchor) => (
-                                        <div key={anchor.id} className="flex items-center gap-2">
-                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[rgba(138,154,111,0.12)] text-[0.55rem] font-bold text-[rgb(118,134,91)]">
+                                        <div key={anchor.id} className="flex items-start gap-2">
+                                            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[rgba(138,154,111,0.14)] text-[0.6rem] font-bold text-[rgb(118,134,91)]">
                                                 {anchor.label.charAt(0).toUpperCase()}
                                             </span>
                                             <div className="min-w-0 flex-1">
-                                                <span className="text-[0.7rem] font-semibold text-[rgb(var(--paper-ink))]">{anchor.label}</span>
-                                                <span className="ml-1.5 rounded-full border border-[rgba(92,92,92,0.08)] px-1.5 py-px text-[0.48rem] uppercase tracking-[0.06em] text-[rgb(160,160,160)]">{anchor.type}</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="truncate text-[0.7rem] font-semibold text-[rgb(var(--paper-ink))]">{anchor.label}</span>
+                                                    <span className="rounded-full border border-[rgba(92,92,92,0.08)] px-1.5 py-px text-[0.46rem] uppercase tracking-[0.06em] text-[rgb(160,160,160)]">{anchor.type}</span>
+                                                    {anchor.supportCount > 0 && (
+                                                        <span className="ml-auto text-[0.52rem] tabular-nums text-[rgb(160,160,160)]">{anchor.supportCount}×</span>
+                                                    )}
+                                                </div>
+                                                {anchor.whyItHelps && (
+                                                    <p className="mt-0.5 text-[0.6rem] leading-4 text-[rgb(125,125,125)]">
+                                                        {compactText(anchor.whyItHelps, 95)}
+                                                    </p>
+                                                )}
                                             </div>
-                                            {anchor.supportCount > 0 && (
-                                                <span className="text-[0.52rem] tabular-nums text-[rgb(160,160,160)]">{anchor.supportCount}×</span>
-                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -1635,32 +2048,48 @@ export default function DashboardNotebookView({
                         </div>
                     )}
 
-                    {dashboardInsights && (dashboardInsights.correlations.length > 0 || dashboardInsights.triggerMap.length > 0) && (
-                        <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
-                            <p className="section-label">What lifts &amp; drains</p>
-                            <div className="mt-2 space-y-1.5">
-                                {[...dashboardInsights.correlations.slice(0, 3), ...dashboardInsights.triggerMap.slice(0, 3)]
-                                    .slice(0, 4)
-                                    .map((item) => {
-                                        const topic = 'topic' in item ? item.topic : item.entity;
-                                        const isLift = item.direction === 'lifter';
-                                        return (
-                                            <div key={topic} className="flex items-center gap-2">
-                                                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.55rem] ${
-                                                    isLift ? 'bg-[rgba(138,154,111,0.12)] text-[rgb(118,134,91)]' : 'bg-[rgba(192,134,90,0.12)] text-[rgb(170,120,70)]'
-                                                }`}>
-                                                    {isLift ? '↑' : '↓'}
-                                                </span>
-                                                <span className="flex-1 text-[0.7rem] text-[rgb(var(--paper-ink))]">{formatNotebookLabel(topic)}</span>
-                                                <span className={`text-[0.52rem] font-medium ${isLift ? 'text-[rgb(118,134,91)]' : 'text-[rgb(180,130,80)]'}`}>
-                                                    {isLift ? 'Lifts' : 'Drains'}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
+                    {dashboardInsights && (dashboardInsights.correlations.length > 0 || dashboardInsights.triggerMap.length > 0) && (() => {
+                        const seen = new Set<string>();
+                        const merged: Array<{ key: string; topic: string; isLift: boolean; magnitude: number }> = [];
+                        for (const c of dashboardInsights.correlations) {
+                            const k = c.topic.toLowerCase();
+                            if (seen.has(k)) continue;
+                            seen.add(k);
+                            merged.push({ key: `c-${k}`, topic: c.topic, isLift: c.direction === 'lifter', magnitude: Math.abs(c.delta) });
+                        }
+                        for (const t of dashboardInsights.triggerMap) {
+                            const k = t.entity.toLowerCase();
+                            if (seen.has(k)) continue;
+                            seen.add(k);
+                            merged.push({ key: `t-${k}`, topic: t.entity, isLift: t.direction === 'lifter', magnitude: Math.abs(t.avgMoodDelta) });
+                        }
+                        const items = merged.sort((a, b) => b.magnitude - a.magnitude).slice(0, 4);
+                        if (items.length === 0) return null;
+                        return (
+                            <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                                <p className="section-label">What lifts &amp; drains</p>
+                                <div className="mt-2 space-y-1.5">
+                                    {items.map((item) => (
+                                        <Link
+                                            key={item.key}
+                                            href={`/timeline?theme=${encodeURIComponent(item.topic)}`}
+                                            className="flex items-center gap-2 rounded-[0.5rem] -mx-1 px-1 py-0.5 transition-colors hover:bg-[rgba(138,154,111,0.06)]"
+                                        >
+                                            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.55rem] ${
+                                                item.isLift ? 'bg-[rgba(138,154,111,0.12)] text-[rgb(118,134,91)]' : 'bg-[rgba(192,134,90,0.12)] text-[rgb(170,120,70)]'
+                                            }`}>
+                                                {item.isLift ? '↑' : '↓'}
+                                            </span>
+                                            <span className="flex-1 truncate text-[0.7rem] text-[rgb(var(--paper-ink))]">{formatNotebookLabel(item.topic)}</span>
+                                            <span className={`text-[0.52rem] font-medium tabular-nums ${item.isLift ? 'text-[rgb(118,134,91)]' : 'text-[rgb(180,130,80)]'}`}>
+                                                {item.isLift ? '+' : '−'}{item.magnitude.toFixed(1)}
+                                            </span>
+                                        </Link>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
                 </div>
             )}
 
@@ -1818,7 +2247,7 @@ export default function DashboardNotebookView({
                                         >
                                             <div className="flex items-start gap-3">
                                                 <span className="mt-0.5 text-sm" aria-hidden="true">
-                                                    {MOOD_EMOJI[entry.mood ?? ''] ?? '✦'}
+                                                    {MOOD_EMOJI[(entry.mood ?? '').toLowerCase()] ?? '✦'}
                                                 </span>
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex flex-wrap items-center gap-2">

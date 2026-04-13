@@ -11,7 +11,7 @@ import {
     getTimelineSummary,
 } from '../controllers/analytics.controller';
 import insightsController from '../controllers/insights.controller';
-import { getJournalIntelligence } from '../controllers/journal-intelligence.controller';
+import { getJournalIntelligence, getInsightsBundle } from '../controllers/journal-intelligence.controller';
 
 const router = Router();
 
@@ -29,6 +29,10 @@ router.get('/tag-mood-patterns', getTagMoodPatterns);
 
 // Journal intelligence (deterministic KPIs)
 router.get('/journal-intelligence', getJournalIntelligence);
+
+// Combined bundle — fetches both dashboard-insights and journal-intelligence
+// in a single Prisma round-trip. Preferred by the dashboard.
+router.get('/insights-bundle', getInsightsBundle);
 
 // AI-powered insights
 router.get('/insights', insightsController.getInsights);

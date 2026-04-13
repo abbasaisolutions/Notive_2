@@ -9,6 +9,8 @@
  */
 
 import { MOOD_SCORES } from '../utils/mood';
+import { EMOTION_LEXICON } from '../utils/emotion-lexicon';
+import type { InsightInputEntry, InsightInputAnalysis } from '../types/insight-inputs';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -117,48 +119,12 @@ export type JournalIntelligence = {
     analyzedAt: string;
 };
 
-// ── Input Types ──────────────────────────────────────────────
+// ── Input Types (re-exports of the shared shapes) ────────────
 
-export type IntelEntry = {
-    id: string;
-    content: string;
-    mood: string | null;
-    tags: string[];
-    lifeArea: string | null;
-    createdAt: Date;
-};
-
-export type IntelAnalysis = {
-    entryId: string;
-    sentimentScore: number | null;
-    emotions: Record<string, number> | null;
-    entities: string[] | null;
-    topics: string[];
-    keywords: string[];
-    suggestedMood: string | null;
-    wordCount: number | null;
-};
+export type IntelEntry = InsightInputEntry;
+export type IntelAnalysis = InsightInputAnalysis;
 
 // ── Constants ────────────────────────────────────────────────
-
-const EMOTION_LEXICON = new Set([
-    'happy', 'sad', 'anxious', 'calm', 'frustrated', 'grateful', 'motivated', 'tired',
-    'thoughtful', 'excited', 'hopeful', 'proud', 'lonely', 'overwhelmed', 'peaceful',
-    'nervous', 'confident', 'confused', 'angry', 'joyful', 'melancholy', 'restless',
-    'content', 'bittersweet', 'nostalgic', 'inspired', 'vulnerable', 'empowered',
-    'conflicted', 'grounded', 'scattered', 'serene', 'agitated', 'tender', 'resilient',
-    'helpless', 'determined', 'apathetic', 'euphoric', 'grief', 'relief', 'shame',
-    'guilt', 'envy', 'jealous', 'compassion', 'empathy', 'awe', 'wonder', 'dread',
-    'bliss', 'resentment', 'irritated', 'yearning', 'longing', 'wistful', 'giddy',
-    'somber', 'elated', 'disillusioned', 'fulfilled', 'hollow', 'numb', 'alive',
-    'fragile', 'brave', 'defeated', 'triumphant', 'ambivalent', 'tormented',
-    'liberated', 'suffocated', 'exhilarated', 'devastated', 'ecstatic', 'desolate',
-    'gratitude', 'anguish', 'serenity', 'fury', 'adoration', 'contempt', 'curiosity',
-    'disgust', 'fear', 'surprise', 'trust', 'anticipation', 'acceptance', 'worry',
-    'stress', 'burnout', 'exhausted', 'energized', 'recharged', 'drained',
-    'heartbroken', 'relieved', 'embarrassed', 'jealousy', 'rage', 'despair',
-    'exuberant', 'mellow', 'pensive', 'tense', 'relaxed', 'alarmed', 'astonished',
-]);
 
 const GROWTH_PHRASES = [
     'i learned', 'i realized', 'i understand now', 'next time i', 'i grew',
@@ -310,7 +276,7 @@ function buildLifeBalance(
 
         // Also check keyword matching, but only count each area once per note.
         for (const [area, keywords] of Object.entries(LIFE_AREA_KEYWORDS)) {
-            if (keywords.some((kw) => allText.includes(kw))) {
+            if (keywords.some((kw) => hasLifeAreaKeyword(allText, kw))) {
                 matchedAreas.add(area);
             }
         }
@@ -355,10 +321,16 @@ function buildLifeBalance(
     const probabilities = areas.map((a) => a.entryCount / Math.max(total, 1)).filter((p) => p > 0);
     const entropy = -probabilities.reduce((s, p) => s + p * Math.log2(p), 0);
     const maxEntropy = Math.log2(areas.length);
-    const balanceScore = maxEntropy > 0 ? Math.round((entropy / maxEntropy) * 100) : 0;
+    const balanceScore = maxEntropy > 0
+        ? Math.max(0, Math.round((entropy / maxEntropy) * 100))
+        : 0;
 
-    const dominant = areas[0]?.area ?? 'Unknown';
-    const neglected = areas.filter((a) => a.entryCount === 0 || a.score < 0.1)[0]?.area ?? null;
+    const coveredAreas = areas.filter((area) => area.entryCount > 0);
+    const dominant = coveredAreas[0]?.area ?? 'Unknown';
+    const weakestCoveredArea = coveredAreas.length >= 3 ? coveredAreas[coveredAreas.length - 1] : null;
+    const neglected = weakestCoveredArea && weakestCoveredArea.area !== dominant && weakestCoveredArea.score < 0.6
+        ? weakestCoveredArea.area
+        : null;
 
     return { areas, balanceScore, dominantArea: dominant, neglectedArea: neglected };
 }
@@ -759,6 +731,14 @@ function tokenize(text: string): string[] {
 
 function capitalize(s: string): string {
     return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function hasLifeAreaKeyword(text: string, keyword: string): boolean {
+    return new RegExp(`\\b${escapeRegExp(keyword.toLowerCase())}\\b`, 'i').test(text);
+}
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function countOccurrences(text: string, phrase: string): number {

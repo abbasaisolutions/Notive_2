@@ -379,7 +379,7 @@ export const createBundle = async (req: Request, res: Response) => {
                         senderId: userId,
                         senderName,
                         entryCount,
-                        route: `/shared/view?id=${newBundle.id}`,
+                        link: `/shared/view?id=${newBundle.id}`,
                     },
                 })),
                 ...pendingRecipientIds.map((recipientId) => ({
@@ -392,7 +392,7 @@ export const createBundle = async (req: Request, res: Response) => {
                         senderId: userId,
                         senderName,
                         entryCount,
-                        route: '/timeline?view=shared',
+                        link: '/timeline?view=shared',
                     },
                 })),
             ];
@@ -422,7 +422,7 @@ export const createBundle = async (req: Request, res: Response) => {
                 body: `${senderName} shared ${formatCountLabel(entryCount)} with you`,
                 data: {
                     type: 'shared_memory',
-                    route: `/shared/view?id=${bundle.newBundle.id}`,
+                    link: `/shared/view?id=${bundle.newBundle.id}`,
                     bundleId: bundle.newBundle.id,
                     ...(notifIdByUser.get(recipientId) ? { notificationId: notifIdByUser.get(recipientId)! } : {}),
                 },
@@ -435,7 +435,7 @@ export const createBundle = async (req: Request, res: Response) => {
                 body: `${senderName} wants to share ${formatCountLabel(entryCount)} with you`,
                 data: {
                     type: 'memory_share_request',
-                    route: '/timeline?view=shared',
+                    link: '/timeline?view=shared',
                     bundleId: bundle.newBundle.id,
                     ...(notifIdByUser.get(recipientId) ? { notificationId: notifIdByUser.get(recipientId)! } : {}),
                 },
@@ -761,7 +761,7 @@ export const respondToShareRequest = async (req: Request, res: Response) => {
                         recipientName: responder?.name,
                         status: nextStatus,
                         pendingBundleCount,
-                        route: '/timeline?view=shared',
+                        link: '/timeline?view=shared',
                     },
                 },
             });
@@ -782,7 +782,7 @@ export const respondToShareRequest = async (req: Request, res: Response) => {
                 : `${result.responderName} declined your share request`,
             data: {
                 type: 'shared_memory_response',
-                route: '/timeline?view=shared',
+                link: '/timeline?view=shared',
                 notificationId: result.notificationId,
             },
         }).catch((err) => console.error('Push notification failed:', err));
@@ -976,7 +976,7 @@ export const reactToBundle = async (req: Request, res: Response) => {
                         title: 'Reaction to your shared memories',
                         body: friendlyBody,
                         readAt: null, // Re-surface as unread
-                        data: { bundleId: id, reactorId: userId, reaction, route: `/shared/view?id=${id}` },
+                        data: { bundleId: id, reactorId: userId, reaction, link: `/shared/view?id=${id}` },
                     },
                 });
                 notificationId = existingReactionNotif.id;
@@ -987,7 +987,7 @@ export const reactToBundle = async (req: Request, res: Response) => {
                         type: 'share_reaction',
                         title: 'Reaction to your shared memories',
                         body: friendlyBody,
-                        data: { bundleId: id, reactorId: userId, reaction, route: `/shared/view?id=${id}` },
+                        data: { bundleId: id, reactorId: userId, reaction, link: `/shared/view?id=${id}` },
                     },
                 });
                 notificationId = newNotif.id;
@@ -998,7 +998,7 @@ export const reactToBundle = async (req: Request, res: Response) => {
                 body: friendlyBody,
                 data: {
                     type: 'share_reaction',
-                    route: `/shared/view?id=${id}`,
+                    link: `/shared/view?id=${id}`,
                     bundleId: id,
                     notificationId,
                 },

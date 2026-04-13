@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { normalizeLifeBalanceAreaKey } from './life-balance';
 
 type LifeBalanceArea = {
     area: string;
@@ -53,6 +54,9 @@ export default function LifeBalanceWheel({ lifeBalance }: LifeBalanceWheelProps)
     );
 
     if (validAreas.length < 3) return null;
+
+    const dominantAreaKey = normalizeLifeBalanceAreaKey(dominantArea);
+    const neglectedAreaKey = normalizeLifeBalanceAreaKey(neglectedArea);
 
     const cx = 130, cy = 115, maxR = 85;
     const n = validAreas.length;
@@ -144,12 +148,15 @@ export default function LifeBalanceWheel({ lifeBalance }: LifeBalanceWheelProps)
                     />
 
                     {/* Data points + labels */}
-                    {points.map((p, i) => (
-                        <g key={p.area.area}>
+                    {points.map((p, i) => {
+                        const areaKey = normalizeLifeBalanceAreaKey(p.area.area);
+
+                        return (
+                            <g key={p.area.area}>
                             {/* Dot */}
                             <motion.circle
                                 cx={p.x} cy={p.y} r={4.5}
-                                fill={AREA_COLORS[p.area.area] || 'rgba(199,220,203,0.85)'}
+                                fill={AREA_COLORS[areaKey] || 'rgba(199,220,203,0.85)'}
                                 stroke="rgba(var(--paper-ink-muted), 0.3)"
                                 strokeWidth="1.5"
                                 initial={{ scale: 0 }}
@@ -166,10 +173,11 @@ export default function LifeBalanceWheel({ lifeBalance }: LifeBalanceWheelProps)
                                 fontSize="8.5"
                                 fontFamily="var(--font-serif, Georgia, serif)"
                             >
-                                {AREA_ICONS[p.area.area] || '○'} {p.area.area}
+                                {AREA_ICONS[areaKey] || '○'} {p.area.area}
                             </text>
-                        </g>
-                    ))}
+                            </g>
+                        );
+                    })}
                 </svg>
             </div>
 
@@ -178,14 +186,14 @@ export default function LifeBalanceWheel({ lifeBalance }: LifeBalanceWheelProps)
                 <div className="notebook-card-soft rounded-xl px-3 py-2">
                     <p className="notebook-muted text-[0.65rem]">Most present</p>
                     <p className="text-xs font-medium" style={{ color: 'rgb(var(--paper-ink))' }}>
-                        {AREA_ICONS[dominantArea] || '○'} {dominantArea}
+                        {AREA_ICONS[dominantAreaKey] || '○'} {dominantArea}
                     </p>
                 </div>
                 {neglectedArea && (
                     <div className="notebook-card-soft rounded-xl px-3 py-2">
-                        <p className="notebook-muted text-[0.65rem]">Could use attention</p>
+                        <p className="notebook-muted text-[0.65rem]">Less present</p>
                         <p className="text-xs font-medium" style={{ color: 'rgb(var(--paper-ink))' }}>
-                            {AREA_ICONS[neglectedArea] || '○'} {neglectedArea}
+                            {AREA_ICONS[neglectedAreaKey] || '○'} {neglectedArea}
                         </p>
                     </div>
                 )}

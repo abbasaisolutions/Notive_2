@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/ui';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import { buildTimelineMonthGroups } from '@/utils/timeline-groups';
 import { storyStatusLabel, type StorySignal } from '@/utils/story-engine';
-import NotiveNoticedPanel, { type NotiveInsight } from './NotiveNoticedPanel';
+import type { NotiveInsight } from './NotiveNoticedPanel';
 
 import { clipCompactPillByLimit, COMPACT_PILL_LIMITS, isCardTag } from '@/utils/tags';
 
@@ -245,7 +245,7 @@ function EmotionBars({ emotions }: { emotions: TopEmotion[] }) {
     );
 }
 
-export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByMonthKey = {}, onShareEntry, focusedEntryId, entryShareStats = {} }: TimelineViewProps) {
+export default function TimelineView({ entries, seasonAnchorsByMonthKey = {}, onShareEntry, focusedEntryId, entryShareStats = {} }: TimelineViewProps) {
     const pathname = usePathname();
     const groupedEntries = useMemo(() => buildTimelineMonthGroups(entries), [entries]);
     const currentReturnTo = buildCurrentReturnTo(pathname, typeof window !== 'undefined' ? window.location.search : '');
@@ -421,7 +421,22 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
 
                                                     {/* Tags + Skills + Lessons + Share — unified single row */}
                                                     {(() => {
-                                                        const hasPills = entryTags.length > 0 || displaySkills.length > 0 || displayLessons.length > 0;
+                                                        // Dedup: skills/lessons that match a tag (case-insensitive) are hidden.
+                                                        const seenKeys = new Set(entryTags.map((t) => t.toLowerCase()));
+                                                        const dedupedSkills = displaySkills.filter((s) => {
+                                                            const k = s.toLowerCase();
+                                                            if (seenKeys.has(k)) return false;
+                                                            seenKeys.add(k);
+                                                            return true;
+                                                        });
+                                                        const dedupedLessons = displayLessons.filter((l) => {
+                                                            const k = l.toLowerCase();
+                                                            if (seenKeys.has(k)) return false;
+                                                            seenKeys.add(k);
+                                                            return true;
+                                                        });
+
+                                                        const hasPills = entryTags.length > 0 || dedupedSkills.length > 0 || dedupedLessons.length > 0;
                                                         const allPills: { key: string; label: string; fullLabel: string; type: 'tag' | 'skill' | 'lesson' }[] = [
                                                             ...entryTags.map(t => {
                                                                 const fullLabel = `#${t}`;
@@ -432,7 +447,7 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                                     type: 'tag' as const,
                                                                 };
                                                             }),
-                                                            ...displaySkills.map(s => {
+                                                            ...dedupedSkills.map(s => {
                                                                 const fullLabel = `+${s}`;
                                                                 return {
                                                                     key: `s-${s}`,
@@ -441,14 +456,14 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                                     type: 'skill' as const,
                                                                 };
                                                             }),
-                                                            ...displayLessons.map(l => ({
+                                                            ...dedupedLessons.map(l => ({
                                                                 key: `l-${l}`,
                                                                 fullLabel: l,
                                                                 label: clipCompactPillByLimit(l, COMPACT_PILL_LIMITS.timelineLesson),
                                                                 type: 'lesson' as const,
                                                             })),
                                                         ];
-                                                        const visible = allPills.slice(0, 4);
+                                                        const visible = allPills.slice(0, 3);
                                                         const overflowCount = allPills.length - visible.length;
 
                                                         const pillClass = (type: 'tag' | 'skill' | 'lesson') => {
@@ -520,19 +535,13 @@ export default function TimelineView({ entries, tagCounts = {}, seasonAnchorsByM
                                                         </div>
                                                     )}
 
-                                                    {/* ⑥ + ⑦ Notive Noticed panel (tiered reveal + evolving CTA inside) */}
-                                                    {(entry.notiveInsights?.length || entry.reflection || (entry.skills?.length ?? 0) > 0 || (entry.lessons?.length ?? 0) > 0 || entry.storySignal) && (
-                                                        <NotiveNoticedPanel
-                                                            skills={entry.skills}
-                                                            lessons={entry.lessons}
-                                                            reflection={entry.reflection}
-                                                            notiveInsights={entry.notiveInsights}
-                                                            storySignal={entry.storySignal}
-                                                            mood={entry.mood}
-                                                            lifeArea={entry.lifeArea}
-                                                            tagCounts={tagCounts}
-                                                            entryTags={entryTags}
-                                                        />
+                                                    {/* Export CTA — only when this memory is ready to become a portfolio story */}
+                                                    {(entry.storySignal?.status === 'ready_to_export' || entry.storySignal?.status === 'verified') && (
+                                                        <div className="mt-2 pt-2 border-t border-[rgba(141,123,105,0.14)]">
+                                                            <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(141,123,105,0.22)] px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.1em] text-[rgba(141,123,105,0.75)]">
+                                                                {entry.storySignal.status === 'verified' ? 'Add to portfolio' : 'Export to…'}
+                                                            </span>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </Link>

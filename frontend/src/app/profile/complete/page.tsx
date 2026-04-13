@@ -127,13 +127,13 @@ export default function CompleteProfilePage() {
 
                         <div className="pr-12">
                             <NotiveLogo href="/" size="sm" />
-                            <p className="mt-6 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                            <p className="mt-6 type-overline text-muted">
                                 Finish profile
                             </p>
-                            <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-[rgb(39,35,31)] md:text-[3rem]">
+                            <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong md:text-[3rem]">
                                 Share your date of birth so we can personalize your experience.
                             </h1>
-                            <p className="mt-4 max-w-xl text-sm leading-7 text-[rgb(76,70,62)] md:text-base">
+                            <p className="mt-4 max-w-xl text-sm leading-7 text-default md:text-base">
                                 Your date of birth stays between us. We'll tailor guidance with your school stage, seasonal timing, and reflection cues in mind.
                             </p>
                         </div>
@@ -152,14 +152,7 @@ export default function CompleteProfilePage() {
 
                         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
                             {error && (
-                                <div
-                                    className="rounded-xl px-4 py-3 text-sm"
-                                    style={{
-                                        background: 'rgba(229, 213, 194, 0.52)',
-                                        border: '1px solid rgba(160, 139, 118, 0.24)',
-                                        color: 'rgb(63 57 51)',
-                                    }}
-                                >
+                                <div className="rounded-xl px-4 py-3 text-sm bg-[rgba(var(--paper-apricot),0.32)] border border-[rgba(var(--paper-border),0.14)] text-strong">
                                     {error}
                                 </div>
                             )}
@@ -182,14 +175,14 @@ export default function CompleteProfilePage() {
                             />
 
                             <div
-                                className="app-paper-soft rounded-[1.4rem] px-4 py-4 text-sm leading-7 text-[rgb(76,70,62)]"
+                                className="app-paper-soft rounded-[1.4rem] px-4 py-4 text-sm leading-7 text-default"
                                 style={{
                                     background: 'linear-gradient(180deg, rgba(255,255,255,0.84), rgba(255,251,245,0.72))',
                                     border: '1.5px solid rgba(92,92,92,0.18)',
                                 }}
                             >
                                 <p>What this unlocks right away:</p>
-                                <ul className="mt-2 space-y-2 text-[rgb(93,85,75)]">
+                                <ul className="mt-2 space-y-2 text-soft">
                                     <li>Age-aware reflection language that fits better.</li>
                                     <li>Seasonal cues for school-year and life-stage context.</li>
                                     <li>A more grounded base for future personality and horoscope-style summaries.</li>

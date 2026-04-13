@@ -2,7 +2,7 @@ import prisma from '../config/prisma';
 import embeddingService from './embedding.service';
 import semanticSearchService from './semantic-search.service';
 
-type InsightEntry = {
+type RetrievalEntry = {
     id: string;
     title: string | null;
     content: string;
@@ -164,7 +164,7 @@ const dot = (left: number[], right: number[]): number => {
 const formatDate = (value: Date): string =>
     value.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-const getThemeTokens = (entry: InsightEntry): string[] =>
+const getThemeTokens = (entry: RetrievalEntry): string[] =>
     unique([
         ...entry.tags,
         ...entry.skills,
@@ -173,7 +173,7 @@ const getThemeTokens = (entry: InsightEntry): string[] =>
         ...entry.lessons,
     ].map((value) => value.replace(/[_-]/g, ' ').trim()), 6);
 
-const getDominantMood = (entries: InsightEntry[]): string | null => {
+const getDominantMood = (entries: RetrievalEntry[]): string | null => {
     const counts = new Map<string, number>();
     entries.forEach((entry) => {
         if (!entry.mood) return;
@@ -191,7 +191,7 @@ const getDominantMood = (entries: InsightEntry[]): string | null => {
     return best;
 };
 
-const getTopThemes = (entries: InsightEntry[]): string[] => {
+const getTopThemes = (entries: RetrievalEntry[]): string[] => {
     const counts = new Map<string, number>();
     entries.forEach((entry) => {
         getThemeTokens(entry).forEach((theme) => {
@@ -206,7 +206,7 @@ const getTopThemes = (entries: InsightEntry[]): string[] => {
 };
 
 class RetrievalInsightsService {
-    private async getEntriesByIds(userId: string, ids: string[]): Promise<Map<string, InsightEntry>> {
+    private async getEntriesByIds(userId: string, ids: string[]): Promise<Map<string, RetrievalEntry>> {
         if (ids.length === 0) return new Map();
         const entries = await prisma.entry.findMany({
             where: {
@@ -239,7 +239,7 @@ class RetrievalInsightsService {
 
     private buildCandidateReasons(input: {
         query: string;
-        entry: InsightEntry;
+        entry: RetrievalEntry;
         semanticScore: number;
         rerankScore: number;
         lexicalScore: number;
@@ -433,7 +433,7 @@ class RetrievalInsightsService {
         return results.slice(0, Math.max(1, Math.min(input.limit || 3, 6)));
     }
 
-    private async getClusterEntries(userId: string): Promise<InsightEntry[]> {
+    private async getClusterEntries(userId: string): Promise<RetrievalEntry[]> {
         return prisma.entry.findMany({
             where: {
                 userId,
@@ -490,7 +490,7 @@ class RetrievalInsightsService {
         return new Map(rows.map((row) => [row.entryId, parseEmbedding(row.embeddingText)]));
     }
 
-    private buildThemeClustersFromEntries(entries: InsightEntry[], embeddingMap: Map<string, number[]>): ThemeCluster[] {
+    private buildThemeClustersFromEntries(entries: RetrievalEntry[], embeddingMap: Map<string, number[]>): ThemeCluster[] {
         if (entries.length < 2) return [];
 
         const parent = new Map<string, string>(entries.map((entry) => [entry.id, entry.id]));
@@ -538,7 +538,7 @@ class RetrievalInsightsService {
             }
         }
 
-        const clustersByRoot = new Map<string, InsightEntry[]>();
+        const clustersByRoot = new Map<string, RetrievalEntry[]>();
         entries.forEach((entry) => {
             const root = find(entry.id);
             const existing = clustersByRoot.get(root) || [];

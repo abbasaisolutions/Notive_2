@@ -173,6 +173,7 @@ const fetchOpportunityEntries = async (userId: string): Promise<OpportunityEntry
     const entries = await prisma.entry.findMany({
         where: { userId, deletedAt: null },
         orderBy: { createdAt: 'desc' },
+        take: 200,
         select: {
             id: true,
             title: true,

@@ -1,13 +1,15 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.notive.app",
       "sha256_cert_fingerprints": [
-        "E9:7F:CF:87:6E:92:F8:8C:B1:92:3B:DC:D6:CD:37:0C:DA:C5:46:02:94:AE:FC:FE:93:A9:45:2F:5A:A2:F7:4B"
+        "E9:7F:CF:87:6E:92:F8:8C:B1:92:3B:DC:D6:CD:37:0C:DA:C5:46:02:94:AE:FC:FE:93:A9:45:2F:5A:A2:F7:4B",
+        "A8:D0:1D:52:D9:1D:EF:55:BA:2D:25:74:18:FA:60:88:1B:98:CE:ED:97:E7:36:63:5A:2A:64:BE:68:3A:DC:BB"
       ]
     }
   }
 ]
-

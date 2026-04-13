@@ -22,14 +22,14 @@ export async function registerDeviceToken(
     try {
         const userId = req.userId;
         if (!userId) {
-            res.status(401).json({ error: 'Unauthorized' });
+            res.status(401).json({ message: 'Unauthorized' });
             return;
         }
 
         const { token, platform, deviceId, deviceName, appVersion, osVersion } = req.body;
 
         if (!token || !platform) {
-            res.status(400).json({ error: 'token and platform are required' });
+            res.status(400).json({ message: 'token and platform are required' });
             return;
         }
 
@@ -42,13 +42,10 @@ export async function registerDeviceToken(
             osVersion,
         });
 
-        res.status(200).json({
-            success: true,
-            data: result,
-        });
+        res.status(200).json({ success: true, data: result });
     } catch (error) {
         console.error('Error registering device token:', error);
-        res.status(500).json({ error: 'Failed to register device token' });
+        res.status(500).json({ message: 'Failed to register device token' });
     }
 }
 
@@ -63,21 +60,17 @@ export async function getDeviceTokens(
     try {
         const userId = req.userId;
         if (!userId) {
-            res.status(401).json({ error: 'Unauthorized' });
+            res.status(401).json({ message: 'Unauthorized' });
             return;
         }
 
         const platform = req.query.platform as 'android' | 'ios' | 'web' | undefined;
         const tokens = await pushService.getUserActiveTokens(userId, platform);
 
-        res.status(200).json({
-            success: true,
-            data: tokens,
-            count: tokens.length,
-        });
+        res.status(200).json({ success: true, data: tokens, count: tokens.length });
     } catch (error) {
         console.error('Error fetching device tokens:', error);
-        res.status(500).json({ error: 'Failed to fetch device tokens' });
+        res.status(500).json({ message: 'Failed to fetch device tokens' });
     }
 }
 
@@ -92,29 +85,26 @@ export async function unregisterDeviceToken(
     try {
         const userId = req.userId;
         if (!userId) {
-            res.status(401).json({ error: 'Unauthorized' });
+            res.status(401).json({ message: 'Unauthorized' });
             return;
         }
 
         const { tokenId } = req.params;
 
         if (!tokenId) {
-            res.status(400).json({ error: 'tokenId is required' });
+            res.status(400).json({ message: 'tokenId is required' });
             return;
         }
 
         await pushService.unregisterDeviceToken(userId, tokenId);
 
-        res.status(200).json({
-            success: true,
-            message: 'Device token unregistered',
-        });
+        res.status(200).json({ success: true, message: 'Device token unregistered' });
     } catch (error) {
         console.error('Error unregistering device token:', error);
         if (error instanceof Error && error.message === 'Device token not found or unauthorized') {
-            res.status(404).json({ error: 'Device token not found' });
+            res.status(404).json({ message: 'Device token not found' });
         } else {
-            res.status(500).json({ error: 'Failed to unregister device token' });
+            res.status(500).json({ message: 'Failed to unregister device token' });
         }
     }
 }

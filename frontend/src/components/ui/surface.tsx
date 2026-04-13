@@ -8,6 +8,7 @@ import {
     type NotebookAccentName,
     type NotebookDoodleName,
 } from '@/components/dashboard/NotebookDoodles';
+export { EmptyState } from './empty-state';
 
 type AppPanelTone = 'default' | 'soft' | 'accent';
 type StatTileTone = 'default' | 'primary' | 'subtle';
@@ -171,33 +172,5 @@ export function ActionBar({
     );
 }
 
-export function EmptyState({
-    title,
-    description,
-    actionLabel,
-    actionHref,
-    className,
-}: {
-    title: string;
-    description: string;
-    actionLabel?: string;
-    actionHref?: string;
-    className?: string;
-}) {
-    return (
-        <AppPanel className={cn('text-center', className)} tone="soft">
-            <h3 className="workspace-heading text-xl font-semibold">{title}</h3>
-            <p className="text-sm text-ink-secondary mt-2">{description}</p>
-            {actionLabel && actionHref && (
-                <Link
-                    href={actionHref}
-                    className="mt-4 inline-flex items-center rounded-xl border border-primary/30 bg-primary/12 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary hover:bg-primary/20 transition-colors"
-                >
-                    {actionLabel}
-                </Link>
-            )}
-        </AppPanel>
-    );
-}
 
 

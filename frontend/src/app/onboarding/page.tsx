@@ -528,9 +528,12 @@ function OnboardingPageContent() {
     if (!isAuthenticated) return null;
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-background">
-            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-secondary/20 rounded-full blur-[120px] pointer-events-none" />
+        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden page-paper-canvas">
+            {/* Ruled-line paper texture — matches auth page aesthetic */}
+            <div className="pointer-events-none absolute inset-0" style={{
+                backgroundImage: 'repeating-linear-gradient(transparent, transparent 27px, rgba(141,123,105,0.07) 27px, rgba(141,123,105,0.07) 28px)',
+                backgroundSize: '100% 28px',
+            }} />
 
             <div className="w-full max-w-4xl relative z-10">
                 <div className="mb-3 flex items-center justify-between">

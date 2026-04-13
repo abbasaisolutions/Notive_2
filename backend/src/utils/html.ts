@@ -1,18 +1,17 @@
-const SCRIPT_TAG_REGEX = /<\s*script[^>]*>[\s\S]*?<\s*\/\s*script\s*>/gi;
-const EVENT_HANDLER_ATTR_REGEX = /\son[a-z]+\s*=\s*(['"]).*?\1/gi;
-const JS_PROTOCOL_REGEX = /\s(href|src)\s*=\s*(['"])\s*javascript:[\s\S]*?\2/gi;
-const DATA_HTML_REGEX = /\s(href|src)\s*=\s*(['"])\s*data:text\/html[\s\S]*?\2/gi;
-const STYLE_ATTR_REGEX = /\sstyle\s*=\s*(['"]).*?\1/gi;
-const IFRAME_OBJECT_EMBED_REGEX = /<\s*(iframe|object|embed|link|meta)[^>]*>/gi;
+import DOMPurify from 'isomorphic-dompurify';
 
+/**
+ * Sanitize an HTML string, stripping XSS vectors (scripts, event handlers,
+ * javascript: hrefs, data: URIs, SVG animation, etc.).
+ *
+ * Uses isomorphic-dompurify which runs the JSDOM-backed DOMPurify on the
+ * server — safer than hand-rolled regexes against mutation XSS.
+ */
 export const sanitizeHtml = (input: string | null | undefined): string | null => {
     if (!input) return null;
-
-    return input
-        .replace(SCRIPT_TAG_REGEX, '')
-        .replace(IFRAME_OBJECT_EMBED_REGEX, '')
-        .replace(EVENT_HANDLER_ATTR_REGEX, '')
-        .replace(JS_PROTOCOL_REGEX, '')
-        .replace(DATA_HTML_REGEX, '')
-        .replace(STYLE_ATTR_REGEX, '');
+    return DOMPurify.sanitize(input, {
+        USE_PROFILES: { html: true },
+        FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'link', 'meta', 'style'],
+        FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
+    });
 };
