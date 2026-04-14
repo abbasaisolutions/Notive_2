@@ -61,7 +61,7 @@ jobs:
           fi
 
           KEYSTORE_PATH="$RUNNER_TEMP/notive-upload-key.jks"
-          echo "$PLAY_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          printf '%s' "$PLAY_UPLOAD_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$KEYSTORE_PATH"
           echo "PLAY_UPLOAD_STORE_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
 
       - name: Read Android release version
