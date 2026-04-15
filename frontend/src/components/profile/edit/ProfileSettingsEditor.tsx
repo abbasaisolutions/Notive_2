@@ -678,6 +678,12 @@ export function ProfileSettingsEditor() {
         setConflict(null);
 
         try {
+            // Fetch fresh user data to get current timestamps (avoid stale optimistic lock)
+            const userResponse = await apiFetch('/user');
+            const freshUser = userResponse.ok ? await userResponse.json() : null;
+            const freshUserUpdatedAt = freshUser?.user?.updatedAt || serverUserUpdatedAt;
+            const freshProfileUpdatedAt = freshUser?.user?.profile?.updatedAt || serverProfileUpdatedAt;
+
             const response = await apiFetch('/user/profile/basic', {
                 method: 'PATCH',
                 headers: {
@@ -685,8 +691,8 @@ export function ProfileSettingsEditor() {
                 },
                 body: JSON.stringify({
                     avatarUrl: nextAvatarUrl || null,
-                    expectedUserUpdatedAt: serverUserUpdatedAt,
-                    expectedProfileUpdatedAt: serverProfileUpdatedAt,
+                    expectedUserUpdatedAt: freshUserUpdatedAt,
+                    expectedProfileUpdatedAt: freshProfileUpdatedAt,
                 }),
             });
 
