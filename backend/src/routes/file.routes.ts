@@ -10,7 +10,13 @@ const imageUpload = createUpload(15 * 1024 * 1024);
 router.use(authMiddleware);
 
 // Upload optimized user images with a stricter source-file cap.
-router.post('/upload', imageUpload.single('file'), (req, res) => {
+router.post('/upload', (req, res, next) => {
+    // Flag profile avatar uploads to use consistent per-user filename
+    if (req.query.type === 'avatar') {
+        (req as any).isProfileAvatar = true;
+    }
+    next();
+}, imageUpload.single('file'), (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ message: 'No file uploaded' });

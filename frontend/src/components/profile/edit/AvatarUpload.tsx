@@ -62,7 +62,7 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
             const formData = new FormData();
             formData.append('file', prepared.file, prepared.file.name);
 
-            const res = await apiFetch('/files/upload', {
+            const res = await apiFetch('/files/upload?type=avatar', {
                 method: 'POST',
                 body: formData,
             });

@@ -23,8 +23,11 @@ class S3StorageEngine implements multer.StorageEngine {
     }
 
     _handleFile(req: Request, file: Express.Multer.File, cb: (error?: any, info?: Partial<Express.Multer.File>) => void): void {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const filename = uniqueSuffix + path.extname(file.originalname);
+        // For profile avatar: use user ID to ensure one file per user (overwrites old)
+        const isProfileAvatar = (req as any).isProfileAvatar;
+        const filename = isProfileAvatar
+            ? `avatar-${(req as any).userId}${path.extname(file.originalname)}`
+            : Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(file.originalname);
         const key = `uploads/${filename}`;
 
         this.uploadToS3(file, key)
