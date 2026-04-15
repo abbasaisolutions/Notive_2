@@ -69,10 +69,43 @@
       "Bash(echo \"FRONTEND_EXIT: $?\")",
       "Bash(echo \"FRONTEND: $?\")",
       "Bash(echo \"BACKEND: $?\")",
-      "Bash(ls -lh c:/Users/mtabe/Notive/frontend/android/app/build/outputs/bundle/release/*.aab)"
+      "Bash(ls -lh c:/Users/mtabe/Notive/frontend/android/app/build/outputs/bundle/release/*.aab)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(npx tsc:*)",
+      "Bash(echo \"BACKEND_EXIT=$?\")",
+      "Bash(echo \"FRONTEND_EXIT=$?\")",
+      "Read(//c/Users/mtabe/.claude/plans/**)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); ['@capacitor/keyboard','@capacitor/status-bar','@capacitor/app'].forEach\\(k => console.log\\(k, p.dependencies?.[k] || p.devDependencies?.[k] || 'MISSING'\\)\\)\")",
+      "Bash(ls /c/Users/mtabe/Notive/backend/src/services/opportunity*)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(p.dependencies?.['isomorphic-dompurify'] || p.dependencies?.['dompurify'] || 'MISSING'\\)\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(p.dependencies?.['isomorphic-dompurify'] || 'MISSING'\\)\")",
+      "Bash(grep -v \"200\\\\|201\\\\|json\\({\\\\s*$\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('test script:', d.get\\('scripts',{}\\).get\\('test','MISSING'\\)\\); print\\('vitest dep:', d.get\\('devDependencies',{}\\).get\\('vitest','MISSING'\\)\\)\")",
+      "Bash(node -e \"const b=require\\('/c/Users/mtabe/Notive/backend/package.json'\\); console.log\\('test:', b.scripts?.test || 'MISSING'\\); console.log\\('vitest:', b.devDependencies?.vitest || 'MISSING'\\)\")",
+      "Bash(node -e \"const b=require\\('C:/Users/mtabe/Notive/backend/package.json'\\); console.log\\('test:', b.scripts?.test||'MISSING'\\); console.log\\('vitest:', b.devDependencies?.vitest||'MISSING'\\)\")",
+      "Bash(node -e \"const f=require\\('C:/Users/mtabe/Notive/frontend/package.json'\\); console.log\\('test:', f.scripts?.test||'MISSING'\\); console.log\\('vitest:', f.devDependencies?.vitest||'MISSING'\\)\")",
+      "Bash(ls /c/Users/mtabe/Notive/backend/vitest.config* /c/Users/mtabe/Notive/frontend/vitest.config*)",
+      "Bash(ls /c/Users/mtabe/Notive/backend/src/**/*.test.ts /c/Users/mtabe/Notive/frontend/src/**/*.test.ts)",
+      "Bash(sed -n '520,560p' /c/Users/mtabe/Notive/backend/src/controllers/analytics.controller.ts)",
+      "Bash(sed -n '595,660p' /c/Users/mtabe/Notive/backend/src/controllers/analytics.controller.ts)",
+      "Read(//c/Users/mtabe/.claude/projects/c--Users-mtabe-Notive/**)",
+      "Bash(rm -f package-lock.json)",
+      "Bash(rm -rf node_modules)",
+      "Bash(npx --yes npm@10.9.3 install)",
+      "Bash(npx --yes npm@10.9.3 ci)",
+      "Bash(gh run:*)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" run list --workflow=\"Android Release\" --limit 3)",
+      "Bash(npm --version)",
+      "Bash(npx npm@10 install --package-lock-only)",
+      "Read(//c/Users/mtabe/**)",
+      "Bash(keytool -list -keystore \"c:/Users/mtabe/Notive/frontend/android/keystore/notive-upload-key.jks\" -storepass android)",
+      "Bash(keytool -list -keystore \"c:/Users/mtabe/Notive/frontend/android/keystore/notive-upload-key.jks\")",
+      "Bash(python3 -c ':*)",
+      "Bash(powershell.exe -Command \"Get-Content -Path 'C:\\\\\\\\tmp\\\\\\\\keystore_b64.txt' -Raw | Set-Clipboard; Write-Host 'Copied to clipboard!'\")"
     ],
     "additionalDirectories": [
-      "c:\\Users\\mtabe\\Notive\\frontend\\src\\out"
+      "c:\\Users\\mtabe\\Notive\\frontend\\src\\out",
+      "\\tmp"
     ]
   }
 }
