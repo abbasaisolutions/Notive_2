@@ -660,6 +660,56 @@ export function ProfileSettingsEditor() {
         } as NonNullable<typeof user>);
     };
 
+    const persistAvatar = async (
+        nextAvatarUrl: string,
+        expectedUserUpdatedAt: string | null | undefined,
+        allowRetry = true
+    ) => {
+        const payload: Record<string, unknown> = {
+            avatarUrl: nextAvatarUrl || null,
+        };
+
+        if (expectedUserUpdatedAt !== undefined) {
+            payload.expectedUserUpdatedAt = expectedUserUpdatedAt;
+        }
+
+        const response = await apiFetch('/user/profile/basic', {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await response.json().catch(() => null);
+
+        if (response.status === 409 && data?.user) {
+            const latestUser = data.user as SnapshotUser;
+
+            if (allowRetry) {
+                return persistAvatar(
+                    nextAvatarUrl,
+                    data?.conflict?.userUpdatedAt || latestUser.updatedAt || null,
+                    false
+                );
+            }
+
+            setConflict({
+                tab: 'profile',
+                latestUser,
+                userUpdatedAt: data?.conflict?.userUpdatedAt || null,
+                profileUpdatedAt: data?.conflict?.profileUpdatedAt || null,
+            });
+            throw new Error(data?.message || 'Your profile changed somewhere else. Reload and try saving your photo again.');
+        }
+
+        if (!response.ok) {
+            throw new Error(data?.message || 'We couldn’t save your photo. Please try again.');
+        }
+
+        return data;
+    };
+
     // Save avatar and persist to backend immediately after upload/crop
     const saveAvatar = async (nextAvatarUrl: string, opts?: { auto?: boolean }) => {
         const previousAvatarUrl = profileDraft.avatarUrl;
@@ -678,39 +728,7 @@ export function ProfileSettingsEditor() {
         setConflict(null);
 
         try {
-            // Fetch fresh user data to get current timestamps (avoid stale optimistic lock)
-            const userResponse = await apiFetch('/user');
-            const freshUser = userResponse.ok ? await userResponse.json() : null;
-            const freshUserUpdatedAt = freshUser?.user?.updatedAt || serverUserUpdatedAt;
-            const freshProfileUpdatedAt = freshUser?.user?.profile?.updatedAt || serverProfileUpdatedAt;
-
-            const response = await apiFetch('/user/profile/basic', {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    avatarUrl: nextAvatarUrl || null,
-                    expectedUserUpdatedAt: freshUserUpdatedAt,
-                    expectedProfileUpdatedAt: freshProfileUpdatedAt,
-                }),
-            });
-
-            const data = await response.json().catch(() => null);
-
-            if (response.status === 409 && data?.user) {
-                setConflict({
-                    tab: 'profile',
-                    latestUser: data.user as SnapshotUser,
-                    userUpdatedAt: data?.conflict?.userUpdatedAt || null,
-                    profileUpdatedAt: data?.conflict?.profileUpdatedAt || null,
-                });
-                throw new Error(data?.message || 'Your profile changed somewhere else. Reload and try saving your photo again.');
-            }
-
-            if (!response.ok) {
-                throw new Error(data?.message || 'We couldn’t save your photo. Please try again.');
-            }
+            const data = await persistAvatar(nextAvatarUrl, serverUserUpdatedAt);
 
             if (data?.user) {
                 const nextUser = data.user as SnapshotUser;

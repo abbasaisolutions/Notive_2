@@ -143,6 +143,7 @@ export const googleSignIn = async (req: Request, res: Response) => {
                 role: userWithProfile?.role || user.role,
                 hasPassword: Boolean(userWithProfile?.password || user.password),
                 createdAt: userWithProfile?.createdAt || user.createdAt,
+                updatedAt: userWithProfile?.updatedAt || user.updatedAt,
                 profile: userWithProfile?.profile || null,
             },
         });

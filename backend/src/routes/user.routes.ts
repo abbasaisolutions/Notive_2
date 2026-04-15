@@ -30,6 +30,8 @@ router.post('/google', authAttemptLimiter, googleSignIn);
 // Protected routes
 router.use(authMiddleware);
 
+// Backward-compatible alias for older clients that still request /api/v1/user.
+router.get('/', getProfile);
 router.get('/profile', getProfile);
 router.patch('/profile/basic', patchProfileBasics);
 router.patch('/profile/preferences', patchProfilePreferences);

@@ -134,6 +134,7 @@ export const register = async (req: Request, res: Response) => {
                 role: user.role,
                 hasPassword: Boolean(user.password),
                 createdAt: user.createdAt,
+                updatedAt: user.updatedAt,
                 profile: user.profile,
             },
         });
@@ -213,6 +214,7 @@ export const login = async (req: Request, res: Response) => {
                 role: user.role,
                 hasPassword: Boolean(user.password),
                 createdAt: user.createdAt,
+                updatedAt: user.updatedAt,
                 profile: user.profile,
             },
         });
@@ -313,6 +315,7 @@ export const refresh = async (req: Request, res: Response) => {
                 role: storedToken.user.role,
                 hasPassword: Boolean(storedToken.user.password),
                 createdAt: storedToken.user.createdAt,
+                updatedAt: storedToken.user.updatedAt,
                 profile: storedToken.user.profile,
             },
         });
@@ -354,7 +357,7 @@ export const getMe = async (req: Request, res: Response) => {
 
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true, email: true, name: true, avatarUrl: true, createdAt: true, role: true, password: true, profile: true },
+            select: { id: true, email: true, name: true, avatarUrl: true, createdAt: true, updatedAt: true, role: true, password: true, profile: true },
         });
 
         if (!user) {
@@ -464,5 +467,4 @@ export const resetPassword = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Internal server error' });
     }
 };
-
 

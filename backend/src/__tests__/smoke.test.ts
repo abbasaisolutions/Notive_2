@@ -103,6 +103,7 @@ describe('backend smoke tests', () => {
             ['POST', '/api/v1/ai/chat'],
             ['POST', '/api/v1/voice/transcribe'],
             ['POST', '/api/v1/device/tokens'],
+            ['GET', '/api/v1/user'],
             ['GET', '/api/v1/user/profile'],
             ['GET', '/api/v1/notifications'],
         ];
