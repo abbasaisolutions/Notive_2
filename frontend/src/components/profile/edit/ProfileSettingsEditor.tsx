@@ -80,8 +80,8 @@ export function ProfileSettingsEditor() {
     const [pinnedPeopleDraft, setPinnedPeopleDraft] = useState('');
     const [groundingRoutinesDraft, setGroundingRoutinesDraft] = useState('');
     const [trustedContactDraft, setTrustedContactDraft] = useState<TrustedContactDraft>(EMPTY_TRUSTED_CONTACT_DRAFT);
-    const [serverUserUpdatedAt, setServerUserUpdatedAt] = useState<string | null>(null);
-    const [serverProfileUpdatedAt, setServerProfileUpdatedAt] = useState<string | null>(null);
+    const [serverUserUpdatedAt, setServerUserUpdatedAt] = useState<string | undefined>(undefined);
+    const [serverProfileUpdatedAt, setServerProfileUpdatedAt] = useState<string | null | undefined>(undefined);
     const [notice, setNotice] = useState<Notice | null>(null);
     const [conflict, setConflict] = useState<ConflictState | null>(null);
     const [isSavingTab, setIsSavingTab] = useState<EditableTab | null>(null);
@@ -108,6 +108,25 @@ export function ProfileSettingsEditor() {
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const hasPassword = Boolean(user?.hasPassword);
 
+    const resolveKnownUserUpdatedAt = (source: SnapshotUser | null | undefined): string | undefined =>
+        typeof source?.updatedAt === 'string' && source.updatedAt.trim().length > 0
+            ? source.updatedAt
+            : undefined;
+
+    const resolveKnownProfileUpdatedAt = (source: SnapshotUser | null | undefined): string | null | undefined => {
+        if (!source || source.profile === undefined) {
+            return undefined;
+        }
+
+        if (source.profile === null) {
+            return null;
+        }
+
+        return typeof source.profile.updatedAt === 'string' && source.profile.updatedAt.trim().length > 0
+            ? source.profile.updatedAt
+            : undefined;
+    };
+
     const resetNoticeState = () => {
         setNotice(null);
         setConflict(null);
@@ -131,8 +150,8 @@ export function ProfileSettingsEditor() {
         setTrustedContactDraft(EMPTY_TRUSTED_CONTACT_DRAFT);
         setSignInEmailDraft(source?.email || '');
         setConfirmSignInEmailDraft('');
-        setServerUserUpdatedAt(source?.updatedAt || null);
-        setServerProfileUpdatedAt(source?.profile?.updatedAt || null);
+        setServerUserUpdatedAt(resolveKnownUserUpdatedAt(source));
+        setServerProfileUpdatedAt(resolveKnownProfileUpdatedAt(source));
         setConflict(null);
     };
 
@@ -306,7 +325,7 @@ export function ProfileSettingsEditor() {
     const lastSignalAction = privacyDraft.personalizationSignals?.metrics?.lastActionAt
         || privacyDraft.personalizationSignals?.updatedAt
         || null;
-    const lastSavedAt = serverProfileUpdatedAt || serverUserUpdatedAt;
+    const lastSavedAt = serverProfileUpdatedAt || serverUserUpdatedAt || null;
 
     const handleTabChange = (tab: EditTab) => {
         setActiveTab(tab);
@@ -628,8 +647,8 @@ export function ProfileSettingsEditor() {
     };
 
     const syncSavedSection = (tab: EditableTab, source: SnapshotUser) => {
-        setServerUserUpdatedAt(source.updatedAt || null);
-        setServerProfileUpdatedAt(source.profile?.updatedAt || null);
+        setServerUserUpdatedAt(resolveKnownUserUpdatedAt(source));
+        setServerProfileUpdatedAt(resolveKnownProfileUpdatedAt(source));
 
         if (tab === 'profile') {
             const nextDraft = buildProfileDraft(source);
@@ -662,7 +681,7 @@ export function ProfileSettingsEditor() {
 
     const persistAvatar = async (
         nextAvatarUrl: string,
-        expectedUserUpdatedAt: string | null | undefined,
+        expectedUserUpdatedAt: string | undefined,
         allowRetry = true
     ) => {
         const payload: Record<string, unknown> = {
@@ -689,7 +708,7 @@ export function ProfileSettingsEditor() {
             if (allowRetry) {
                 return persistAvatar(
                     nextAvatarUrl,
-                    data?.conflict?.userUpdatedAt || latestUser.updatedAt || null,
+                    data?.conflict?.userUpdatedAt || latestUser.updatedAt || undefined,
                     false
                 );
             }
@@ -734,8 +753,8 @@ export function ProfileSettingsEditor() {
                 const nextUser = data.user as SnapshotUser;
                 const persistedAvatarUrl = nextUser.avatarUrl || '';
 
-                setServerUserUpdatedAt(nextUser.updatedAt || null);
-                setServerProfileUpdatedAt(nextUser.profile?.updatedAt || null);
+                setServerUserUpdatedAt(resolveKnownUserUpdatedAt(nextUser));
+                setServerProfileUpdatedAt(resolveKnownProfileUpdatedAt(nextUser));
                 setProfileDraft((current) => ({
                     ...current,
                     avatarUrl: persistedAvatarUrl,
@@ -777,7 +796,7 @@ export function ProfileSettingsEditor() {
 
     const saveSection = async (
         tab: EditableTab,
-        overrideConflict?: { userUpdatedAt: string | null; profileUpdatedAt: string | null }
+        overrideConflict?: { userUpdatedAt: string | null | undefined; profileUpdatedAt: string | null | undefined }
     ) => {
         setIsSavingTab(tab);
         setNotice(null);
@@ -840,6 +859,14 @@ export function ProfileSettingsEditor() {
                 successMessage = 'Data settings updated.';
             }
 
+            const conflictPayload: Record<string, unknown> = {};
+            if (typeof timestamps.userUpdatedAt === 'string' && timestamps.userUpdatedAt.trim().length > 0) {
+                conflictPayload.expectedUserUpdatedAt = timestamps.userUpdatedAt;
+            }
+            if (timestamps.profileUpdatedAt !== undefined) {
+                conflictPayload.expectedProfileUpdatedAt = timestamps.profileUpdatedAt;
+            }
+
             const response = await apiFetch(path, {
                 method: 'PATCH',
                 headers: {
@@ -847,8 +874,7 @@ export function ProfileSettingsEditor() {
                 },
                 body: JSON.stringify({
                     ...payload,
-                    expectedUserUpdatedAt: timestamps.userUpdatedAt,
-                    expectedProfileUpdatedAt: timestamps.profileUpdatedAt,
+                    ...conflictPayload,
                 }),
             });
 
