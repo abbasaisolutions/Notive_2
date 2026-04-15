@@ -1,12 +1,15 @@
 /** @type {import('next').NextConfig} */
+const outputMode = process.env.NEXT_OUTPUT_MODE === 'export' ? 'export' : undefined;
+
 const nextConfig = {
-    output: 'export',
-    eslint: {
-        ignoreDuringBuilds: true,
-    },
-    images: {
-        unoptimized: true,
-    },
+    ...(outputMode ? { output: outputMode } : {}),
+    ...(outputMode
+        ? {
+            images: {
+                unoptimized: true,
+            },
+        }
+        : {}),
 };
 
 module.exports = nextConfig;

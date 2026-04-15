@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, Suspense, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import useApi from '@/hooks/use-api';
@@ -23,6 +24,7 @@ import { useToast } from '@/context/toast-context';
 import ShareMemorySheet, { type ShareableEntry } from '@/components/share/ShareMemorySheet';
 import MemoryInsightStrip from '@/components/entry/MemoryInsightStrip';
 import type { MemoryNotiveInsight, MemoryTopEmotion } from '@/components/entry/memory-insight-types';
+import { passthroughImageLoader } from '@/lib/image-loader';
 
 
 interface Entry {
@@ -469,8 +471,16 @@ function EntryDetailContent() {
                     )}
 
                     {entry.coverImage && (
-                        <div className="rounded-2xl overflow-hidden">
-                            <img src={entry.coverImage} alt={entry.title || 'Cover'} className="w-full h-64 md:h-80 object-cover" />
+                        <div className="relative h-64 overflow-hidden rounded-2xl md:h-80">
+                            <Image
+                                src={entry.coverImage}
+                                loader={passthroughImageLoader}
+                                unoptimized
+                                alt={entry.title || 'Cover'}
+                                fill
+                                sizes="(max-width: 768px) 100vw, 896px"
+                                className="object-cover"
+                            />
                         </div>
                     )}
                 </AppPanel>
@@ -633,4 +643,3 @@ export default function EntryDetailClient() {
         </Suspense>
     );
 }
-

@@ -37,8 +37,6 @@ function hashValue(value: string): number {
 export default function GratitudePulseCard({ gratitude }: GratitudePulseCardProps) {
     const { totalExpressions, avgPerWeek, streak, topThemes, recentTrend, depthScore } = gratitude;
 
-    if (totalExpressions < 2) return null;
-
     const trend = TREND_INFO[recentTrend] || TREND_INFO.stable;
 
     // Build a deterministic heartbeat from the actual gratitude profile so
@@ -68,6 +66,8 @@ export default function GratitudePulseCard({ gratitude }: GratitudePulseCardProp
     const depthLabel = depthScore >= 70 ? 'Deep & specific'
         : depthScore >= 40 ? 'Getting specific'
             : 'General';
+
+    if (totalExpressions < 2) return null;
 
     return (
         <motion.section

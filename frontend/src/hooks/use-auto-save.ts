@@ -29,7 +29,7 @@ export function useAutoSave<T>({ data, onSave, interval = 2000, enabled = true }
     useEffect(() => {
         lastTrackedSnapshotRef.current = toSnapshot(data);
         setIsInitialized(true);
-    }, [toSnapshot]);
+    }, [data, toSnapshot]);
 
     useEffect(() => {
         if (!isInitialized) return;

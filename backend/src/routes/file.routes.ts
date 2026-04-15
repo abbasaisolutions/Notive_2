@@ -28,6 +28,10 @@ router.post('/upload', (req, res, next) => {
         if (!fileUrl.startsWith('http')) {
             fileUrl = LocalFileService.getFileUrl(req, uploaded.filename);
         }
+        if (req.query.type === 'avatar') {
+            const separator = fileUrl.includes('?') ? '&' : '?';
+            fileUrl = `${fileUrl}${separator}v=${Date.now()}`;
+        }
 
         return res.status(201).json({
             message: 'File uploaded successfully',

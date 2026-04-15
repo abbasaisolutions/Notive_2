@@ -15,6 +15,12 @@ import {
     sanitizeStringArray,
     sanitizeOptionalBirthDate,
 } from '../utils/sanitize';
+import {
+    buildAvatarStorageCleanupKeys,
+    deleteStoredUploadByKey,
+    extractUploadKeyFromUrl,
+} from '../services/file.service';
+import { invalidateAuthUserCache } from '../services/auth-user-cache.service';
 
 const sanitizeOptionalText = (value: unknown, maxLength = 5000): string | null | undefined =>
     sanitizeOptionalString(value, maxLength);
@@ -33,6 +39,16 @@ const removeUndefinedFields = (fields: Record<string, unknown>): Record<string, 
     Object.fromEntries(
         Object.entries(fields).filter(([, value]) => value !== undefined)
     );
+
+const cleanupReplacedAvatar = (userId: string, nextAvatarUrl: string | null | undefined) => {
+    const nextKey = nextAvatarUrl ? extractUploadKeyFromUrl(nextAvatarUrl) : null;
+    const cleanupKeys = buildAvatarStorageCleanupKeys(userId).filter((key) => key !== nextKey);
+    cleanupKeys.forEach((key) => {
+        void deleteStoredUploadByKey(key).catch((error) => {
+            console.error(`[Avatar cleanup] Failed to delete ${key}:`, error);
+        });
+    });
+};
 
 const sanitizeOptionalJsonObject = (
     value: unknown,
@@ -622,6 +638,10 @@ export const patchProfileBasics = async (req: Request, res: Response) => {
             },
         });
 
+        if (req.body.avatarUrl !== undefined) {
+            cleanupReplacedAvatar(userId, user.avatarUrl);
+        }
+
         return res.json({
             message: 'Profile details updated',
             user: buildPublicUserResponse(user),
@@ -865,6 +885,10 @@ export const updateProfile = async (req: Request, res: Response) => {
             select: publicUserSelect,
         });
 
+        if (avatarUrl !== undefined) {
+            cleanupReplacedAvatar(userId, user.avatarUrl);
+        }
+
         if (safePersonalizationSignals !== undefined) {
             try {
                 const telemetryEvents = buildPersonalizationTelemetryEvents({
@@ -1060,6 +1084,8 @@ export const updateEmail = async (req: Request, res: Response) => {
             return nextUser;
         });
 
+        await invalidateAuthUserCache(userId);
+
         try {
             await emailService.sendEmailChangeAlert({
                 previousEmail: currentUser.email,
@@ -1179,7 +1205,7 @@ export const exportData = async (req: Request, res: Response) => {
         }
 
         // Clean user object (remove sensitive credentials)
-        const { password, ...cleanData } = userData;
+        const { password: _password, ...cleanData } = userData;
 
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Content-Disposition', `attachment; filename=notive-data-${userId}.json`);
@@ -1225,6 +1251,8 @@ export const deleteAccount = async (req: Request, res: Response) => {
             where: { id: userId },
         });
 
+        await invalidateAuthUserCache(userId);
+
         clearRefreshTokenCookie(res);
 
         return res.json({ message: 'Account permanently deleted' });
@@ -1233,4 +1261,3 @@ export const deleteAccount = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Failed to delete account' });
     }
 };
-

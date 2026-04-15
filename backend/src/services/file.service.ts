@@ -15,6 +15,17 @@ interface S3StorageOptions {
     endpoint?: string; // Custom endpoint for R2/MinIO
 }
 
+export const buildAvatarStorageFilename = (userId: string): string => `avatar-${userId}`;
+const avatarCleanupExtensions = ['', '.jpg', '.jpeg', '.png', '.webp', '.gif'];
+
+export const buildAvatarStorageCleanupKeys = (userId: string): string[] =>
+    avatarCleanupExtensions.map((extension) => `uploads/${buildAvatarStorageFilename(userId)}${extension}`);
+
+export const extractUploadKeyFromUrl = (url: string): string | null => {
+    const match = url.match(/(uploads\/[^?#]+)/);
+    return match ? match[1] : null;
+};
+
 class S3StorageEngine implements multer.StorageEngine {
     private options: S3StorageOptions;
 
@@ -23,10 +34,11 @@ class S3StorageEngine implements multer.StorageEngine {
     }
 
     _handleFile(req: Request, file: Express.Multer.File, cb: (error?: any, info?: Partial<Express.Multer.File>) => void): void {
-        // For profile avatar: use user ID to ensure one file per user (overwrites old)
+        // For profile avatars in object storage, use one stable key per user so the latest
+        // upload overwrites the existing object instead of creating duplicates.
         const isProfileAvatar = (req as any).isProfileAvatar;
         const filename = isProfileAvatar
-            ? `avatar-${(req as any).userId}${path.extname(file.originalname)}`
+            ? buildAvatarStorageFilename(String((req as any).userId || 'unknown'))
             : Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(file.originalname);
         const key = `uploads/${filename}`;
 
@@ -159,9 +171,7 @@ class S3StorageEngine implements multer.StorageEngine {
     }
 
     extractKeyFromUrl(url: string): string | null {
-        // Match uploads/<filename> from the URL
-        const match = url.match(/(uploads\/[^?#]+)/);
-        return match ? match[1] : null;
+        return extractUploadKeyFromUrl(url);
     }
 
     private streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
@@ -188,6 +198,12 @@ const localStorage = multer.diskStorage({
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
+        const isProfileAvatar = (req as any).isProfileAvatar;
+        if (isProfileAvatar) {
+            const userId = String((req as any).userId || 'unknown');
+            cb(null, `${buildAvatarStorageFilename(userId)}${path.extname(file.originalname)}`);
+            return;
+        }
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
         cb(null, uniqueSuffix + path.extname(file.originalname));
     },
@@ -253,6 +269,21 @@ export class LocalFileService {
     }
 }
 
+export async function deleteStoredUploadByKey(key: string): Promise<void> {
+    if (!key) return;
+
+    if (isS3Configured && storage instanceof S3StorageEngine) {
+        await storage.deleteFromS3(key);
+        return;
+    }
+
+    const basename = path.basename(key);
+    const filePath = path.join(uploadDir, basename);
+    if (fs.existsSync(filePath)) {
+        await fs.promises.unlink(filePath);
+    }
+}
+
 /**
  * Delete a previously uploaded file by URL.
  * Swallows errors — cleanup should never block entry operations.
@@ -261,18 +292,9 @@ export async function deleteFile(fileUrl: string): Promise<void> {
     try {
         if (!fileUrl) return;
 
-        if (isS3Configured && storage instanceof S3StorageEngine) {
-            const key = storage.extractKeyFromUrl(fileUrl);
-            if (key) {
-                await storage.deleteFromS3(key);
-            }
-        } else {
-            // Local disk: extract basename and unlink
-            const basename = path.basename(fileUrl);
-            const filePath = path.join(uploadDir, basename);
-            if (fs.existsSync(filePath)) {
-                await fs.promises.unlink(filePath);
-            }
+        const key = extractUploadKeyFromUrl(fileUrl);
+        if (key) {
+            await deleteStoredUploadByKey(key);
         }
     } catch (err) {
         console.error(`[File cleanup] Failed to delete ${fileUrl}:`, err);

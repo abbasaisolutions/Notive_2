@@ -840,7 +840,7 @@ function NewEntryPageContent() {
                 clearTimeout(timer);
             }
         };
-    }, [apiFetch, applyCompletedVoiceTranscript, voiceJob]);
+    }, [apiFetch, applyCompletedVoiceTranscript, isBackgroundRefining, voiceJob]);
 
     const handleKeepDraft = useCallback(() => {
         setDraftConflict(null);
@@ -1416,39 +1416,43 @@ function NewEntryPageContent() {
             setIsSaving(false);
         }
     }, [
-        content,
-        contentHtml,
-        titleOverride,
-        moodOverride,
-        tagsOverride,
-        audioUrl,
-        category,
-        lifeArea,
-        collectionId,
-        extractedData,
-        buildPersistedAnalysis,
-        entryId,
         apiFetch,
         applyCompletedVoiceTranscript,
+        audioUrl,
         awardXP,
-        refreshStats,
-        clearDraft,
         backHref,
-        router,
-        persistDraftSnapshot,
+        buildPersistedAnalysis,
+        category,
+        clearDraft,
+        collectionId,
+        content,
+        contentHtml,
+        deviceSnapshot,
+        entryId,
+        entryLocation,
+        entrySource,
+        extractedData,
         gentleReflectionId,
         gentleReflectionTags,
-        entrySource,
         isGentleReflectionEntry,
         isQuickMode,
+        lifeArea,
+        moodOverride,
+        persistDraftSnapshot,
+        pushLoading,
+        pushPermissionGranted,
+        pushPermissionState,
+        refreshStats,
+        requestPushPermission,
+        router,
+        tagsOverride,
+        titleOverride,
+        toast,
         trackEvent,
         user?.id,
         voiceCapture,
-        toast,
-        pushPermissionGranted,
-        pushPermissionState,
-        pushLoading,
-        requestPushPermission,
+        voiceJob?.entryId,
+        voiceJob?.id,
     ]);
 
     useEffect(() => {

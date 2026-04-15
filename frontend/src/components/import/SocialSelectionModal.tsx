@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
 import useApi from '@/hooks/use-api';
 import { FiCheck } from 'react-icons/fi';
 import { Spinner, EmptyState } from '@/components/ui';
 import { clipCompactPillByLimit, COMPACT_PILL_LIMITS } from '@/utils/tags';
+import { passthroughImageLoader } from '@/lib/image-loader';
 
 interface ImportCandidate {
     id: string;
@@ -328,17 +330,21 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                                                     ? 'border-primary/70 bg-primary/[0.08] shadow-[0_0_0_1px_rgba(127,90,240,0.3)]'
                                                     : 'workspace-soft-panel'
                                             }`}
-                                        >
-                                            <div className="relative aspect-[4/3] overflow-hidden bg-[rgb(var(--paper-soft))]">
-                                                {candidate.imageUrl ? (
-                                                    <img
-                                                        src={candidate.imageUrl}
-                                                        alt=""
-                                                        className="h-full w-full object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.26),_transparent_58%),linear-gradient(130deg,rgba(15,23,42,0.95),rgba(2,6,23,1))]" />
-                                                )}
+                                            >
+                                                <div className="relative aspect-[4/3] overflow-hidden bg-[rgb(var(--paper-soft))]">
+                                                    {candidate.imageUrl ? (
+                                                        <Image
+                                                            src={candidate.imageUrl}
+                                                            loader={passthroughImageLoader}
+                                                            unoptimized
+                                                            alt=""
+                                                            fill
+                                                            sizes="(max-width: 768px) 100vw, 33vw"
+                                                            className="object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.26),_transparent_58%),linear-gradient(130deg,rgba(15,23,42,0.95),rgba(2,6,23,1))]" />
+                                                    )}
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                                                 <div className="absolute right-3 top-3">
                                                     <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${

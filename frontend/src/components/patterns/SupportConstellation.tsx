@@ -69,7 +69,7 @@ export default function SupportConstellation({
     onAnchorSelect?: (anchor: SupportAnchor) => void;
     onCopyStarter?: (anchor: SupportAnchor) => void;
 }) {
-    const anchors = supportMap?.anchors || [];
+    const anchors = useMemo(() => supportMap?.anchors || [], [supportMap]);
     const [selectedId, setSelectedId] = useState<string | null>(anchors[0]?.id || null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const toast = useToast();

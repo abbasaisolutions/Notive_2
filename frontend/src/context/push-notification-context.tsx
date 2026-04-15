@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { App } from '@capacitor/app';
@@ -110,154 +110,208 @@ function applyResolvedPushPermission(
 export function PushNotificationProvider({ children }: { children: ReactNode }) {
     const { apiFetch } = useApi();
     const router = useRouter();
-    const toast = useToast();
+    const { addToast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
     const [isSupported, setIsSupported] = useState(false);
     const [isPermissionGranted, setIsPermissionGranted] = useState(false);
     const [permissionState, setPermissionState] = useState<PermissionStatus>('prompt');
     const [deviceTokens, setDeviceTokens] = useState<DeviceToken[]>([]);
     const [notifications, setNotifications] = useState<PushNotification[]>([]);
+    const hasInitializedPushRef = useRef(false);
 
-    // Initialize push notifications on mount
-    useEffect(() => {
-        if (!isNativePlatform()) {
-            setIsSupported(false);
-            setPermissionState('unavailable');
-            setIsLoading(false);
-            return;
-        }
-
-        initializePushNotifications();
+    const getPlatform = useCallback((): 'android' | 'ios' | 'web' => {
+        return getNativePlatform();
     }, []);
 
-    // Re-check permission state when app resumes (e.g. user returns from
-    // Android notification settings). If the OS permission was toggled while
-    // the app was backgrounded, we pick it up immediately.
-    useEffect(() => {
-        if (!isNativePlatform()) return;
-
-        let listener: { remove: () => Promise<void> } | undefined;
-
-        void App.addListener('appStateChange', async ({ isActive }) => {
-            if (!isActive) return;
-            try {
-                const check = await PushNotifications.checkPermissions();
-                const nextState = normalizePushPermissionState(check.receive);
-                const granted = applyResolvedPushPermission(
-                    nextState,
-                    setPermissionState,
-                    setIsPermissionGranted,
-                );
-
-                // If the user just enabled notifications via Settings, register now
-                if (granted) {
-                    await ensureAndroidPushChannel();
-                    await PushNotifications.register();
-                }
-            } catch {
-                // Non-fatal — will pick up on next resume
-            }
-        }).then((l) => { listener = l; });
-
-        return () => { void listener?.remove(); };
-    }, []);
-
-    const initializePushNotifications = async () => {
+    const getDeviceId = useCallback(async (): Promise<string | undefined> => {
         try {
-            setIsLoading(true);
-
-            // Check if push notifications are supported
-            const isAvailable = await checkPushSupport();
-            setIsSupported(isAvailable);
-
-            if (!isAvailable) {
-                setPermissionState('unavailable');
-                setIsLoading(false);
-                return;
-            }
-
-            // Set up event listeners
-            await setupPushListeners();
-
-            // Ensure the Android channel exists before the first notification arrives.
-            await ensureAndroidPushChannel();
-
-            // Always check current OS permission status first so we never
-            // re-show the OS prompt when the user already granted access.
-            const check = await PushNotifications.checkPermissions();
-            const nextPermissionState = normalizePushPermissionState(check.receive);
-            const alreadyGranted = applyResolvedPushPermission(
-                nextPermissionState,
-                setPermissionState,
-                setIsPermissionGranted,
-            );
-
-            if (alreadyGranted) {
-                // Permission already granted — just ensure token registration.
-                await PushNotifications.register();
-            }
-            // If permission is not yet granted, wait for a contextual ask from
-            // onboarding, the in-app prompt, or the profile screen.
-        } catch (error) {
-            logger.error('Failed to initialize push notifications:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const checkPushSupport = async (): Promise<boolean> => {
-        try {
-            // On native platforms, push is supported
-            return isNativePlatform();
+            const info = await App.getInfo();
+            return info.id;
         } catch {
-            return false;
+            return undefined;
         }
-    };
+    }, []);
 
-    const setupPushListeners = async () => {
+    const getDeviceName = useCallback(async (): Promise<string | undefined> => {
         try {
-            // Handle token received — also syncs isPermissionGranted because
-            // receiving a token proves the OS permission is granted (covers
-            // cases where permission was requested outside this context, e.g.
-            // the onboarding flow's standalone device-permissions service).
-            PushNotifications.addListener('registration', (token: any) => {
-                logger.debug('Push token received:', token.value);
-                applyResolvedPushPermission('granted', setPermissionState, setIsPermissionGranted);
-                registerDevice(token.value, getPlatform()).catch(err =>
-                    logger.error('Failed to auto-register token:', err)
-                );
-            });
-
-            // Handle registration error
-            PushNotifications.addListener('registrationError', (error: any) => {
-                logger.error('Push registration error:', error);
-            });
-
-            // Handle notification when app is in foreground
-            PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
-                logger.debug('Push notification received:', notification);
-                addNotificationToState(notification);
-
-                // Show an in-app toast and only clear the matching delivered
-                // notification instead of wiping the whole notification tray.
-                hapticLight();
-                showNotificationToast(notification);
-                refreshNotificationBadge();
-                // Keep the system tray notification so the user can tap it later
-                // if they miss the 6-second in-app toast.
-            });
-
-            // Handle notification action (tap)
-            PushNotifications.addListener('pushNotificationActionPerformed', (notification: any) => {
-                logger.debug('Push notification action performed:', notification);
-                handleNotificationAction(notification);
-            });
-        } catch (error) {
-            logger.error('Failed to setup push listeners:', error);
+            const info = await App.getInfo();
+            return info.name;
+        } catch {
+            return undefined;
         }
-    };
+    }, []);
 
-    const ensureAndroidPushChannel = async () => {
+    const getAppVersion = useCallback(async (): Promise<string | undefined> => {
+        try {
+            const info = await App.getInfo();
+            return info.version;
+        } catch {
+            return undefined;
+        }
+    }, []);
+
+    const getOsVersion = useCallback(async (): Promise<string | undefined> => {
+        try {
+            const cap = (window as any).Capacitor;
+            if (cap?.Plugins?.Device?.getInfo) {
+                const info = await cap.Plugins.Device.getInfo();
+                return info.osVersion;
+            }
+            return undefined;
+        } catch {
+            return undefined;
+        }
+    }, []);
+
+    const fetchDeviceTokens = useCallback(async () => {
+        try {
+            const response = await apiFetch('/devices/tokens');
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch device tokens');
+            }
+
+            const data = await response.json();
+            setDeviceTokens(data.data || []);
+        } catch (error) {
+            logger.error('Failed to fetch device tokens:', error);
+        }
+    }, [apiFetch]);
+
+    const registerDevice = useCallback(async (token: string, platform: 'android' | 'ios' | 'web') => {
+        try {
+            const response = await apiFetch('/devices/tokens', {
+                method: 'POST',
+                body: JSON.stringify({
+                    token,
+                    platform,
+                    deviceId: await getDeviceId(),
+                    deviceName: await getDeviceName(),
+                    appVersion: await getAppVersion(),
+                    osVersion: await getOsVersion(),
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to register device token');
+            }
+
+            const data = await response.json();
+            logger.debug('Device token registered:', data);
+
+            await fetchDeviceTokens();
+        } catch (error) {
+            logger.error('Failed to register device:', error);
+            throw error;
+        }
+    }, [apiFetch, fetchDeviceTokens, getAppVersion, getDeviceId, getDeviceName, getOsVersion]);
+
+    const unregisterDevice = useCallback(async (tokenId: string) => {
+        try {
+            const response = await apiFetch(`/devices/tokens/${tokenId}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to unregister device token');
+            }
+
+            setDeviceTokens(prev => prev.filter(t => t.id !== tokenId));
+            logger.debug('Device token unregistered:', tokenId);
+        } catch (error) {
+            logger.error('Failed to unregister device:', error);
+            throw error;
+        }
+    }, [apiFetch]);
+
+    const addNotificationToState = useCallback((notification: any) => {
+        const newNotif: PushNotification = {
+            id: notification.id || `notif-${Date.now()}`,
+            title: notification.title || 'Notification',
+            body: notification.body || '',
+            data: notification.data,
+            receivedAt: new Date(),
+        };
+
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+    }, []);
+
+    const clearNotifications = useCallback(() => {
+        setNotifications([]);
+    }, []);
+
+    const removeForegroundDuplicateNotification = useCallback(async (notification: any) => {
+        try {
+            const delivered = await PushNotifications.getDeliveredNotifications();
+            const notificationId = typeof notification?.id === 'string' ? notification.id : '';
+            const notificationTag = typeof notification?.tag === 'string' ? notification.tag : '';
+
+            const matching = delivered.notifications.filter((item) => {
+                if (notificationId && item.id === notificationId) return true;
+                if (notificationTag && item.tag === notificationTag) return true;
+                return false;
+            });
+
+            if (matching.length > 0) {
+                await PushNotifications.removeDeliveredNotifications({ notifications: matching });
+            }
+        } catch {
+            // Non-fatal: better to keep a tray item than to break foreground handling.
+        }
+    }, []);
+
+    const markNotificationRead = useCallback(async (notificationId: string | undefined) => {
+        if (!notificationId) return;
+
+        try {
+            const response = await apiFetch(`/notifications/${notificationId}/read`, {
+                method: 'PATCH',
+            });
+
+            if (response.ok) {
+                refreshNotificationBadge();
+            }
+        } catch {
+            // Non-fatal: destination screens can retry the read mutation.
+        }
+    }, [apiFetch]);
+
+    const showNotificationToast = useCallback((notification: any) => {
+        const title = notification.title || 'Notive';
+        const body = notification.body || '';
+        const data = notification.data || {};
+        const deepLink = data?.link || data?.route;
+        const notificationId = typeof data?.notificationId === 'string' ? data.notificationId : undefined;
+        const actionLabel = resolveNotificationActionLabel(data?.type, deepLink);
+
+        addToast({
+            title,
+            description: body,
+            variant: 'notification',
+            duration: FOREGROUND_TOAST_DURATION_MS,
+            action: deepLink
+                ? {
+                    label: actionLabel,
+                    onClick: () => {
+                        void markNotificationRead(notificationId);
+                        router.push(deepLink);
+                    },
+                }
+                : undefined,
+        });
+    }, [addToast, markNotificationRead, router]);
+
+    const handleNotificationAction = useCallback(async (notification: any) => {
+        const data = notification.notification?.data || notification.data;
+        const notificationId = typeof data?.notificationId === 'string' ? data.notificationId : undefined;
+        const deepLink = data?.link || data?.route;
+        void markNotificationRead(notificationId);
+        if (deepLink) {
+            router.push(deepLink);
+        }
+    }, [markNotificationRead, router]);
+
+    const ensureAndroidPushChannel = useCallback(async () => {
         if (getPlatform() !== 'android') {
             return;
         }
@@ -283,15 +337,125 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         } catch (error) {
             logger.debug('Push channel creation error (may already exist):', error);
         }
-    };
+    }, [getPlatform]);
 
-    const getPlatform = (): 'android' | 'ios' | 'web' => {
-        return getNativePlatform();
-    };
-
-    const requestPermission = async (): Promise<boolean> => {
+    const checkPushSupport = useCallback(async (): Promise<boolean> => {
         try {
-            // Fast-path: if already granted, skip the OS prompt entirely.
+            return isNativePlatform();
+        } catch {
+            return false;
+        }
+    }, []);
+
+    const setupPushListeners = useCallback(async () => {
+        try {
+            PushNotifications.addListener('registration', (token: any) => {
+                logger.debug('Push token received:', token.value);
+                applyResolvedPushPermission('granted', setPermissionState, setIsPermissionGranted);
+                registerDevice(token.value, getPlatform()).catch(err =>
+                    logger.error('Failed to auto-register token:', err)
+                );
+            });
+
+            PushNotifications.addListener('registrationError', (error: any) => {
+                logger.error('Push registration error:', error);
+            });
+
+            PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
+                logger.debug('Push notification received:', notification);
+                addNotificationToState(notification);
+                void removeForegroundDuplicateNotification(notification);
+                hapticLight();
+                showNotificationToast(notification);
+                refreshNotificationBadge();
+            });
+
+            PushNotifications.addListener('pushNotificationActionPerformed', (notification: any) => {
+                logger.debug('Push notification action performed:', notification);
+                void handleNotificationAction(notification);
+            });
+        } catch (error) {
+            logger.error('Failed to setup push listeners:', error);
+        }
+    }, [addNotificationToState, getPlatform, handleNotificationAction, registerDevice, removeForegroundDuplicateNotification, showNotificationToast]);
+
+    const initializePushNotifications = useCallback(async () => {
+        try {
+            setIsLoading(true);
+
+            const isAvailable = await checkPushSupport();
+            setIsSupported(isAvailable);
+
+            if (!isAvailable) {
+                setPermissionState('unavailable');
+                setIsLoading(false);
+                return;
+            }
+
+            await setupPushListeners();
+            await ensureAndroidPushChannel();
+
+            const check = await PushNotifications.checkPermissions();
+            const nextPermissionState = normalizePushPermissionState(check.receive);
+            const alreadyGranted = applyResolvedPushPermission(
+                nextPermissionState,
+                setPermissionState,
+                setIsPermissionGranted,
+            );
+
+            if (alreadyGranted) {
+                await PushNotifications.register();
+            }
+        } catch (error) {
+            logger.error('Failed to initialize push notifications:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [checkPushSupport, ensureAndroidPushChannel, setupPushListeners]);
+
+    useEffect(() => {
+        if (!isNativePlatform()) {
+            setIsSupported(false);
+            setPermissionState('unavailable');
+            setIsLoading(false);
+            return;
+        }
+
+        if (hasInitializedPushRef.current) return;
+        hasInitializedPushRef.current = true;
+        void initializePushNotifications();
+    }, [initializePushNotifications]);
+
+    useEffect(() => {
+        if (!isNativePlatform()) return;
+
+        let listener: { remove: () => Promise<void> } | undefined;
+
+        void App.addListener('appStateChange', async ({ isActive }) => {
+            if (!isActive) return;
+            try {
+                const check = await PushNotifications.checkPermissions();
+                const nextState = normalizePushPermissionState(check.receive);
+                const granted = applyResolvedPushPermission(
+                    nextState,
+                    setPermissionState,
+                    setIsPermissionGranted,
+                );
+
+                if (granted) {
+                    await ensureAndroidPushChannel();
+                    await PushNotifications.register();
+                }
+            } catch {
+                // Non-fatal — will pick up on next resume
+            }
+        }).then((l) => { listener = l; });
+
+        return () => { void listener?.remove(); };
+    }, [ensureAndroidPushChannel]);
+
+    const requestPermission = useCallback(async (): Promise<boolean> => {
+        try {
             const check = await PushNotifications.checkPermissions();
             const nextPermissionState = normalizePushPermissionState(check.receive);
             if (applyResolvedPushPermission(
@@ -322,211 +486,35 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             logger.error('Failed to request push permissions:', error);
             return false;
         }
-    };
+    }, [ensureAndroidPushChannel]);
 
-    const registerDevice = async (token: string, platform: 'android' | 'ios' | 'web') => {
-        try {
-            const response = await apiFetch('/devices/tokens', {
-                method: 'POST',
-                body: JSON.stringify({
-                    token,
-                    platform,
-                    deviceId: await getDeviceId(),
-                    deviceName: await getDeviceName(),
-                    appVersion: await getAppVersion(),
-                    osVersion: await getOsVersion(),
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to register device token');
-            }
-
-            const data = await response.json();
-            logger.debug('Device token registered:', data);
-
-            await fetchDeviceTokens();
-        } catch (error) {
-            logger.error('Failed to register device:', error);
-            throw error;
-        }
-    };
-
-    const unregisterDevice = async (tokenId: string) => {
-        try {
-            const response = await apiFetch(`/devices/tokens/${tokenId}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to unregister device token');
-            }
-
-            setDeviceTokens(prev => prev.filter(t => t.id !== tokenId));
-            logger.debug('Device token unregistered:', tokenId);
-        } catch (error) {
-            logger.error('Failed to unregister device:', error);
-            throw error;
-        }
-    };
-
-    const fetchDeviceTokens = async () => {
-        try {
-            const response = await apiFetch('/devices/tokens');
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch device tokens');
-            }
-
-            const data = await response.json();
-            setDeviceTokens(data.data || []);
-        } catch (error) {
-            logger.error('Failed to fetch device tokens:', error);
-        }
-    };
-
-    const addNotificationToState = (notification: any) => {
-        const newNotif: PushNotification = {
-            id: notification.id || `notif-${Date.now()}`,
-            title: notification.title || 'Notification',
-            body: notification.body || '',
-            data: notification.data,
-            receivedAt: new Date(),
-        };
-
-        setNotifications(prev => [newNotif, ...prev].slice(0, 50)); // Keep last 50
-    };
-
-    const clearNotifications = () => {
-        setNotifications([]);
-    };
-
-    const removeForegroundDuplicateNotification = async (notification: any) => {
-        try {
-            const delivered = await PushNotifications.getDeliveredNotifications();
-            const notificationId = typeof notification?.id === 'string' ? notification.id : '';
-            const notificationTag = typeof notification?.tag === 'string' ? notification.tag : '';
-
-            const matching = delivered.notifications.filter((item) => {
-                if (notificationId && item.id === notificationId) return true;
-                if (notificationTag && item.tag === notificationTag) return true;
-                return false;
-            });
-
-            if (matching.length > 0) {
-                await PushNotifications.removeDeliveredNotifications({ notifications: matching });
-            }
-        } catch {
-            // Non-fatal: better to keep a tray item than to break foreground handling.
-        }
-    };
-
-    const markNotificationRead = async (notificationId: string | undefined) => {
-        if (!notificationId) return;
-
-        try {
-            const response = await apiFetch(`/notifications/${notificationId}/read`, {
-                method: 'PATCH',
-            });
-
-            if (response.ok) {
-                refreshNotificationBadge();
-            }
-        } catch {
-            // Non-fatal: destination screens can retry the read mutation.
-        }
-    };
-
-    const showNotificationToast = (notification: any) => {
-        const title = notification.title || 'Notive';
-        const body = notification.body || '';
-        const data = notification.data || {};
-        const deepLink = data?.link || data?.route;
-        const notificationId = typeof data?.notificationId === 'string' ? data.notificationId : undefined;
-        const actionLabel = resolveNotificationActionLabel(data?.type, deepLink);
-
-        toast.addToast({
-            title,
-            description: body,
-            variant: 'notification',
-            duration: FOREGROUND_TOAST_DURATION_MS,
-            action: deepLink
-                ? {
-                    label: actionLabel,
-                    onClick: () => {
-                        void markNotificationRead(notificationId);
-                        router.push(deepLink);
-                    },
-                }
-                : undefined,
-        });
-    };
-
-    const handleNotificationAction = async (notification: any) => {
-        // Handle deep linking or navigation based on notification data
-        const data = notification.notification?.data || notification.data;
-        const notificationId = typeof data?.notificationId === 'string' ? data.notificationId : undefined;
-        const deepLink = data?.link || data?.route;
-        void markNotificationRead(notificationId);
-        if (deepLink) {
-            router.push(deepLink);
-        }
-    };
-
-    const getDeviceId = async (): Promise<string | undefined> => {
-        try {
-            const info = await App.getInfo();
-            return info.id;
-        } catch {
-            return undefined;
-        }
-    };
-
-    const getDeviceName = async (): Promise<string | undefined> => {
-        try {
-            const info = await App.getInfo();
-            return info.name;
-        } catch {
-            return undefined;
-        }
-    };
-
-    const getAppVersion = async (): Promise<string | undefined> => {
-        try {
-            const info = await App.getInfo();
-            return info.version;
-        } catch {
-            return undefined;
-        }
-    };
-
-    const getOsVersion = async (): Promise<string | undefined> => {
-        try {
-            const cap = (window as any).Capacitor;
-            if (cap?.Plugins?.Device?.getInfo) {
-                const info = await cap.Plugins.Device.getInfo();
-                return info.osVersion;
-            }
-            return undefined;
-        } catch {
-            return undefined;
-        }
-    };
+    const value = useMemo(() => ({
+        isSupported,
+        isPermissionGranted,
+        permissionState,
+        isLoading,
+        deviceTokens,
+        notifications,
+        registerDevice,
+        unregisterDevice,
+        requestPermission,
+        clearNotifications,
+    }), [
+        clearNotifications,
+        deviceTokens,
+        isLoading,
+        isPermissionGranted,
+        isSupported,
+        notifications,
+        permissionState,
+        registerDevice,
+        requestPermission,
+        unregisterDevice,
+    ]);
 
     return (
         <PushContext.Provider
-            value={{
-                isSupported,
-                isPermissionGranted,
-                permissionState,
-                isLoading,
-                deviceTokens,
-                notifications,
-                registerDevice,
-                unregisterDevice,
-                requestPermission,
-                clearNotifications,
-            }}
+            value={value}
         >
             {children}
         </PushContext.Provider>

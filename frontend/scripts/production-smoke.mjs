@@ -80,6 +80,13 @@ const run = async () => {
         assert.match(body.toLowerCase(), /notive api is running/);
     });
 
+    await runCheck('backend readiness', async () => {
+        const body = await expectOk(`${BACKEND_BASE_URL}/readyz`);
+        const data = JSON.parse(body);
+        assert.equal(typeof data?.status, 'string', 'Expected /readyz to include a status');
+        assert.equal(Array.isArray(data?.components), true, 'Expected /readyz to include dependency components');
+    });
+
     if (!(SMOKE_EMAIL && SMOKE_PASSWORD)) {
         console.log('- authenticated API checks... skipped (set SMOKE_EMAIL and SMOKE_PASSWORD to enable)');
         return;
@@ -128,6 +135,33 @@ const run = async () => {
         const profilePayload = await profileResponse.json().catch(() => null);
         assert.equal(profileResponse.ok, true, `Expected /user/profile to succeed, received ${profileResponse.status}`);
         assert.equal(typeof profilePayload?.user?.email, 'string', 'Expected profile payload');
+
+        const profileUser = profilePayload?.user || {};
+        const profileDetails = profileUser.profile || {};
+        const basicPatchPayload = {
+            ...(profileUser.updatedAt !== undefined ? { expectedUserUpdatedAt: profileUser.updatedAt } : {}),
+            ...(profileDetails.updatedAt !== undefined ? { expectedProfileUpdatedAt: profileDetails.updatedAt } : {}),
+            ...(profileUser.name !== undefined ? { name: profileUser.name } : {}),
+            ...(profileUser.avatarUrl !== undefined ? { avatarUrl: profileUser.avatarUrl } : {}),
+            ...(profileDetails.bio !== undefined ? { bio: profileDetails.bio } : {}),
+            ...(profileDetails.location !== undefined ? { location: profileDetails.location } : {}),
+            ...(profileDetails.occupation !== undefined ? { occupation: profileDetails.occupation } : {}),
+            ...(profileDetails.website !== undefined ? { website: profileDetails.website } : {}),
+            ...(profileDetails.birthDate !== undefined ? { birthDate: profileDetails.birthDate } : {}),
+            ...(profileDetails.lifeGoals !== undefined ? { lifeGoals: profileDetails.lifeGoals } : {}),
+        };
+
+        const profilePatchResponse = await fetchWithTimeout(`${API_URL}/user/profile/basic`, {
+            method: 'PATCH',
+            headers: { ...authHeaders, 'Content-Type': 'application/json' },
+            body: JSON.stringify(basicPatchPayload),
+        });
+        const profilePatchPayload = await profilePatchResponse.json().catch(() => null);
+        assert.equal(
+            profilePatchResponse.ok,
+            true,
+            `Expected /user/profile/basic round-trip to succeed, received ${profilePatchResponse.status}: ${JSON.stringify(profilePatchPayload)}`
+        );
 
         // Entry creation (create then delete to leave no trace)
         const createResponse = await fetchWithTimeout(`${API_URL}/entries`, {

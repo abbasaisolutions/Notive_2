@@ -1677,17 +1677,17 @@ function TimelinePageContent() {
         router.replace(next ? `${pathname}?${next}` : pathname);
     }, [pathname, router, searchParams]);
 
-    const updateQuery = (nextQuery: string) => {
+    const updateQuery = useCallback((nextQuery: string) => {
         setQuery(nextQuery);
-    };
+    }, []);
 
-    const updateSourceFilter = (nextFilter: SourceFilter) => {
+    const updateSourceFilter = useCallback((nextFilter: SourceFilter) => {
         applyTimelineFilters({ ...currentFilters, sourceFilter: nextFilter }, { instantSearch: true });
-    };
+    }, [applyTimelineFilters, currentFilters]);
 
-    const updateLifeAreaFilter = (nextFilter: string) => {
+    const updateLifeAreaFilter = useCallback((nextFilter: string) => {
         applyTimelineFilters({ ...currentFilters, lifeAreaFilter: nextFilter }, { instantSearch: true });
-    };
+    }, [applyTimelineFilters, currentFilters]);
 
     const updateWeekdayFilter = (nextFilter: string) => {
         applyTimelineFilters({ ...currentFilters, weekdayFilter: nextFilter }, { instantSearch: true });

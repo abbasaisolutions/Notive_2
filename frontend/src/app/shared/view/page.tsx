@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -10,6 +11,7 @@ import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import { useToast } from '@/context/toast-context';
 import { refreshNotificationBadge } from '@/hooks/use-notification-count';
 import { API_URL } from '@/constants/config';
+import { passthroughImageLoader } from '@/lib/image-loader';
 
 /* ─── Types ────────────────────────────────────────────── */
 
@@ -216,8 +218,16 @@ function SharedBundleViewContent() {
                         className="entry-paper-canvas overflow-hidden rounded-2xl border border-[rgba(92,92,92,0.12)] p-5"
                     >
                         {item.snapshotCoverImage && (
-                            <div className="mb-4 overflow-hidden rounded-xl">
-                                <img src={item.snapshotCoverImage} alt="" className="h-36 w-full object-cover" />
+                            <div className="relative mb-4 h-36 overflow-hidden rounded-xl">
+                                <Image
+                                    src={item.snapshotCoverImage}
+                                    loader={passthroughImageLoader}
+                                    unoptimized
+                                    alt=""
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, 768px"
+                                    className="object-cover"
+                                />
                             </div>
                         )}
                         <div className="mb-2 flex items-center gap-2">

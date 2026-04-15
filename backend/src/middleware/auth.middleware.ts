@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../utils/jwt';
-import prisma from '../config/prisma';
+import { getAuthUserSnapshot } from '../services/auth-user-cache.service';
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -17,14 +17,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
             return res.status(401).json({ message: 'Invalid or expired token' });
         }
 
-        const user = await prisma.user.findUnique({
-            where: { id: payload.userId },
-            select: {
-                id: true,
-                email: true,
-                isBanned: true,
-            },
-        });
+        const user = await getAuthUserSnapshot(payload.userId);
 
         if (!user) {
             return res.status(401).json({ message: 'Invalid or expired token' });

@@ -999,7 +999,7 @@ export default function PortfolioWorkspace() {
                 isRecommended,
             };
         });
-    }, [evidenceSummary.avgScore, filterCounts.ready_to_export, filterCounts.verified, overview, recommendedExportType, statement]);
+    }, [filterCounts.ready_to_export, overview, recommendedExportType, statement]);
     const selectedPathwayCard = useMemo(
         () => pathwayCards.find((card) => card.type === selectedExportType) || pathwayCards[0] || null,
         [pathwayCards, selectedExportType]

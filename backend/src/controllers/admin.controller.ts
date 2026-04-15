@@ -4,6 +4,7 @@ import prisma from '../config/prisma';
 import { buildProfileContextSummary, type ProfileContextSummary } from '../services/profile-context.service';
 import { deriveExperienceEvidence } from '../services/opportunity.service';
 import { executeHybridSearch } from '../services/hybrid-search.service';
+import { invalidateAuthUserCache } from '../services/auth-user-cache.service';
 
 const TRACK_FILTERS = new Set(['all', 'personal', 'professional', 'blended', 'unknown']);
 const STAGE_FILTERS = new Set(['all', 'not_started', 'in_progress', 'completed']);
@@ -1022,6 +1023,8 @@ export const toggleUserBan = async (req: Request, res: Response) => {
             select: { id: true, email: true, isBanned: true },
         });
 
+        await invalidateAuthUserCache(userId);
+
         // When banning, immediately revoke all sessions (defense-in-depth)
         let revokedSessions = 0;
         if (updatedUser.isBanned) {
@@ -1166,10 +1169,11 @@ export const deleteUser = async (req: Request, res: Response) => {
             where: { id: userId },
         });
 
+        await invalidateAuthUserCache(userId);
+
         return res.json({ message: 'User deleted' });
     } catch (error) {
         console.error('Delete user error:', error);
         return res.status(500).json({ message: 'Failed to delete user' });
     }
 };
-

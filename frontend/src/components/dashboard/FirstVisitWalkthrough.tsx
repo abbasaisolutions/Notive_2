@@ -79,7 +79,7 @@ export default function FirstVisitWalkthrough() {
                 >
                     <div className="flex items-start justify-between gap-3 mb-4">
                         <div>
-                            <p className="type-overline text-muted">What's in Notive</p>
+                            <p className="type-overline text-muted">What&apos;s in Notive</p>
                             <h2 className="notebook-title text-base mt-0.5">Three places to explore after your first note</h2>
                         </div>
                         <button

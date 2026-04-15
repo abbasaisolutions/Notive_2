@@ -26,6 +26,7 @@ import { securityConfig } from './config/security';
 import { securityHeadersMiddleware } from './middleware/security.middleware';
 import { requestLoggingMiddleware } from './middleware/request-logging.middleware';
 import { serverLogger } from './utils/server-logger';
+import { getRuntimeReadinessReport } from './services/runtime-readiness.service';
 
 // Sentry must be initialised before the Express app is created
 if (process.env.SENTRY_DSN) {
@@ -132,6 +133,27 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 app.get('/healthz', (_req: Request, res: Response) => {
     res.status(200).json({ status: 'ok' });
+});
+
+app.get('/readyz', async (_req: Request, res: Response) => {
+    try {
+        const report = await getRuntimeReadinessReport();
+        res.status(report.status === 'error' ? 503 : 200).json(report);
+    } catch (error) {
+        res.status(503).json({
+            status: 'error',
+            checkedAt: new Date().toISOString(),
+            cacheTtlMs: 0,
+            components: [
+                {
+                    key: 'runtime_readiness',
+                    required: true,
+                    status: 'error',
+                    message: error instanceof Error ? error.message : 'Runtime readiness check failed',
+                },
+            ],
+        });
+    }
 });
 
 app.get('/', (_req: Request, res: Response) => {

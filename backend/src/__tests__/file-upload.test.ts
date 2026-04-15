@@ -47,8 +47,6 @@ vi.mock('firebase-admin', () => ({
 }));
 
 import app from '../app';
-import path from 'path';
-import fs from 'fs';
 
 describe('file upload endpoint', () => {
     describe('POST /api/v1/files/upload', () => {
@@ -96,6 +94,31 @@ describe('file upload endpoint', () => {
 
             const url = LocalFileService.getFileUrl(mockReq, 'https://s3.amazonaws.com/bucket/file.webp');
             expect(url).toBe('https://s3.amazonaws.com/bucket/file.webp');
+        });
+    });
+
+    describe('avatar storage helpers', () => {
+        it('uses one stable avatar object name per user', async () => {
+            const { buildAvatarStorageFilename } = await import('../services/file.service');
+            expect(buildAvatarStorageFilename('user-123')).toBe('avatar-user-123');
+        });
+
+        it('extracts upload keys even when cache-busting params are present', async () => {
+            const { extractUploadKeyFromUrl } = await import('../services/file.service');
+            expect(extractUploadKeyFromUrl('https://cdn.example.com/uploads/avatar-user-123?v=1744825965'))
+                .toBe('uploads/avatar-user-123');
+        });
+
+        it('includes stable and legacy avatar object keys for cleanup', async () => {
+            const { buildAvatarStorageCleanupKeys } = await import('../services/file.service');
+            expect(buildAvatarStorageCleanupKeys('user-123')).toEqual([
+                'uploads/avatar-user-123',
+                'uploads/avatar-user-123.jpg',
+                'uploads/avatar-user-123.jpeg',
+                'uploads/avatar-user-123.png',
+                'uploads/avatar-user-123.webp',
+                'uploads/avatar-user-123.gif',
+            ]);
         });
     });
 });

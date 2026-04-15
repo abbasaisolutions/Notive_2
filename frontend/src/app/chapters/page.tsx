@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import useApi from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
@@ -49,7 +49,7 @@ export default function ChaptersPage() {
         setFormData({ name: '', description: '', color: '#64748b', icon: 'book-open' });
     };
 
-    const fetchChapters = async (signal?: AbortSignal) => {
+    const fetchChapters = useCallback(async (signal?: AbortSignal) => {
         try {
             const response = await apiFetch(`${API_URL}/chapters`, { signal });
             if (response.ok) {
@@ -62,13 +62,13 @@ export default function ChaptersPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [apiFetch]);
 
     useEffect(() => {
         const controller = new AbortController();
         fetchChapters(controller.signal);
         return () => controller.abort();
-    }, [user, apiFetch]);
+    }, [fetchChapters]);
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();

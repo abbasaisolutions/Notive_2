@@ -1,13 +1,13 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, ReactNode } from 'react';
 import logger from '@/utils/logger';
 import secureStorage from '@/utils/secure-storage';
-import { API_URL } from '@/constants/config';
 import { clearOnboardingState } from '@/utils/onboarding';
 import type { CredentialSsoProvider } from '@/utils/sso';
 import { logoutNativeGoogleSession } from '@/utils/native-google-auth';
 import { resolveFriendlyMessage } from '@/utils/friendly-errors';
+import { readResponseJson, resolveApiRequestUrl } from '@/lib/api-client';
 
 interface UserProfile {
     bio?: string;
@@ -81,6 +81,12 @@ const isNativePlatform = () => {
     return false;
 };
 
+type SessionPayload = {
+    accessToken: string;
+    refreshToken?: string;
+    user: User;
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -88,7 +94,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const refreshInFlightRef = useRef<Promise<string | null> | null>(null);
     const refreshBlockedUntilRef = useRef<number>(0);
 
-    const performRefresh = async (): Promise<string | null> => {
+    const applySessionPayload = useCallback(async (payload: SessionPayload) => {
+        setAccessToken(payload.accessToken);
+        setUser(payload.user);
+        refreshBlockedUntilRef.current = 0;
+
+        if (isNativePlatform() && payload.refreshToken) {
+            await secureStorage.set(REFRESH_TOKEN_KEY, payload.refreshToken);
+        }
+    }, []);
+
+    const submitSessionRequest = useCallback(async (
+        path: string,
+        init: RequestInit,
+        fallback: string
+    ): Promise<User> => {
+        const response = await fetch(resolveApiRequestUrl(path), init);
+        const data = await readResponseJson<Partial<SessionPayload> & { message?: string }>(response);
+
+        if (!response.ok) {
+            throw new Error(friendlyAuthMessage(data?.message, fallback));
+        }
+
+        if (typeof data?.accessToken !== 'string' || !data.user) {
+            throw new Error(fallback);
+        }
+
+        await applySessionPayload(data as SessionPayload);
+        return data.user as User;
+    }, [applySessionPayload]);
+
+    const performRefresh = useCallback(async (): Promise<string | null> => {
         if (refreshInFlightRef.current) {
             return refreshInFlightRef.current;
         }
@@ -111,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 body = JSON.stringify({ refreshToken: storedRefreshToken });
             }
 
-            const response = await fetch(`${API_URL}/auth/refresh`, {
+            const response = await fetch(resolveApiRequestUrl('/auth/refresh'), {
                 method: 'POST',
                 credentials: 'include', // Include cookies (web)
                 headers,
@@ -128,14 +164,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return null;
             }
 
-            const data = await response.json();
-            setAccessToken(data.accessToken);
-            setUser(data.user);
-            refreshBlockedUntilRef.current = 0;
-
-            if (isNative && data.refreshToken) {
-                await secureStorage.set(REFRESH_TOKEN_KEY, data.refreshToken);
+            const data = await readResponseJson<Partial<SessionPayload>>(response);
+            if (typeof data?.accessToken !== 'string' || !data.user) {
+                return null;
             }
+
+            await applySessionPayload(data as SessionPayload);
 
             return data.accessToken as string;
         })();
@@ -146,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } finally {
             refreshInFlightRef.current = null;
         }
-    };
+    }, [applySessionPayload]);
 
     // Try to refresh token on mount
     useEffect(() => {
@@ -161,14 +195,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
 
         initAuth();
-    }, []);
+    }, [performRefresh]);
 
-    const login = async (email: string, password: string): Promise<User> => {
+    const login = useCallback(async (email: string, password: string): Promise<User> => {
         const fallback = 'We couldn’t sign you in. Check your email and password, then try again.';
 
         try {
             const isNative = isNativePlatform();
-            const response = await fetch(`${API_URL}/auth/login`, {
+            return await submitSessionRequest('/auth/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -176,36 +210,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 },
                 credentials: 'include',
                 body: JSON.stringify({ email, password }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(friendlyAuthMessage(data.message, fallback));
-            }
-
-            setAccessToken(data.accessToken);
-            setUser(data.user);
-            refreshBlockedUntilRef.current = 0;
-
-            if (isNative && data.refreshToken) {
-                await secureStorage.set(REFRESH_TOKEN_KEY, data.refreshToken);
-            }
-
-            return data.user as User;
+            }, fallback);
         } catch (error) {
             throw new Error(resolveFriendlyMessage(error, fallback));
         }
-    };
+    }, [submitSessionRequest]);
 
-    const loginWithSsoCredential = async (provider: CredentialSsoProvider, credential: string): Promise<User> => {
+    const loginWithSsoCredential = useCallback(async (provider: CredentialSsoProvider, credential: string): Promise<User> => {
         const fallback = provider === 'google'
             ? 'Google sign-in didn’t go through. Please try again.'
             : 'That sign-in method didn’t go through. Please try again.';
 
         try {
             const isNative = isNativePlatform();
-            const response = await fetch(`${API_URL}/auth/sso/${provider}/credential`, {
+            return await submitSessionRequest(`/auth/sso/${provider}/credential`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -213,36 +231,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 },
                 credentials: 'include',
                 body: JSON.stringify({ credential }),
-            });
-
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(friendlyAuthMessage(data.message, fallback));
-            }
-
-            setAccessToken(data.accessToken);
-            setUser(data.user);
-            refreshBlockedUntilRef.current = 0;
-
-            if (isNative && data.refreshToken) {
-                await secureStorage.set(REFRESH_TOKEN_KEY, data.refreshToken);
-            }
-
-            return data.user as User;
+            }, fallback);
         } catch (error) {
             throw new Error(resolveFriendlyMessage(error, fallback));
         }
-    };
+    }, [submitSessionRequest]);
 
-    const loginWithGoogleCredential = async (credential: string): Promise<User> =>
-        loginWithSsoCredential('google', credential);
+    const loginWithGoogleCredential = useCallback(async (credential: string): Promise<User> =>
+        loginWithSsoCredential('google', credential), [loginWithSsoCredential]);
 
-    const register = async (email: string, password: string, name?: string, birthDate?: string): Promise<User> => {
+    const register = useCallback(async (email: string, password: string, name?: string, birthDate?: string): Promise<User> => {
         const fallback = 'We couldn’t create your account just yet. Please try again.';
 
         try {
             const isNative = isNativePlatform();
-            const response = await fetch(`${API_URL}/auth/register`, {
+            return await submitSessionRequest('/auth/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -250,29 +253,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 },
                 credentials: 'include',
                 body: JSON.stringify({ email, password, name, birthDate }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(friendlyAuthMessage(data.message, fallback));
-            }
-
-            setAccessToken(data.accessToken);
-            setUser(data.user);
-            refreshBlockedUntilRef.current = 0;
-
-            if (isNative && data.refreshToken) {
-                await secureStorage.set(REFRESH_TOKEN_KEY, data.refreshToken);
-            }
-
-            return data.user as User;
+            }, fallback);
         } catch (error) {
             throw new Error(resolveFriendlyMessage(error, fallback));
         }
-    };
+    }, [submitSessionRequest]);
 
-    const logout = async () => {
+    const logout = useCallback(async () => {
         try {
             const isNative = isNativePlatform();
             const storedRefreshToken = isNative ? await secureStorage.get(REFRESH_TOKEN_KEY) : null;
@@ -285,7 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 body = JSON.stringify({ refreshToken: storedRefreshToken });
             }
 
-            await fetch(`${API_URL}/auth/logout`, {
+            await fetch(resolveApiRequestUrl('/auth/logout'), {
                 method: 'POST', // Changed to POST for consistency if backend expects it
                 credentials: 'include',
                 headers,
@@ -303,17 +290,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await secureStorage.remove(REFRESH_TOKEN_KEY);
             clearOnboardingState();
         }
-    };
+    }, []);
 
-    const fetchUserProfile = async (token: string) =>
-        fetch(`${API_URL}/user/profile`, {
+    const fetchUserProfile = useCallback(async (token: string) =>
+        fetch(resolveApiRequestUrl('/user/profile'), {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
             credentials: 'include',
-        });
+        }), []);
 
-    const refreshUser = async () => {
+    const refreshUser = useCallback(async () => {
         try {
             let token = accessToken;
             if (!token) {
@@ -342,10 +329,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error) {
             logger.error('Failed to refresh user profile', error);
         }
-    };
+    }, [accessToken, fetchUserProfile, performRefresh]);
+
+    const value = useMemo(() => ({
+        user,
+        accessToken,
+        isLoading,
+        login,
+        loginWithSsoCredential,
+        loginWithGoogleCredential,
+        register,
+        logout,
+        refreshUser,
+        refreshSession: performRefresh,
+        syncUser: setUser,
+    }), [
+        accessToken,
+        isLoading,
+        login,
+        loginWithGoogleCredential,
+        loginWithSsoCredential,
+        logout,
+        performRefresh,
+        refreshUser,
+        register,
+        user,
+    ]);
 
     return (
-        <AuthContext.Provider value={{ user, accessToken, isLoading, login, loginWithSsoCredential, loginWithGoogleCredential, register, logout, refreshUser, refreshSession: performRefresh, syncUser: setUser }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );

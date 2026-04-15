@@ -76,7 +76,7 @@ export default function CelebrationModal() {
                             </div>
                             <h2 className="text-2xl font-bold text-ink mb-2">Level Up!</h2>
                             <p className="text-5xl font-bold text-primary mb-2">{stats?.level}</p>
-                            <p className="text-ink-secondary mb-6">You're building a deeper memory-and-signal practice.</p>
+                            <p className="text-ink-secondary mb-6">You&apos;re building a deeper memory-and-signal practice.</p>
                         </>
                     )}
 

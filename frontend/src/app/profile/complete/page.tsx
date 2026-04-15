@@ -134,7 +134,7 @@ export default function CompleteProfilePage() {
                                 Share your date of birth so we can personalize your experience.
                             </h1>
                             <p className="mt-4 max-w-xl text-sm leading-7 text-default md:text-base">
-                                Your date of birth stays between us. We'll tailor guidance with your school stage, seasonal timing, and reflection cues in mind.
+                                Your date of birth stays between us. We&apos;ll tailor guidance with your school stage, seasonal timing, and reflection cues in mind.
                             </p>
                         </div>
 

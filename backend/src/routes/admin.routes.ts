@@ -11,6 +11,7 @@ import {
     revokeUserSessions,
     deleteUser,
 } from '../controllers/admin.controller';
+import { adminActionSchema, updateUserRoleSchema, validate } from '../utils/validation';
 
 const router = Router();
 
@@ -23,11 +24,11 @@ router.get('/users', getAllUsers);
 router.get('/stats', getPlatformStats);
 router.get('/performance-overview', getPerformanceOverview);
 router.get('/users/:userId', getUserDetails);
-router.put('/users/:userId/role', updateUserRole);
-router.put('/users/:userId/ban', toggleUserBan);
-router.post('/users/:userId/revoke-sessions', revokeUserSessions);
+router.put('/users/:userId/role', validate(updateUserRoleSchema), updateUserRole);
+router.put('/users/:userId/ban', validate(adminActionSchema), toggleUserBan);
+router.post('/users/:userId/revoke-sessions', validate(adminActionSchema), revokeUserSessions);
 
 // Superadmin only
-router.delete('/users/:userId', requireSuperAdmin, deleteUser);
+router.delete('/users/:userId', requireSuperAdmin, validate(adminActionSchema), deleteUser);
 
 export default router;

@@ -19,19 +19,26 @@ import {
     getDeviceTokens,
     unregisterDeviceToken,
 } from '../controllers/push-notification.controller';
+import {
+    appSessionSchema,
+    deviceSignalSchema,
+    registerDeviceTokenSchema,
+    validate,
+    wellnessCheckinSchema,
+} from '../utils/validation';
 
 const router = Router();
 
 router.use(authMiddleware);
 
 // Generic signal endpoints
-router.post('/signal', postDeviceSignal);
+router.post('/signal', validate(deviceSignalSchema), postDeviceSignal);
 router.get('/signals', getDeviceSignals);
 router.get('/latest', getLatestDeviceSignals);
 
 // Convenience endpoints
-router.post('/wellness-checkin', postWellnessCheckin);
-router.post('/app-session', postAppSession);
+router.post('/wellness-checkin', validate(wellnessCheckinSchema), postWellnessCheckin);
+router.post('/app-session', validate(appSessionSchema), postAppSession);
 
 // Spotify integration
 router.get('/spotify/status', getSpotifyConnectionStatus);
@@ -41,7 +48,7 @@ router.post('/spotify/disconnect', handleSpotifyDisconnect);
 router.post('/spotify/sync', triggerSpotifySync);
 
 // Push notifications
-router.post('/tokens', registerDeviceToken);
+router.post('/tokens', validate(registerDeviceTokenSchema), registerDeviceToken);
 router.get('/tokens', getDeviceTokens);
 router.delete('/tokens/:tokenId', unregisterDeviceToken);
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { FiCamera, FiTrash2 } from 'react-icons/fi';
 import useApi from '@/hooks/use-api';
 import {
@@ -9,6 +10,7 @@ import {
     prepareImageForUpload,
     CropArea,
 } from '@/utils/image-upload';
+import { passthroughImageLoader } from '@/lib/image-loader';
 import CropModal from './CropModal';
 
 type AvatarUploadProps = {
@@ -119,14 +121,17 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
                 {/* Avatar preview */}
                 <div className="relative h-20 w-20 shrink-0">
                     <div
-                        className="flex h-full w-full items-center justify-center overflow-hidden rounded-[1.3rem] text-2xl font-serif border-2 border-[rgba(var(--paper-border),0.3)]"
+                        className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[1.3rem] text-2xl font-serif border-2 border-[rgba(var(--paper-border),0.3)]"
                         style={{ background: 'rgb(var(--paper-soft))', color: 'rgb(var(--paper-ink))' }}
                     >
                         {showAvatarImage ? (
-                            <img
+                            <Image
                                 src={avatarUrl}
+                                loader={passthroughImageLoader}
+                                unoptimized
                                 alt="Profile photo"
-                                crossOrigin="anonymous"
+                                fill
+                                sizes="80px"
                                 className="h-full w-full object-cover"
                                 onError={() => setPreviewFailed(true)}
                             />

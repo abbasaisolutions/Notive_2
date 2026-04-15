@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useAuth } from '@/context/auth-context';
-import { API_URL } from '@/constants/config';
+import { resolveApiRequestUrl } from '@/lib/api-client';
 
 type ApiFetchOptions = RequestInit & {
     retryOnUnauthorized?: boolean;
@@ -17,7 +17,7 @@ export function useApi() {
     const apiFetch = useCallback(async (path: string, options: ApiFetchOptions = {}) => {
         const url = path.startsWith('http')
             ? path
-            : `${API_URL}${path.startsWith('/') ? path : `/${path}`}`;
+            : resolveApiRequestUrl(path);
 
         const headers = new Headers(options.headers || {});
 

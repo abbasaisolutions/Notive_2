@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import useApi from '@/hooks/use-api';
@@ -16,6 +17,7 @@ import { Spinner } from '@/components/ui';
 import { getChapterIconComponent } from '@/constants/chapter-icons';
 import { formatStoryConfidence, storyStatusClassName, storyStatusLabel, type StorySignal } from '@/utils/story-engine';
 import { clipCompactPillByLimit, COMPACT_PILL_LIMITS } from '@/utils/tags';
+import { passthroughImageLoader } from '@/lib/image-loader';
 
 interface Chapter {
     id: string;
@@ -198,11 +200,15 @@ function ChapterDetailContent() {
                                     className="overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] transition-colors hover:border-white/15 hover:bg-white/[0.05]"
                                 >
                                     {entry.coverImage && (
-                                        <div className="h-48 w-full overflow-hidden">
-                                            <img
+                                        <div className="relative h-48 w-full overflow-hidden">
+                                            <Image
                                                 src={entry.coverImage}
+                                                loader={passthroughImageLoader}
+                                                unoptimized
                                                 alt={entry.title || 'Entry'}
-                                                className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                                                fill
+                                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                                className="object-cover transition-transform duration-500 hover:scale-105"
                                             />
                                         </div>
                                     )}

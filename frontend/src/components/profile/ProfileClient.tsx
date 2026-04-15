@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useGamification } from '@/context/gamification-context';
@@ -12,6 +13,7 @@ import { openNativeNotificationSettings } from '@/services/native-notification-s
 import { FiBell, FiDownload, FiEdit3, FiLogOut, FiMessageCircle, FiShield } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
 import { SUPPORT_EMAIL } from '@/config/legal';
+import { passthroughImageLoader } from '@/lib/image-loader';
 
 function getXPForLevel(level: number) {
     const thresholds = [0, 100, 300, 600, 1000, 1500, 2500, 4000, 6000, 10000, 999999];
@@ -114,14 +116,17 @@ export default function ProfileClient() {
                     <div className="flex items-center gap-5">
                         <div className="h-20 w-20 rounded-[1.5rem] bg-gradient-to-br from-primary via-accent to-secondary p-1 shrink-0">
                             <div
-                                className="flex h-full w-full items-center justify-center overflow-hidden rounded-[1.3rem] text-2xl font-serif"
+                                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[1.3rem] text-2xl font-serif"
                                 style={{ background: 'rgb(var(--paper-soft))', color: 'rgb(var(--paper-ink))' }}
                             >
                                 {showAvatarImage ? (
-                                    <img
+                                    <Image
                                         src={avatarUrl}
+                                        loader={passthroughImageLoader}
+                                        unoptimized
                                         alt={`${safeUser.name || 'User'} avatar`}
-                                        crossOrigin="anonymous"
+                                        fill
+                                        sizes="80px"
                                         className="h-full w-full object-cover"
                                         onError={() => setAvatarFailed(true)}
                                     />

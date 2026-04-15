@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
@@ -59,6 +59,25 @@ import {
     type TrustedContactDraft,
 } from './types';
 
+const resolveKnownUserUpdatedAt = (source: SnapshotUser | null | undefined): string | undefined =>
+    typeof source?.updatedAt === 'string' && source.updatedAt.trim().length > 0
+        ? source.updatedAt
+        : undefined;
+
+const resolveKnownProfileUpdatedAt = (source: SnapshotUser | null | undefined): string | null | undefined => {
+    if (!source || source.profile === undefined) {
+        return undefined;
+    }
+
+    if (source.profile === null) {
+        return null;
+    }
+
+    return typeof source.profile.updatedAt === 'string' && source.profile.updatedAt.trim().length > 0
+        ? source.profile.updatedAt
+        : undefined;
+};
+
 export function ProfileSettingsEditor() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -108,31 +127,12 @@ export function ProfileSettingsEditor() {
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const hasPassword = Boolean(user?.hasPassword);
 
-    const resolveKnownUserUpdatedAt = (source: SnapshotUser | null | undefined): string | undefined =>
-        typeof source?.updatedAt === 'string' && source.updatedAt.trim().length > 0
-            ? source.updatedAt
-            : undefined;
-
-    const resolveKnownProfileUpdatedAt = (source: SnapshotUser | null | undefined): string | null | undefined => {
-        if (!source || source.profile === undefined) {
-            return undefined;
-        }
-
-        if (source.profile === null) {
-            return null;
-        }
-
-        return typeof source.profile.updatedAt === 'string' && source.profile.updatedAt.trim().length > 0
-            ? source.profile.updatedAt
-            : undefined;
-    };
-
     const resetNoticeState = () => {
         setNotice(null);
         setConflict(null);
     };
 
-    const hydrateDraftsFromSnapshot = (source: SnapshotUser | null | undefined) => {
+    const hydrateDraftsFromSnapshot = useCallback((source: SnapshotUser | null | undefined) => {
         const nextProfile = buildProfileDraft(source);
         const nextPreferences = buildPreferencesDraft(source);
         const nextPrivacy = buildPrivacyDraft(source);
@@ -153,14 +153,14 @@ export function ProfileSettingsEditor() {
         setServerUserUpdatedAt(resolveKnownUserUpdatedAt(source));
         setServerProfileUpdatedAt(resolveKnownProfileUpdatedAt(source));
         setConflict(null);
-    };
+    }, []);
 
     useEffect(() => {
         if (!user) return;
         if (hydratedUserId === user.id) return;
         hydrateDraftsFromSnapshot(user as SnapshotUser);
         setHydratedUserId(user.id);
-    }, [user, hydratedUserId]);
+    }, [user, hydratedUserId, hydrateDraftsFromSnapshot]);
 
     useEffect(() => {
         if (!user) return;

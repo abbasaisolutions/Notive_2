@@ -34,21 +34,6 @@ export function SmartSearch() {
     const [isSearching, setIsSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);
 
-    // Debounced search
-    useEffect(() => {
-        if (!query.trim()) {
-            setResults([]);
-            setShowResults(false);
-            return;
-        }
-
-        const timer = setTimeout(async () => {
-            await performSearch(query);
-        }, DEBOUNCE_DELAY);
-
-        return () => clearTimeout(timer);
-    }, [query]);
-
     const performSearch = useCallback(async (searchQuery: string) => {
         if (!accessToken || !searchQuery.trim()) return;
 
@@ -67,6 +52,21 @@ export function SmartSearch() {
             setIsSearching(false);
         }
     }, [accessToken, apiFetch]);
+
+    // Debounced search
+    useEffect(() => {
+        if (!query.trim()) {
+            setResults([]);
+            setShowResults(false);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            await performSearch(query);
+        }, DEBOUNCE_DELAY);
+
+        return () => clearTimeout(timer);
+    }, [performSearch, query]);
 
     const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

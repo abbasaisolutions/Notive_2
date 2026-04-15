@@ -1,6 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
+import { passthroughImageLoader } from '@/lib/image-loader';
 
 type UserAvatarProps = {
     avatarUrl?: string | null;
@@ -12,10 +14,15 @@ type UserAvatarProps = {
 export default function UserAvatar({ avatarUrl, name, size = 28, className = '' }: UserAvatarProps) {
     const initial = name?.charAt(0).toUpperCase() || '?';
     const hasAvatar = typeof avatarUrl === 'string' && avatarUrl.trim().length > 0;
+    const [imageFailed, setImageFailed] = useState(false);
+
+    useEffect(() => {
+        setImageFailed(false);
+    }, [avatarUrl]);
 
     return (
         <div
-            className={`flex items-center justify-center overflow-hidden rounded-full shrink-0 ${className}`}
+            className={`relative flex items-center justify-center overflow-hidden rounded-full shrink-0 ${className}`}
             style={{
                 width: size,
                 height: size,
@@ -25,18 +32,16 @@ export default function UserAvatar({ avatarUrl, name, size = 28, className = '' 
                 fontWeight: 600,
             }}
         >
-            {hasAvatar ? (
-                <img
+            {hasAvatar && !imageFailed ? (
+                <Image
                     src={avatarUrl!}
+                    loader={passthroughImageLoader}
+                    unoptimized
                     alt={name || 'User'}
-                    crossOrigin="anonymous"
+                    fill
+                    sizes={`${size}px`}
                     className="h-full w-full object-cover"
-                    onError={(e) => {
-                        // Fallback to initial if image fails to load
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        target.parentElement!.textContent = initial;
-                    }}
+                    onError={() => setImageFailed(true)}
                 />
             ) : (
                 initial

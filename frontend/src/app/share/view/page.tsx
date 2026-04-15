@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, Suspense } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import NotiveLogo from '@/components/ui/NotiveLogo';
 import { useSearchParams } from 'next/navigation';
@@ -8,6 +9,7 @@ import { API_URL } from '@/constants/config';
 import { sanitizeHtml } from '@/utils/sanitize-html';
 import { AppPanel, TagPill } from '@/components/ui/surface';
 import { Spinner } from '@/components/ui';
+import { passthroughImageLoader } from '@/lib/image-loader';
 
 interface SharedUser {
     name?: string | null;
@@ -148,7 +150,17 @@ function SharedPageContent() {
                         </div>
 
                         {content.coverImage && (
-                            <img src={content.coverImage} alt="Cover" className="w-full rounded-xl mb-8 border border-white/5 shadow-lg" />
+                            <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-xl border border-white/5 shadow-lg">
+                                <Image
+                                    src={content.coverImage}
+                                    loader={passthroughImageLoader}
+                                    unoptimized
+                                    alt="Cover"
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, 768px"
+                                    className="object-cover"
+                                />
+                            </div>
                         )}
 
                         {content.contentHtml ? (

@@ -19,6 +19,7 @@ const createFallbackClient = (): any => {
     cleanup.unref();
 
     return {
+        __notiveClientType: 'fallback',
         isOpen: true,
         get: async (key: string) => store.get(key)?.value ?? null,
         set: async (key: string, value: string, opts?: any) => {
@@ -54,6 +55,7 @@ const createFallbackClient = (): any => {
             data.expiresAt = Date.now() + seconds * 1000;
             return 1;
         },
+        ping: async () => 'PONG',
         quit: async () => {
             cleanup.unref();
             clearInterval(cleanup);
@@ -84,6 +86,7 @@ export const initRedis = async (): Promise<RedisClientType> => {
             reconnectStrategy: (retries) => retries >= 2 ? false : Math.min(retries * 50, 250),
         },
     });
+    (redisClient as any).__notiveClientType = 'redis';
 
     redisClient.on('error', (err) => {
         serverLogger.error('redis.connection_error', {

@@ -317,7 +317,7 @@ export function PrivacySection({
                             <div>
                                 <h4 className="workspace-heading text-lg font-serif">Saved trusted contacts</h4>
                                 <p className="text-sm text-ink-secondary">
-                                    When you're feeling stuck or overwhelmed, we may suggest reaching out to someone who steadies you. Mark one as primary so we know who to surface first.
+                                    When you&apos;re feeling stuck or overwhelmed, we may suggest reaching out to someone who steadies you. Mark one as primary so we know who to surface first.
                                 </p>
                             </div>
 

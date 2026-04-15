@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
@@ -266,7 +266,7 @@ export default function AdminPage() {
         setDeleteConfirmEmail('');
     };
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         try {
             const params = new URLSearchParams({
                 page: String(page),
@@ -294,9 +294,9 @@ export default function AdminPage() {
         } catch (err: any) {
             setError(err.message || 'Couldn\u2019t load the user list.');
         }
-    };
+    }, [apiFetch, completionLte, onlyNeedsSupport, page, roleFilter, search, stageFilter, trackFilter]);
 
-    const fetchStats = async () => {
+    const fetchStats = useCallback(async () => {
         try {
             const response = await apiFetch('/admin/stats');
             if (response.ok) {
@@ -305,9 +305,9 @@ export default function AdminPage() {
         } catch (err) {
             console.error('Failed to fetch stats:', err);
         }
-    };
+    }, [apiFetch]);
 
-    const fetchPerformanceOverview = async () => {
+    const fetchPerformanceOverview = useCallback(async () => {
         try {
             const response = await apiFetch('/admin/performance-overview');
             if (response.ok) {
@@ -316,13 +316,13 @@ export default function AdminPage() {
         } catch (err) {
             console.error('Failed to fetch performance overview:', err);
         }
-    };
+    }, [apiFetch]);
 
     useEffect(() => {
-        if (user && !authLoading) {
-            Promise.all([fetchUsers(), fetchStats(), fetchPerformanceOverview()]).finally(() => setIsLoading(false));
-        }
-    }, [user, authLoading, page, trackFilter, stageFilter, roleFilter, onlyNeedsSupport, completionLte]);
+        if (!user || authLoading) return;
+
+        Promise.all([fetchUsers(), fetchStats(), fetchPerformanceOverview()]).finally(() => setIsLoading(false));
+    }, [authLoading, fetchPerformanceOverview, fetchStats, fetchUsers, user]);
 
     useEffect(() => {
         if (isSuperAdmin) return;

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Suspense } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -14,6 +15,7 @@ import useEntryEdit from '@/hooks/use-entry-edit';
 import MemoryInsightStrip from '@/components/entry/MemoryInsightStrip';
 import { EntryCategory, LIFE_AREA_OPTIONS, normalizeLifeArea } from '@/constants/life-areas';
 import { ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR } from '@/utils/image-upload';
+import { passthroughImageLoader } from '@/lib/image-loader';
 import type { IconType } from 'react-icons';
 import {
     FiAlertCircle,
@@ -283,7 +285,15 @@ function EditEntryContent() {
                         <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">Cover image</p>
                         {coverImage ? (
                             <div className="relative w-full h-40 rounded-2xl overflow-hidden group">
-                                <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+                                <Image
+                                    src={coverImage}
+                                    loader={passthroughImageLoader}
+                                    unoptimized
+                                    alt="Cover"
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, 768px"
+                                    className="object-cover"
+                                />
                                 <button
                                     onClick={() => setCoverImage(null)}
                                     aria-label="Remove cover image"

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 
 // ── Mock heavy dependencies before any app import ─────────────────
@@ -60,6 +60,14 @@ describe('backend smoke tests', () => {
             const res = await request(app).get('/');
             expect(res.status).toBe(200);
             expect(res.body.message).toMatch(/notive api is running/i);
+        });
+    });
+
+    describe('GET /readyz', () => {
+        it('returns runtime readiness details', async () => {
+            const res = await request(app).get('/readyz');
+            expect([200, 503]).toContain(res.status);
+            expect(Array.isArray(res.body.components)).toBe(true);
         });
     });
 

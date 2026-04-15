@@ -88,7 +88,7 @@ export function useEntryEdit({
     const [growthRatio, setGrowthRatio] = useState<number | null>(null);
     const [storySignal, setStorySignal] = useState<StorySignal | undefined>(undefined);
     const [isUploading, setIsUploading] = useState(false);
-    const toast = useToast();
+    const { success: showSuccessToast, error: showErrorToast } = useToast();
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
@@ -348,16 +348,16 @@ export function useEntryEdit({
                 lifeArea,
                 chapterId,
             });
-            toast.success('Changes saved');
+            showSuccessToast('Changes saved');
             navigateAfterSave();
         } catch (err: any) {
             const msg = err.message || 'Couldn\u2019t save your note.';
             setError(msg);
-            toast.error(msg);
+            showErrorToast(msg);
         } finally {
             setIsSaving(false);
         }
-    }, [content, title, contentHtml, mood, tags, coverImage, category, lifeArea, chapterId, saveEntry, navigateAfterSave, initialContent, isShortEntryAllowed]);
+    }, [category, chapterId, content, contentHtml, coverImage, initialContent, isShortEntryAllowed, lifeArea, mood, navigateAfterSave, saveEntry, showErrorToast, showSuccessToast, tags, title]);
 
     return {
         title,
