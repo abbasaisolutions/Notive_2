@@ -134,7 +134,7 @@ export function PushNotificationPermissionPrompt() {
 
     return (
         <div
-            className="fixed inset-0 z-40 flex items-end justify-center sm:items-center"
+            className="fixed inset-0 z-[120] flex items-end justify-center sm:items-center"
             role="dialog"
             aria-modal="true"
             aria-labelledby="push-permission-title"
@@ -144,7 +144,10 @@ export function PushNotificationPermissionPrompt() {
             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => handleDismiss()} />
 
             {/* Card */}
-            <div className="relative mx-4 mb-6 sm:mb-0 w-full max-w-sm animate-in slide-in-from-bottom-6 duration-300">
+            <div
+                className="relative mx-4 w-full max-w-sm animate-in slide-in-from-bottom-6 duration-300"
+                style={{ marginBottom: 'var(--app-notification-dialog-offset, 0px)' }}
+            >
                 <div className="workspace-panel rounded-2xl shadow-2xl p-6">
                     {/* Icon — bell for prompt, alert for denied */}
                     <div className="flex justify-center mb-4">

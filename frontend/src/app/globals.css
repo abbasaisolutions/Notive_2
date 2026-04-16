@@ -89,6 +89,15 @@
   --workspace-footer-color: rgba(107, 107, 107, 0.9);
   --workspace-footer-hover: rgb(var(--paper-ink));
   --shell-bottom-gap: 4.75rem;
+  --app-notification-surface-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  --app-notification-dialog-offset: 0px;
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --app-notification-surface-bottom: max(calc(var(--app-bottom-clearance, 0px) + 0.75rem), calc(env(safe-area-inset-bottom, 0px) + 1rem));
+    --app-notification-dialog-offset: max(calc(var(--app-bottom-clearance, 0px) + 0.75rem), calc(env(safe-area-inset-bottom, 0px) + 1rem));
+  }
 }
 
 /* html[data-theme='paper'] is now identical to :root — paper is the only theme */

@@ -153,7 +153,10 @@ export function ToastContainer() {
                 ))}
             </div>
             {/* Push notification toasts — bottom of screen, above bottom nav */}
-            <div className="fixed bottom-0 left-4 right-4 sm:left-auto sm:right-4 z-[9998] flex flex-col-reverse gap-3 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] pointer-events-none sm:max-w-sm">
+            <div
+                className="fixed left-4 right-4 sm:left-auto sm:right-4 z-[9998] flex flex-col-reverse gap-3 pointer-events-none sm:max-w-sm"
+                style={{ bottom: 'var(--app-notification-surface-bottom, 1rem)' }}
+            >
                 {bottomToasts.map(toast => (
                     <ToastItem
                         key={toast.id}
