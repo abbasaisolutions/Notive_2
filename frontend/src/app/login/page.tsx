@@ -127,7 +127,7 @@ export default function LoginPage() {
         }
     };
 
-    const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
+    const handleGoogleSuccess = useCallback(async (credentialResponse: { credential?: string }) => {
         try {
             setIsLoading(true);
             if (credentialResponse.credential) {
@@ -143,11 +143,11 @@ export default function LoginPage() {
             setError(err.message || 'Google sign-in didn\u2019t go through. Please try again.');
             setIsLoading(false);
         }
-    };
+    }, [loginWithSsoCredential, resolvePostAuthRoute]);
 
-    const handleGoogleError = () => {
+    const handleGoogleError = useCallback(() => {
         setError('Google sign-in didn’t finish. Please try again.');
-    };
+    }, []);
 
     if (isNativeCapacitorPlatform() && (authLoading || !!user)) {
         return (

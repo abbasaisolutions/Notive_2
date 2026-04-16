@@ -1715,10 +1715,15 @@ function NewEntryPageContent() {
                             onClick={() => setShowAdvancedTools((prev) => !prev)}
                             className="w-full flex items-center justify-between gap-3 text-left"
                         >
-                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
-                                {showAdvancedTools ? 'Hide details' : 'More details'}
-                            </p>
-                            <span className="text-xs text-ink-muted">{showAdvancedTools ? '−' : '+'}</span>
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Writing tools</p>
+                                <p className="mt-1 text-sm text-ink-secondary">
+                                    {showAdvancedTools
+                                        ? 'Insights, mood, tags, and formatting are open.'
+                                        : 'Open insights, mood, tags, and formatting only when you need them.'}
+                                </p>
+                            </div>
+                            <span className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">{showAdvancedTools ? 'Hide' : 'Open'}</span>
                         </button>
 
                         <div className={`transition-all duration-300 ease-in-out ${showAdvancedTools ? 'max-h-[2400px] opacity-100 mt-4' : 'max-h-0 opacity-0 overflow-hidden'}`}>

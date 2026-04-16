@@ -665,9 +665,9 @@ function OnboardingPageContent() {
                             <div className="workspace-soft-panel rounded-2xl p-4">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
-                                        <div className="type-card-title text-strong">More details</div>
+                                        <div className="type-card-title text-strong">Optional profile details</div>
                                         <p className="type-micro mt-1 text-default">
-                                            Add more now, or let Notive learn as you go and update it later in your profile.
+                                            Add a little more now, or let Notive learn as you go and update this later in settings.
                                         </p>
                                     </div>
                                     <button
@@ -675,7 +675,7 @@ function OnboardingPageContent() {
                                         onClick={() => setShowOptionalProfile((current) => !current)}
                                         className="workspace-button-outline type-label-sm rounded-xl px-3 py-2"
                                     >
-                                        {showOptionalProfile ? 'Hide' : 'Add More'}
+                                        {showOptionalProfile ? 'Hide optional details' : 'Add optional details'}
                                     </button>
                                 </div>
 

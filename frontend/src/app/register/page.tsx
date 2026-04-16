@@ -65,7 +65,7 @@ export default function RegisterPage() {
         }
     }, [authLoading, user, router, resolvePostAuthRoute]);
 
-    const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
+    const handleGoogleSuccess = useCallback(async (credentialResponse: { credential?: string }) => {
         try {
             setError('');
             setIsLoading(true);
@@ -81,11 +81,11 @@ export default function RegisterPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [loginWithSsoCredential, resolvePostAuthRoute, router]);
 
-    const handleGoogleError = () => {
+    const handleGoogleError = useCallback(() => {
         setError('Google sign-up didn\u2019t finish. Please try again.');
-    };
+    }, []);
 
     if (isNativeCapacitorPlatform() && (authLoading || !!user)) {
         return (

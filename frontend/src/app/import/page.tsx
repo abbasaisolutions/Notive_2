@@ -280,7 +280,7 @@ export default function ImportPage() {
                                 className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
                                 aria-expanded={showImportDetails}
                             >
-                                {showImportDetails ? 'Hide extra import paths' : 'Show more import paths'}
+                                {showImportDetails ? 'Hide other import routes' : 'Show other import routes'}
                                 <FiChevronDown size={14} className={`transition-transform ${showImportDetails ? 'rotate-180' : ''}`} aria-hidden="true" />
                             </button>
                         </div>

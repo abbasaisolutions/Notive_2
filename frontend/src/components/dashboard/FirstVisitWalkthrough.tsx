@@ -30,20 +30,20 @@ const STEPS: Step[] = [
     {
         doodle: 'sprout',
         accent: 'sage',
-        label: 'Chapters',
+        label: 'Groups',
         title: 'Group related moments',
-        body: 'Collect entries into chapters — by project, semester, or anything that feels connected.',
+        body: 'Collect entries into groups by project, semester, or anything that feels connected.',
         href: '/chapters',
-        cta: 'Browse chapters →',
+        cta: 'Browse groups →',
     },
     {
         doodle: 'see-my-growth',
         accent: 'lilac',
-        label: 'Guide',
+        label: 'AskNotive',
         title: 'Turn notes into next moves',
         body: 'Notive reads what you write and surfaces insights, prompts, and patterns to act on.',
-        href: '/guide',
-        cta: 'Open the guide →',
+        href: '/chat',
+        cta: 'Open AskNotive →',
     },
 ];
 

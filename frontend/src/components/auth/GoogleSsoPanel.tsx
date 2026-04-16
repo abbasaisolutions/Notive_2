@@ -56,7 +56,7 @@ const ALIGNMENT = {
 
 const getErrorMessage = (error: unknown, fallback: string) => resolveFriendlyMessage(error, fallback);
 
-export function GoogleSsoPanel({
+function GoogleSsoPanelComponent({
     mode,
     isLoading = false,
     isBlocked = false,
@@ -173,3 +173,6 @@ export function GoogleSsoPanel({
         </div>
     );
 }
+
+export const GoogleSsoPanel = React.memo(GoogleSsoPanelComponent);
+GoogleSsoPanel.displayName = 'GoogleSsoPanel';

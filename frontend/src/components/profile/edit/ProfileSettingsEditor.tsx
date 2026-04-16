@@ -86,7 +86,6 @@ export function ProfileSettingsEditor() {
     const { apiFetch } = useApi();
 
     const [activeTab, setActiveTab] = useState<EditTab>(resolveEditTab(searchParams.get('tab')));
-    const [showSectionPicker, setShowSectionPicker] = useState(false);
     const [hydratedUserId, setHydratedUserId] = useState<string | null>(null);
     const [profileDraft, setProfileDraft] = useState<ProfileDraft>(EMPTY_PROFILE_DRAFT);
     const [savedProfileDraft, setSavedProfileDraft] = useState<ProfileDraft>(EMPTY_PROFILE_DRAFT);
@@ -228,14 +227,14 @@ export function ProfileSettingsEditor() {
     const activeEditableTab = EDITABLE_TABS.find((tab) => tab === activeTab) || null;
     const activeTabItem = TAB_ITEMS.find((tab) => tab.id === activeTab) || TAB_ITEMS[0];
     const activeTabDescription = activeTab === 'profile'
-        ? 'Name the basics about you and keep your public-facing details current.'
+        ? 'Update your name, photo, bio, and the details that describe you.'
         : activeTab === 'preferences'
-            ? 'Shape prompts, goals, and starter guidance without opening the rest of settings.'
+            ? 'Tune goals, prompts, and writing guidance so Notive helps in a way that fits you.'
             : activeTab === 'security'
-                ? 'Handle sign-in, password, and account protection in one guarded place.'
+                ? 'Handle sign-in email, password, and account protection in one guarded place.'
                 : activeTab === 'reminders'
                     ? 'Set a daily nudge to reflect. Delivered as a push notification on your device.'
-                    : 'Manage what signals we track, how we export your data, and support settings.';
+                    : 'Manage saved signals, support anchors, exports, and the privacy controls behind them.';
     const dirtyByTab: Record<EditableTab, boolean> = {
         profile: profileDirty,
         preferences: preferencesDirty,
@@ -329,7 +328,6 @@ export function ProfileSettingsEditor() {
 
     const handleTabChange = (tab: EditTab) => {
         setActiveTab(tab);
-        setShowSectionPicker(false);
         const params = new URLSearchParams(searchParams.toString());
         if (tab === 'profile') {
             params.delete('tab');
@@ -947,7 +945,7 @@ export function ProfileSettingsEditor() {
         });
     };
 
-    const handleUnlockSecurity = async (payload: { currentPassword?: string; googleCredential?: string }) => {
+    const handleUnlockSecurity = useCallback(async (payload: { currentPassword?: string; googleCredential?: string }) => {
         setIsUnlockingSecurity(true);
         setNotice(null);
 
@@ -980,29 +978,29 @@ export function ProfileSettingsEditor() {
         } finally {
             setIsUnlockingSecurity(false);
         }
-    };
+    }, [apiFetch]);
 
-    const handleUnlockSecurityWithPassword = async () => {
+    const handleUnlockSecurityWithPassword = useCallback(async () => {
         if (!reauthPassword) {
             setNotice({ type: 'error', text: 'Enter your current password to unlock security changes.' });
             return;
         }
 
         await handleUnlockSecurity({ currentPassword: reauthPassword });
-    };
+    }, [handleUnlockSecurity, reauthPassword]);
 
-    const handleUnlockSecurityWithGoogle = async (credentialResponse: { credential?: string }) => {
+    const handleUnlockSecurityWithGoogle = useCallback(async (credentialResponse: { credential?: string }) => {
         if (!credentialResponse.credential) {
             setNotice({ type: 'error', text: 'Google re-verification failed. Please try again.' });
             return;
         }
 
         await handleUnlockSecurity({ googleCredential: credentialResponse.credential });
-    };
+    }, [handleUnlockSecurity]);
 
-    const handleUnlockSecurityWithGoogleError = () => {
+    const handleUnlockSecurityWithGoogleError = useCallback(() => {
         setNotice({ type: 'error', text: 'Google re-verification failed. Please try again.' });
-    };
+    }, []);
 
     const handleUpdateSignInEmail = async () => {
         const normalizedCurrentEmail = (savedProfileDraft.email || user?.email || '').trim().toLowerCase();
@@ -1278,9 +1276,9 @@ export function ProfileSettingsEditor() {
                         </Link>
                         <div className="space-y-2">
                             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Settings</p>
-                            <h1 className="workspace-heading text-2xl md:text-4xl font-serif tracking-tight">Change your details, goals, sign-in, and data</h1>
+                            <h1 className="workspace-heading text-2xl md:text-4xl font-serif tracking-tight">Settings</h1>
                             <p className="max-w-3xl text-sm md:text-base text-ink-secondary">
-                                Keep each kind of change in its own place so saving feels simpler and safer.
+                                Keep profile details, coaching preferences, sign-in changes, reminders, and data controls in clear sections.
                             </p>
                         </div>
                     </div>
@@ -1296,50 +1294,52 @@ export function ProfileSettingsEditor() {
                 {notice && <NoticeBanner notice={notice} />}
 
                 <SlideUp className="workspace-panel rounded-[1.6rem] p-5">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex flex-col gap-4">
                         <div className="flex items-start gap-4">
                             <div className="workspace-icon-badge flex h-12 w-12 items-center justify-center rounded-2xl">
                                 <activeTabItem.Icon size={18} aria-hidden="true" />
                             </div>
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Current section</p>
+                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Section</p>
                                 <h2 className="workspace-heading mt-2 text-2xl font-serif">{activeTabItem.label}</h2>
                                 <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{activeTabDescription}</p>
+                                <p className="mt-2 text-xs uppercase tracking-[0.12em] text-ink-muted">
+                                    Each section saves separately.
+                                </p>
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => setShowSectionPicker((current) => !current)}
-                            className="workspace-button-outline rounded-[1.1rem] px-4 py-2 text-sm font-semibold transition-colors"
-                            aria-expanded={showSectionPicker}
-                        >
-                            {showSectionPicker ? 'Keep this section' : 'Change section'}
-                        </button>
                     </div>
-                    {showSectionPicker && (
-                        <div className="mt-5 flex flex-wrap gap-2" role="tablist" aria-label="Settings sections">
-                            {TAB_ITEMS.map((tab) => {
-                                const isActive = activeTab === tab.id;
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        type="button"
-                                        role="tab"
-                                        aria-selected={isActive}
-                                        onClick={() => handleTabChange(tab.id)}
-                                        className={`flex items-center gap-2 rounded-[1.2rem] px-4 py-3 text-sm font-semibold transition-all ${
-                                            isActive
-                                                ? 'workspace-button-primary shadow-lg shadow-primary/20'
-                                                : 'workspace-button-ghost'
-                                        }`}
-                                    >
-                                        <tab.Icon size={15} aria-hidden="true" />
-                                        <span>{tab.label}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
+                    <div className="mt-5 flex flex-wrap gap-2" role="tablist" aria-label="Settings sections">
+                        {TAB_ITEMS.map((tab) => {
+                            const isActive = activeTab === tab.id;
+                            const isDirty = tab.id in dirtyByTab ? dirtyByTab[tab.id as EditableTab] : false;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={isActive}
+                                    onClick={() => handleTabChange(tab.id)}
+                                    className={`flex items-center gap-2 rounded-[1.2rem] px-4 py-3 text-sm font-semibold transition-all ${
+                                        isActive
+                                            ? 'workspace-button-primary shadow-lg shadow-primary/20'
+                                            : 'workspace-button-ghost'
+                                    }`}
+                                >
+                                    <tab.Icon size={15} aria-hidden="true" />
+                                    <span>{tab.label}</span>
+                                    {isDirty && (
+                                        <span
+                                            className={`inline-flex h-2.5 w-2.5 rounded-full ${
+                                                isActive ? 'bg-white/90' : 'bg-primary'
+                                            }`}
+                                            aria-label="Unsaved changes"
+                                        />
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </SlideUp>
 
                 {activeTab === 'profile' && (

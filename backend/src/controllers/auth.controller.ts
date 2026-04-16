@@ -23,6 +23,22 @@ const isMobileClient = (req: Request): boolean => {
     return platform === 'mobile' || platform === 'capacitor' || platform === 'native';
 };
 
+const isDatabaseUnavailableError = (error: unknown): boolean =>
+    typeof error === 'object'
+    && error !== null
+    && 'code' in error
+    && (error as { code?: string }).code === 'ECONNREFUSED';
+
+const sendAuthInfrastructureError = (res: Response) => {
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+
+    return res.status(503).json({
+        message: isDevelopment
+            ? 'Authentication is unavailable because the local database is not reachable. Start Postgres or update DATABASE_URL.'
+            : 'Authentication is temporarily unavailable. Please try again.',
+    });
+};
+
 const PASSWORD_POLICY_MESSAGE = 'Password must be at least 8 characters and include uppercase, lowercase, and a number';
 const hasStrongPassword = (value: string): boolean =>
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
@@ -220,6 +236,9 @@ export const login = async (req: Request, res: Response) => {
         });
     } catch (error) {
         console.error('Login error:', error);
+        if (isDatabaseUnavailableError(error)) {
+            return sendAuthInfrastructureError(res);
+        }
         return res.status(500).json({ message: 'Internal server error' });
     }
 };
@@ -321,6 +340,9 @@ export const refresh = async (req: Request, res: Response) => {
         });
     } catch (error) {
         console.error('Refresh error:', error);
+        if (isDatabaseUnavailableError(error)) {
+            return sendAuthInfrastructureError(res);
+        }
         return res.status(500).json({ message: 'Internal server error' });
     }
 };
@@ -467,4 +489,3 @@ export const resetPassword = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Internal server error' });
     }
 };
-
