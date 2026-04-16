@@ -3,6 +3,7 @@
 import React from 'react';
 import { buildProfileContextSummary, type ProfileContextSource } from '@/services/profile-context.service';
 import {
+    FiBell,
     FiBookOpen,
     FiBriefcase,
     FiFolder,
@@ -68,6 +69,7 @@ const icons = {
     home: <FiHome aria-hidden="true" />,
     write: <FiPlus aria-hidden="true" />,
     memories: <FiBookOpen aria-hidden="true" />,
+    notifications: <FiBell aria-hidden="true" />,
     guide: <FiMessageCircle aria-hidden="true" />,
     profile: <FiUser aria-hidden="true" />,
     chapters: <FiFolder aria-hidden="true" />,
@@ -79,6 +81,7 @@ const icons = {
 const homeNavItem: NavItem = { href: '/dashboard', label: 'Home', shortLabel: 'Home', icon: icons.home, matchPrefixes: ['/dashboard'] };
 const writeNavItem: NavItem = { href: '/entry/new', label: 'Write', shortLabel: 'Write', icon: icons.write, isMain: true, matchPrefixes: ['/entry/new', '/entry/edit'] };
 const memoriesNavItem: NavItem = { href: '/timeline', label: 'Memories', shortLabel: 'Memories', icon: icons.memories, matchPrefixes: ['/timeline'] };
+const notificationsNavItem: NavItem = { href: '/notifications', label: 'Notifications', shortLabel: 'Alerts', icon: icons.notifications, matchPrefixes: ['/notifications'] };
 const guideNavItem: NavItem = { href: '/chat', label: 'AskNotive', shortLabel: 'Ask', icon: icons.guide, matchPrefixes: ['/chat'] };
 const groupsNavItem: NavItem = { href: '/chapters', label: 'Groups', shortLabel: 'Groups', icon: icons.chapters, matchPrefixes: ['/chapters'] };
 const importsNavItem: NavItem = { href: '/import', label: 'Imports', shortLabel: 'Imports', icon: icons.imports, matchPrefixes: ['/import'] };
@@ -94,6 +97,7 @@ export const primaryNavItems: NavItem[] = [
 ];
 
 export const secondaryNavItems: NavItem[] = [
+    notificationsNavItem,
     groupsNavItem,
     importsNavItem,
     storiesNavItem,
@@ -149,21 +153,21 @@ export const getDesktopNavSections = (maturity: WorkspaceMaturity): NavSection[]
     if (maturity === 'new') {
         return [
             { id: 'main', label: 'Main', items: [homeNavItem, writeNavItem, memoriesNavItem] },
-            { id: 'account', label: 'Account', items: [profileNavItem, adminNavItem] },
+            { id: 'account', label: 'Account', items: [notificationsNavItem, profileNavItem, adminNavItem] },
         ];
     }
 
     if (maturity === 'growing') {
         return [
             { id: 'main', label: 'Main', items: [homeNavItem, writeNavItem, memoriesNavItem, guideNavItem] },
-            { id: 'account', label: 'Account', items: [profileNavItem, adminNavItem] },
+            { id: 'account', label: 'Account', items: [notificationsNavItem, profileNavItem, adminNavItem] },
         ];
     }
 
     return [
         { id: 'main', label: 'Main', items: [homeNavItem, writeNavItem, memoriesNavItem, guideNavItem] },
         { id: 'more', label: 'More', items: [groupsNavItem, importsNavItem, storiesNavItem] },
-        { id: 'account', label: 'Account', items: [profileNavItem, adminNavItem] },
+        { id: 'account', label: 'Account', items: [notificationsNavItem, profileNavItem, adminNavItem] },
     ];
 };
 
@@ -212,6 +216,20 @@ export const journeyStages: JourneyStage[] = [
 ];
 
 const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
+    {
+        prefix: '/notifications',
+        meta: {
+            title: 'Notifications',
+            description: 'Review recent reminders, shared-memory activity, and inbox updates in one place.',
+            section: 'Account',
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Notifications' }],
+            primaryAction: { label: 'Open Memories', shortLabel: 'Memories', href: '/timeline?view=shared' },
+            secondaryAction: { label: 'Edit Alerts', shortLabel: 'Settings', href: '/profile/edit?tab=reminders' },
+            visibleInfo: ['Unread items', 'Recent activity', 'Notification settings'],
+            journeyStage: 'account',
+            headerMode: 'none',
+        },
+    },
     {
         prefix: '/dashboard',
         meta: {

@@ -8,6 +8,10 @@ import {
     selectNotification,
     getLocalDate,
 } from './notification-copy';
+import {
+    shouldCreateNotificationForType,
+    shouldSendPushForType,
+} from './notification-preferences.service';
 
 export interface ReminderInput {
     time: string;            // "HH:MM" 24-hour
@@ -114,6 +118,18 @@ export class ReminderService {
         // Phase 2: batch-query user context (last entry, 7-day count)
         const userIds = dueReminders.map(r => r.userId);
         const contexts = await buildUserContexts(this.prisma, userIds);
+        const users = await this.prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: {
+                id: true,
+                profile: {
+                    select: { personalizationSignals: true },
+                },
+            },
+        });
+        const signalsByUserId = new Map(
+            users.map((user) => [user.id, user.profile?.personalizationSignals ?? null])
+        );
 
         // Phase 3: send context-aware notifications
         for (const reminder of dueReminders) {
@@ -122,14 +138,32 @@ export class ReminderService {
                 daysSinceLastEntry: null,
                 isConsistent: false,
             };
+            const userSignals = signalsByUserId.get(reminder.userId);
 
             // Skip if user already journaled today
             if (shouldSuppress(ctx.lastEntryAt, reminder.timezone)) continue;
+            if (!shouldCreateNotificationForType(userSignals, 'reminder')) continue;
 
             const timeOfDay = resolveTimeOfDay(reminder.time);
             const category = resolveCategory(ctx.daysSinceLastEntry, ctx.isConsistent, timeOfDay);
             const localDate = getLocalDate(reminder.timezone, now);
+            const dispatchKey = `${reminder.id}:${localDate}:${reminder.time}`;
             const copy = selectNotification(category, reminder.userId, localDate);
+            const existingNotification = await this.prisma.inAppNotification.findFirst({
+                where: {
+                    userId: reminder.userId,
+                    type: 'reminder',
+                    data: {
+                        path: ['dispatchKey'],
+                        equals: dispatchKey,
+                    },
+                },
+                select: { id: true },
+            });
+
+            if (existingNotification) {
+                continue;
+            }
 
             const notification = await this.prisma.inAppNotification.create({
                 data: {
@@ -139,28 +173,31 @@ export class ReminderService {
                     body: copy.body,
                     data: {
                         category,
+                        dispatchKey,
                         localDate,
                         link: '/entry/new?source=reminder',
                     },
                 },
                 select: { id: true },
             });
+            dispatched++;
 
             const reminderLink = `/entry/new?source=reminder&notificationId=${notification.id}`;
+            const shouldSendReminderPush = shouldSendPushForType(userSignals, 'reminder');
 
-            const result = await this.pushService.sendPushNotification(reminder.userId, {
-                title: copy.title,
-                body: copy.body,
-                data: {
-                    type: 'reminder',
-                    link: reminderLink,
-                    notificationId: notification.id,
-                },
-            }).catch(() => null);
+            const result = shouldSendReminderPush
+                ? await this.pushService.sendPushNotification(reminder.userId, {
+                    title: copy.title,
+                    body: copy.body,
+                    data: {
+                        type: 'reminder',
+                        link: reminderLink,
+                        notificationId: notification.id,
+                    },
+                }).catch(() => null)
+                : null;
 
-            if ((result?.sent ?? 0) > 0) {
-                dispatched++;
-            } else if ((result?.failed ?? 0) > 0 && result?.sent === 0) {
+            if (shouldSendReminderPush && (result?.failed ?? 0) > 0 && result?.sent === 0) {
                 // All tokens failed (dead/expired) — remove orphan in-app notification
                 // since there's no way the user will see a push for it.
                 // If sent===0 AND failed===0 (no tokens at all), keep the in-app
@@ -168,6 +205,7 @@ export class ReminderService {
                 await this.prisma.inAppNotification.delete({
                     where: { id: notification.id },
                 }).catch(() => {});
+                dispatched = Math.max(0, dispatched - 1);
             }
         }
 

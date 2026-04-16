@@ -1899,14 +1899,16 @@ function TimelinePageContent() {
     const fetchSharedBundles = useCallback(async () => {
         setSharedLoading(true);
         try {
-            const r = await apiFetch(`${API_URL}/memory-share/received?limit=20`);
-            if (r.ok) {
-                const data = await r.json();
-                setSharedBundles(data.bundles ?? []);
-                setSharedUnreadCount(data.total ?? 0);
-            }
+            const response = await apiFetch(`${API_URL}/memory-share/received?limit=20`);
+            if (!response.ok) return;
+
+            const data = await response.json();
+            setSharedBundles(Array.isArray(data.bundles) ? data.bundles : []);
+            setSharedUnreadCount(typeof data.unreadCount === 'number' ? data.unreadCount : 0);
         } catch { /* ignore */ }
-        setSharedLoading(false);
+        finally {
+            setSharedLoading(false);
+        }
     }, [apiFetch]);
 
     const refreshSharedUnreadCount = useCallback(async () => {
@@ -1914,7 +1916,7 @@ function TimelinePageContent() {
             const response = await apiFetch(`${API_URL}/memory-share/received?limit=1`);
             if (!response.ok) return;
             const data = await response.json();
-            setSharedUnreadCount(data.total ?? 0);
+            setSharedUnreadCount(typeof data.unreadCount === 'number' ? data.unreadCount : 0);
         } catch {
             // Non-fatal: the next poll / surface switch will catch up.
         }
@@ -1929,7 +1931,9 @@ function TimelinePageContent() {
                 setSentBundles(Array.isArray(data.bundles) ? data.bundles : []);
             }
         } catch { /* ignore */ }
-        setSentBundlesLoading(false);
+        finally {
+            setSentBundlesLoading(false);
+        }
     }, [apiFetch]);
 
     const fetchIncomingFriendRequests = useCallback(async () => {
@@ -1942,7 +1946,9 @@ function TimelinePageContent() {
         } catch {
             // Non-fatal: Shared should still render bundle activity if friend requests fail.
         }
-        setFriendRequestsLoading(false);
+        finally {
+            setFriendRequestsLoading(false);
+        }
     }, [apiFetch]);
 
     const fetchSharedActivityNotifications = useCallback(async () => {
@@ -1973,21 +1979,49 @@ function TimelinePageContent() {
         } catch {
             // Non-fatal: Shared should still render bundles and requests if activity load fails.
         }
-        setSharedActivityLoading(false);
+        finally {
+            setSharedActivityLoading(false);
+        }
     }, [apiFetch]);
+
+    const markSharedSurfaceNotificationsRead = useCallback(async () => {
+        try {
+            const response = await apiFetch(`${API_URL}/memory-share/notifications/read`, {
+                method: 'PATCH',
+            });
+
+            if (response.ok) {
+                refreshNotificationBadge();
+            }
+        } catch {
+            // Non-fatal: notification polling and bundle-level reads will catch up.
+        }
+    }, [apiFetch]);
+
+    const loadSharedSurface = useCallback(async ({ markNotifications = false }: { markNotifications?: boolean } = {}) => {
+        if (markNotifications) {
+            await markSharedSurfaceNotificationsRead();
+        }
+
+        await Promise.allSettled([
+            fetchSharedBundles(),
+            fetchSentBundles(),
+            fetchIncomingFriendRequests(),
+            fetchSharedActivityNotifications(),
+        ]);
+    }, [
+        fetchIncomingFriendRequests,
+        fetchSentBundles,
+        fetchSharedActivityNotifications,
+        fetchSharedBundles,
+        markSharedSurfaceNotificationsRead,
+    ]);
 
     useEffect(() => {
         if (surface !== 'shared') return;
 
-        void (async () => {
-            await Promise.all([
-                fetchSharedBundles(),
-                fetchSentBundles(),
-                fetchIncomingFriendRequests(),
-                fetchSharedActivityNotifications(),
-            ]);
-        })();
-    }, [surface, fetchSharedBundles, fetchSentBundles, fetchIncomingFriendRequests, fetchSharedActivityNotifications]);
+        void loadSharedSurface({ markNotifications: true });
+    }, [loadSharedSurface, surface]);
 
     // Initial unread count (for badge)
     useEffect(() => {
@@ -1998,15 +2032,12 @@ function TimelinePageContent() {
         const handler = () => {
             void refreshSharedUnreadCount();
             if (surface === 'shared') {
-                void fetchSharedBundles();
-                void fetchSentBundles();
-                void fetchIncomingFriendRequests();
-                void fetchSharedActivityNotifications();
+                void loadSharedSurface();
             }
         };
         window.addEventListener(NOTIFICATION_BADGE_REFRESH_EVENT, handler);
         return () => window.removeEventListener(NOTIFICATION_BADGE_REFRESH_EVENT, handler);
-    }, [surface, refreshSharedUnreadCount, fetchSharedBundles, fetchSentBundles, fetchIncomingFriendRequests, fetchSharedActivityNotifications]);
+    }, [surface, refreshSharedUnreadCount, loadSharedSurface]);
 
     const shareEntry = useMemo<ShareableEntry | null>(() => {
         if (!shareEntryId) return null;

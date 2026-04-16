@@ -7,6 +7,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { useGamification } from '@/context/gamification-context';
 import { useTheme } from '@/context/theme-context';
+import { useNotificationCount } from '@/hooks/use-notification-count';
+import { useSharedUnreadCount } from '@/hooks/use-shared-unread-count';
 import { FiLogOut } from 'react-icons/fi';
 import {
     filterNavSectionsByRole,
@@ -22,6 +24,8 @@ export default function Sidebar() {
     const { user, logout } = useAuth();
     const { stats } = useGamification();
     const { theme } = useTheme();
+    const { unreadCount } = useNotificationCount();
+    const { unreadCount: sharedUnreadCount } = useSharedUnreadCount();
     const [isLoggingOut, setIsLoggingOut] = React.useState(false);
     const isPaper = theme === 'paper';
 
@@ -75,6 +79,11 @@ export default function Sidebar() {
                         <div className="space-y-1">
                             {section.items.map((item) => {
                                 const isActive = isNavItemActive(pathname, item);
+                                const itemBadgeCount = item.href === '/notifications'
+                                    ? unreadCount
+                                    : item.href === '/timeline'
+                                        ? sharedUnreadCount
+                                        : 0;
                                 return (
                                     <Link
                                         key={item.href}
@@ -91,6 +100,11 @@ export default function Sidebar() {
                                         <span className={isActive ? 'font-semibold' : 'font-medium'}>
                                             {item.label}
                                         </span>
+                                        {itemBadgeCount > 0 && (
+                                            <span className="ml-auto inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-[rgb(107,143,113)] px-2 py-0.5 text-[0.68rem] font-semibold text-white">
+                                                {itemBadgeCount > 99 ? '99+' : itemBadgeCount}
+                                            </span>
+                                        )}
                                     </Link>
                                 );
                             })}

@@ -1,5 +1,7 @@
 'use client';
 
+import type { NotificationPreferencesSettings } from '@/services/notification-preferences.service';
+import { normalizeNotificationPreferences } from '@/services/notification-preferences.service';
 import type { PromptFrequency, StoredAnswer } from '@/services/progressive-personalization.service';
 import type { IconType } from 'react-icons';
 import { FiBell, FiBox, FiShield, FiTarget, FiUser } from 'react-icons/fi';
@@ -187,6 +189,7 @@ export type PersonalizationSignals = {
     settings?: {
         promptFrequency?: PromptFrequency;
         dailyGentleReflectionsEnabled?: boolean;
+        notifications?: NotificationPreferencesSettings;
     };
     metrics?: PersonalizationSignalMetrics;
     answers?: Record<string, StoredAnswer>;
@@ -554,6 +557,9 @@ export const normalizeSignals = (value: unknown): PersonalizationSignals | null 
             dailyGentleReflectionsEnabled: source.settings?.dailyGentleReflectionsEnabled === true
                 ? true
                 : undefined,
+            ...(normalizeNotificationPreferences(source.settings?.notifications)
+                ? { notifications: normalizeNotificationPreferences(source.settings?.notifications) }
+                : {}),
         },
         metrics: {
             promptedCount: typeof source.metrics?.promptedCount === 'number' ? source.metrics.promptedCount : 0,
@@ -609,6 +615,7 @@ export const compactSignals = (value: PersonalizationSignals | null | undefined)
 
     const promptFrequency = asPromptFrequency(normalized.settings?.promptFrequency);
     const dailyGentleReflectionsEnabled = normalized.settings?.dailyGentleReflectionsEnabled === true;
+    const notificationSettings = normalizeNotificationPreferences(normalized.settings?.notifications);
     const answersCount = Object.keys(normalized.answers || {}).length;
     const historyCount = normalized.history?.length || 0;
     const promptedCount = normalized.metrics?.promptedCount || 0;
@@ -625,7 +632,8 @@ export const compactSignals = (value: PersonalizationSignals | null | undefined)
         (supportPreferences?.trustedContacts?.length || 0) > 0 ||
         (supportPreferences?.contactOutcomes?.length || 0) > 0 ||
         supportPreferences?.safetyRegion === 'us' ||
-        supportPreferences?.safetyRegion === 'intl'
+        supportPreferences?.safetyRegion === 'intl' ||
+        Boolean(notificationSettings)
     );
 
     if (
@@ -647,6 +655,7 @@ export const compactSignals = (value: PersonalizationSignals | null | undefined)
         settings: {
             promptFrequency,
             ...(dailyGentleReflectionsEnabled ? { dailyGentleReflectionsEnabled: true } : {}),
+            ...(notificationSettings ? { notifications: notificationSettings } : {}),
         },
         ...(supportPreferences ? { supportPreferences } : {}),
     };

@@ -2,6 +2,10 @@ import { MemoryShareAccessStatus, Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
 import { PushNotificationService } from '../services/push-notification.service';
+import {
+    shouldCreateNotificationForType,
+    shouldSendPushForType,
+} from '../services/notification-preferences.service';
 
 const pushService = new PushNotificationService(prisma);
 const SEARCH_SHARE_STATE_NONE = 'NONE' as const;
@@ -259,7 +263,13 @@ export const createBundle = async (req: Request, res: Response) => {
 
         const recipients = await prisma.user.findMany({
             where: { id: { in: recipientIds }, isBanned: false },
-            select: { id: true, name: true },
+            select: {
+                id: true,
+                name: true,
+                profile: {
+                    select: { personalizationSignals: true },
+                },
+            },
         });
 
         if (recipients.length !== recipientIds.length) {
@@ -313,6 +323,21 @@ export const createBundle = async (req: Request, res: Response) => {
         const pendingRecipientIds = recipientIds.filter((recipientId) => (
             (accessMap.get(recipientId) ?? MemoryShareAccessStatus.PENDING) === MemoryShareAccessStatus.PENDING
         ));
+        const recipientSignalsById = new Map(
+            recipients.map((recipient) => [recipient.id, recipient.profile?.personalizationSignals ?? null])
+        );
+        const acceptedNotificationRecipientIds = acceptedRecipientIds.filter((recipientId) =>
+            shouldCreateNotificationForType(recipientSignalsById.get(recipientId), 'shared_memory')
+        );
+        const pendingNotificationRecipientIds = pendingRecipientIds.filter((recipientId) =>
+            shouldCreateNotificationForType(recipientSignalsById.get(recipientId), 'memory_share_request')
+        );
+        const acceptedPushRecipientIds = acceptedRecipientIds.filter((recipientId) =>
+            shouldSendPushForType(recipientSignalsById.get(recipientId), 'shared_memory')
+        );
+        const pendingPushRecipientIds = pendingRecipientIds.filter((recipientId) =>
+            shouldSendPushForType(recipientSignalsById.get(recipientId), 'memory_share_request')
+        );
 
         const bundle = await prisma.$transaction(async (tx) => {
             if (noAccessRecipientIds.length > 0) {
@@ -369,7 +394,7 @@ export const createBundle = async (req: Request, res: Response) => {
             });
 
             const notifications = [
-                ...acceptedRecipientIds.map((recipientId) => ({
+                ...acceptedNotificationRecipientIds.map((recipientId) => ({
                     userId: recipientId,
                     type: 'shared_memory',
                     title: 'New shared memories',
@@ -382,7 +407,7 @@ export const createBundle = async (req: Request, res: Response) => {
                         link: `/shared/view?id=${newBundle.id}`,
                     },
                 })),
-                ...pendingRecipientIds.map((recipientId) => ({
+                ...pendingNotificationRecipientIds.map((recipientId) => ({
                     userId: recipientId,
                     type: 'memory_share_request',
                     title: 'New share request',
@@ -416,7 +441,7 @@ export const createBundle = async (req: Request, res: Response) => {
             : [];
         const notifIdByUser = new Map(inAppRows.map((r) => [r.userId, r.id]));
 
-        for (const recipientId of acceptedRecipientIds) {
+        for (const recipientId of acceptedPushRecipientIds) {
             pushService.sendPushNotification(recipientId, {
                 title: 'New shared memories',
                 body: `${senderName} shared ${formatCountLabel(entryCount)} with you`,
@@ -429,7 +454,7 @@ export const createBundle = async (req: Request, res: Response) => {
             }).catch((err) => console.error('Push notification failed:', err));
         }
 
-        for (const recipientId of pendingRecipientIds) {
+        for (const recipientId of pendingPushRecipientIds) {
             pushService.sendPushNotification(recipientId, {
                 title: 'New share request',
                 body: `${senderName} wants to share ${formatCountLabel(entryCount)} with you`,
@@ -490,8 +515,19 @@ export const listReceived = async (req: Request, res: Response) => {
                 { readAt: { gte: thirtyDaysAgo } },
             ],
         };
+        const unreadWhere = {
+            recipientId: userId,
+            readAt: null,
+            status: {
+                in: [
+                    MemoryShareAccessStatus.PENDING,
+                    MemoryShareAccessStatus.ACCEPTED,
+                ],
+            },
+            bundle: { status: 'ACTIVE' as const },
+        };
 
-        const [records, total, pendingCount] = await Promise.all([
+        const [records, total, unreadCount, pendingCount] = await Promise.all([
             prisma.sharedMemoryRecipient.findMany({
                 where,
                 // Unread first (nulls first), then by date
@@ -518,6 +554,7 @@ export const listReceived = async (req: Request, res: Response) => {
                 },
             }),
             prisma.sharedMemoryRecipient.count({ where }),
+            prisma.sharedMemoryRecipient.count({ where: unreadWhere }),
             prisma.sharedMemoryRecipient.count({
                 where: {
                     recipientId: userId,
@@ -544,7 +581,7 @@ export const listReceived = async (req: Request, res: Response) => {
             status: record.status,
         }));
 
-        return res.json({ bundles, total, pendingCount, page, limit });
+        return res.json({ bundles, total, unreadCount, pendingCount, page, limit });
     } catch (error) {
         console.error('List received error:', error);
         return res.status(500).json({ message: 'Internal server error' });
@@ -658,6 +695,20 @@ export const respondToShareRequest = async (req: Request, res: Response) => {
         const nextStatus = decision === 'ACCEPT'
             ? MemoryShareAccessStatus.ACCEPTED
             : MemoryShareAccessStatus.DECLINED;
+        const senderSignalsRow = await prisma.user.findUnique({
+            where: { id: senderId },
+            select: {
+                profile: {
+                    select: { personalizationSignals: true },
+                },
+            },
+        });
+        const senderSignals = senderSignalsRow?.profile?.personalizationSignals ?? null;
+        const responseNotificationType = nextStatus === MemoryShareAccessStatus.ACCEPTED
+            ? 'memory_share_request_accepted'
+            : 'memory_share_request_declined';
+        const shouldCreateResponseNotification = shouldCreateNotificationForType(senderSignals, responseNotificationType);
+        const shouldSendResponsePush = shouldSendPushForType(senderSignals, 'shared_memory_response');
 
         const result = await prisma.$transaction(async (tx) => {
             const pendingBundleCount = await tx.sharedMemoryRecipient.count({
@@ -746,46 +797,48 @@ export const respondToShareRequest = async (req: Request, res: Response) => {
                 data: { readAt: new Date() },
             });
 
-            const responseNotification = await tx.inAppNotification.create({
-                data: {
-                    userId: senderId,
-                    type: nextStatus === MemoryShareAccessStatus.ACCEPTED
-                        ? 'memory_share_request_accepted'
-                        : 'memory_share_request_declined',
-                    title: nextStatus === MemoryShareAccessStatus.ACCEPTED
-                        ? 'Share request accepted'
-                        : 'Share request declined',
-                    body: `${responder?.name || 'Someone'} ${nextStatus === MemoryShareAccessStatus.ACCEPTED ? 'can now see your shared memories' : 'declined your share request'}`,
+            const responseNotification = shouldCreateResponseNotification
+                ? await tx.inAppNotification.create({
                     data: {
-                        recipientId: userId,
-                        recipientName: responder?.name,
-                        status: nextStatus,
-                        pendingBundleCount,
-                        link: '/timeline?view=shared',
+                        userId: senderId,
+                        type: responseNotificationType,
+                        title: nextStatus === MemoryShareAccessStatus.ACCEPTED
+                            ? 'Share request accepted'
+                            : 'Share request declined',
+                        body: `${responder?.name || 'Someone'} ${nextStatus === MemoryShareAccessStatus.ACCEPTED ? 'can now see your shared memories' : 'declined your share request'}`,
+                        data: {
+                            recipientId: userId,
+                            recipientName: responder?.name,
+                            status: nextStatus,
+                            pendingBundleCount,
+                            link: '/timeline?view=shared',
+                        },
                     },
-                },
-            });
+                })
+                : null;
 
             return {
                 pendingBundleCount,
                 responderName: responder?.name || 'Someone',
-                notificationId: responseNotification.id,
+                notificationId: responseNotification?.id ?? null,
             };
         });
 
-        pushService.sendPushNotification(senderId, {
-            title: nextStatus === MemoryShareAccessStatus.ACCEPTED
-                ? 'Share request accepted'
-                : 'Share request declined',
-            body: nextStatus === MemoryShareAccessStatus.ACCEPTED
-                ? `${result.responderName} can now see your shared memories`
-                : `${result.responderName} declined your share request`,
-            data: {
-                type: 'shared_memory_response',
-                link: '/timeline?view=shared',
-                notificationId: result.notificationId,
-            },
-        }).catch((err) => console.error('Push notification failed:', err));
+        if (shouldSendResponsePush) {
+            pushService.sendPushNotification(senderId, {
+                title: nextStatus === MemoryShareAccessStatus.ACCEPTED
+                    ? 'Share request accepted'
+                    : 'Share request declined',
+                body: nextStatus === MemoryShareAccessStatus.ACCEPTED
+                    ? `${result.responderName} can now see your shared memories`
+                    : `${result.responderName} declined your share request`,
+                data: {
+                    type: 'shared_memory_response',
+                    link: '/timeline?view=shared',
+                    ...(result.notificationId ? { notificationId: result.notificationId } : {}),
+                },
+            }).catch((err) => console.error('Push notification failed:', err));
+        }
 
         return res.json({
             message: nextStatus === MemoryShareAccessStatus.ACCEPTED
@@ -857,6 +910,10 @@ export const getBundleDetail = async (req: Request, res: Response) => {
             return res.status(403).json({ message: 'Accept this share request before viewing the memories' });
         }
 
+        const notificationTypesToMark = isSender
+            ? ['share_reaction']
+            : ['shared_memory', 'memory_share_request', 'share_reaction'];
+
         if (recipientRecord && !recipientRecord.readAt) {
             await prisma.$transaction([
                 // Mark the SharedMemoryRecipient row as read
@@ -873,7 +930,7 @@ export const getBundleDetail = async (req: Request, res: Response) => {
                 prisma.inAppNotification.updateMany({
                     where: {
                         userId,
-                        type: { in: ['shared_memory', 'memory_share_request', 'share_reaction'] },
+                        type: { in: notificationTypesToMark },
                         readAt: null,
                         data: {
                             path: ['bundleId'],
@@ -883,6 +940,19 @@ export const getBundleDetail = async (req: Request, res: Response) => {
                     data: { readAt: new Date() },
                 }),
             ]);
+        } else if (notificationTypesToMark.length > 0) {
+            await prisma.inAppNotification.updateMany({
+                where: {
+                    userId,
+                    type: { in: notificationTypesToMark },
+                    readAt: null,
+                    data: {
+                        path: ['bundleId'],
+                        equals: id,
+                    },
+                },
+                data: { readAt: new Date() },
+            });
         }
 
         return res.json({
@@ -949,60 +1019,75 @@ export const reactToBundle = async (req: Request, res: Response) => {
                 where: { id: userId },
                 select: { name: true },
             });
+            const senderSignalsRow = await prisma.user.findUnique({
+                where: { id: recipient.bundle.senderId },
+                select: {
+                    profile: {
+                        select: { personalizationSignals: true },
+                    },
+                },
+            });
+            const senderSignals = senderSignalsRow?.profile?.personalizationSignals ?? null;
+            const shouldCreateReactionNotification = shouldCreateNotificationForType(senderSignals, 'share_reaction');
+            const shouldSendReactionPush = shouldSendPushForType(senderSignals, 'share_reaction');
 
             const reactorName = reactor?.name || 'Someone';
             const display = REACTION_DISPLAY[reaction] ?? { emoji: '', label: reaction };
             const friendlyBody = `${reactorName} felt ${display.label} ${display.emoji}`;
 
-            // Deduplicate: update existing reaction notification for this bundle+reactor
-            // instead of creating a new one each time they change their reaction.
-            const existingReactionNotif = await prisma.inAppNotification.findFirst({
-                where: {
-                    userId: recipient.bundle.senderId,
-                    type: 'share_reaction',
-                    data: {
-                        path: ['bundleId'],
-                        equals: id,
-                    },
-                },
-                orderBy: { createdAt: 'desc' },
-            });
-
-            let notificationId: string;
-            if (existingReactionNotif) {
-                await prisma.inAppNotification.update({
-                    where: { id: existingReactionNotif.id },
-                    data: {
-                        title: 'Reaction to your shared memories',
-                        body: friendlyBody,
-                        readAt: null, // Re-surface as unread
-                        data: { bundleId: id, reactorId: userId, reaction, link: `/shared/view?id=${id}` },
-                    },
-                });
-                notificationId = existingReactionNotif.id;
-            } else {
-                const newNotif = await prisma.inAppNotification.create({
-                    data: {
+            let notificationId: string | null = null;
+            if (shouldCreateReactionNotification) {
+                // Deduplicate: update existing reaction notification for this bundle+reactor
+                // instead of creating a new one each time they change their reaction.
+                const existingReactionNotif = await prisma.inAppNotification.findFirst({
+                    where: {
                         userId: recipient.bundle.senderId,
                         type: 'share_reaction',
-                        title: 'Reaction to your shared memories',
-                        body: friendlyBody,
-                        data: { bundleId: id, reactorId: userId, reaction, link: `/shared/view?id=${id}` },
+                        data: {
+                            path: ['bundleId'],
+                            equals: id,
+                        },
                     },
+                    orderBy: { createdAt: 'desc' },
                 });
-                notificationId = newNotif.id;
+
+                if (existingReactionNotif) {
+                    await prisma.inAppNotification.update({
+                        where: { id: existingReactionNotif.id },
+                        data: {
+                            title: 'Reaction to your shared memories',
+                            body: friendlyBody,
+                            readAt: null,
+                            data: { bundleId: id, reactorId: userId, reaction, link: `/shared/view?id=${id}` },
+                        },
+                    });
+                    notificationId = existingReactionNotif.id;
+                } else {
+                    const newNotif = await prisma.inAppNotification.create({
+                        data: {
+                            userId: recipient.bundle.senderId,
+                            type: 'share_reaction',
+                            title: 'Reaction to your shared memories',
+                            body: friendlyBody,
+                            data: { bundleId: id, reactorId: userId, reaction, link: `/shared/view?id=${id}` },
+                        },
+                    });
+                    notificationId = newNotif.id;
+                }
             }
 
-            pushService.sendPushNotification(recipient.bundle.senderId, {
-                title: 'Reaction to your shared memories',
-                body: friendlyBody,
-                data: {
-                    type: 'share_reaction',
-                    link: `/shared/view?id=${id}`,
-                    bundleId: id,
-                    notificationId,
-                },
-            }).catch((err) => console.error('Push notification failed:', err));
+            if (shouldSendReactionPush) {
+                pushService.sendPushNotification(recipient.bundle.senderId, {
+                    title: 'Reaction to your shared memories',
+                    body: friendlyBody,
+                    data: {
+                        type: 'share_reaction',
+                        link: `/shared/view?id=${id}`,
+                        bundleId: id,
+                        ...(notificationId ? { notificationId } : {}),
+                    },
+                }).catch((err) => console.error('Push notification failed:', err));
+            }
         }
 
         return res.json({ message: 'Reaction updated', reaction });

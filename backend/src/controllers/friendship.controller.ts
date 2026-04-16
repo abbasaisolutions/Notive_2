@@ -2,6 +2,10 @@ import { MemoryShareAccessStatus } from '@prisma/client';
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
 import { PushNotificationService } from '../services/push-notification.service';
+import {
+    shouldCreateNotificationForType,
+    shouldSendPushForType,
+} from '../services/notification-preferences.service';
 
 const pushService = new PushNotificationService(prisma);
 
@@ -41,7 +45,13 @@ export const sendFriendRequest = async (req: Request, res: Response) => {
         // Verify addressee exists
         const addressee = await prisma.user.findUnique({
             where: { id: addresseeId, isBanned: false },
-            select: { id: true, name: true },
+            select: {
+                id: true,
+                name: true,
+                profile: {
+                    select: { personalizationSignals: true },
+                },
+            },
         });
         if (!addressee) {
             return res.status(404).json({ message: 'User not found' });
@@ -94,22 +104,33 @@ export const sendFriendRequest = async (req: Request, res: Response) => {
             select: { name: true },
         });
         const senderName = requester?.name || 'Someone';
+        const addresseeSignals = addressee.profile?.personalizationSignals ?? null;
+        const shouldCreateFriendRequestNotification = shouldCreateNotificationForType(addresseeSignals, 'friend_request');
+        const shouldSendFriendRequestPush = shouldSendPushForType(addresseeSignals, 'friend_request');
 
-        const friendReqNotif = await prisma.inAppNotification.create({
-            data: {
-                userId: addresseeId,
-                type: 'friend_request',
+        const friendReqNotif = shouldCreateFriendRequestNotification
+            ? await prisma.inAppNotification.create({
+                data: {
+                    userId: addresseeId,
+                    type: 'friend_request',
+                    title: 'New friend request',
+                    body: `${senderName} wants to connect with you`,
+                    data: { requesterId, senderName, route: '/timeline?view=shared' },
+                },
+            })
+            : null;
+
+        if (shouldSendFriendRequestPush) {
+            pushService.sendPushNotification(addresseeId, {
                 title: 'New friend request',
                 body: `${senderName} wants to connect with you`,
-                data: { requesterId, senderName, route: '/timeline?view=shared' },
-            },
-        });
-
-        pushService.sendPushNotification(addresseeId, {
-            title: 'New friend request',
-            body: `${senderName} wants to connect with you`,
-            data: { type: 'friend_request', route: '/timeline?view=shared', notificationId: friendReqNotif.id },
-        }).catch(() => {});
+                data: {
+                    type: 'friend_request',
+                    route: '/timeline?view=shared',
+                    ...(friendReqNotif?.id ? { notificationId: friendReqNotif.id } : {}),
+                },
+            }).catch(() => {});
+        }
 
         return res.status(201).json({ message: 'Friend request sent', status: 'PENDING' });
     } catch (error) {
@@ -130,7 +151,17 @@ export const acceptFriendRequest = async (req: Request, res: Response) => {
 
         const friendship = await prisma.friendship.findFirst({
             where: { id, addresseeId: userId, status: 'PENDING' },
-            include: { requester: { select: { id: true, name: true } } },
+            include: {
+                requester: {
+                    select: {
+                        id: true,
+                        name: true,
+                        profile: {
+                            select: { personalizationSignals: true },
+                        },
+                    },
+                },
+            },
         });
 
         if (!friendship) {
@@ -144,6 +175,9 @@ export const acceptFriendRequest = async (req: Request, res: Response) => {
         });
 
         const acceptorName = acceptor?.name || 'Someone';
+        const requesterSignals = friendship.requester.profile?.personalizationSignals ?? null;
+        const shouldCreateFriendAcceptedNotification = shouldCreateNotificationForType(requesterSignals, 'friend_accepted');
+        const shouldSendFriendAcceptedPush = shouldSendPushForType(requesterSignals, 'friend_accepted');
 
         // Use sequential operations so we can capture the notification ID for push
         await prisma.friendship.update({
@@ -162,21 +196,29 @@ export const acceptFriendRequest = async (req: Request, res: Response) => {
             },
             data: { readAt: new Date() },
         });
-        const friendAcceptNotif = await prisma.inAppNotification.create({
-            data: {
-                userId: friendship.requesterId,
-                type: 'friend_accepted',
+        const friendAcceptNotif = shouldCreateFriendAcceptedNotification
+            ? await prisma.inAppNotification.create({
+                data: {
+                    userId: friendship.requesterId,
+                    type: 'friend_accepted',
+                    title: 'Friend request accepted!',
+                    body: `${acceptorName} is now your friend`,
+                    data: { userId, acceptorName, route: '/timeline?view=shared' },
+                },
+            })
+            : null;
+
+        if (shouldSendFriendAcceptedPush) {
+            pushService.sendPushNotification(friendship.requesterId, {
                 title: 'Friend request accepted!',
                 body: `${acceptorName} is now your friend`,
-                data: { userId, acceptorName, route: '/timeline?view=shared' },
-            },
-        });
-
-        pushService.sendPushNotification(friendship.requesterId, {
-            title: 'Friend request accepted!',
-            body: `${acceptorName} is now your friend`,
-            data: { type: 'friend_accepted', route: '/timeline?view=shared', notificationId: friendAcceptNotif.id },
-        }).catch(() => {});
+                data: {
+                    type: 'friend_accepted',
+                    route: '/timeline?view=shared',
+                    ...(friendAcceptNotif?.id ? { notificationId: friendAcceptNotif.id } : {}),
+                },
+            }).catch(() => {});
+        }
 
         return res.json({ message: 'Friend request accepted', status: 'ACCEPTED' });
     } catch (error) {

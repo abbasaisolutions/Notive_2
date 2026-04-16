@@ -174,6 +174,7 @@ app.use('/api/v1/files', fileRoutes);
 app.use('/api/v1/legal', legalRoutes);
 app.use('/api/v1/voice', voiceRoutes);
 app.use('/api/v1/device', deviceRoutes);
+app.use('/api/v1/devices', deviceRoutes);
 app.use('/api/v1/memory-share', memoryShareRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/reminders', reminderRoutes);

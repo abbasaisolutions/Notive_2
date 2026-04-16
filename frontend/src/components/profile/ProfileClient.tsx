@@ -337,6 +337,20 @@ export default function ProfileClient() {
                                     {!pushSupported && (
                                         <p className="mt-2 text-xs text-ink-muted">Available in the Notive mobile app.</p>
                                     )}
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                        <Link
+                                            href="/notifications"
+                                            className="notebook-secondary-cta inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors hover:opacity-80"
+                                        >
+                                            Open notification center
+                                        </Link>
+                                        <Link
+                                            href="/profile/edit?tab=reminders"
+                                            className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+                                        >
+                                            Notification schedule
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
                         </section>

@@ -56,6 +56,9 @@ const bootstrap = async () => {
 
         stage = 'reminder.import';
         const { ReminderService } = await import('./services/reminder.service');
+        stage = 'notification_jobs.import';
+        const { PushNotificationService } = await import('./services/push-notification.service');
+        const { tryAcquireDistributedLock } = await import('./services/distributed-lock.service');
 
         stage = 'server.listen';
         const server = app.listen(port, host, () => {
@@ -70,9 +73,46 @@ const bootstrap = async () => {
 
             // Reminder scheduler: check for due reminders every minute
             const reminderService = new ReminderService(prisma);
-            setInterval(() => {
-                void reminderService.dispatchDueReminders().catch(() => {});
-            }, 60_000);
+            const pushNotificationService = new PushNotificationService(prisma);
+
+            const runReminderDispatch = () => {
+                const slotKey = `scheduler:reminders:${new Date().toISOString().slice(0, 16)}`;
+                void tryAcquireDistributedLock(slotKey, 120)
+                    .then((acquired) => {
+                        if (!acquired) return null;
+                        return reminderService.dispatchDueReminders();
+                    })
+                    .then((result) => {
+                        if (result && result.dispatched > 0) {
+                            serverLogger.info('notifications.reminders_dispatched', {
+                                dispatched: result.dispatched,
+                            });
+                        }
+                    })
+                    .catch(() => {});
+            };
+
+            const runInactiveTokenCleanup = () => {
+                const cleanupSlot = `scheduler:notification-token-cleanup:${new Date().toISOString().slice(0, 13)}`;
+                void tryAcquireDistributedLock(cleanupSlot, 6 * 60 * 60)
+                    .then((acquired) => {
+                        if (!acquired) return null;
+                        return pushNotificationService.cleanupInactiveTokens(45);
+                    })
+                    .then((result) => {
+                        if (result && result.deletedCount > 0) {
+                            serverLogger.info('notifications.inactive_tokens_cleaned', {
+                                deletedCount: result.deletedCount,
+                            });
+                        }
+                    })
+                    .catch(() => {});
+            };
+
+            runReminderDispatch();
+            runInactiveTokenCleanup();
+            setInterval(runReminderDispatch, 60_000);
+            setInterval(runInactiveTokenCleanup, 6 * 60 * 60 * 1000);
         });
 
         server.on('error', (error: Error) => {

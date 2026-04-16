@@ -95,6 +95,7 @@ const ANDROID_PUSH_CHANNELS = [
         vibration: false,
     },
 ];
+const DEVICE_TOKENS_API_PATH = '/device/tokens';
 
 function applyResolvedPushPermission(
     nextPermissionState: PermissionStatus,
@@ -165,7 +166,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
 
     const fetchDeviceTokens = useCallback(async () => {
         try {
-            const response = await apiFetch('/devices/tokens');
+            const response = await apiFetch(DEVICE_TOKENS_API_PATH);
 
             if (!response.ok) {
                 throw new Error('Failed to fetch device tokens');
@@ -180,7 +181,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
 
     const registerDevice = useCallback(async (token: string, platform: 'android' | 'ios' | 'web') => {
         try {
-            const response = await apiFetch('/devices/tokens', {
+            const response = await apiFetch(DEVICE_TOKENS_API_PATH, {
                 method: 'POST',
                 body: JSON.stringify({
                     token,
@@ -208,7 +209,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
 
     const unregisterDevice = useCallback(async (tokenId: string) => {
         try {
-            const response = await apiFetch(`/devices/tokens/${tokenId}`, {
+            const response = await apiFetch(`${DEVICE_TOKENS_API_PATH}/${tokenId}`, {
                 method: 'DELETE',
             });
 

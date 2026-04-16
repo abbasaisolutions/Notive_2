@@ -8,6 +8,7 @@ import { useAuth } from '@/context/auth-context';
 import { useGamification } from '@/context/gamification-context';
 import { useTheme } from '@/context/theme-context';
 import { useNotificationCount } from '@/hooks/use-notification-count';
+import { useSharedUnreadCount } from '@/hooks/use-shared-unread-count';
 import { FiMoreHorizontal } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
@@ -28,7 +29,8 @@ export default function MobileNav() {
     const { user, logout } = useAuth();
     const { stats } = useGamification();
     const { theme } = useTheme();
-    const { unreadCount: sharedUnread } = useNotificationCount();
+    const { unreadCount } = useNotificationCount();
+    const { unreadCount: sharedUnread } = useSharedUnreadCount();
     const navRef = useRef<HTMLElement | null>(null);
     const [isMoreOpen, setIsMoreOpen] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -204,6 +206,7 @@ export default function MobileNav() {
                                 <div className="space-y-1">
                                     {section.items.map((item) => {
                                         const isActive = isNavItemActive(pathname, item);
+                                        const itemBadgeCount = item.href === '/notifications' ? unreadCount : 0;
                                         return (
                                             <Link
                                                 key={item.href}
@@ -215,7 +218,14 @@ export default function MobileNav() {
                                                     : 'border-white/10 text-soft hover:bg-white/10 hover:text-strong'
                                                     }`}
                                             >
-                                                {item.icon}
+                                                <span className="relative">
+                                                    {item.icon}
+                                                    {itemBadgeCount > 0 && (
+                                                        <span className="absolute -top-1.5 -right-2 inline-flex min-w-[16px] items-center justify-center rounded-full bg-[rgb(107,143,113)] px-1 py-[1px] text-[10px] font-bold leading-none text-white">
+                                                            {itemBadgeCount > 99 ? '99+' : itemBadgeCount}
+                                                        </span>
+                                                    )}
+                                                </span>
                                                 <span>{item.label}</span>
                                             </Link>
                                         );
@@ -345,12 +355,17 @@ export default function MobileNav() {
                             >
                                 <div className={`relative ${isActive ? 'opacity-100 scale-110' : 'opacity-70'} transition-transform duration-200`}>
                                     {isProfileTab ? (
-                                        <UserAvatar
-                                            avatarUrl={user?.avatarUrl}
-                                            name={user?.name}
-                                            size={24}
-                                            className={`ring-2 transition-all ${isActive ? 'ring-accent' : 'ring-transparent'}`}
-                                        />
+                                        <span className="relative">
+                                            <UserAvatar
+                                                avatarUrl={user?.avatarUrl}
+                                                name={user?.name}
+                                                size={24}
+                                                className={`ring-2 transition-all ${isActive ? 'ring-accent' : 'ring-transparent'}`}
+                                            />
+                                            {unreadCount > 0 && (
+                                                <span className="absolute -top-0.5 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-[rgb(107,143,113)]" />
+                                            )}
+                                        </span>
                                     ) : (
                                         <>
                                             {React.cloneElement(item.icon as React.ReactElement, {
@@ -383,8 +398,11 @@ export default function MobileNav() {
                             aria-label="Open more navigation"
                             className={`relative z-10 flex min-h-[44px] flex-1 flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all ${(isMoreOpen || isMoreSectionActive) ? 'text-strong' : 'text-muted hover:text-strong'}`}
                         >
-                            <div className={`${(isMoreOpen || isMoreSectionActive) ? 'opacity-100 scale-110' : 'opacity-70'} transition-transform duration-200`}>
+                            <div className={`relative ${(isMoreOpen || isMoreSectionActive) ? 'opacity-100 scale-110' : 'opacity-70'} transition-transform duration-200`}>
                                 <FiMoreHorizontal size={22} aria-hidden="true" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute -top-0.5 -right-1 h-2.5 w-2.5 rounded-full bg-[rgb(107,143,113)]" />
+                                )}
                             </div>
                             <span className={`type-micro mt-0.5 ${(isMoreOpen || isMoreSectionActive) ? 'text-strong opacity-100' : 'opacity-75'}`}>
                                 More

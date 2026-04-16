@@ -8,20 +8,26 @@ import { hasCompletedPermissionsOnboarding } from '@/services/device-permissions
 import { openNativeNotificationSettings } from '@/services/native-notification-settings.service';
 import logger from '@/utils/logger';
 
-const PROMPT_DISMISSED_KEY = 'notive_push_prompt_dismissed';
+const PROMPT_SNOOZE_UNTIL_KEY = 'notive_push_prompt_snooze_until';
+const SOFT_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
+const DENIAL_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** Once the user dismisses the prompt it stays dismissed permanently.
- *  They can always enable notifications from Profile → Settings. */
-function isPromptDismissed(): boolean {
-    try { return localStorage.getItem(PROMPT_DISMISSED_KEY) === '1'; } catch { return false; }
+function readPromptSnoozeUntil(): number {
+    try {
+        const raw = localStorage.getItem(PROMPT_SNOOZE_UNTIL_KEY);
+        const parsed = raw ? Number(raw) : 0;
+        return Number.isFinite(parsed) ? parsed : 0;
+    } catch {
+        return 0;
+    }
 }
 
-function persistPromptDismissed(): void {
-    try { localStorage.setItem(PROMPT_DISMISSED_KEY, '1'); } catch { /* noop */ }
+function persistPromptSnooze(until: number): void {
+    try { localStorage.setItem(PROMPT_SNOOZE_UNTIL_KEY, String(until)); } catch { /* noop */ }
 }
 
-function clearPromptDismissed(): void {
-    try { localStorage.removeItem(PROMPT_DISMISSED_KEY); } catch { /* noop */ }
+function clearPromptSnooze(): void {
+    try { localStorage.removeItem(PROMPT_SNOOZE_UNTIL_KEY); } catch { /* noop */ }
 }
 
 /**
@@ -39,7 +45,7 @@ export function PushNotificationPermissionPrompt() {
     const { user } = useAuth();
     const pathname = usePathname();
     const [showPrompt, setShowPrompt] = useState(false);
-    const [dismissed, setDismissed] = useState(() => isPromptDismissed());
+    const [snoozedUntil, setSnoozedUntil] = useState(() => readPromptSnoozeUntil());
     const canRequestInApp = permissionState === 'prompt' || permissionState === 'prompt-with-rationale';
     const hasCompletedOnboarding = Boolean(user?.profile?.onboardingCompletedAt) || hasCompletedPermissionsOnboarding();
     const shouldSuppressPrompt = pathname?.startsWith('/onboarding');
@@ -56,8 +62,8 @@ export function PushNotificationPermissionPrompt() {
     useEffect(() => {
         if (isPermissionGranted) {
             setShowPrompt(false);
-            setDismissed(false);
-            clearPromptDismissed();
+            setSnoozedUntil(0);
+            clearPromptSnooze();
             return;
         }
 
@@ -69,7 +75,7 @@ export function PushNotificationPermissionPrompt() {
             return;
         }
 
-        if (showPrompt || dismissed) {
+        if (showPrompt || snoozedUntil > Date.now()) {
             return;
         }
 
@@ -78,7 +84,7 @@ export function PushNotificationPermissionPrompt() {
         }, 6000);
 
         return () => clearTimeout(timer);
-    }, [canRequestInApp, dismissed, isPermissionGranted, shouldAutoPrompt, showPrompt]);
+    }, [canRequestInApp, isPermissionGranted, shouldAutoPrompt, showPrompt, snoozedUntil]);
 
     useEffect(() => {
         if (isPermissionGranted && showPrompt) {
@@ -92,11 +98,10 @@ export function PushNotificationPermissionPrompt() {
             if (granted) {
                 logger.debug('Push notification permission granted');
                 setShowPrompt(false);
-                setDismissed(false);
-                clearPromptDismissed();
+                setSnoozedUntil(0);
+                clearPromptSnooze();
             } else {
-                // User denied at OS level — dismiss permanently
-                handleDismiss();
+                handleDismiss(DENIAL_SNOOZE_MS);
                 logger.debug('Push notification permission denied');
             }
         } catch (error) {
@@ -111,10 +116,11 @@ export function PushNotificationPermissionPrompt() {
         }
     };
 
-    const handleDismiss = () => {
+    const handleDismiss = (durationMs = SOFT_SNOOZE_MS) => {
+        const nextSnoozeUntil = Date.now() + durationMs;
         setShowPrompt(false);
-        setDismissed(true);
-        persistPromptDismissed();
+        setSnoozedUntil(nextSnoozeUntil);
+        persistPromptSnooze(nextSnoozeUntil);
     };
 
     if (!showPrompt) {
@@ -135,7 +141,7 @@ export function PushNotificationPermissionPrompt() {
             aria-describedby="push-permission-description"
         >
             {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={handleDismiss} />
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => handleDismiss()} />
 
             {/* Card */}
             <div className="relative mx-4 mb-6 sm:mb-0 w-full max-w-sm animate-in slide-in-from-bottom-6 duration-300">
@@ -191,7 +197,7 @@ export function PushNotificationPermissionPrompt() {
                         )}
                         <button
                             type="button"
-                            onClick={handleDismiss}
+                            onClick={() => handleDismiss()}
                             className="w-full px-4 py-2.5 text-sm font-medium rounded-xl text-ink-secondary hover:text-[rgb(var(--text-primary))] hover:bg-white/5 transition-all"
                         >
                             {canRequestInApp ? 'Maybe later' : 'Got it'}

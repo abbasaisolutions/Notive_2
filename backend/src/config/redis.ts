@@ -23,6 +23,13 @@ const createFallbackClient = (): any => {
         isOpen: true,
         get: async (key: string) => store.get(key)?.value ?? null,
         set: async (key: string, value: string, opts?: any) => {
+            if (opts?.NX && store.has(key)) {
+                const existing = store.get(key);
+                if (!existing || existing.expiresAt > Date.now()) {
+                    return null;
+                }
+            }
+
             store.set(key, {
                 value,
                 expiresAt: opts?.EX
@@ -31,6 +38,7 @@ const createFallbackClient = (): any => {
                       ? Date.now() + opts.PX
                       : Date.now() + 24 * 60 * 60 * 1000,
             });
+            return 'OK';
         },
         del: async (keys: string | string[]) => {
             const keyList = Array.isArray(keys) ? keys : [keys];

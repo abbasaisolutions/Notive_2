@@ -77,12 +77,12 @@ export const markAllNotificationsRead = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
 
-        await prisma.inAppNotification.updateMany({
+        const result = await prisma.inAppNotification.updateMany({
             where: { userId, readAt: null },
             data: { readAt: new Date() },
         });
 
-        return res.json({ message: 'All marked as read' });
+        return res.json({ message: 'All marked as read', updatedCount: result.count });
     } catch (error) {
         console.error('Mark all notifications read error:', error);
         return res.status(500).json({ message: 'Internal server error' });
