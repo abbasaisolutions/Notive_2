@@ -315,7 +315,7 @@ Pushes to `main` now trigger [`.github/workflows/android-release.yml`](./.github
 - uploads the bundle as a GitHub Actions artifact
 - uploads it to the Google Play `internal` track when `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` is configured
 
-The current checked-in Android release is `1117 (1.1.17)`. If you want the next Play upload to use a new version, bump `frontend/android/gradle.properties` first or run one of:
+The current checked-in Android release is `1121 (1.1.21)`. If you want the next Play upload to use a new version, bump `frontend/android/gradle.properties` first or run one of:
 
 - `npm run android:version:patch`
 - `npm run android:version:minor`
