@@ -44,6 +44,7 @@ import {
     writePortfolioSession,
 } from '@/utils/portfolio-session';
 import { writeWorkspaceResume } from '@/utils/workspace-resume';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 
 type StatementVariant = 'standard' | 'college' | 'entry_job';
 type ExportType = 'resume' | 'statement' | 'interview' | 'growth';
@@ -1556,9 +1557,9 @@ export default function PortfolioWorkspace() {
                     <p className="mt-2 max-w-3xl text-sm leading-7 text-ink-secondary">{evidenceSnapshotDescription}</p>
                     <div className="mt-4 flex flex-wrap gap-2">
                         <TagPill>{evidenceSummary.total} scored</TagPill>
-                        <TagPill tone={filterCounts.needs_attention > 0 ? 'muted' : 'default'}>
-                            {filterCounts.needs_attention} need work
-                        </TagPill>
+                                <TagPill tone={filterCounts.needs_attention > 0 ? 'muted' : 'default'}>
+                                    {filterCounts.needs_attention} need detail
+                                </TagPill>
                         <TagPill>{filterCounts.ready_to_verify} close to verify</TagPill>
                         <TagPill tone="primary">{filterCounts.verified} verified</TagPill>
                         <TagPill>{evidenceSummary.avgScore}% average story quality</TagPill>
@@ -1796,7 +1797,7 @@ export default function PortfolioWorkspace() {
             ? practiceReveal
                 ? 'Compare your answer against the scaffold, then hide it again when you want another recall pass.'
                 : 'Answer from memory first, then reveal the scaffold only when you want a quick check.'
-            : 'Use the scaffold to tighten the story first, then switch to recall mode when it feels steady.';
+            : 'Use the scaffold to tighten the story first, then switch to recall mode when it feels ready.';
         const interviewPrimaryAction = practiceMode
             ? practiceReveal
                 ? {
@@ -2077,7 +2078,7 @@ export default function PortfolioWorkspace() {
                 : verifiedRate < 0.5
                     ? {
                         title: 'Verify more proof',
-                        description: `${formatRatioPercent(verifiedRate)} of stories are verified. Moving a few stronger stories into verified proof will make this system steadier.`,
+                        description: `${formatRatioPercent(verifiedRate)} of stories are verified. Moving a few stronger stories into verified proof will make this system more reliable.`,
                         actionLabel: 'Open Evidence Queue',
                         actionHref: null as string | null,
                         actionView: 'evidence' as PortfolioView,
@@ -2091,7 +2092,7 @@ export default function PortfolioWorkspace() {
                             actionView: 'interview' as PortfolioView,
                         }
                         : {
-                            title: 'Your story system is getting steadier',
+                            title: 'Your story system is getting stronger',
                             description: 'Keep the momentum small and consistent. The main trendline is already giving you a useful read.',
                             actionLabel: 'Open Stories',
                             actionHref: null as string | null,
@@ -2674,7 +2675,7 @@ export default function PortfolioWorkspace() {
             <div className="flex min-h-[50vh] items-center justify-center px-4 py-10">
                 <div className="flex flex-col items-center gap-3 text-center">
                     <Spinner size="lg" />
-                    <p className="text-sm text-ink-secondary">Getting your stories ready...</p>
+                    <p className="text-sm text-ink-secondary">Getting your saved stories ready...</p>
                 </div>
             </div>
         );
@@ -2716,12 +2717,12 @@ export default function PortfolioWorkspace() {
         ? exportTypeLabels[recommendedExportType]
         : portfolioViewLabels[recommendedView];
     const storySnapshotTitle = filterCounts.ready_to_export > 0
-        ? `${filterCounts.ready_to_export} stor${filterCounts.ready_to_export === 1 ? 'y is' : 'ies are'} ready to use`
+        ? `${filterCounts.ready_to_export} stor${filterCounts.ready_to_export === 1 ? 'y is' : 'ies are'} ready to reuse`
         : filterCounts.needs_attention > 0
             ? `${filterCounts.needs_attention} stor${filterCounts.needs_attention === 1 ? 'y still needs' : 'ies still need'} shaping`
             : overview.interviewStories.length > 0
                 ? `${overview.interviewStories.length} stor${overview.interviewStories.length === 1 ? 'y is' : 'ies are'} ready to rehearse`
-                : 'The studio is ready for the next note';
+                : 'Your saved moments are ready for the next pass';
     const storySnapshotDescription = filterCounts.needs_attention > 0
         ? 'Start with the stories that still need one missing block or one clearer proof detail. The stronger stories can wait.'
         : filterCounts.ready_to_export > 0
@@ -2802,9 +2803,9 @@ export default function PortfolioWorkspace() {
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Stories</p>
-                                <h1 className="workspace-heading mt-1 text-3xl font-semibold">Use one story move today</h1>
+                                <h1 className="workspace-heading mt-1 text-3xl font-semibold">{NOTIVE_VOICE.stories.title}</h1>
                                 <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">
-                                    Start with the clearest next workspace. The rest of the studio stays tucked away until you want it.
+                                    {NOTIVE_VOICE.stories.description}
                                 </p>
                             </div>
                             <div className="workspace-pill-muted inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs uppercase tracking-[0.12em]">
@@ -2818,9 +2819,9 @@ export default function PortfolioWorkspace() {
                             <h2 className="workspace-heading mt-2 text-lg font-semibold">{storySnapshotTitle}</h2>
                             <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{storySnapshotDescription}</p>
                             <div className="mt-4 flex flex-wrap gap-2">
-                                <TagPill tone="primary">{filterCounts.ready_to_export} ready to use</TagPill>
+                                <TagPill tone="primary">{filterCounts.ready_to_export} ready to reuse</TagPill>
                                 <TagPill tone={filterCounts.needs_attention > 0 ? 'muted' : 'default'}>
-                                    {filterCounts.needs_attention} need work
+                                    {filterCounts.needs_attention} need detail
                                 </TagPill>
                                 <TagPill>{overview.interviewStories.length} ready to rehearse</TagPill>
                             </div>
@@ -2834,7 +2835,7 @@ export default function PortfolioWorkspace() {
                                     <FiZap size={18} aria-hidden="true" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best next move</p>
+                                    <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best next use</p>
                                     <h2 className="workspace-heading mt-2 text-lg font-semibold">{nextAction.title}</h2>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">{nextAction.description}</p>
                                 </div>
@@ -2899,7 +2900,7 @@ export default function PortfolioWorkspace() {
                         <div>
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Switch workspace</p>
                             <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                Jump straight to the story surface you want without opening another drawer first.
+                                Jump straight to the output surface you want without opening another drawer first.
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -2946,11 +2947,11 @@ export default function PortfolioWorkspace() {
                     </div>
 
                     <div className="workspace-soft-panel rounded-2xl px-4 py-3">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Keep the rest quiet</p>
+                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Keep the rest tucked away</p>
                         <p className="mt-2 text-sm leading-7 text-ink-secondary">
                             {resumeSession
                                 ? 'Resume last place stays in the card above, so switching workspaces can stay a one-tap choice.'
-                                : 'Switch workspaces in one tap and keep the rest of the studio quiet until you need it.'}
+                                : 'Switch workspaces in one tap and keep the rest of the studio tucked away until you need it.'}
                         </p>
                     </div>
                 </div>

@@ -1,10 +1,11 @@
 import { MetadataRoute } from 'next';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 
 export default function manifest(): MetadataRoute.Manifest {
     return {
-        name: 'Notive | Save moments. See patterns. Build your story.',
+        name: `Notive | ${NOTIVE_VOICE.signature}`,
         short_name: 'Notive',
-        description: 'Save real moments, understand your patterns, and build your story for life, school, and work.',
+        description: NOTIVE_VOICE.longSummary,
         start_url: '/',
         display: 'standalone',
         background_color: '#f8f4ed',

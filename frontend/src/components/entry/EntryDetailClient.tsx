@@ -445,8 +445,8 @@ function EntryDetailContent() {
 
                 <AppPanel className="mb-6 space-y-5">
                     <div className="space-y-1">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Your note</p>
-                        <p className="text-sm text-ink-secondary">Start with what you wrote, then use the compact summary below for the rest of the context.</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Your memory</p>
+                        <p className="text-sm text-ink-secondary">Start with what you wrote, then use the summary below to see what this memory contains and what it may become.</p>
                     </div>
 
                     {safeHtml ? (
@@ -488,7 +488,7 @@ function EntryDetailContent() {
                 <MemoryInsightStrip
                     className="mb-6"
                     label="About this memory"
-                    description="Important context first, without making you read through larger action panels."
+                    description="Important context first, so you can see the lesson, signal, or story value inside this memory quickly."
                     analysisLine={entry.analysisLine}
                     takeawayLine={entry.takeawayLine}
                     notiveInsights={entry.notiveInsights}
@@ -539,8 +539,8 @@ function EntryDetailContent() {
                             <details className="workspace-soft-panel rounded-2xl px-4 py-4">
                                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
                                     <div>
-                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Use this note</p>
-                                        <p className="mt-1 text-sm text-ink-secondary">Open when you want concrete ways to apply this memory.</p>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Use this memory</p>
+                                        <p className="mt-1 text-sm text-ink-secondary">Open when you want practical ways to turn this memory into something useful.</p>
                                     </div>
                                     <span className="text-xs font-semibold uppercase tracking-[0.08em] text-primary">Open</span>
                                 </summary>
@@ -559,7 +559,7 @@ function EntryDetailContent() {
                             <details className="workspace-soft-panel rounded-2xl px-4 py-4">
                                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
                                     <div>
-                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Bridge this note</p>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Reach out from this memory</p>
                                         <p className="mt-1 text-sm text-ink-secondary">Open when you want help turning the memory into outreach or connection.</p>
                                     </div>
                                     <span className="text-xs font-semibold uppercase tracking-[0.08em] text-primary">Open</span>

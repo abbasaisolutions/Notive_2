@@ -16,8 +16,9 @@ import useTelemetry from '@/hooks/use-telemetry';
 import { Spinner } from '@/components/ui';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
+import { NOTIVE_VOICE, type NotiveChatLens } from '@/content/notive-voice';
 
-type GuidedLens = 'clarity' | 'memory' | 'growth' | 'patterns' | 'bridge';
+type GuidedLens = NotiveChatLens | 'clarity' | 'growth' | 'bridge';
 
 interface MessageMeta {
     mode?: 'guided_reflection' | 'llm' | 'hosted_fallback';
@@ -69,7 +70,7 @@ export default function ChatPage() {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [coachStatus, setCoachStatus] = useState<CoachStatus | null>(null);
-    const [selectedLens, setSelectedLens] = useState<GuidedLens>('clarity');
+    const [selectedLens, setSelectedLens] = useState<GuidedLens>('stories');
     const [requestedLens, setRequestedLens] = useState<GuidedLens | null>(null);
     const [isStatusLoading, setIsStatusLoading] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -87,6 +88,8 @@ export default function ChatPage() {
             || lens === 'growth'
             || lens === 'patterns'
             || lens === 'bridge'
+            || lens === 'lessons'
+            || lens === 'stories'
         ) {
             setRequestedLens(lens);
         }
@@ -219,12 +222,7 @@ export default function ChatPage() {
         : coachAvailable
             ? 'live'
             : 'disabled';
-    const suggestions = coachStatus?.suggestions || [
-        'What feels like the biggest pattern in my notes lately?',
-        'Help me talk to someone about this.',
-        'Which past entry feels closest to how I am doing now?',
-        'What should I write about tonight?',
-    ];
+    const suggestions = coachStatus?.suggestions || NOTIVE_VOICE.chat.suggestions;
     const guidedLenses = coachStatus?.lenses || [];
     const lensLabelMap = new Map(guidedLenses.map((lens) => [lens.id, lens.label]));
     const selectedLensLabel = lensLabelMap.get(selectedLens) || selectedLens;
@@ -276,6 +274,8 @@ export default function ChatPage() {
         if (!hasHighlights && !hasPrompts && !hasActionable) return null;
 
         const isBridgeMode = message.meta.lens === 'bridge';
+        const hasElevatedRisk = message.meta.risk?.level === 'orange' || message.meta.risk?.level === 'red';
+        const showSupportPanels = isBridgeMode || hasElevatedRisk;
 
         return (
             <div className="mt-3 space-y-3">
@@ -288,7 +288,7 @@ export default function ChatPage() {
                     />
                 )}
 
-                {isBridgeMode && message.meta.bridge && (
+                {showSupportPanels && message.meta.bridge && (
                     <BridgeCard
                         bridge={message.meta.bridge}
                         surface="guide"
@@ -298,21 +298,11 @@ export default function ChatPage() {
                     />
                 )}
 
-                {message.meta.brief && (
+                {showSupportPanels && message.meta.brief && (
                     <ActionBriefPanel
                         brief={message.meta.brief}
                         surface="guide"
                         openEntryHref={(entryId) => `/entry/view?id=${entryId}`}
-                    />
-                )}
-
-                {!isBridgeMode && message.meta.bridge && (
-                    <BridgeCard
-                        bridge={message.meta.bridge}
-                        surface="guide"
-                        openEntryHref={(entryId) => `/entry/view?id=${entryId}`}
-                        onCopyDraft={() => handleBridgeCopy(message.meta?.bridge?.recommendedRecipient || 'trusted contact', 'guide_card')}
-                        variant="notebook"
                     />
                 )}
 
@@ -377,7 +367,7 @@ export default function ChatPage() {
                         <div>
                             <h1 className="text-lg font-semibold workspace-heading">AskNotive</h1>
                             <p className="text-xs text-ink-muted">
-                                {coachAvailable ? 'Ask about your notes, patterns, or what to write next' : 'Unavailable in this environment'}
+                                {coachAvailable ? NOTIVE_VOICE.chat.subtitle : 'Unavailable in this environment'}
                             </p>
                         </div>
                     </div>
@@ -390,10 +380,10 @@ export default function ChatPage() {
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Reflection lens</p>
                                 <h2 className="workspace-heading mt-2 text-lg font-semibold">{selectedLensLabel}</h2>
                                 <p className="mt-1 text-sm leading-7 text-ink-secondary">
-                                    {activeGuidedLens?.description || 'Choose the lens that best matches the kind of support you want right now.'}
+                                    {activeGuidedLens?.description || 'Choose the lens that best matches what you want to understand or reuse from your notes.'}
                                 </p>
                             </div>
-                            <TagPill tone="primary">Guided reflection</TagPill>
+                            <TagPill tone="primary">Note understanding</TagPill>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {guidedLenses.map((lens) => {
@@ -531,7 +521,7 @@ export default function ChatPage() {
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
                             aria-label="Message to your guide"
-                            placeholder={coachAvailable ? 'Ask about your notes, a feeling, or what to write next...' : 'Guide is unavailable right now.'}
+                            placeholder={coachAvailable ? 'Ask about a memory, a lesson, a pattern, or a story you want to reuse...' : 'Guide is unavailable right now.'}
                             rows={1}
                             disabled={!coachAvailable}
                             className="workspace-input flex-1 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(var(--brand))]/35 resize-none"

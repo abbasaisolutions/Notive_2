@@ -128,6 +128,97 @@ export function WhatsComingCard({ entryCount }: { entryCount: number }) {
     );
 }
 
+// ── First Read: what Notive extracted from the first entry ──
+
+type FirstReadProps = {
+    mood?: string | null;
+    tags: string[];
+    createdAt: string;
+    entities?: string[];
+    topics?: string[];
+    lessons?: string[];
+    skills?: string[];
+};
+
+export function FirstReadCard({ mood, tags, entities, topics, lessons, skills, createdAt }: FirstReadProps) {
+    const hasContent = mood || tags.length > 0
+        || (entities && entities.length > 0) || (topics && topics.length > 0)
+        || (lessons && lessons.length > 0) || (skills && skills.length > 0);
+    if (!hasContent) return null;
+
+    const writtenAt = new Date(createdAt);
+    const hour = writtenAt.getHours();
+    const timeLabel = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+
+    return (
+        <motion.section
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.3 }}
+            className="notebook-card-soft rounded-[1.75rem] p-5"
+        >
+            <p
+                className="section-label mb-3"
+                style={{ fontStyle: 'italic', fontFamily: 'var(--font-serif, Georgia, serif)' }}
+            >
+                Notive&rsquo;s first read
+            </p>
+
+            <div className="space-y-2">
+                {lessons && lessons.length > 0 && (
+                    <p className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
+                        Lesson extracted: <span className="font-medium">{lessons[0]}</span>
+                    </p>
+                )}
+
+                {skills && skills.length > 0 && (
+                    <p className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
+                        {skills.length === 1 ? 'Skill' : 'Skills'} spotted:{' '}
+                        <span className="font-medium">{skills.slice(0, 3).join(', ')}</span>
+                    </p>
+                )}
+
+                {mood && (
+                    <p className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
+                        Mood detected: <span className="font-medium capitalize">{mood}</span>
+                    </p>
+                )}
+
+                {entities && entities.length > 0 && (
+                    <p className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
+                        {entities.length === 1 ? 'Person mentioned' : 'People mentioned'}:{' '}
+                        <span className="font-medium">{entities.slice(0, 3).join(', ')}</span>
+                    </p>
+                )}
+
+                {topics && topics.length > 0 && (
+                    <p className="text-sm italic" style={{ color: 'rgb(var(--paper-ink-soft))', fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                        {topics[0]}
+                    </p>
+                )}
+
+                {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                        {tags.slice(0, 4).map((tag) => (
+                            <span
+                                key={tag}
+                                className="rounded-full border border-[rgba(var(--paper-border),0.5)] bg-[rgba(var(--paper-border),0.12)] px-2.5 py-0.5 text-xs"
+                                style={{ color: 'rgb(var(--paper-ink-soft))' }}
+                            >
+                                {tag}
+                            </span>
+                        ))}
+                    </div>
+                )}
+
+                <p className="text-xs pt-1" style={{ color: 'rgb(var(--paper-ink-muted))' }}>
+                    You write in the {timeLabel}. Your record is building.
+                </p>
+            </div>
+        </motion.section>
+    );
+}
+
 /** Warm empty state for tier 0 (zero entries). */
 export function EmptyDashboard({ writeHref }: { writeHref: string }) {
     return (

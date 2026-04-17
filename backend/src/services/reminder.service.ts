@@ -12,6 +12,8 @@ import {
     shouldCreateNotificationForType,
     shouldSendPushForType,
 } from './notification-preferences.service';
+import { emailService } from './email.service';
+import { generateWeeklyDigest } from './insight-engine.service';
 
 export interface ReminderInput {
     time: string;            // "HH:MM" 24-hour
@@ -145,7 +147,19 @@ export class ReminderService {
             if (!shouldCreateNotificationForType(userSignals, 'reminder')) continue;
 
             const timeOfDay = resolveTimeOfDay(reminder.time);
-            const category = resolveCategory(ctx.daysSinceLastEntry, ctx.isConsistent, timeOfDay);
+            let category = resolveCategory(ctx.daysSinceLastEntry, ctx.isConsistent, timeOfDay);
+
+            // Streak-at-risk override: user wrote yesterday (streak alive) but not today
+            // Only fire between 8–10 PM local time to avoid over-notifying
+            if (ctx.daysSinceLastEntry === 1) {
+                const localHour = getLocalHour(reminder.timezone, now);
+                if (localHour >= 20 && localHour < 22) {
+                    const streak = await getUserStreak(reminder.userId, this.prisma, reminder.timezone);
+                    if (streak >= 2) {
+                        category = 'streak_at_risk';
+                    }
+                }
+            }
             const localDate = getLocalDate(reminder.timezone, now);
             const dispatchKey = `${reminder.id}:${localDate}:${reminder.time}`;
             const copy = selectNotification(category, reminder.userId, localDate);
@@ -211,6 +225,165 @@ export class ReminderService {
 
         return { dispatched };
     }
+
+    /**
+     * Dispatch weekly digest emails on Sunday at 7 PM local time.
+     * Called every minute by the scheduler alongside dispatchDueReminders().
+     */
+    async dispatchWeeklyDigests(): Promise<{ sent: number }> {
+        const now = new Date();
+        let sent = 0;
+
+        // Only users with reminders (we use their timezone)
+        const reminders = await this.prisma.reminder.findMany({
+            where: { enabled: true },
+            select: { userId: true, timezone: true },
+        });
+
+        for (const reminder of reminders) {
+            const localDay = getLocalDayOfWeek(reminder.timezone, now);
+            const localHour = getLocalHour(reminder.timezone, now);
+
+            // Sunday at 7 PM local
+            if (localDay !== 0 || localHour !== 19) continue;
+
+            // Prevent duplicate digest in the same week
+            const weekKey = getLocalDate(reminder.timezone, now);
+            const existing = await this.prisma.inAppNotification.findFirst({
+                where: {
+                    userId: reminder.userId,
+                    type: 'weekly_digest',
+                    data: { path: ['weekKey'], equals: weekKey },
+                },
+                select: { id: true },
+            });
+            if (existing) continue;
+
+            try {
+                const userWithProfile = await this.prisma.user.findUnique({
+                    where: { id: reminder.userId },
+                    include: { profile: { select: { personalizationSignals: true } } },
+                });
+                if (!userWithProfile) continue;
+
+                const signals = userWithProfile.profile?.personalizationSignals ?? null;
+                if (!shouldCreateNotificationForType(signals, 'weekly_digest')) continue;
+
+                const digest = await generateWeeklyDigest(reminder.userId);
+                if (!digest) continue;
+
+                await emailService.sendWeeklyDigest(userWithProfile, digest).catch(() => {});
+
+                await this.prisma.inAppNotification.create({
+                    data: {
+                        userId: reminder.userId,
+                        type: 'weekly_digest',
+                        title: `Your week: ${digest.title}`,
+                        body: digest.highlights[0]?.insight ?? 'Your weekly summary is ready.',
+                        data: {
+                            weekKey,
+                            link: '/dashboard',
+                        },
+                    },
+                });
+
+                if (shouldSendPushForType(signals, 'weekly_digest')) {
+                    await this.pushService.sendPushNotification(reminder.userId, {
+                        title: `Your week: ${digest.title}`,
+                        body: digest.highlights[0]?.insight ?? 'Your weekly summary is ready.',
+                        data: { type: 'weekly_digest', link: '/dashboard' },
+                    }).catch(() => null);
+                }
+
+                sent++;
+            } catch {
+                // Non-critical — skip user
+            }
+        }
+
+        return { sent };
+    }
+
+    /**
+     * Send re-engagement emails to users inactive 7-21 days.
+     * Only runs on Sunday between 17:00-18:00 UTC to avoid daily spam.
+     */
+    async dispatchReEngagementEmails(): Promise<{ sent: number }> {
+        const now = new Date();
+        if (now.getUTCDay() !== 0 || now.getUTCHours() !== 17) {
+            return { sent: 0 };
+        }
+
+        let sent = 0;
+
+        const cutoff7 = new Date();
+        cutoff7.setDate(cutoff7.getDate() - 7);
+        const cutoff21 = new Date();
+        cutoff21.setDate(cutoff21.getDate() - 21);
+
+        // Find users whose most recent entry is between 7 and 21 days old
+        const candidates: Array<{ userId: string; lastEntry: Date; entryCount: bigint }> =
+            await this.prisma.$queryRawUnsafe(
+                `SELECT "userId",
+                        MAX("createdAt") as "lastEntry",
+                        COUNT(*) as "entryCount"
+                 FROM "Entry"
+                 WHERE "deletedAt" IS NULL
+                 GROUP BY "userId"
+                 HAVING MAX("createdAt") BETWEEN $1 AND $2`,
+                cutoff21,
+                cutoff7,
+            );
+
+        for (const candidate of candidates) {
+            const daysSince = Math.floor(
+                (Date.now() - candidate.lastEntry.getTime()) / 86_400_000,
+            );
+
+            // Check we haven't emailed this user recently (within 7 days)
+            const recentEmail = await this.prisma.inAppNotification.findFirst({
+                where: {
+                    userId: candidate.userId,
+                    type: 're_engagement',
+                    createdAt: { gte: cutoff7 },
+                },
+                select: { id: true },
+            });
+            if (recentEmail) continue;
+
+            try {
+                const user = await this.prisma.user.findUnique({
+                    where: { id: candidate.userId },
+                    include: { profile: { select: { personalizationSignals: true } } },
+                });
+                if (!user) continue;
+                const signals = user.profile?.personalizationSignals ?? null;
+                if (!shouldCreateNotificationForType(signals, 're_engagement')) continue;
+
+                await emailService.sendReEngagementEmail(user, {
+                    entryCount: Number(candidate.entryCount),
+                    daysSince,
+                }).catch(() => {});
+
+                // Track so we don't re-send
+                await this.prisma.inAppNotification.create({
+                    data: {
+                        userId: candidate.userId,
+                        type: 're_engagement',
+                        title: 'Your notes are still here',
+                        body: `It's been ${daysSince} days since your last entry.`,
+                        data: { daysSince, link: '/entry/new?source=reengagement' },
+                    },
+                });
+
+                sent++;
+            } catch {
+                // Non-critical
+            }
+        }
+
+        return { sent };
+    }
 }
 
 /** Returns the IANA-zone UTC offset in minutes for a given Date. */
@@ -246,4 +419,59 @@ function getLocalDayOfWeek(timezone: string, date: Date): number {
     } catch {
         return date.getUTCDay();
     }
+}
+
+/** Returns the local hour (0-23) for the given timezone. */
+function getLocalHour(timezone: string, date: Date): number {
+    try {
+        const parts = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            hour: 'numeric',
+            hour12: false,
+        }).formatToParts(date);
+        return Number(parts.find(p => p.type === 'hour')?.value ?? 0);
+    } catch {
+        return date.getUTCHours();
+    }
+}
+
+/**
+ * Count consecutive days with entries, ending yesterday in user's local timezone.
+ * Returns 0 if user didn't write yesterday.
+ */
+async function getUserStreak(userId: string, prisma: PrismaClient, timezone: string): Promise<number> {
+    const entries = await prisma.entry.findMany({
+        where: { userId, deletedAt: null },
+        select: { createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 60,
+    });
+
+    if (entries.length === 0) return 0;
+
+    // Group entry dates by local date in user's timezone
+    const fmt = (() => {
+        try {
+            return new Intl.DateTimeFormat('en-CA', { timeZone: timezone }); // YYYY-MM-DD
+        } catch {
+            return new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' });
+        }
+    })();
+
+    const dates = new Set(entries.map(e => fmt.format(e.createdAt)));
+
+    // Walk backward from yesterday in local time
+    const now = new Date();
+    const todayLocal = fmt.format(now);
+    // Construct yesterday by parsing today and subtracting
+    let streak = 0;
+    const cursor = new Date(todayLocal + 'T12:00:00Z'); // noon UTC of local date to avoid boundary issues
+    cursor.setUTCDate(cursor.getUTCDate() - 1); // yesterday local
+
+    while (dates.has(fmt.format(cursor))) {
+        streak++;
+        cursor.setUTCDate(cursor.getUTCDate() - 1);
+    }
+
+    return streak;
 }

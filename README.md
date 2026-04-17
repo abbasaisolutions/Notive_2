@@ -1,23 +1,32 @@
 # Notive
 
-A local-first journaling platform with voice transcription, mood tracking, semantic memory search, pattern recognition, and optional AI reflections -- for life, school, and work.
+A private diary platform that helps people capture real moments, keep meaningful memories, understand what those moments hold, and turn them into lessons, skills, patterns, and reusable stories.
 
 Notive is developed and owned by AbbasAI Solutions, LLC.
 
+## Current Status
+
+- Product story: `Capture -> Keep -> Understand -> Use`
+- Core user surfaces live today: `Dashboard`, `Memories`, `AskNotive`, `Stories`, and `Bring In`
+- `AskNotive` currently offers `memory`, `patterns`, `lessons`, and `stories` lenses
+- The dashboard currently surfaces the latest capture, extracted lesson/skill/theme signals, resurfaced memories, story progress, and `On This Day` recall
+- New account creation currently uses Google Sign-In; legacy email/password login still exists for older accounts and password recovery flows
+- Reminders, push notifications, weekly digests, and re-engagement emails are part of the product and honor notification preferences
+
 ## Features
 
-- 📝 **Rich Text Editor** with inline voice transcription
-- 🎙️ **Voice Transcription** powered by Faster Whisper (local STT service)
-- 🎭 **Mood Tracking** with NLP-powered sentiment and entity detection
-- 🔍 **Semantic Memory Search** with local embeddings and reranking
-- 🧠 **AskNotive** -- AI-driven reflections and pattern recognition
-- 📚 **Chapter Organization** for categorizing entries
-- 📅 **Timeline & Calendar Views** to browse entries by date
-- 📂 **Portfolio Collections** for curating stories and highlights
-- 🔔 **Push Notifications & Reminders** via Firebase Cloud Messaging
-- 📥 **Import** from social platforms and archive exports
-- 📊 **Analytics Dashboard** to track journaling habits and patterns
-- 🔐 **Secure Authentication** with Google SSO (primary) and legacy email support
+- 📝 **Private Diary Capture** with rich text, quick entry, and reusable prompts
+- 🎙️ **Voice Capture & Transcription** powered by Faster Whisper with browser fallback support
+- 🎭 **Mood, Entity, and Insight Extraction** via deterministic NLP and structured analysis
+- 🔍 **Semantic Memory Search & Resurfacing** with local embeddings, reranking, and related-memory recall
+- 🧠 **AskNotive** for memory understanding, lesson extraction, pattern review, and story-building help
+- 📅 **Timeline, Calendar, and Memory Browsing** across saved entries
+- 📂 **Stories Workspace** for turning diary material into reusable outputs for school, work, and life
+- 📥 **Bring In** for social imports and archive-based memory intake
+- 📊 **Diary Dashboard** with latest-capture signals, resurfaced memories, story progress, and `On This Day`
+- 🔔 **Reminders, Push, Weekly Digests, and Re-engagement** via Firebase Cloud Messaging and email
+- 📚 **Chapter Organization** for grouping entries and story threads
+- 🔐 **Authentication** with Google Sign-In for new users plus legacy email/password support for existing accounts
 - 📱 **Mobile Support** via Capacitor (iOS & Android)
 
 ## Prerequisites
@@ -80,10 +89,14 @@ cp .env.example .env
 Required environment variables:
 - `DATABASE_URL`: PostgreSQL connection string
 - `JWT_ACCESS_SECRET` & `JWT_REFRESH_SECRET`: Random secure strings
+- `CLIENT_URL`: Public frontend URL used by backend auth and email links
 - `NEXT_PUBLIC_APP_URL`: Public frontend URL (production example: `https://notive.abbasaisolutions.com`)
 - `NEXT_PUBLIC_API_URL`: Backend API URL (default: http://localhost:8000/api/v1)
-- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: Google OAuth client ID (optional)
-- `FIREBASE_SERVICE_ACCOUNT`: Firebase service-account JSON string (required for push notifications in production; falls back to console.log in dev)
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: Google OAuth client ID (required if you want Google sign-in/sign-up locally; new public signup currently uses Google Sign-In)
+
+Feature-specific environment variables:
+- `FIREBASE_SERVICE_ACCOUNT`: Firebase service-account JSON string (required for push notifications in production; falls back to console logging in development)
+- `RESEND_API_KEY` and `EMAIL_FROM`: Required for password reset, welcome email, weekly digest, and re-engagement email delivery
 
 ### 4. Start the Database
 
@@ -202,21 +215,29 @@ npm run smoke:test
 
 When the auth variables are not set, the protected API checks are skipped automatically.
 
-## Voice Input
+## Voice Capture and Transcription
 
-The voice input feature uses the Web Speech API and is supported in:
-- ✅ Chrome/Chromium browsers
+Notive currently supports two voice paths:
+
+- **Backend transcription** through the local `stt-service` (Faster Whisper) for recorded audio
+- **Browser fallback / preview transcription** through the Web Speech API where supported
+
+Browser fallback support:
+- ✅ Chrome / Chromium
 - ✅ Microsoft Edge
-- ❌ Firefox (not supported)
-- ⚠️ Safari (limited support)
+- ❌ Firefox
+- ⚠️ Safari (limited)
 
-To use voice input:
+To use voice capture:
 1. Create a new journal entry
 2. Click the microphone icon in the editor toolbar
 3. Allow microphone access when prompted
-4. Start speaking - your words will be transcribed in real-time
+4. Record or speak into the capture flow
+5. Notive will transcribe through the backend service, with browser fallback where available
 
-## Google OAuth Setup (Optional)
+## Google OAuth Setup (Required for New Account Creation)
+
+New public account creation currently goes through Google Sign-In. Existing legacy accounts can still sign in with email/password and use forgot/reset password.
 
 To enable Google Sign-In:
 

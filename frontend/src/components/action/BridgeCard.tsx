@@ -211,7 +211,7 @@ export default function BridgeCard({
             </div>
 
             <div className={isNotebook ? 'notebook-card rounded-[1.5rem] p-4' : 'rounded-2xl border border-white/10 bg-white/[0.03] p-4'}>
-                <p className={isNotebook ? 'section-label' : 'text-xs uppercase tracking-[0.14em] text-ink-muted'}>Grounding</p>
+                <p className={isNotebook ? 'section-label' : 'text-xs uppercase tracking-[0.14em] text-ink-muted'}>Why this fits</p>
                 <p
                     className={isNotebook ? 'notebook-copy mt-2 text-[0.95rem] leading-7' : 'mt-2 text-sm leading-7 text-ink-secondary'}
                     style={isNotebook ? { color: 'rgb(var(--paper-ink-soft))' } : undefined}
@@ -225,7 +225,7 @@ export default function BridgeCard({
                             ? 'notebook-secondary-cta mt-3 inline-flex rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]'
                             : 'mt-3 inline-flex rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-secondary transition-colors hover:bg-white/[0.08] hover:text-white'}
                     >
-                        Open grounding note
+                        Open related note
                     </Link>
                 )}
             </div>

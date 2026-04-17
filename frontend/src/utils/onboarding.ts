@@ -160,20 +160,20 @@ export function clearOnboardingState(userId?: string | null): void {
 
 export function getRecommendedPrompt(state: OnboardingState | null): string {
     if (!state) {
-        return 'What happened today that I want to remember and learn from?';
+        return 'What happened today that I want to keep and understand?';
     }
 
     const byGoal: Record<OnboardingGoal, string> = {
-        clarity: 'What is on my mind right now, and what is one clear next step?',
+        clarity: 'What happened here, and what feels important about it?',
         memory: 'What meaningful moment from today do I want to preserve?',
-        growth: 'What challenge did I face today, and how did I grow from it?',
-        productivity: 'What did I complete today, and what should I prioritize next?',
+        growth: 'What did this moment teach me about my skills, habits, or choices?',
+        productivity: 'What from today might become useful later?',
     };
 
     const byTrack: Record<OnboardingTrack, string> = {
-        life: 'What did I learn about myself or my relationships today?',
-        career: 'What did I do today that shows initiative, learning, or impact?',
-        both: 'What did I do today that helped both my personal life and long-term goals?',
+        life: 'What did I learn about myself, my relationships, or this part of life?',
+        career: 'What did I do today that shows initiative, learning, or useful evidence?',
+        both: 'What happened today that matters both personally and for where I am headed?',
     };
 
     const goalPrompt = byGoal[state.goal];

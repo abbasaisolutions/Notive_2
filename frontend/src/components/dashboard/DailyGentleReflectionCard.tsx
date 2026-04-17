@@ -1,6 +1,4 @@
-/* DASHBOARD REFINEMENT COMPLETE — matches logo + generated images exactly:
-   warm paper grain, pencil lines, one sage sprout doodle max,
-   one calm Focus Card, grounded action-first experience for students */
+/* Optional reflection card for users who want a lighter diary prompt. */
 'use client';
 
 import Link from 'next/link';
@@ -36,9 +34,9 @@ export default function DailyGentleReflectionCard({
     const content = (
         <div className={isCompactDashboard ? 'space-y-3' : 'space-y-4'}>
             <div>
-                <p className="section-label">Gentle reflection</p>
+                <p className="section-label">Reflection prompt</p>
                 <h2 className={`notebook-title mt-2 ${isCompactDashboard ? 'text-[1.02rem] leading-6 md:text-[1.15rem]' : 'text-xl md:text-[1.55rem]'}`}>
-                    Treat this like a direction check, not a final verdict.
+                    Treat this like a quick reading, not a final verdict.
                 </h2>
                 <p className={`notebook-copy mt-3 ${isCompactDashboard ? 'text-[0.82rem] leading-6' : 'text-[0.875rem] leading-7'}`}>
                     {reflection.title}
@@ -61,8 +59,8 @@ export default function DailyGentleReflectionCard({
             </div>
 
             <div className="app-paper-soft rounded-[1.25rem] p-4">
-                <p className="section-label">One clear next move</p>
-                <p className={`notebook-title mt-2 ${isCompactDashboard ? 'text-[1rem] leading-6' : 'text-lg'}`}>Draft the first lines</p>
+                <p className="section-label">Suggested use</p>
+                <p className={`notebook-title mt-2 ${isCompactDashboard ? 'text-[1rem] leading-6' : 'text-lg'}`}>Start a draft</p>
                 <p className={`notebook-copy mt-2 ${isCompactDashboard ? 'text-[0.82rem] leading-6' : 'text-[0.875rem] leading-7'}`}>
                     {reflection.prompt}
                 </p>
@@ -74,7 +72,7 @@ export default function DailyGentleReflectionCard({
                     onClick={onAccept}
                     className="workspace-button-primary inline-flex items-center rounded-xl px-4 py-3 text-sm font-semibold"
                 >
-                    Draft the first lines
+                    Start a draft
                 </Link>
                 <button
                     type="button"
@@ -89,7 +87,7 @@ export default function DailyGentleReflectionCard({
                     disabled={isDisabling}
                     className="text-xs font-semibold text-[rgb(var(--paper-ink-soft))] underline-offset-4 transition-colors hover:text-[rgb(var(--paper-ink))] hover:underline disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                    {isDisabling ? 'Saving...' : 'Turn off gentle reflections'}
+                    {isDisabling ? 'Saving...' : 'Turn off reflection prompts'}
                 </button>
             </div>
 

@@ -74,10 +74,31 @@ export type ThemeCluster = {
     }>;
 };
 
+export type OnThisDayEntry = {
+    id: string;
+    title: string | null;
+    snippet: string;
+    mood: string | null;
+    createdAt: string;
+    reason: 'on_this_day';
+    timeLabel: string;
+};
+
 type EmbeddingRow = {
     entryId: string;
     embeddingText: string;
 };
+
+function formatRelativeDate(date: Date): string {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / 86_400_000);
+    if (diffDays < 60) return `${diffDays} days ago`;
+    const diffMonths = Math.round(diffDays / 30);
+    if (diffMonths < 12) return `${diffMonths} month${diffMonths === 1 ? '' : 's'} ago`;
+    const diffYears = Math.round(diffDays / 365);
+    return `${diffYears} year${diffYears === 1 ? '' : 's'} ago`;
+}
 
 const parsePositiveInt = (value: string | undefined, fallback: number): number => {
     const parsed = Number.parseInt(String(value || ''), 10);
@@ -610,6 +631,54 @@ class RetrievalInsightsService {
         const clusters = this.buildThemeClustersFromEntries(entries, embeddingMap);
 
         return clusters.slice(0, Math.max(1, Math.min(input.limit || 4, 8)));
+    }
+
+    /**
+     * Find entries written on this day in previous years/months (25+ days ago).
+     * Calendar-based resurfacing — complements similarity-based ResurfacedMoment.
+     */
+    async getOnThisDayEntries(userId: string, timezone: string): Promise<OnThisDayEntry[]> {
+        const now = new Date();
+        let todayLocal: string;
+        try {
+            todayLocal = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(now);
+        } catch {
+            todayLocal = now.toISOString().slice(0, 10);
+        }
+        const [, monthStr, dayStr] = todayLocal.split('-');
+        const month = parseInt(monthStr, 10);
+        const day = parseInt(dayStr, 10);
+
+        const entries: Array<{
+            id: string;
+            title: string | null;
+            content: string;
+            mood: string | null;
+            createdAt: Date;
+        }> = await prisma.$queryRawUnsafe(
+            `SELECT id, title, content, mood, "createdAt"
+             FROM "Entry"
+             WHERE "userId" = $1
+               AND "deletedAt" IS NULL
+               AND EXTRACT(MONTH FROM "createdAt") = $2
+               AND EXTRACT(DAY FROM "createdAt") = $3
+               AND "createdAt" < NOW() - INTERVAL '25 days'
+             ORDER BY "createdAt" DESC
+             LIMIT 3`,
+            userId,
+            month,
+            day,
+        );
+
+        return entries.map((e) => ({
+            id: e.id,
+            title: e.title,
+            snippet: e.content.replace(/<[^>]*>/g, '').substring(0, 120).trim(),
+            mood: e.mood,
+            createdAt: e.createdAt.toISOString(),
+            reason: 'on_this_day' as const,
+            timeLabel: formatRelativeDate(e.createdAt),
+        }));
     }
 }
 

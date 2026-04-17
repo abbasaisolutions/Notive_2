@@ -16,6 +16,7 @@ import {
     quietNotebookPageStyle,
     quietNotebookPanelStyle,
 } from '@/components/marketing/NotiveShowcase';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { FiCheckCircle, FiKey } from 'react-icons/fi';
 
 function ResetPasswordPageContent() {
@@ -95,9 +96,9 @@ function ResetPasswordPageContent() {
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
                     <QuietNotebookAuthIllustration
                         src="/images/hero-2.jpg"
-                        alt="Teen reviewing a Notive strength, evidence, and readiness table that turns journal notes into clearer college essay material."
-                        eyebrow="Reset quietly"
-                        body="Set a new password, reopen your notebook, and keep the flow feeling calm, competent, and private."
+                        alt="Teen reviewing saved notes in Notive before reopening their private diary."
+                        eyebrow="Set a new password"
+                        body={NOTIVE_VOICE.auth.resetBody}
                     />
 
                     <motion.div
@@ -117,10 +118,10 @@ function ResetPasswordPageContent() {
                                 Set new password
                             </p>
                             <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong md:text-[3rem]">
-                                One note today. One clearer tomorrow.
+                                {NOTIVE_VOICE.auth.resetTitle}
                             </h1>
                             <p className="mt-4 max-w-xl text-sm leading-7 text-default md:text-base">
-                                Make a new password and step back into your notes with the same quiet notebook feeling.
+                                {NOTIVE_VOICE.auth.resetBody}
                             </p>
                         </div>
 
@@ -218,4 +219,3 @@ export default function ResetPasswordPage() {
         </Suspense>
     );
 }
-

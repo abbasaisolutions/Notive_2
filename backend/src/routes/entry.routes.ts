@@ -29,6 +29,7 @@ router.get('/search', searchLimiter, searchController.searchEntries);
 router.get('/search/suggestions', searchLimiter, searchController.getSearchSuggestions);
 router.post('/duplicate-check', searchLimiter, searchController.checkDuplicateCandidates);
 router.get('/resurfaced', searchLimiter, searchController.getResurfacedEntries);
+router.get('/resurfaced/on-this-day', searchLimiter, searchController.getOnThisDayEntries);
 router.get('/theme-clusters', searchLimiter, searchController.getThemeClusters);
 router.get('/:id/related', searchLimiter, searchController.getRelatedEntries);
 

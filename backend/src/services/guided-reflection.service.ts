@@ -11,7 +11,9 @@ import type { StudentRisk, StudentSafetyCard } from './student-safety.service';
 import { createLlmChatCompletion, aiRuntime, hasLlmProvider } from '../config/ai';
 
 type GuidedReflectionIntent = 'summary' | 'pattern' | 'emotion' | 'next_step' | 'memory' | 'bridge' | 'general';
-export type GuidedReflectionLens = 'clarity' | 'memory' | 'growth' | 'patterns' | 'bridge';
+export type GuidedReflectionLens = 'memory' | 'patterns' | 'lessons' | 'stories';
+export type LegacyGuidedReflectionLens = 'clarity' | 'growth' | 'bridge';
+export type GuidedReflectionLensValue = GuidedReflectionLens | LegacyGuidedReflectionLens;
 type WritingPreference = 'guided' | 'structured' | 'freeform' | null;
 
 type ReflectionEntry = {
@@ -53,7 +55,7 @@ export type GuidedReflectionResponse = {
     mode: 'guided_reflection';
     model: string;
     strategy: 'hybrid' | 'recent' | 'starter';
-    lens: GuidedReflectionLens;
+    lens: GuidedReflectionLensValue;
     prompts: string[];
     highlights: Array<{
         id: string;
@@ -70,39 +72,52 @@ export type GuidedReflectionResponse = {
 };
 
 const DEFAULT_SUGGESTIONS = [
-    'What feels like the biggest pattern in my notes lately?',
-    'Help me talk to someone about this.',
-    'Which past entry feels closest to how I am doing now?',
-    'What should I write about tonight?',
+    'What lesson keeps showing up in my notes?',
+    'Which memory feels worth keeping?',
+    'What skills are showing up in this entry?',
+    'Turn this into a story I can use later.',
 ];
 
 const GUIDED_LENSES: GuidedReflectionStatus['lenses'] = [
     {
-        id: 'clarity',
-        label: 'Clarity',
-        description: 'Summarize what matters most right now.',
-    },
-    {
         id: 'memory',
         label: 'Memory',
-        description: 'Reconnect the present moment to older notes.',
-    },
-    {
-        id: 'growth',
-        label: 'Growth',
-        description: 'Turn the pattern into a next step or lesson.',
+        description: 'Reconnect the present note to older moments worth keeping.',
     },
     {
         id: 'patterns',
         label: 'Patterns',
-        description: 'Zoom out and look for repeated themes.',
+        description: 'Look across notes for repeated themes, moods, and signals.',
     },
     {
-        id: 'bridge',
-        label: 'Bridge',
-        description: 'Prepare a grounded message or conversation.',
+        id: 'lessons',
+        label: 'Lessons',
+        description: 'Pull out lessons, strengths, and skills from what you wrote.',
+    },
+    {
+        id: 'stories',
+        label: 'Stories',
+        description: 'Turn your notes into story material you can reuse later.',
     },
 ];
+
+export const isGuidedReflectionLensValue = (value: unknown): value is GuidedReflectionLensValue =>
+    value === 'memory'
+    || value === 'patterns'
+    || value === 'lessons'
+    || value === 'stories'
+    || value === 'clarity'
+    || value === 'growth'
+    || value === 'bridge';
+
+export const normalizeGuidedReflectionLens = (
+    lens: GuidedReflectionLensValue | null | undefined
+): GuidedReflectionLens | null => {
+    if (!lens) return null;
+    if (lens === 'clarity' || lens === 'bridge') return 'stories';
+    if (lens === 'growth') return 'lessons';
+    return lens;
+};
 
 const formatDate = (value: Date): string =>
     value.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -139,7 +154,10 @@ const uniqueStrings = (values: Array<string | null | undefined>, maxItems = 4): 
 
 const inferIntent = (query: string): GuidedReflectionIntent => {
     const normalized = query.trim().toLowerCase();
-    if (/(what should i write|write next|start writing|journal about|prompt)/.test(normalized)) {
+    if (/(story|resume|statement|interview|use later|turn this into|reuse)/.test(normalized)) {
+        return 'general';
+    }
+    if (/(lesson|skill|strength|learn|learning|takeaway|evidence)/.test(normalized)) {
         return 'next_step';
     }
     if (/(talk to|talk with|say to|message|text|call|reach out|ask for help|tell my|tell the|how do i say|help me talk)/.test(normalized)) {
@@ -151,7 +169,7 @@ const inferIntent = (query: string): GuidedReflectionIntent => {
     if (/(when was|last time|before|similar|remember|again|past moment)/.test(normalized)) {
         return 'memory';
     }
-    if (/(feel|feeling|mood|emotion|stress|stressed|anxious|sad|happy|overwhelmed|calm)/.test(normalized)) {
+    if (/(feel|feeling|mood|emotion|stress|stressed|anxious|sad|happy|overwhelmed)/.test(normalized)) {
         return 'emotion';
     }
     if (/(summary|summarize|week|month|lately|recently|overview)/.test(normalized)) {
@@ -160,23 +178,26 @@ const inferIntent = (query: string): GuidedReflectionIntent => {
     return 'general';
 };
 
-const resolveLens = (lens: GuidedReflectionLens | null | undefined, intent: GuidedReflectionIntent): GuidedReflectionLens => {
-    if (lens) return lens;
-    if (intent === 'bridge') return 'bridge';
+const resolveLens = (lens: GuidedReflectionLensValue | null | undefined, intent: GuidedReflectionIntent): GuidedReflectionLens => {
+    const normalizedLens = normalizeGuidedReflectionLens(lens);
+    if (normalizedLens) return normalizedLens;
     if (intent === 'memory') return 'memory';
-    if (intent === 'next_step') return 'growth';
+    if (intent === 'next_step') return 'lessons';
     if (intent === 'pattern') return 'patterns';
-    return 'clarity';
+    return 'stories';
 };
 
-const applyLensToIntent = (lens: GuidedReflectionLens, intent: GuidedReflectionIntent): GuidedReflectionIntent => {
+const applyLensToIntent = (
+    lens: GuidedReflectionLens,
+    intent: GuidedReflectionIntent,
+    legacyBridgeRequested = false
+): GuidedReflectionIntent => {
     if (intent !== 'general') return intent;
+    if (legacyBridgeRequested) return 'bridge';
     switch (lens) {
-        case 'bridge':
-            return 'bridge';
         case 'memory':
             return 'memory';
-        case 'growth':
+        case 'lessons':
             return 'next_step';
         case 'patterns':
             return 'pattern';
@@ -214,7 +235,7 @@ const formatPromptForPreference = (prompt: string, writingPreference: WritingPre
 
 const buildPrompts = (input: {
     intent: GuidedReflectionIntent;
-    lens: GuidedReflectionLens;
+    lens: GuidedReflectionLensValue;
     writingPreference: WritingPreference;
     topics: string[];
     starterPrompt: string | null;
@@ -227,22 +248,22 @@ const buildPrompts = (input: {
         summary: [
             `Which moment from this stretch best represents what ${topic} looked like day to day?`,
             `What changed between your earlier notes and the most recent one?`,
-            'What do you want to carry forward into the next week?',
+            'What part of this stretch feels worth carrying forward?',
         ],
         pattern: [
             `What seems to trigger ${topic} most often in your notes?`,
-            `What do you usually do right after ${secondaryTopic} shows up?`,
-            'Which routine helps even a little when this pattern starts?',
+            `What tends to show up right after ${secondaryTopic} appears?`,
+            'Which habit, person, or setting keeps showing up with this pattern?',
         ],
         emotion: [
             `What seems to be underneath the ${input.dominantMood || 'strong'} tone in these notes?`,
             'Which entry feels closest to how you feel today, and what is different now?',
-            'What helped you recover, even briefly, the last time this feeling appeared?',
+            'What changed the last time this feeling appeared?',
         ],
         next_step: [
-            input.starterPrompt?.trim() || `Start with: what happened around ${topic}, what it affected, and what you need next.`,
-            `If you only wrote six sentences tonight, what would you want to say about ${secondaryTopic}?`,
-            'What small next step deserves to be captured before the day ends?',
+            input.starterPrompt?.trim() || `What happened around ${topic}, and what lesson or skill is inside it?`,
+            `If you had to name one useful takeaway from ${secondaryTopic}, what would it be?`,
+            'What strength, lesson, or signal from this note would future-you want to keep?',
         ],
         bridge: [
             'What do you want this person to understand before they try to fix it?',
@@ -255,29 +276,19 @@ const buildPrompts = (input: {
             'What would you tell your past self from today’s perspective?',
         ],
         general: [
-            `Which part of ${topic} still feels unfinished?`,
-            'What detail are you avoiding that would make the note feel more honest?',
-            'What do you want future-you to remember about this moment?',
+            `What part of ${topic} could become useful later?`,
+            'What detail would make this memory easier to reuse?',
+            'What would future-you want to remember about this moment?',
         ],
     };
 
-    const lensLead = input.lens === 'memory'
-        ? 'Use memory mode:'
-        : input.lens === 'bridge'
-            ? 'Use bridge mode:'
-        : input.lens === 'growth'
-            ? 'Use growth mode:'
-            : input.lens === 'patterns'
-                ? 'Use pattern mode:'
-                : '';
-
     return uniqueStrings(promptSets[input.intent], 3).map((prompt) =>
-        formatPromptForPreference(lensLead ? `${lensLead} ${prompt}` : prompt, input.writingPreference)
+        formatPromptForPreference(prompt, input.writingPreference)
     );
 };
 
 const buildOverviewLine = (input: {
-    lens: GuidedReflectionLens;
+    lens: GuidedReflectionLensValue;
     dominantMood: string;
     moodTrend: 'improving' | 'declining' | 'stable';
     topTopics: string[];
@@ -287,10 +298,10 @@ const buildOverviewLine = (input: {
         ? ` with recurring themes around ${input.topTopics.slice(0, 3).join(', ')}`
         : '';
     if (input.lens === 'memory') {
-        return `Across ${input.entryCount} note${input.entryCount === 1 ? '' : 's'}, the same emotional thread keeps returning${topicText}. The recent trend looks ${input.moodTrend}.`;
+        return `Across ${input.entryCount} note${input.entryCount === 1 ? '' : 's'}, this moment connects back to other memories${topicText}. The recent pattern looks ${input.moodTrend}.`;
     }
-    if (input.lens === 'growth') {
-        return `Across ${input.entryCount} note${input.entryCount === 1 ? '' : 's'}, the tone leans ${input.dominantMood || 'mixed'}${topicText}. That suggests a clear growth edge for the next note.`;
+    if (input.lens === 'lessons') {
+        return `Across ${input.entryCount} note${input.entryCount === 1 ? '' : 's'}, the clearest lesson area is forming around ${input.topTopics[0] || input.dominantMood || 'what keeps happening'}.`;
     }
     if (input.lens === 'bridge') {
         return `Across ${input.entryCount} note${input.entryCount === 1 ? '' : 's'}, the clearest support thread is around ${input.topTopics[0] || input.dominantMood || 'getting through something hard'}. This is a good moment to keep the human path visible.`;
@@ -298,7 +309,7 @@ const buildOverviewLine = (input: {
     if (input.lens === 'patterns') {
         return `Across ${input.entryCount} note${input.entryCount === 1 ? '' : 's'}, the strongest repeated pattern is ${input.topTopics[0] || input.dominantMood || 'still emerging'}. The recent trend looks ${input.moodTrend}.`;
     }
-    return `Across ${input.entryCount} note${input.entryCount === 1 ? '' : 's'}, the tone leans ${input.dominantMood || 'mixed'}${topicText}. The recent trend looks ${input.moodTrend}.`;
+    return `Across ${input.entryCount} note${input.entryCount === 1 ? '' : 's'}, there is reusable story material forming${topicText}. The recent pattern looks ${input.moodTrend}.`;
 };
 
 const buildStrategyLabel = (searchResults: HybridSearchResult[] | null, entryCount: number): GuidedReflectionResponse['strategy'] => {
@@ -409,10 +420,10 @@ class GuidedReflectionService {
 
         const suggestions = writingPreference === 'structured'
             ? [
-                'Summarize the last week of notes.',
+                'Which memory feels worth keeping from this week?',
                 'What pattern keeps repeating lately?',
-                'Help me talk to someone about this.',
-                'Help me structure tonight’s reflection.',
+                'What lesson keeps showing up in my notes?',
+                'Turn this into a story I can use later.',
             ]
             : DEFAULT_SUGGESTIONS;
 
@@ -424,19 +435,21 @@ class GuidedReflectionService {
             message,
             suggestions,
             lenses: GUIDED_LENSES,
-            defaultLens: writingPreference === 'guided' ? 'growth' : 'clarity',
+            defaultLens: writingPreference === 'guided' ? 'lessons' : 'stories',
         };
     }
 
     async respond(input: {
         userId: string;
         query: string;
-        lens?: GuidedReflectionLens | null;
+        lens?: GuidedReflectionLensValue | null;
     }): Promise<GuidedReflectionResponse> {
         const normalizedQuery = input.query.trim();
         const inferredIntent = inferIntent(normalizedQuery);
+        const legacyBridgeRequested = input.lens === 'bridge';
         const lens = resolveLens(input.lens || null, inferredIntent);
-        const intent = applyLensToIntent(lens, inferredIntent);
+        const intent = applyLensToIntent(lens, inferredIntent, legacyBridgeRequested);
+        const responseLens: GuidedReflectionLensValue = intent === 'bridge' ? 'bridge' : lens;
 
         const [profile, recentEntries] = await Promise.all([
             prisma.userProfile.findUnique({
@@ -484,9 +497,12 @@ class GuidedReflectionService {
                 userId: input.userId,
                 content: normalizedQuery,
             });
+            const shouldExposeStarterSupport = inferredIntent === 'bridge'
+                || actionResponse.risk.level === 'orange'
+                || actionResponse.risk.level === 'red';
             const prompts = buildPrompts({
                 intent: intent === 'next_step' ? 'next_step' : 'general',
-                lens,
+                lens: responseLens,
                 writingPreference,
                 topics: [],
                 starterPrompt: profile?.starterPrompt || null,
@@ -500,11 +516,11 @@ class GuidedReflectionService {
                 mode: 'guided_reflection',
                 model: `${activeEmbeddingConfig.model} + guided-reflection-v1`,
                 strategy: 'starter',
-                lens,
+                lens: responseLens,
                 prompts,
                 highlights: [],
                 brief: null,
-                bridge: actionResponse.bridge,
+                bridge: shouldExposeStarterSupport ? actionResponse.bridge : null,
                 risk: actionResponse.risk,
                 safetyCard: actionResponse.safetyCard,
             };
@@ -587,7 +603,7 @@ class GuidedReflectionService {
         ], 4);
         const prompts = buildPrompts({
             intent,
-            lens,
+            lens: responseLens,
             writingPreference,
             topics,
             starterPrompt: profile?.starterPrompt || null,
@@ -597,6 +613,9 @@ class GuidedReflectionService {
             userId: input.userId,
             content: normalizedQuery,
         });
+        const shouldExposeSupportPanels = intent === 'bridge'
+            || actionResponse.risk.level === 'orange'
+            || actionResponse.risk.level === 'red';
 
         const highlights = focalEntries.slice(0, 3).map((entry) => {
             const searchMatch = searchMatchMap.get(entry.id);
@@ -632,11 +651,11 @@ class GuidedReflectionService {
                 mode: 'guided_reflection',
                 model: `${activeEmbeddingConfig.model} + guided-reflection-v1`,
                 strategy: buildStrategyLabel(searchResult?.results || null, recentEntries.length),
-                lens,
+                lens: responseLens,
                 prompts,
                 highlights: actionResponse.highlights.length > 0 ? actionResponse.highlights : highlights,
                 brief: null,
-                bridge: actionResponse.bridge,
+                bridge: shouldExposeSupportPanels ? actionResponse.bridge : null,
                 risk: actionResponse.risk,
                 safetyCard: actionResponse.safetyCard,
             };
@@ -646,7 +665,7 @@ class GuidedReflectionService {
         // Highlights are already rendered as cards in the UI — don't repeat them as text.
         const responseSections: string[] = [];
 
-        if (lens === 'bridge' && actionResponse.bridge) {
+        if (intent === 'bridge' && actionResponse.bridge) {
             // Bridge mode: focus on who to talk to and what to say
             if (actionResponse.brief) {
                 responseSections.push(actionResponse.brief.pattern);
@@ -660,7 +679,7 @@ class GuidedReflectionService {
         } else {
             // All other modes: lead with the pattern/overview, then one nudge
             const overview = buildOverviewLine({
-                lens,
+                lens: responseLens,
                 dominantMood: insights.dominantMood,
                 moodTrend: insights.moodTrend,
                 topTopics: topics,
@@ -668,14 +687,28 @@ class GuidedReflectionService {
             });
             responseSections.push(overview);
 
-            if (actionResponse.brief) {
-                responseSections.push(actionResponse.brief.pattern);
-                if (actionResponse.brief.nextMove) {
-                    responseSections.push(actionResponse.brief.nextMove.description);
+            if (responseLens === 'lessons') {
+                const lesson = insights.topLessons?.[0] || topics[0];
+                const skill = insights.topSkills?.[0] || null;
+                if (lesson) {
+                    responseSections.push(`A lesson that keeps surfacing: ${lesson}.`);
                 }
+                if (skill) {
+                    responseSections.push(`A strength showing up here: ${skill}.`);
+                }
+            } else if (responseLens === 'stories') {
+                const storyTopic = insights.topLessons?.[0] || insights.topSkills?.[0] || topics[0] || 'this moment';
+                responseSections.push(`This material can become a reusable story about ${storyTopic}. Add the detail you would want future-you to reuse.`);
+            } else if (responseLens === 'memory') {
+                const anchorHighlight = highlights[0];
+                if (anchorHighlight) {
+                    responseSections.push(`The clearest memory to keep nearby is "${anchorHighlight.title || 'Untitled note'}" from ${anchorHighlight.createdAt}.`);
+                }
+            } else if (responseLens === 'patterns' && topics[0]) {
+                responseSections.push(`The strongest repeating signal looks tied to ${topics[0]}.`);
             }
 
-            if (insights.suggestions.length > 0 && !actionResponse.brief?.nextMove) {
+            if (insights.suggestions.length > 0 && responseSections.length < 3) {
                 responseSections.push(insights.suggestions[0]);
             }
         }
@@ -687,11 +720,11 @@ class GuidedReflectionService {
             mode: 'guided_reflection',
             model: `${activeEmbeddingConfig.model} + guided-reflection-v1`,
             strategy: buildStrategyLabel(searchResult?.results || null, recentEntries.length),
-            lens,
+            lens: responseLens,
             prompts,
             highlights: actionResponse.highlights.length > 0 ? actionResponse.highlights : highlights,
-            brief: actionResponse.brief,
-            bridge: actionResponse.bridge,
+            brief: shouldExposeSupportPanels ? actionResponse.brief : null,
+            bridge: shouldExposeSupportPanels ? actionResponse.bridge : null,
             risk: actionResponse.risk,
             safetyCard: actionResponse.safetyCard,
         };

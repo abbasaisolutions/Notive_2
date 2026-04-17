@@ -11,6 +11,7 @@ import {
     quietNotebookPageStyle,
     quietNotebookPanelStyle,
 } from '@/components/marketing/NotiveShowcase';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { isNativeCapacitorPlatform } from '@/utils/sso';
 
 const HOME_LAUNCH_PHRASES = [
@@ -49,10 +50,10 @@ export default function HomePage() {
                         <div className="max-w-2xl">
                             <NotiveLogo size="sm" variant="horizontal" />
                             <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[rgb(39,35,31)] md:text-[2.25rem]">
-                                One honest note can be enough to make tomorrow feel less noisy.
+                                {NOTIVE_VOICE.home.closingTitle}
                             </h2>
                             <p className="mt-3 max-w-xl text-sm leading-7 text-[rgb(76,70,62)] md:text-base">
-                                Start with what happened. Let Notive hold the thread, offer one clear next step, and keep the part of the day that helps you grow.
+                                {NOTIVE_VOICE.home.closingBody}
                             </p>
                         </div>
 

@@ -15,15 +15,16 @@ import {
     quietNotebookPageStyle,
     quietNotebookPanelStyle,
 } from '@/components/marketing/NotiveShowcase';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { clearOnboardingState } from '@/utils/onboarding';
 import { unwrapSetupReturnTo } from '@/utils/redirect';
 import { resolvePostAuthDestination } from '@/utils/auth-routing';
 import { isNativeCapacitorPlatform } from '@/utils/sso';
 
 const SIGNUP_VALUE_POINTS = [
-    'Capture the note while it still feels true',
-    'Notice moods, themes, and patterns that keep returning',
-    'Save story seeds you can use later for school, work, and growth',
+    'Capture a real moment while it is still fresh',
+    'Keep memories, lessons, and useful signals in one place',
+    'Turn saved notes into stories and evidence you can use later',
 ];
 const REGISTER_PHRASES = [
     'Opening your notebook\u2026',
@@ -107,7 +108,7 @@ export default function RegisterPage() {
                             <div className="relative h-[19rem] sm:h-[21rem]">
                                 <Image
                                     src={REGISTER_HERO}
-                                    alt="Teen writing a first Notive note on a phone, beginning account creation with one note today and one clearer tomorrow."
+                                    alt="Teen writing a first Notive note on a phone while starting a private diary account."
                                     fill
                                     priority
                                     sizes="100vw"
@@ -125,10 +126,10 @@ export default function RegisterPage() {
                                             Create account
                                         </p>
                                         <h2 className="mt-2 text-2xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong">
-                                            One note today. One clearer tomorrow.
+                                            {NOTIVE_VOICE.auth.registerHeroTitle}
                                         </h2>
                                         <p className="mt-2 text-sm leading-6 text-default">
-                                            Your first note does not need to be polished. It just needs to be true enough to start.
+                                            {NOTIVE_VOICE.auth.registerHeroBody}
                                         </p>
                                     </div>
                                 </div>
@@ -141,7 +142,7 @@ export default function RegisterPage() {
                         >
                             <Image
                                 src={REGISTER_HERO}
-                                alt="Teen writing a first Notive note on a phone, beginning account creation with one note today and one clearer tomorrow."
+                                alt="Teen writing a first Notive note on a phone while starting a private diary account."
                                 fill
                                 priority
                                 sizes="(min-width: 1280px) 32vw, 44vw"
@@ -160,10 +161,10 @@ export default function RegisterPage() {
                                         Private notebook
                                     </p>
                                     <h2 className="mt-3 text-[2rem] font-semibold leading-[1.05] tracking-[-0.04em] text-strong">
-                                        One note today. One clearer tomorrow.
+                                        {NOTIVE_VOICE.auth.registerHeroTitle}
                                     </h2>
                                     <p className="mt-3 text-sm leading-7 text-default">
-                                        Start by dropping what happened. Notive keeps the thread, offers one clear next step, and saves the part that helps you grow.
+                                        {NOTIVE_VOICE.auth.registerHeroBody}
                                     </p>
                                 </div>
                             </div>
@@ -187,10 +188,10 @@ export default function RegisterPage() {
                                 Create account
                             </p>
                             <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong md:text-[3rem]">
-                                One note today. One clearer tomorrow.
+                                {NOTIVE_VOICE.auth.registerHeading}
                             </h1>
                             <p className="mt-4 max-w-xl text-sm leading-7 text-default md:text-base">
-                                Open a private home for the moments, patterns, and story pieces you want to keep.
+                                {NOTIVE_VOICE.auth.registerBody}
                             </p>
                         </div>
 
@@ -265,7 +266,7 @@ export default function RegisterPage() {
                     >
                         <Image
                             src={AUTH_SIDE_STRIP}
-                            alt="Vertical notebook reflection strip about a student's journey, reinforcing that Notive registration is part of reflection and growth."
+                            alt="Vertical notebook strip reinforcing that Notive keeps private memories and turns them into something useful later."
                             fill
                             sizes="320px"
                             className="object-cover object-center"
@@ -274,10 +275,10 @@ export default function RegisterPage() {
                         <div className="absolute inset-x-0 bottom-0 p-5">
                             <div className="rounded-[1.35rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-4 backdrop-blur-sm">
                                 <p className="type-overline text-muted">
-                                    Start a trusted notebook
+                                    {NOTIVE_VOICE.auth.sideTitle}
                                 </p>
                                 <p className="mt-2 text-sm leading-7 text-default">
-                                    The notes you write here can quietly become story evidence for school, work, and the person you are becoming.
+                                    {NOTIVE_VOICE.auth.sideBody}
                                 </p>
                             </div>
                         </div>

@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FiBell, FiBellOff, FiCheck } from 'react-icons/fi';
+import { FiAlertTriangle, FiBell, FiBellOff, FiCheck } from 'react-icons/fi';
 import { useApi } from '@/hooks/use-api';
+import { useToast } from '@/context/toast-context';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -23,12 +24,15 @@ const DEFAULT_REMINDER: ReminderData = {
 
 export default function RemindersSection() {
     const { apiFetch } = useApi();
+    const toast = useToast();
     const [reminder, setReminder] = useState<ReminderData>(DEFAULT_REMINDER);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [saveError, setSaveError] = useState(false);
     const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const initialized = useRef(false);
+    const lastGoodReminder = useRef<ReminderData>(DEFAULT_REMINDER);
 
     useEffect(() => {
         void (async () => {
@@ -36,7 +40,10 @@ export default function RemindersSection() {
                 const res = await apiFetch('/reminders');
                 if (res.ok) {
                     const json = await res.json() as { data: ReminderData | null };
-                    if (json.data) setReminder(json.data);
+                    if (json.data) {
+                        setReminder(json.data);
+                        lastGoodReminder.current = json.data;
+                    }
                 }
             } catch {
                 // no existing reminder — use defaults
@@ -52,6 +59,7 @@ export default function RemindersSection() {
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(async () => {
             setIsSaving(true);
+            setSaveError(false);
             try {
                 const res = await apiFetch('/reminders', {
                     method: 'PUT',
@@ -60,12 +68,21 @@ export default function RemindersSection() {
                 });
                 if (res.ok) {
                     const json = await res.json() as { data: ReminderData };
-                    if (json.data) setReminder(json.data);
+                    if (json.data) {
+                        setReminder(json.data);
+                        lastGoodReminder.current = json.data;
+                    }
+                    setSaved(true);
+                    setTimeout(() => setSaved(false), 2000);
+                } else {
+                    setSaveError(true);
+                    setReminder(lastGoodReminder.current);
+                    toast.error('Couldn\u2019t save reminder settings. Please try again.');
                 }
-                setSaved(true);
-                setTimeout(() => setSaved(false), 2000);
             } catch {
-                // silently fail — user can try again
+                setSaveError(true);
+                setReminder(lastGoodReminder.current);
+                toast.error('Couldn\u2019t save reminder settings. Please try again.');
             } finally {
                 setIsSaving(false);
             }
@@ -125,8 +142,9 @@ export default function RemindersSection() {
                     type="button"
                     role="switch"
                     aria-checked={reminder.enabled}
+                    disabled={isSaving}
                     onClick={() => update({ enabled: !reminder.enabled })}
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed ${
                         reminder.enabled ? 'bg-primary' : 'bg-[rgba(var(--paper-ink),0.16)]'
                     }`}
                 >
@@ -150,8 +168,9 @@ export default function RemindersSection() {
                             id="reminder-time"
                             type="time"
                             value={reminder.time}
+                            disabled={isSaving}
                             onChange={e => update({ time: e.target.value })}
-                            className="workspace-input h-10 w-40 px-3 text-sm font-medium text-strong"
+                            className="workspace-input h-10 w-40 px-3 text-sm font-medium text-strong disabled:opacity-50"
                         />
                         <p className="mt-1.5 text-xs text-muted">
                             In your local timezone ({reminder.timezone.replace(/_/g, ' ')})
@@ -171,6 +190,7 @@ export default function RemindersSection() {
                                         key={label}
                                         type="button"
                                         aria-pressed={isEveryDay || explicit}
+                                        disabled={isSaving}
                                         onClick={() => toggleDay(idx)}
                                         className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
                                             active
@@ -200,10 +220,16 @@ export default function RemindersSection() {
                         Saving…
                     </span>
                 )}
-                {saved && !isSaving && (
+                {saved && !isSaving && !saveError && (
                     <span className="text-xs text-primary flex items-center gap-1.5">
                         <FiCheck size={13} aria-hidden />
                         Saved
+                    </span>
+                )}
+                {saveError && !isSaving && (
+                    <span className="text-xs text-red-500 flex items-center gap-1.5">
+                        <FiAlertTriangle size={13} aria-hidden />
+                        Failed to save — try again
                     </span>
                 )}
             </div>

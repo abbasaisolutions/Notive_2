@@ -1,7 +1,7 @@
-/* FINAL DASHBOARD — "One calm page" notebook experience
+/* FINAL DASHBOARD — capture-to-value notebook experience
    Zone 1 hero with sprout doodle, tight Zone 2 capture, minimal Zone 3 glance + sub-tabs.
    Matches logo + generated images exactly. Almost zero scrolling on mobile.
-   Every teen gets one grounded next move immediately. */
+   The default hero starts from saved memories and what they can become. */
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
@@ -18,12 +18,12 @@ import {
     getRecommendedPrompt,
     OnboardingState,
 } from '@/utils/onboarding';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { progressivePersonalizationService } from '@/services/progressive-personalization.service';
 import { buildHomeActionContent, type HomeActionScenario } from '@/services/home-action.service';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
-import ActionBriefPanel from '@/components/action/ActionBriefPanel';
 import BridgeCard from '@/components/action/BridgeCard';
-import type { StudentActionResponse, StudentActionBrief, StudentSafetyCard, StudentRisk } from '@/components/action/types';
+import type { StudentActionResponse, StudentSafetyCard, StudentRisk } from '@/components/action/types';
 import useTelemetry from '@/hooks/use-telemetry';
 import { useGamification } from '@/context/gamification-context';
 import DashboardFocusCard from '@/components/dashboard/DashboardFocusCard';
@@ -53,7 +53,7 @@ import {
     shouldPresentGentleReflection,
 } from '@/utils/gentle-reflection';
 import { deriveWriterDNA } from '@/services/writer-dna.service';
-import { getInsightTier, Gate, WhatsComingCard, EmptyDashboard } from '@/components/dashboard/ColdStartGate';
+import { getInsightTier, Gate, WhatsComingCard, FirstReadCard, EmptyDashboard } from '@/components/dashboard/ColdStartGate';
 import FirstVisitWalkthrough from '@/components/dashboard/FirstVisitWalkthrough';
 // Dead-branch visualization components — dynamic to exclude from initial bundle
 const PrimeTimePrediction = dynamic(() => import('@/components/dashboard/PrimeTimePrediction'));
@@ -260,50 +260,6 @@ const formatTraitLabel = (value: string | null | undefined) =>
 const hasAnyDeviceSignals = (signals: DeviceContextSummary | null) =>
     !!signals && Object.values(signals).some((value) => value);
 
-const WEAK_SUPPORT_PANEL_WORDS = new Set([
-    'what',
-    'why',
-    'how',
-    'when',
-    'where',
-    'who',
-    'thing',
-    'things',
-    'something',
-    'anything',
-    'everything',
-    'nothing',
-    'happen',
-    'happened',
-    'happening',
-    'going',
-    'doing',
-    'did',
-    'feel',
-    'feeling',
-    'think',
-    'thinking',
-    'today',
-    'life',
-    'live',
-    'writing',
-    'journal',
-]);
-
-const looksTooThinForSupportPanel = (value: string) => {
-    const normalized = value.replace(/\s+/g, ' ').trim().toLowerCase();
-    if (!normalized) return true;
-
-    const stripped = normalized.replace(/\bstill helps\b$/, '').trim();
-    const words = stripped.split(/\s+/).filter(Boolean);
-
-    if (stripped.length < 8 || words.length < 2) return true;
-    if (words.every((word) => WEAK_SUPPORT_PANEL_WORDS.has(word))) return true;
-
-    return false;
-};
-
-
 const getGentleReflectionVisual = (reflection: GentleReflectionDraft): { accent: NotebookAccentName; doodle: NotebookDoodleName } => {
     const sample = `${reflection.contextLabel} ${reflection.title} ${reflection.body} ${reflection.prompt} ${reflection.strengthLabel || ''}`;
     if (SUPPORT_PATTERN.test(sample)) return { accent: 'lilac', doodle: 'knot' };
@@ -356,59 +312,100 @@ const buildSafetyFocus = (input: {
     };
 };
 
-const buildActionFocus = (input: {
-    brief: StudentActionBrief | null;
+const buildValueFocus = (input: {
+    entries: Entry[];
+    themeClusters: ThemeCluster[];
+    resurfacedMoments: ResurfacedMoment[];
+    storyOverview: DashboardStoryOverview | null;
     homeAction: ReturnType<typeof buildHomeActionContent>;
+    newEntryHref: string;
+    portfolioHref: string;
     recommendedHref: string;
     timelineHref: string;
-    guideHref: string;
     onPrimary: () => void;
 }): DashboardFocusConfig => {
-    const { brief, homeAction, recommendedHref, timelineHref, guideHref, onPrimary } = input;
+    const {
+        entries,
+        themeClusters,
+        resurfacedMoments,
+        storyOverview,
+        homeAction,
+        newEntryHref,
+        portfolioHref,
+        recommendedHref,
+        timelineHref,
+        onPrimary,
+    } = input;
     const visual = SCENARIO_VISUALS[homeAction.scenario];
-    const nextStep = brief?.nextMove?.description
-        || brief?.nextMove?.label
-        || homeAction.prompt;
-
-    const keepLabelValue = brief?.keep?.label
-        ? compactText(toTitleCase(brief.keep.label), 64)
-        : '';
-    const secondPanelValue = keepLabelValue && !looksTooThinForSupportPanel(keepLabelValue)
-        ? keepLabelValue
-        : brief?.keep?.evidence
-            ? firstSentence(brief.keep.evidence, 88)
-            : brief?.whatHelpedBefore?.summary
-                ? compactText(brief.whatHelpedBefore.summary, 88)
-                : brief?.reachOut?.label
-                    ? compactText(brief.reachOut.label, 64)
-                    : '';
+    const latestEntry = entries[0] || null;
+    const topTheme = themeClusters[0]?.label || null;
+    const extractedLesson = storyOverview?.topLessons?.[0] || null;
+    const extractedSkill = storyOverview?.topSkills?.[0] || null;
+    const resurfacedMoment = resurfacedMoments[0]?.matchedEntry || null;
+    const readyToReuse = storyOverview?.experiences.filter((experience) =>
+        Boolean(experience.verified || experience.completeness?.readyForExport)
+    ).length || 0;
+    const readyToReview = storyOverview?.experiences.filter((experience) =>
+        Boolean(!experience.verified && experience.completeness?.readyForVerification)
+    ).length || 0;
+    const latestCapture = latestEntry
+        ? compactText(latestEntry.title || firstSentence(latestEntry.content, 88), 88)
+        : 'Your next memory starts here.';
+    const extractedSignal = extractedLesson
+        ? `Lesson: ${extractedLesson}`
+        : extractedSkill
+            ? `Skill: ${extractedSkill}`
+            : topTheme
+                ? `Theme: ${topTheme}`
+                : 'Keep capturing real moments to see lessons, skills, and themes emerge.';
+    const resurfacedSignal = resurfacedMoment
+        ? compactText(
+            `${resurfacedMoment.title || 'Untitled'} from ${new Date(resurfacedMoment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+            88
+        )
+        : 'Older memories start resurfacing once you have a few notes here.';
+    const storyPipeline = storyOverview
+        ? readyToReuse > 0
+            ? `${readyToReuse} stor${readyToReuse === 1 ? 'y is' : 'ies are'} ready to reuse.`
+            : readyToReview > 0
+                ? `${readyToReview} stor${readyToReview === 1 ? 'y is' : 'ies are'} ready for review.`
+                : 'Your diary is building reusable story material.'
+        : 'Your diary is building reusable story material.';
 
     return {
-        eyebrow: 'One Thing',
-        title: compactText(brief?.headline || homeAction.title, 72),
-        body: firstSentence(brief?.pattern || homeAction.body, 136),
-        evidence: firstSentence(homeAction.evidence, 120),
-        evidenceFallback: 'Based on your last 3 notes.',
+        eyebrow: NOTIVE_VOICE.dashboard.heroEyebrow,
+        title: latestEntry ? NOTIVE_VOICE.dashboard.heroTitle : 'Start with one real moment.',
+        body: latestEntry
+            ? NOTIVE_VOICE.dashboard.heroBody
+            : compactText(input.homeAction.intro || 'Capture one real moment and Notive will start building useful context from it.', 136),
+        evidence: storyPipeline,
+        evidenceFallback: 'Keep a few real moments here and Notive will start surfacing lessons, skills, and story signals.',
         panels: [
             {
-                label: 'Next step',
-                value: compactText(nextStep, 92),
+                label: 'Latest capture',
+                value: latestCapture,
             },
-            ...(secondPanelValue
-                ? [{
-                    label: brief?.keep?.label ? 'Growing' : brief?.whatHelpedBefore ? 'Helped before' : 'Reach out',
-                    value: secondPanelValue,
-                }]
-                : []),
+            {
+                label: 'Lesson / skill / theme',
+                value: compactText(extractedSignal, 92),
+            },
+            {
+                label: 'Resurfaced memory',
+                value: resurfacedSignal,
+            },
+            {
+                label: 'Story pipeline',
+                value: storyPipeline,
+            },
         ],
         primaryAction: {
-            label: homeAction.primaryCtaLabel,
-            href: recommendedHref,
-            onClick: onPrimary,
+            label: latestEntry ? 'Write something new' : 'Write your first note',
+            href: latestEntry ? recommendedHref : newEntryHref,
+            onClick: latestEntry ? onPrimary : undefined,
         },
         secondaryAction: {
-            label: 'More options',
-            href: brief?.reachOut ? guideHref : timelineHref,
+            label: latestEntry ? 'Open Stories' : 'Browse notes',
+            href: latestEntry ? portfolioHref : timelineHref,
             tone: 'secondary',
         },
         accent: visual.accent,
@@ -465,9 +462,9 @@ const buildStarterFocus = (input: {
     guideHref: string;
 }): DashboardFocusConfig => ({
     eyebrow: 'Start light',
-    title: 'One honest note is enough.',
-    body: compactText(input.homeAction.intro || 'You do not need a full story to begin.', 128),
-    evidenceFallback: 'A clear place to start based on your setup so far.',
+    title: 'Start with one real moment.',
+    body: compactText(input.homeAction.intro || 'You do not need a polished story to begin. One real memory is enough.', 128),
+    evidenceFallback: 'A simple capture is enough for Notive to start building useful context.',
     panels: [
         {
             label: 'Starter prompt',
@@ -479,7 +476,7 @@ const buildStarterFocus = (input: {
         href: input.newEntryHref,
     },
     secondaryAction: {
-        label: 'More options',
+        label: 'AskNotive',
         href: input.guideHref,
         tone: 'secondary',
     },
@@ -496,6 +493,14 @@ export default function DashboardPage() {
     const { stats: gamificationStats, isLoading: gamificationLoading, refreshStats: refreshGamificationStats } = useGamification();
     const [entries, setEntries] = useState<Entry[]>([]);
     const [resurfacedMoments, setResurfacedMoments] = useState<ResurfacedMoment[]>([]);
+    const [onThisDayEntries, setOnThisDayEntries] = useState<Array<{
+        id: string;
+        title: string | null;
+        snippet: string;
+        mood: string | null;
+        createdAt: string;
+        timeLabel: string;
+    }>>([]);
     const [themeClusters, setThemeClusters] = useState<ThemeCluster[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [dashboardInsightsLoaded, setDashboardInsightsLoaded] = useState(false);
@@ -576,9 +581,11 @@ export default function DashboardPage() {
             setWellnessSubmitted(false);
             try {
                 let fetchedEntriesCount = 0;
-                const [entriesResponse, resurfacedResponse, clustersResponse, actionResponse] = await Promise.all([
+                const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const [entriesResponse, resurfacedResponse, onThisDayResponse, clustersResponse, actionResponse] = await Promise.all([
                     apiFetch(`${API_URL}/entries`, { signal: controller.signal }),
                     apiFetch(`${API_URL}/entries/resurfaced?limit=3`, { signal: controller.signal }).catch(() => null),
+                    apiFetch(`${API_URL}/entries/resurfaced/on-this-day?timezone=${encodeURIComponent(tz)}`, { signal: controller.signal }).catch(() => null),
                     apiFetch(`${API_URL}/entries/theme-clusters?limit=4`, { signal: controller.signal }).catch(() => null),
                     apiFetch(`${API_URL}/ai/action/today`, { signal: controller.signal }).catch(() => null),
                 ]);
@@ -594,6 +601,13 @@ export default function DashboardPage() {
                     setResurfacedMoments(Array.isArray(data?.resurfaced) ? data.resurfaced : []);
                 } else if (mounted) {
                     setResurfacedMoments([]);
+                }
+
+                if (mounted && onThisDayResponse?.ok) {
+                    const data = await onThisDayResponse.json().catch(() => null);
+                    setOnThisDayEntries(Array.isArray(data?.entries) ? data.entries : []);
+                } else if (mounted) {
+                    setOnThisDayEntries([]);
                 }
 
                 if (mounted && clustersResponse?.ok) {
@@ -893,23 +907,15 @@ export default function DashboardPage() {
                         : onboarding?.track === 'both'
                             ? 'Life + work'
                             : null;
-    const primaryGoalLabel = safeUser.profile?.primaryGoal === 'clarity'
-        ? 'Clear mind'
-        : safeUser.profile?.primaryGoal === 'memory'
-            ? 'Remember life'
-            : safeUser.profile?.primaryGoal === 'growth'
-                ? 'Grow'
-                : safeUser.profile?.primaryGoal === 'productivity'
-                    ? 'Get things done'
-                    : onboarding?.goal === 'clarity'
-                        ? 'Clear mind'
-                        : onboarding?.goal === 'memory'
-                            ? 'Remember life'
-                            : onboarding?.goal === 'growth'
-                                ? 'Grow'
-                                : onboarding?.goal === 'productivity'
-                                    ? 'Get things done'
-                                    : null;
+    const goalMap = NOTIVE_VOICE.onboarding.goalLabels;
+    const resolveGoalLabel = (value: string | null | undefined) =>
+        value && value in goalMap
+            ? goalMap[value as keyof typeof goalMap]
+            : null;
+    const primaryGoalLabel =
+        resolveGoalLabel(safeUser.profile?.primaryGoal)
+        ?? resolveGoalLabel(onboarding?.goal)
+        ?? null;
     const profileTags = [experienceLevelLabel, focusAreaLabel, primaryGoalLabel].filter(Boolean).slice(0, 3) as string[];
     const todayBrief = todayAction?.brief || null;
     const todayBridge = todayAction?.bridge || null;
@@ -988,21 +994,18 @@ export default function DashboardPage() {
             risk: todayAction.risk,
             safetyCard: todayAction.safetyCard,
         });
-    } else if (todayBrief) {
-        focusCard = buildActionFocus({
-            brief: todayBrief,
+    } else if (entries.length > 0) {
+        focusCard = buildValueFocus({
+            entries,
+            themeClusters,
+            resurfacedMoments,
+            storyOverview,
             homeAction,
+            newEntryHref,
+            portfolioHref,
             recommendedHref,
             timelineHref,
-            guideHref,
             onPrimary: handleStartOneThing,
-        });
-    } else if (gentleReflection && gentleJournalHref) {
-        focusCard = buildGentleReflectionFocus({
-            reflection: gentleReflection,
-            journalHref: gentleJournalHref,
-            onAccept: handleAcceptGentleReflection,
-            onDismiss: handleDismissGentleReflection,
         });
     } else {
         focusCard = buildStarterFocus({
@@ -1340,6 +1343,17 @@ export default function DashboardPage() {
                     ) : null}
                 </Gate>
 
+                {/* ── First Read (tier 1, 1-2 entries) ─────────────── */}
+                {insightTier === 1 && latestEntry && (
+                    <FirstReadCard
+                        mood={latestEntry.mood}
+                        tags={Array.isArray(latestEntry.tags) ? latestEntry.tags : []}
+                        createdAt={latestEntry.createdAt}
+                        lessons={Array.isArray((latestEntry as Record<string, unknown>).lessons) ? (latestEntry as Record<string, unknown>).lessons as string[] : []}
+                        skills={Array.isArray((latestEntry as Record<string, unknown>).skills) ? (latestEntry as Record<string, unknown>).skills as string[] : []}
+                    />
+                )}
+
                 {/* ── What's Coming (tier 1, low entry count) ──────── */}
                 {insightTier <= 2 && entries.length > 0 && (
                     <WhatsComingCard entryCount={entries.length} />
@@ -1422,8 +1436,41 @@ export default function DashboardPage() {
                     );
                 })()}
 
+                {/* ── On This Day ───────────────────────────────────── */}
+                {onThisDayEntries.length > 0 && (
+                    <section className="notebook-card-soft rounded-[1.75rem] p-5">
+                        <p className="notebook-kicker mb-3">
+                            <span style={{ fontStyle: 'italic', fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                                On this day
+                            </span>
+                        </p>
+                        <div className="space-y-3">
+                            {onThisDayEntries.map((otd) => (
+                                <Link
+                                    key={otd.id}
+                                    href={openDashboardEntryHref(otd.id)}
+                                    className="block hover:opacity-80 transition-opacity"
+                                >
+                                    <p className="text-xs" style={{ color: 'rgb(var(--paper-ink-muted))' }}>
+                                        {otd.timeLabel}
+                                    </p>
+                                    <p className="text-sm font-medium" style={{ color: 'rgb(var(--paper-ink, var(--text-strong)))' }}>
+                                        {otd.title || 'Untitled'}
+                                    </p>
+                                    <p
+                                        className="notebook-copy mt-0.5 line-clamp-2 text-[0.85rem]"
+                                        style={{ color: 'rgb(var(--paper-ink-soft, var(--text-secondary)))' }}
+                                    >
+                                        {otd.snippet}
+                                    </p>
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
                 {/* ── Bridge card (if elevated risk) ─────────────────── */}
-                {todayBridge && (
+                {todayAction && (todayAction.risk.level === 'orange' || todayAction.risk.level === 'red') && todayBridge && (
                     <BridgeCard
                         bridge={todayBridge}
                         surface="dashboard"

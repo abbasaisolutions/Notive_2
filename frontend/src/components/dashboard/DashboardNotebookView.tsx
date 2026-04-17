@@ -1,7 +1,7 @@
-/* FINAL DASHBOARD — "One calm page" notebook experience
+/* FINAL DASHBOARD — capture-to-value notebook experience
    Zone 1 hero with sprout doodle, tight Zone 2 capture, minimal Zone 3 glance + sub-tabs.
    Matches logo + generated images exactly. Almost zero scrolling on mobile.
-   Every teen gets one grounded next move immediately. */
+   The default hero starts from saved memories and what they can become. */
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -14,6 +14,7 @@ import DailyGentleReflectionCard from '@/components/dashboard/DailyGentleReflect
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import { Surface } from '@/components/ui/surface';
 import UserAvatar from '@/components/ui/UserAvatar';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import type { GentleReflectionDraft } from '@/services/gentle-reflection.service';
 import {
     getLifeBalanceRingFill,
@@ -686,33 +687,33 @@ export default function DashboardNotebookView({
     const highestWeekdayCount = weekdayCounts.reduce((highest, day) => Math.max(highest, day.count), 0);
     const energyTrait = writerDNA.traits[1] || writerDNA.traits[0];
     const threadSentence = weekWords > 0
-        ? `You put down ${weekWords} ${weekWords === 1 ? 'word' : 'words'} this week - that's enough for Notive to start finding a calmer thread.`
+        ? `You put down ${weekWords} ${weekWords === 1 ? 'word' : 'words'} this week - enough for Notive to start finding a clearer pattern.`
         : typeof totalWords === 'number' && totalWords > 0
-            ? `You already have ${totalWords} words in the notebook - enough for Notive to start finding a calmer thread.`
+            ? `You already have ${totalWords} words in the notebook - enough for Notive to start finding a clearer pattern.`
             : entries.length > 0
-                ? `You already have ${entries.length} ${entries.length === 1 ? 'note' : 'notes'} here - enough for Notive to start finding a calmer thread.`
-                : 'One honest note is enough for Notive to start finding a calmer thread.';
+                ? `You already have ${entries.length} ${entries.length === 1 ? 'note' : 'notes'} here - enough for Notive to start finding a clearer pattern.`
+                : 'One honest note is enough for Notive to start finding a clearer pattern.';
     const rhythmSummary = dominantWritingWindow
         ? `Most of your notes return in the ${dominantWritingWindow}. When that window opens, leave two honest lines before it passes.`
         : entries.length >= 3
             ? 'Your rhythm is still forming. Keep catching the same kind of moment when it comes back.'
             : 'A few more notes will make your writing rhythm easier to trust.';
     const emotionalSummary = dashboardInsights?.emotionalFingerprint?.summary
-        || 'A few more notes will make the emotional pattern here feel more grounded.';
+        || 'A few more notes will make the emotional pattern here easier to read.';
     const noticingSummary = heroInsight?.body
         || dashboardInsights?.contradictions[0]?.description
         || (dashboardInsights?.correlations[0]
-            ? `${toTitleCase(dashboardInsights.correlations[0].topic)} tends to ${dashboardInsights.correlations[0].direction === 'lifter' ? 'steady' : 'drain'} your mood when it shows up.`
+            ? `${toTitleCase(dashboardInsights.correlations[0].topic)} tends to ${dashboardInsights.correlations[0].direction === 'lifter' ? 'lift' : 'drain'} your mood when it shows up.`
             : null)
         || (dashboardInsights?.triggerMap[0]
-            ? `${toTitleCase(dashboardInsights.triggerMap[0].entity)} looks like a repeating ${dashboardInsights.triggerMap[0].direction === 'lifter' ? 'steadying' : 'draining'} influence.`
+            ? `${toTitleCase(dashboardInsights.triggerMap[0].entity)} looks like a repeating ${dashboardInsights.triggerMap[0].direction === 'lifter' ? 'helpful' : 'draining'} influence.`
             : null)
         || 'Notive is still listening for a pattern it can say clearly, not just confidently.';
     const supportSummary = hasDeviceSignals && deviceSignals?.wellness
         ? `Your last check-in showed energy at ${deviceSignals.wellness.energyLevel}/10 and stress at ${deviceSignals.wellness.stressLevel}/10. Let that be context, not pressure.`
         : wellnessSubmitted
             ? 'Your last check-in is already part of the thread here. You do not need to explain the whole day again.'
-            : 'If today feels noisy, a quick check-in or a short chat can give the next note a calmer starting point.';
+            : 'If today feels noisy, a quick check-in or short chat can give the next note more context.';
     const weeklyDigestSnippet = weeklyDigest?.editorial
         ? compactText(weeklyDigest.editorial.replace(/\s+/g, ' '), 170)
         : null;
@@ -768,7 +769,7 @@ export default function DashboardNotebookView({
         ? `Try capturing one quick thought next ${topDayWindowMoments[0].promptLabel}.`
         : 'Try catching one quick thought the next time a familiar window opens.';
     const emotionalThreadLine = strongestEmotion
-        ? `You named ${String(strongestEmotion.emotion).toLowerCase()} most often this week - that's a steady thread you can lean on.`
+        ? `You named ${String(strongestEmotion.emotion).toLowerCase()} most often this week - that's a recurring pattern worth keeping in view.`
         : emotionalSummary;
     const noticingLine = heroInsightLoading
         ? 'Notive is still reading across your notes before it says this more clearly.'
@@ -928,9 +929,9 @@ export default function DashboardNotebookView({
             ? `Your "${themeClusters[0].label}" thread has shown up in ${themeClusters[0].entryCount} recent ${themeClusters[0].entryCount === 1 ? 'note' : 'notes'}. ${todayBrief?.whatHelpedBefore?.summary ? compactText(todayBrief.whatHelpedBefore.summary, 92) : 'That is worth naming directly today.'}`
             : null,
         strongestEmotion
-            ? `You named "${String(strongestEmotion.emotion).toLowerCase()}" ${strongestEmotion.entryCount} ${strongestEmotion.entryCount === 1 ? 'time' : 'times'} recently - that looks like your steadiest emotional thread right now.`
+            ? `You named "${String(strongestEmotion.emotion).toLowerCase()}" ${strongestEmotion.entryCount} ${strongestEmotion.entryCount === 1 ? 'time' : 'times'} recently - that looks like the strongest emotional pattern right now.`
             : (weekWords > 0
-                ? `You put down ${weekWords} ${weekWords === 1 ? 'word' : 'words'} this week - enough for Notive to start finding a calmer thread.`
+                ? `You put down ${weekWords} ${weekWords === 1 ? 'word' : 'words'} this week - enough for Notive to start finding a clearer pattern.`
                 : null),
         resurfacedMoment
             ? `One note from ${new Date(resurfacedMoment.matchedEntry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} is echoing again. It already shows ${sentenceCase(String(energyTrait?.label || 'self-awareness'))} in how you handled that moment.`
@@ -956,7 +957,7 @@ export default function DashboardNotebookView({
         strongestEmotion
             ? {
                 title: 'Naming what was true',
-                body: `${toTitleCase(strongestEmotion.emotion)} showed up enough times for Notive to trace it as a steady part of the week.`,
+                body: `${toTitleCase(strongestEmotion.emotion)} showed up enough times for Notive to trace it as a recurring part of the week.`,
             }
             : null,
         resurfacedMoment
@@ -998,7 +999,7 @@ export default function DashboardNotebookView({
         return <a href={action.href} onClick={action.onClick} className={className}>{action.label}</a>;
     };
 
-    const heroContent = todayBrief ? (
+    const heroContent = hasSafetyFocus && todayBrief ? (
         <ActionBriefPanel
             brief={todayBrief}
             surface="dashboard"
@@ -1006,7 +1007,7 @@ export default function DashboardNotebookView({
             draftHref={recommendedHref}
             embedded
         />
-    ) : gentleReflection && gentleJournalHref ? (
+    ) : gentleReflection && gentleJournalHref && entries.length === 0 ? (
         <DailyGentleReflectionCard
             reflection={gentleReflection}
             journalHref={gentleJournalHref}
@@ -1031,14 +1032,14 @@ export default function DashboardNotebookView({
 
             {(focusCard.evidence || focusCard.evidenceFallback) && (
                 <div className="app-paper-soft rounded-[1.25rem] p-4">
-                    <p className="section-label">{hasSafetyFocus ? 'Why this is the move' : 'What Notive is noticing'}</p>
+                    <p className="section-label">{hasSafetyFocus ? 'Why this matters now' : NOTIVE_VOICE.dashboard.evidenceLabel}</p>
                     <p className="notebook-copy mt-2 text-[0.875rem] leading-7">{focusCard.evidence || focusCard.evidenceFallback}</p>
                 </div>
             )}
 
             {focusCard.panels && focusCard.panels.length > 0 && (
                 <div className="grid gap-3 md:grid-cols-2">
-                    {focusCard.panels.slice(0, 2).map((panel) => (
+                    {focusCard.panels.map((panel) => (
                         <div key={panel.label} className="app-paper-soft rounded-[1.25rem] p-4">
                             <p className="section-label">{panel.label}</p>
                             <p className="notebook-copy mt-2 text-[0.875rem] leading-7">{panel.value}</p>
@@ -1048,7 +1049,7 @@ export default function DashboardNotebookView({
             )}
 
             <div className="app-paper-soft rounded-[1.25rem] p-4">
-                <p className="section-label">One clear next move</p>
+                <p className="section-label">{NOTIVE_VOICE.dashboard.actionLabel}</p>
                 <p className="notebook-title mt-2 text-lg">{focusCard.primaryAction?.label || 'Draft the first lines'}</p>
                 <p className="notebook-copy mt-2 text-[0.875rem] leading-7">{focusCard.panels?.[0]?.value || focusCard.body}</p>
             </div>
@@ -1161,7 +1162,7 @@ export default function DashboardNotebookView({
             <div className="relative">
                 <Image
                     src="/images/dashboard-welcome-banner.jpg"
-                    alt="Open notebook revealing a Notive Action Brief with one calm next move, welcoming a new student into their notebook before the first note."
+                    alt="Open notebook welcoming a new user into Notive before the first saved memory."
                     width={1144}
                     height={768}
                     priority
@@ -1173,7 +1174,7 @@ export default function DashboardNotebookView({
                     <div className="max-w-lg rounded-[1rem] border border-[rgba(92,92,92,0.16)] bg-[rgba(255,251,245,0.82)] px-3 py-3 backdrop-blur-sm">
                         <p className="section-label">Welcome to your notebook</p>
                         <p className="mt-1 text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))]">
-                            Drop what happened. See one calm next move.
+                            Capture what happened. Keep what matters.
                         </p>
                     </div>
                 </div>
@@ -1194,12 +1195,12 @@ export default function DashboardNotebookView({
             <h2 className="notive-logo italic text-lg font-semibold leading-snug md:text-2xl">
                 {daysSinceLastEntry !== null && daysSinceLastEntry >= 5
                     ? `You've been away ${daysSinceLastEntry} days. No pressure — one sentence is enough.`
-                    : daysSinceLastEntry !== null && daysSinceLastEntry >= 2
-                        ? `It's been ${daysSinceLastEntry} days. A lot can happen — what's worth keeping?`
-                        : moodShift?.type === 'shift'
-                            ? `Your mood moved from ${moodShift.from} to ${moodShift.to} lately.`
+                        : daysSinceLastEntry !== null && daysSinceLastEntry >= 2
+                            ? `It's been ${daysSinceLastEntry} days. A lot can happen — what's worth keeping?`
+                            : moodShift?.type === 'shift'
+                                ? `Your mood moved from ${moodShift.from} to ${moodShift.to} lately.`
                             : moodShift?.type === 'steady'
-                                ? `Holding steady at ${moodShift.mood} — that's worth noticing.`
+                                ? `The mood has stayed at ${moodShift.mood} lately — that's worth noticing.`
                                 : notesThisWeek > 0
                                     ? `${notesThisWeek} ${notesThisWeek === 1 ? 'note' : 'notes'} this week${returningThemes > 0 ? `, ${returningThemes} returning ${returningThemes === 1 ? 'theme' : 'themes'}` : ''}.`
                                     : `Hey ${firstName ?? 'there'} — your notebook is ready.`}
@@ -1349,7 +1350,7 @@ export default function DashboardNotebookView({
                     <div className="mt-1.5 grid grid-cols-3 gap-1.5">
                         {(() => {
                             const formatDelta = (delta: number, previous: number) => {
-                                if (delta === 0) return { text: 'steady', tone: 'neutral' as const };
+                                if (delta === 0) return { text: 'unchanged', tone: 'neutral' as const };
                                 const sign = delta > 0 ? '+' : '';
                                 const tone: 'up' | 'down' = delta > 0 ? 'up' : 'down';
                                 const pct = previous > 0 ? Math.round((delta / previous) * 100) : null;
@@ -1400,7 +1401,7 @@ export default function DashboardNotebookView({
                                         </p>
                                         <p className={`text-[0.52rem] font-medium tabular-nums ${toneClass(moodTone)}`}>
                                             {moodDeltaRounded === null ? 'no data'
-                                                : moodDeltaRounded === 0 ? 'steady'
+                                                : moodDeltaRounded === 0 ? 'unchanged'
                                                     : `${moodDeltaRounded > 0 ? '+' : ''}${moodDeltaRounded.toFixed(1)}`}
                                         </p>
                                     </div>
@@ -1652,7 +1653,7 @@ export default function DashboardNotebookView({
                                 ? 'bg-[rgba(192,160,100,0.12)] text-[rgb(160,130,70)]'
                                 : 'bg-[rgba(138,154,111,0.12)] text-[rgb(118,134,91)]'
                         }`}>
-                            {moodShift.type === 'shift' ? `${moodShift.from} → ${moodShift.to}` : `steady · ${moodShift.mood}`}
+                            {moodShift.type === 'shift' ? `${moodShift.from} → ${moodShift.to}` : `stable · ${moodShift.mood}`}
                         </span>
                     )}
                 </div>

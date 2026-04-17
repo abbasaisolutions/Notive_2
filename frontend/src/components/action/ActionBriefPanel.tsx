@@ -1,6 +1,4 @@
-/* DASHBOARD REFINEMENT COMPLETE — matches logo + generated images exactly:
-   warm paper grain, pencil lines, one sage sprout doodle max,
-   one calm Focus Card, grounded action-first experience for students */
+/* Secondary support surface for turning a note into a practical follow-up. */
 'use client';
 
 import React from 'react';
@@ -32,19 +30,19 @@ export default function ActionBriefPanel({
     const isEntry = surface === 'entry';
     const compactSupportCard = brief.whatHelpedBefore
         ? {
-            label: 'What helped before',
+            label: 'Helpful context',
             title: brief.whatHelpedBefore.summary,
             body: brief.whatHelpedBefore.reason,
         }
         : brief.keep
             ? {
-                label: 'Keep',
+                label: 'What to keep',
                 title: brief.keep.label,
                 body: brief.keep.evidence,
             }
             : brief.reachOut
                 ? {
-                    label: 'If support helps here',
+                    label: 'If reaching out helps',
                     title: brief.reachOut.label,
                     body: brief.reachOut.rationale,
                 }
@@ -55,7 +53,7 @@ export default function ActionBriefPanel({
     const content = (
         <div className={isCompactDashboard || isEntry ? 'space-y-2.5' : 'space-y-4'}>
             <div>
-                <p className="section-label">Action brief</p>
+                <p className="section-label">Use this note</p>
                 <h3 className={`notebook-title italic mt-1.5 ${isCompactDashboard ? 'text-[1.02rem] leading-6 md:text-[1.15rem]' : isEntry ? 'text-[0.95rem] leading-5' : 'text-xl md:text-[1.55rem]'}`}>
                     {brief.headline}
                 </h3>
@@ -74,7 +72,7 @@ export default function ActionBriefPanel({
 
             {!isCompactDashboard && brief.whatHelpedBefore && (
                 <div className={`app-paper-soft ${cardPad}`}>
-                    <p className="section-label">What helped before</p>
+                    <p className="section-label">Helpful context</p>
                     <p className={`notebook-copy mt-1.5 ${isEntry ? 'text-[0.78rem] leading-5' : 'text-[0.875rem] leading-7'}`}>
                         {brief.whatHelpedBefore.summary}
                     </p>
@@ -102,7 +100,7 @@ export default function ActionBriefPanel({
 
             {!isCompactDashboard && brief.reachOut && (
                 <div className={`app-paper-soft ${cardPad}`}>
-                    <p className="section-label">If support helps here</p>
+                    <p className="section-label">If reaching out helps</p>
                     <p className={`notebook-title mt-1.5 ${isEntry ? 'text-[0.82rem] leading-5' : 'text-lg'}`}>{brief.reachOut.label}</p>
                     <p className={`notebook-copy mt-1 ${isEntry ? 'text-[0.75rem] leading-5' : 'text-[0.875rem] leading-7'}`}>{brief.reachOut.rationale}</p>
 
@@ -132,9 +130,9 @@ export default function ActionBriefPanel({
             )}
 
             <div className={`app-paper-soft ${cardPad}`}>
-                <p className="section-label">One clear next move</p>
+                <p className="section-label">Suggested use</p>
                 <p className={`notebook-title italic mt-1.5 ${isCompactDashboard ? 'text-[1rem] leading-6' : isEntry ? 'text-[0.82rem] leading-5' : 'text-lg'}`}>
-                    {brief.nextMove?.label || 'Draft the first lines'}
+                    {brief.nextMove?.label || 'Start a draft'}
                 </p>
                 {nextMoveText && nextMoveText !== brief.nextMove?.label && (
                     <p className={`notebook-copy mt-1 ${isCompactDashboard ? 'text-[0.82rem] leading-6' : isEntry ? 'text-[0.75rem] leading-5' : 'text-[0.875rem] leading-7'}`}>
@@ -148,7 +146,7 @@ export default function ActionBriefPanel({
                     href={draftHref}
                     className={`workspace-button-primary inline-flex items-center rounded-xl font-semibold ${isEntry ? 'px-3 py-1.5 text-xs' : 'px-4 py-3 text-sm'}`}
                 >
-                    Draft the first lines
+                    Start a draft
                 </Link>
                 {brief.reachOut?.draftStarter && (
                     <p className="notebook-muted text-xs leading-5">
