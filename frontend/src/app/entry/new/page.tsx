@@ -30,11 +30,13 @@ import {
 } from '@/services/voice-transcription.service';
 import { appendReturnTo } from '@/utils/navigation';
 import { normalizeTag, isValidTag } from '@/utils/tags';
+import { normalizeMood } from '@/constants/moods';
 import { useToast } from '@/context/toast-context';
 import { usePushNotifications } from '@/context/push-notification-context';
 import { refreshNotificationBadge } from '@/hooks/use-notification-count';
 import { Spinner } from '@/components/ui';
 import FirstEntryHandoff from '@/components/entry/FirstEntryHandoff';
+import PostSaveSafetyDialog, { isSafetyAlertsEnabled } from '@/components/safety/PostSaveSafetyDialog';
 import { prepareImageForUpload } from '@/utils/image-upload';
 import {
     buildBrowserFallbackTranscription,
@@ -299,6 +301,11 @@ function NewEntryPageContent() {
         lesson?: string;
         strengths?: string[];
         goals?: string[];
+    } | null>(null);
+    const [safetyPrompt, setSafetyPrompt] = useState<{
+        risk: import('@/components/action/types').StudentRisk;
+        safetyCard: import('@/components/action/types').StudentSafetyCard | null;
+        onContinue: () => void;
     } | null>(null);
     const [showFirstEntryHandoff, setShowFirstEntryHandoff] = useState(entrySource === 'onboarding');
 
@@ -758,6 +765,11 @@ function NewEntryPageContent() {
             if (audioParam) {
                 setAudioUrl(audioParam);
             }
+        }
+
+        const moodParam = normalizeMood(searchParams.get('mood'));
+        if (moodParam) {
+            setMoodOverride(moodParam);
         }
     }, [user, searchParams, loadDraft, clearDraft, gentleReflectionTags, setExtractedData, setAiInsights]);
 
@@ -1380,17 +1392,46 @@ function NewEntryPageContent() {
                     pushAskedRef.current = true;
                     void requestPushPermission();
                 }
+                const safetyFromSave = data?.safety && data.safety.risk && data.safety.risk.level !== 'none'
+                    ? data.safety
+                    : null;
+                const shouldShowSafetyPrompt = !!safetyFromSave && !entryId && isSafetyAlertsEnabled();
+
                 if (!entryId && isGentleReflectionEntry && data.entry?.id) {
                     if (user?.id && gentleReflectionId) {
                         markGentleReflectionCompleted(user.id, gentleReflectionId);
                     }
 
                     toast.success('Note saved');
-                    router.push(appendReturnTo(`/entry/view?id=${data.entry.id}`, backHref));
+                    const reflectionTarget = appendReturnTo(`/entry/view?id=${data.entry.id}`, backHref);
+                    if (shouldShowSafetyPrompt) {
+                        setSafetyPrompt({
+                            risk: safetyFromSave.risk,
+                            safetyCard: safetyFromSave.safetyCard,
+                            onContinue: () => {
+                                setSafetyPrompt(null);
+                                router.push(reflectionTarget);
+                            },
+                        });
+                    } else {
+                        router.push(reflectionTarget);
+                    }
                     return;
                 }
 
                 toast.success('Note saved');
+
+                if (shouldShowSafetyPrompt) {
+                    setSafetyPrompt({
+                        risk: safetyFromSave.risk,
+                        safetyCard: safetyFromSave.safetyCard,
+                        onContinue: () => {
+                            setSafetyPrompt(null);
+                            router.push(backHref);
+                        },
+                    });
+                    return;
+                }
 
                 // ── Mirror: show extraction summary before navigating ──
                 const people = extractedData?.people?.map(p => p.name).slice(0, 2) ?? [];
@@ -1675,6 +1716,13 @@ function NewEntryPageContent() {
         <div className={`entry-studio min-h-screen selection:bg-primary/30 ${isWhisperMode ? 'bg-[rgb(var(--bg-canvas))] text-[rgb(var(--text-soft))]' : 'text-[rgb(var(--text-primary))]'}`}>
             {showFirstEntryHandoff && (
                 <FirstEntryHandoff onDismiss={() => setShowFirstEntryHandoff(false)} />
+            )}
+            {safetyPrompt && (
+                <PostSaveSafetyDialog
+                    risk={safetyPrompt.risk}
+                    safetyCard={safetyPrompt.safetyCard}
+                    onContinue={safetyPrompt.onContinue}
+                />
             )}
             <h1 className="sr-only">New Entry</h1>
             {!isWhisperMode && (

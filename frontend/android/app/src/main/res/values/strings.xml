@@ -4,4 +4,11 @@
     <string name="title_activity_main">Notive</string>
     <string name="package_name">com.notive.app</string>
     <string name="custom_url_scheme">com.notive.app</string>
+    <string name="widget_quick_entry_description">Notive — quick mood + note from your home screen.</string>
+    <string name="widget_quick_entry_prompt">How are you right now?</string>
+    <string name="widget_quick_entry_cta">Write a note</string>
+    <string name="widget_mood_happy_desc">Log a happy moment</string>
+    <string name="widget_mood_calm_desc">Log a calm moment</string>
+    <string name="widget_mood_anxious_desc">Log feeling anxious</string>
+    <string name="widget_mood_tired_desc">Log feeling tired</string>
 </resources>

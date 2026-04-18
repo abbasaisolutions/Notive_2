@@ -17,6 +17,7 @@ import {
     type TrustedContactPreference,
 } from './types';
 import { toDateLabel } from './types';
+import SafetyAlertsToggle from './SafetyAlertsToggle';
 
 type PrivacySectionProps = {
     promptFrequency: PromptFrequency;
@@ -310,6 +311,8 @@ export function PrivacySection({
                                             ? 'Safety Mode will point toward local emergency services and a trusted person instead of U.S.-only numbers.'
                                             : 'Safety Mode will try to use your profile location first, then fall back to general local-emergency guidance.'}
                                 </div>
+
+                                <SafetyAlertsToggle />
                             </div>
                         </div>
 

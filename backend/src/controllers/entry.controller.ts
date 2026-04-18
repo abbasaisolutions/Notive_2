@@ -621,7 +621,7 @@ export const createEntry = async (req: Request, res: Response) => {
             createdAt: entry.createdAt,
             analysis: entry.analysis,
         });
-        const { mergedAnalysis } = await studentActionService.persistEntrySignals({
+        const { mergedAnalysis, response: studentActionResponse } = await studentActionService.persistEntrySignals({
             entryId: entry.id,
             userId,
             title: entry.title,
@@ -709,12 +709,20 @@ export const createEntry = async (req: Request, res: Response) => {
 
         const wordCount = content.trim().split(/\s+/).length;
 
+        const safetySurface = studentActionResponse.risk.level !== 'none'
+            ? {
+                risk: studentActionResponse.risk,
+                safetyCard: studentActionResponse.safetyCard,
+            }
+            : null;
+
         return res.status(201).json({
             entry: attachEntryStorySignal(responseEntry),
             suggestedTags: autoTagMeta
                 .map(t => t.name)
                 .filter(tag => !providedTagKeys.has(tag.toLowerCase())),
             suggestions: nlpFallback?.suggestions || null,
+            ...(safetySurface ? { safety: safetySurface } : {}),
             ...(wordCount < MIN_WORDS_FOR_ENTRY_INSIGHTS ? { insufficientContent: true } : {}),
         });
     } catch (error) {

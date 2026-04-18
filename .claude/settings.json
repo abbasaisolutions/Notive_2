@@ -101,7 +101,9 @@
       "Bash(keytool -list -keystore \"c:/Users/mtabe/Notive/frontend/android/keystore/notive-upload-key.jks\" -storepass android)",
       "Bash(keytool -list -keystore \"c:/Users/mtabe/Notive/frontend/android/keystore/notive-upload-key.jks\")",
       "Bash(python3 -c ':*)",
-      "Bash(powershell.exe -Command \"Get-Content -Path 'C:\\\\\\\\tmp\\\\\\\\keystore_b64.txt' -Raw | Set-Clipboard; Write-Host 'Copied to clipboard!'\")"
+      "Bash(powershell.exe -Command \"Get-Content -Path 'C:\\\\\\\\tmp\\\\\\\\keystore_b64.txt' -Raw | Set-Clipboard; Write-Host 'Copied to clipboard!'\")",
+      "Bash(tee /tmp/backend-tsc.log)",
+      "Bash(tee /tmp/frontend-tsc.log)"
     ],
     "additionalDirectories": [
       "c:\\Users\\mtabe\\Notive\\frontend\\src\\out",
