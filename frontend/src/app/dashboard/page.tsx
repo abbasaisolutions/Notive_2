@@ -30,6 +30,8 @@ import DashboardFocusCard from '@/components/dashboard/DashboardFocusCard';
 import FloatingCapture from '@/components/dashboard/FloatingCapture';
 import DailyGentleReflectionCard from '@/components/dashboard/DailyGentleReflectionCard';
 import MoodSparkline, { hasMeaningfulMoodHistory } from '@/components/dashboard/MoodSparkline';
+const MoodForecastCard = dynamic(() => import('@/components/dashboard/MoodForecastCard'));
+const ReviewBanner = dynamic(() => import('@/components/dashboard/ReviewBanner'));
 import {
     NotebookDoodle,
     type NotebookAccentName,
@@ -521,7 +523,7 @@ export default function DashboardPage() {
     } | null>(null);
     const [heroInsight, setHeroInsight] = useState<{
         id?: string; category: string; title: string; body: string;
-        evidence: string | null; entryIds: string[]; qualityScore: number;
+        evidence: string | null; entryIds: string[]; qualityScore: number; freshness?: 'cached' | 'fresh';
     } | null>(null);
     const [heroInsightLoading, setHeroInsightLoading] = useState(false);
     const [journalIntel, setJournalIntel] = useState<DashboardPageJournalIntel | null>(null);
@@ -1158,9 +1160,10 @@ export default function DashboardPage() {
                     <HeroInsightCard
                         insight={heroInsight}
                         loading={heroInsightLoading}
-                        onFeedback={(reaction) => {
+                        openEntryHref={openDashboardEntryHref}
+                        onFeedback={async (reaction) => {
                             if (!heroInsight?.id) return;
-                            void apiFetch(`${API_URL}/ai/insight-feedback`, {
+                            await apiFetch(`${API_URL}/ai/insight-feedback`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ insightId: heroInsight.id, reaction }),
@@ -1196,6 +1199,16 @@ export default function DashboardPage() {
                     {showMoodHistory && (
                         <MoodSparkline entries={entries} />
                     )}
+                </Gate>
+
+                {/* ── Mood forecast (tier 2+, only when pattern confident) ── */}
+                <Gate minTier={2} currentTier={insightTier}>
+                    <MoodForecastCard />
+                </Gate>
+
+                {/* ── Month-in-review banner (tier 2+, first week of month) ── */}
+                <Gate minTier={2} currentTier={insightTier}>
+                    <ReviewBanner totalEntries={entries.length} />
                 </Gate>
 
                 {/* ── Daily Check-In (tier 1+) ───────────────────── */}

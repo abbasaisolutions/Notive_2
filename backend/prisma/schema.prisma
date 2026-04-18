@@ -100,7 +100,8 @@ model User {
   socialConnections SocialConnection[]
 
   // Dashboard Insights
-  dashboardInsights   DashboardInsight[]
+  dashboardInsights       DashboardInsight[]
+  insightSurfaceFeedback  InsightSurfaceFeedback[]
 
   // Device Context & Integrations
   deviceSignals       DeviceSignal[]
@@ -514,13 +515,26 @@ model DashboardInsight {
   evidence      String?  @db.Text
   entryIds      String[] // referenced entry IDs
   qualityScore  Float    @default(0)
-  userReaction  String?  // expanded, dismissed, wrote_entry, null
+  userReaction  String?  // legacy single reaction or serialized reaction history
   llmModel      String?  // model used for generation
   generatedAt   DateTime @default(now())
   expiresAt     DateTime
 
   @@index([userId, category, generatedAt])
   @@index([userId, expiresAt])
+}
+
+model InsightSurfaceFeedback {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  surfaceType String   // correlation | contradiction | trigger | reflection
+  entityKey   String   // topic / entryId / entity / reflection signature
+  reaction    String   // helpful | not_helpful
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, surfaceType, entityKey])
+  @@index([userId, surfaceType, createdAt])
 }
 
 // ── Device Context Signals ──────────────────────────────────

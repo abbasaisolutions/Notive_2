@@ -47,7 +47,10 @@ export type GeneratedInsight = {
     evidence: string | null;
     entryIds: string[];
     qualityScore: number;
+    freshness?: 'cached' | 'fresh';
 };
+
+type InsightReaction = 'expanded' | 'dismissed' | 'wrote_entry' | 'helpful' | 'not_helpful';
 
 type InsightContext = {
     userId: string;
@@ -64,6 +67,151 @@ const INSIGHT_EXPIRY_HOURS = 24;
 const MIN_QUALITY_SCORE = 5;
 const MAX_GENERATION_ATTEMPTS = 3;
 const MIN_ENTRIES_FOR_INSIGHTS = 5;
+const INSIGHT_CATEGORY_RANDOMNESS = 0.35;
+const VALID_REACTIONS: InsightReaction[] = ['expanded', 'dismissed', 'wrote_entry', 'helpful', 'not_helpful'];
+
+const VALID_REACTION_SET = new Set<string>(VALID_REACTIONS);
+
+const uniqueEntryIds = (values: Array<string | null | undefined>, limit = 4): string[] =>
+    Array.from(new Set(values.filter((value): value is string => typeof value === 'string' && value.length > 0))).slice(0, limit);
+
+const normalizeInsightToken = (value: string | null | undefined): string =>
+    String(value || '').trim().toLowerCase();
+
+const buildInsightAnalysisMap = (analyses: InsightAnalysis[]) => {
+    const analysisMap = new Map<string, InsightAnalysis>();
+    analyses.forEach((analysis) => {
+        analysisMap.set(analysis.entryId, analysis);
+    });
+    return analysisMap;
+};
+
+const collectEntryIdsForTopic = (ctx: InsightContext, topic: string, limit = 4): string[] => {
+    const normalizedTopic = normalizeInsightToken(topic);
+    if (!normalizedTopic) return [];
+
+    const analysisMap = buildInsightAnalysisMap(ctx.analyses);
+
+    return uniqueEntryIds(
+        ctx.entries
+            .filter((entry) => {
+                const analysis = analysisMap.get(entry.id);
+                const inTags = entry.tags.some((tag) => normalizeInsightToken(tag) === normalizedTopic);
+                const inTopics = (analysis?.topics || []).some((value) => normalizeInsightToken(value) === normalizedTopic);
+                const inKeywords = (analysis?.keywords || []).some((value) => normalizeInsightToken(value) === normalizedTopic);
+                const inContent = entry.content.toLowerCase().includes(normalizedTopic);
+                return inTags || inTopics || inKeywords || inContent;
+            })
+            .map((entry) => entry.id),
+        limit
+    );
+};
+
+const collectEntryIdsForEntity = (ctx: InsightContext, entity: string, limit = 4): string[] => {
+    const normalizedEntity = normalizeInsightToken(entity);
+    if (!normalizedEntity) return [];
+
+    const analysisMap = buildInsightAnalysisMap(ctx.analyses);
+
+    return uniqueEntryIds(
+        ctx.entries
+            .filter((entry) => {
+                const analysis = analysisMap.get(entry.id);
+                const inEntities = (analysis?.entities || []).some((value) => normalizeInsightToken(value) === normalizedEntity);
+                const inContent = entry.content.toLowerCase().includes(normalizedEntity);
+                return inEntities || inContent;
+            })
+            .map((entry) => entry.id),
+        limit
+    );
+};
+
+const deriveEntryIdsForCategory = (category: InsightCategory, ctx: InsightContext): string[] => {
+    switch (category) {
+        case 'contradiction':
+            return uniqueEntryIds(ctx.insightsData.contradictions.slice(0, 3).map((item) => item.entryId), 3);
+        case 'hidden_pattern': {
+            const topCorrelation = [...ctx.insightsData.correlations]
+                .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta))[0];
+            const correlationIds = topCorrelation ? collectEntryIdsForTopic(ctx, topCorrelation.topic, 4) : [];
+            if (correlationIds.length > 0) return correlationIds;
+
+            const topTrigger = [...ctx.insightsData.triggerMap]
+                .sort((left, right) => Math.abs(right.avgMoodDelta) - Math.abs(left.avgMoodDelta))[0];
+            return topTrigger ? collectEntryIdsForEntity(ctx, topTrigger.entity, 4) : [];
+        }
+        case 'growth_signal': {
+            const structuredRecent = ctx.entries
+                .filter((entry) =>
+                    (entry.lessons?.length ?? 0) > 0
+                    || (entry.skills?.length ?? 0) > 0
+                    || Boolean(entry.reflection && entry.reflection.trim().length > 20)
+                )
+                .slice(0, 4)
+                .map((entry) => entry.id);
+
+            return uniqueEntryIds([
+                ...structuredRecent,
+                ...ctx.entries.slice(0, 2).map((entry) => entry.id),
+                ctx.entries[ctx.entries.length - 1]?.id || null,
+            ], 4);
+        }
+        case 'evolution': {
+            const midpoint = Math.floor(ctx.entries.length / 2);
+            return uniqueEntryIds([
+                ...ctx.entries.slice(0, 2).map((entry) => entry.id),
+                ...ctx.entries.slice(midpoint, midpoint + 2).map((entry) => entry.id),
+            ], 4);
+        }
+        case 'blind_spot':
+        default:
+            return [];
+    }
+};
+
+const parseInsightReactionHistory = (value: string | null | undefined): InsightReaction[] => {
+    if (typeof value !== 'string' || !value.trim()) return [];
+    const trimmed = value.trim();
+
+    try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+            return parsed.filter((item): item is InsightReaction => typeof item === 'string' && VALID_REACTION_SET.has(item));
+        }
+    } catch {
+        // Legacy single-value payloads fall through below.
+    }
+
+    return VALID_REACTION_SET.has(trimmed) ? [trimmed as InsightReaction] : [];
+};
+
+const serializeInsightReactionHistory = (history: InsightReaction[]): string | null => {
+    if (history.length === 0) return null;
+    if (history.length === 1) return history[0];
+    return JSON.stringify(history);
+};
+
+const appendInsightReaction = (existingValue: string | null | undefined, reaction: InsightReaction): string => {
+    const history = parseInsightReactionHistory(existingValue);
+    if (history.includes(reaction)) {
+        return serializeInsightReactionHistory(history) || reaction;
+    }
+
+    return serializeInsightReactionHistory([...history, reaction]) || reaction;
+};
+
+const scoreReactionHistory = (value: string | null | undefined): number => {
+    const history = parseInsightReactionHistory(value);
+    let score = 0;
+
+    if (history.includes('expanded')) score += 0.75;
+    if (history.includes('helpful')) score += 1.5;
+    if (history.includes('wrote_entry')) score += 2.25;
+    if (history.includes('dismissed')) score -= 0.5;
+    if (history.includes('not_helpful')) score -= 1.25;
+
+    return score;
+};
 
 // ── Prompt Templates ─────────────────────────────────────────
 
@@ -255,7 +403,6 @@ function buildBlindSpotPrompt(ctx: InsightContext): string | null {
     // Analyze topic/entity coverage to find gaps
     const topicCounts = new Map<string, number>();
     const entityCounts = new Map<string, number>();
-    const lifeAreas = new Set<string>();
     const analysisMap = new Map<string, InsightAnalysis>();
     for (const a of analyses) analysisMap.set(a.entryId, a);
 
@@ -529,20 +676,12 @@ async function generateInsightForCategory(
         // Strip the chain-of-thought reasoning field — it's an internal scratchpad, not user-facing
         delete parsed.reasoning;
 
-        // Gather referenced entry IDs from contradictions/correlations
-        const entryIds: string[] = [];
-        if (category === 'contradiction') {
-            for (const c of ctx.insightsData.contradictions.slice(0, 3)) {
-                entryIds.push(c.entryId);
-            }
-        }
-
         return {
             category,
             title: String(parsed.title).slice(0, 120),
             body: String(parsed.body).slice(0, 500),
             evidence: parsed.evidence ? String(parsed.evidence).slice(0, 300) : null,
-            entryIds,
+            entryIds: deriveEntryIdsForCategory(category, ctx),
             qualityScore: 0, // scored separately
         };
     } catch {
@@ -559,13 +698,18 @@ async function generateInsightForCategory(
 export async function getHeroInsight(userId: string): Promise<GeneratedInsight | null> {
     if (!hasLlmProvider()) return null;
 
-    // Check for a cached non-expired insight
+    // Check for a cached non-expired insight.
+    // Skip ones the user flagged negatively so we regenerate instead of re-surfacing.
     const now = new Date();
     const cached = await prisma.dashboardInsight.findFirst({
         where: {
             userId,
             expiresAt: { gt: now },
             qualityScore: { gte: MIN_QUALITY_SCORE },
+            AND: [
+                { NOT: { userReaction: { contains: 'not_helpful' } } },
+                { NOT: { userReaction: { contains: 'dismissed' } } },
+            ],
         },
         orderBy: { generatedAt: 'desc' },
     });
@@ -579,6 +723,7 @@ export async function getHeroInsight(userId: string): Promise<GeneratedInsight |
             evidence: cached.evidence,
             entryIds: cached.entryIds,
             qualityScore: cached.qualityScore,
+            freshness: 'cached',
         };
     }
 
@@ -660,6 +805,7 @@ async function generateAndCacheInsight(userId: string): Promise<GeneratedInsight
             });
 
             insight.id = saved.id;
+            insight.freshness = 'fresh';
             return insight;
         }
     }
@@ -670,7 +816,7 @@ async function generateAndCacheInsight(userId: string): Promise<GeneratedInsight
 
 /**
  * Prioritize insight categories based on past engagement.
- * Categories that got "expanded" or "wrote_entry" reactions rank higher.
+ * Categories with stronger positive reaction history rank higher.
  * Categories recently generated rank lower to add variety.
  */
 function prioritizeCategories(
@@ -685,18 +831,14 @@ function prioritizeCategories(
 
     for (const r of recentReactions) {
         recentCounts.set(r.category, (recentCounts.get(r.category) ?? 0) + 1);
-        if (r.userReaction === 'expanded' || r.userReaction === 'wrote_entry') {
-            engagementScores.set(r.category, (engagementScores.get(r.category) ?? 0) + 2);
-        } else if (r.userReaction === 'dismissed') {
-            engagementScores.set(r.category, (engagementScores.get(r.category) ?? 0) - 1);
-        }
+        engagementScores.set(r.category, (engagementScores.get(r.category) ?? 0) + scoreReactionHistory(r.userReaction));
     }
 
     // Score = engagement bonus - recency penalty + randomness
     return allCategories
         .map((cat) => ({
             cat,
-            score: (engagementScores.get(cat) ?? 0) - (recentCounts.get(cat) ?? 0) * 0.5 + Math.random() * 2,
+            score: (engagementScores.get(cat) ?? 0) - (recentCounts.get(cat) ?? 0) * 0.5 + Math.random() * INSIGHT_CATEGORY_RANDOMNESS,
         }))
         .sort((a, b) => b.score - a.score)
         .map((x) => x.cat);
@@ -708,7 +850,7 @@ function prioritizeCategories(
 export async function recordInsightReaction(
     insightId: string,
     userId: string,
-    reaction: 'expanded' | 'dismissed' | 'wrote_entry'
+    reaction: InsightReaction
 ): Promise<boolean> {
     const insight = await prisma.dashboardInsight.findFirst({
         where: { id: insightId, userId },
@@ -717,7 +859,7 @@ export async function recordInsightReaction(
 
     await prisma.dashboardInsight.update({
         where: { id: insightId },
-        data: { userReaction: reaction },
+        data: { userReaction: appendInsightReaction(insight.userReaction, reaction) },
     });
 
     return true;
