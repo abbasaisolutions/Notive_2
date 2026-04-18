@@ -161,13 +161,13 @@ const QUESTION_BANK: PersonalizationQuestion[] = [
     {
         id: 'goal_priority',
         field: 'primaryGoal',
-        prompt: 'What do you want Notive to help with most?',
-        helper: 'This helps Notive ask better questions and show better help.',
+        prompt: 'What do you want Notive to help you do most?',
+        helper: 'This shapes how Notive organizes notes and what it brings forward later.',
         options: [
-            { value: 'clarity', label: 'Clear mind' },
-            { value: 'memory', label: 'Remember life' },
-            { value: 'growth', label: 'Grow' },
-            { value: 'productivity', label: 'Get things done' },
+            { value: 'clarity', label: 'Understand what this means' },
+            { value: 'memory', label: 'Keep meaningful moments' },
+            { value: 'growth', label: 'Extract lessons and skills' },
+            { value: 'productivity', label: 'Use notes later' },
         ],
         routeHints: ['/dashboard', '/insights'],
     },
@@ -175,7 +175,7 @@ const QUESTION_BANK: PersonalizationQuestion[] = [
         id: 'focus_area',
         field: 'focusArea',
         prompt: 'What part of life should Notive focus on first?',
-        helper: 'This helps Notive focus on life, school, work, or both.',
+        helper: 'This helps Notive sort memories and outputs around the parts of life you care about most.',
         options: [
             { value: 'life', label: 'Life' },
             { value: 'career', label: 'School and work' },
@@ -187,7 +187,7 @@ const QUESTION_BANK: PersonalizationQuestion[] = [
         id: 'writing_preference',
         field: 'writingPreference',
         prompt: 'How do you want writing to feel?',
-        helper: 'This helps Notive use a writing style that feels easier for you.',
+        helper: 'This helps Notive shape prompts and capture flow in a way that fits you better.',
         options: [
             { value: 'guided', label: 'With questions' },
             { value: 'structured', label: 'Step by step' },
@@ -199,7 +199,7 @@ const QUESTION_BANK: PersonalizationQuestion[] = [
         id: 'experience_level',
         field: 'experienceLevel',
         prompt: 'Where are you right now?',
-        helper: 'A little context helps Notive give better help.',
+        helper: 'A little context helps Notive keep examples and outputs more relevant.',
         options: [
             { value: 'student', label: 'Student' },
             { value: 'early-career', label: 'Early career' },
@@ -212,7 +212,7 @@ const QUESTION_BANK: PersonalizationQuestion[] = [
         id: 'output_goal',
         field: 'outputGoals',
         prompt: 'What do you want to use your notes for later?',
-        helper: 'This helps Notive turn notes into stories you can use.',
+        helper: 'This helps Notive shape reusable outputs from the memories you keep.',
         options: [
             { value: 'self-growth', label: 'Know myself better' },
             { value: 'college-statement', label: 'School statement' },
@@ -229,8 +229,8 @@ const QUESTION_BANK: PersonalizationQuestion[] = [
         helper: 'You can change this anytime if your writing style changes.',
         options: [
             { value: 'What happened today that I want to remember?', label: 'What happened today?' },
-            { value: 'What felt hard today, and how did I respond?', label: 'What felt hard?' },
-            { value: 'What helped today move forward?', label: 'What helped today?' },
+            { value: 'What happened today that I want to keep and understand?', label: 'What mattered today?' },
+            { value: 'What from today might become useful later?', label: 'What could be useful later?' },
         ],
         routeHints: ['/dashboard', '/timeline'],
     },
@@ -455,16 +455,16 @@ const getSuggestedStarterPrompt = (
     focusArea: OnboardingTrack
 ): string => {
     const goalMap: Record<OnboardingGoal, string> = {
-        clarity: 'What is on my mind right now, and what is one clear next step?',
+        clarity: 'What happened here, and what feels important about it?',
         memory: 'What meaningful moment from today do I want to preserve?',
-        growth: 'What challenge did I face today, and how did I grow from it?',
-        productivity: 'What did I complete today, and what should I prioritize next?',
+        growth: 'What did this moment teach me about my skills, habits, or choices?',
+        productivity: 'What from today might become useful later?',
     };
 
     const focusMap: Record<OnboardingTrack, string> = {
-        life: 'What did I learn about myself or my relationships today?',
-        career: 'What did I do today that shows initiative, learning, or impact?',
-        both: 'What did I do today that helped both my personal life and long-term goals?',
+        life: 'What did I learn about myself, my relationships, or this part of life?',
+        career: 'What did I do today that shows initiative, learning, or useful evidence?',
+        both: 'What happened today that matters both personally and for where I am headed?',
     };
 
     return `${goalMap[goal]} ${focusMap[focusArea]}`;
@@ -819,10 +819,10 @@ class ProgressivePersonalizationService {
 
         if (goal && GOAL_VALUE_SET.has(goal as OnboardingGoal)) {
             const fallbackGoalPrompts: Record<OnboardingGoal, string> = {
-                clarity: 'What is creating mental noise for me today, and what can I simplify first?',
+                clarity: 'What happened today that I still want to understand better?',
                 memory: 'What moment from today is worth preserving with detail?',
-                growth: 'What challenge taught me something important today?',
-                productivity: 'What one action will create the most momentum tomorrow?',
+                growth: 'What moment taught me something important about how I work or respond?',
+                productivity: 'What from today might be useful again later?',
             };
             return fallbackGoalPrompts[goal as OnboardingGoal];
         }

@@ -179,6 +179,28 @@ export class SearchController {
         }
     }
 
+    async getOnThisDayEntries(req: Request, res: Response) {
+        try {
+            const userId = req.userId;
+            if (!userId) {
+                return res.status(401).json({ message: 'Unauthorized' });
+            }
+
+            const timezone = (req.query.timezone as string) || 'UTC';
+            const entries = await retrievalInsightsService.getOnThisDayEntries(userId, timezone);
+
+            return res.json({
+                entries,
+                count: entries.length,
+            });
+        } catch (error: any) {
+            console.error('On This Day entries error:', error);
+            return res.status(500).json({
+                message: 'Failed to fetch on-this-day entries',
+            });
+        }
+    }
+
     async getThemeClusters(req: Request, res: Response) {
         try {
             const userId = req.userId;

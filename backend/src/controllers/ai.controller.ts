@@ -15,7 +15,10 @@ import {
     OpportunityTemplateVariant,
 } from '../services/opportunity.service';
 import { buildProfileContextSummary } from '../services/profile-context.service';
-import guidedReflectionService, { type GuidedReflectionLens } from '../services/guided-reflection.service';
+import guidedReflectionService, {
+    isGuidedReflectionLensValue,
+    type GuidedReflectionLensValue,
+} from '../services/guided-reflection.service';
 import supportMapService from '../services/support-map.service';
 import studentActionService from '../services/student-action.service';
 
@@ -27,14 +30,11 @@ const LIVE_COACH_SUGGESTIONS = [
 ];
 
 const LOCAL_GUIDE_SUGGESTIONS = [
-    'What feels like the biggest pattern in my notes lately?',
-    'Help me talk to someone about this.',
-    'Which past entry feels closest to how I am doing now?',
-    'What should I write about tonight?',
+    'What lesson keeps showing up in my notes?',
+    'Which memory feels worth keeping?',
+    'What skills are showing up in this entry?',
+    'Turn this into a story I can use later.',
 ];
-
-const isGuidedReflectionLens = (value: unknown): value is GuidedReflectionLens =>
-    value === 'clarity' || value === 'memory' || value === 'growth' || value === 'patterns' || value === 'bridge';
 
 type CoachHighlight = {
     id: string;
@@ -292,7 +292,7 @@ export const chatWithJournal = async (req: Request, res: Response) => {
             const guidedResponse = await guidedReflectionService.respond({
                 userId,
                 query,
-                lens: isGuidedReflectionLens(lens) ? lens : null,
+                lens: isGuidedReflectionLensValue(lens) ? (lens as GuidedReflectionLensValue) : null,
             });
             return res.json(guidedResponse);
         }
@@ -767,4 +767,3 @@ export const exportOpportunityPack = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Failed to export opportunity pack' });
     }
 };
-

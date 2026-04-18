@@ -17,6 +17,7 @@ import {
     getHeroDashboardInsight,
     getWeeklyDigest,
     postInsightFeedback,
+    postSurfaceFeedback,
 } from '../controllers/insight-engine.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { securityConfig } from '../config/security';
@@ -49,5 +50,6 @@ router.get('/opportunity/export', authMiddleware, aiLimiter, exportOpportunityPa
 router.get('/dashboard-insight', authMiddleware, getHeroDashboardInsight);
 router.get('/weekly-digest', authMiddleware, aiLimiter, getWeeklyDigest);
 router.post('/insight-feedback', authMiddleware, postInsightFeedback);
+router.post('/surface-feedback', authMiddleware, postSurfaceFeedback);
 
 export default router;

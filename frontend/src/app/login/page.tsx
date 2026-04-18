@@ -16,6 +16,7 @@ import {
     quietNotebookPageStyle,
     quietNotebookPanelStyle,
 } from '@/components/marketing/NotiveShowcase';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { unwrapSetupReturnTo } from '@/utils/redirect';
 import { resolvePostAuthDestination } from '@/utils/auth-routing';
 import { isNativeCapacitorPlatform } from '@/utils/sso';
@@ -25,11 +26,7 @@ type LoginFieldErrors = {
     password?: string;
 };
 
-const TRUST_POINTS = [
-    'Your notes are private and encrypted',
-    'No ads, no data selling — ever',
-    'Works on phone, tablet, and laptop',
-];
+const TRUST_POINTS = NOTIVE_VOICE.auth.trustPoints;
 
 const LOGIN_PHRASES = [
     'Welcome back\u2026',
@@ -127,7 +124,7 @@ export default function LoginPage() {
         }
     };
 
-    const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
+    const handleGoogleSuccess = useCallback(async (credentialResponse: { credential?: string }) => {
         try {
             setIsLoading(true);
             if (credentialResponse.credential) {
@@ -143,11 +140,11 @@ export default function LoginPage() {
             setError(err.message || 'Google sign-in didn\u2019t go through. Please try again.');
             setIsLoading(false);
         }
-    };
+    }, [loginWithSsoCredential, resolvePostAuthRoute]);
 
-    const handleGoogleError = () => {
+    const handleGoogleError = useCallback(() => {
         setError('Google sign-in didn’t finish. Please try again.');
-    };
+    }, []);
 
     if (isNativeCapacitorPlatform() && (authLoading || !!user)) {
         return (
@@ -195,10 +192,10 @@ export default function LoginPage() {
                                             Sign in
                                         </p>
                                         <h2 className="mt-2 text-2xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong">
-                                            Return to your notebook.
+                                            {NOTIVE_VOICE.auth.signInHeroTitle}
                                         </h2>
                                         <p className="mt-2 text-sm leading-6 text-default">
-                                            Pick up the thread you already started.
+                                            {NOTIVE_VOICE.auth.signInHeroBody}
                                         </p>
                                     </div>
                                 </div>
@@ -230,10 +227,10 @@ export default function LoginPage() {
                                         Welcome back
                                     </p>
                                     <h2 className="mt-3 text-[2rem] font-semibold leading-[1.05] tracking-[-0.04em] text-strong">
-                                        Sign in to your notebook.
+                                        {NOTIVE_VOICE.auth.signInHeroTitle}
                                     </h2>
                                     <p className="mt-3 text-sm leading-7 text-default">
-                                        Come back to the notes you kept, the patterns you noticed, and the next move you can actually use.
+                                        {NOTIVE_VOICE.auth.signInHeroBody}
                                     </p>
                                 </div>
                             </div>
@@ -257,10 +254,10 @@ export default function LoginPage() {
                                 Sign in
                             </p>
                             <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong md:text-[3rem]">
-                                One note today. One clearer tomorrow.
+                                {NOTIVE_VOICE.auth.signInHeading}
                             </h1>
                             <p className="mt-4 max-w-xl text-sm leading-7 text-default md:text-base">
-                                Sign in to reopen your notes, revisit the patterns, and keep the next useful part of your story close.
+                                {NOTIVE_VOICE.auth.signInBody}
                             </p>
                         </div>
 
@@ -412,10 +409,10 @@ export default function LoginPage() {
                         <div className="absolute inset-x-0 bottom-0 p-5">
                             <div className="rounded-[1.35rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-4 backdrop-blur-sm">
                                 <p className="type-overline text-muted">
-                                    Keep growing
+                                    {NOTIVE_VOICE.auth.sideTitle}
                                 </p>
                                 <p className="mt-2 text-sm leading-7 text-default">
-                                    Every honest note can come back later as self-advocacy, resilience, or one clearer next move.
+                                    {NOTIVE_VOICE.auth.sideBody}
                                 </p>
                             </div>
                         </div>

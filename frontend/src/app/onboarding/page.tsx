@@ -21,6 +21,7 @@ import {
     hasCompletedOnboardingFromProfile,
     saveOnboardingState,
 } from '@/utils/onboarding';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { unwrapSetupReturnTo } from '@/utils/redirect';
 import { Spinner } from '@/components/ui';
 import { App } from '@capacitor/app';
@@ -34,10 +35,10 @@ import {
 import { isNativePlatform } from '@/utils/platform';
 
 const GOALS: Array<{ id: OnboardingGoal; icon: IconType; doodle: NotebookDoodleName; label: string; desc: string }> = [
-    { id: 'clarity', icon: FiCpu, doodle: 'steady-me', label: 'Get clarity', desc: 'Notice what matters and pick the next step.' },
-    { id: 'memory', icon: FiCamera, doodle: 'moon', label: 'Remember what matters', desc: 'Save moments, feelings, and details worth keeping.' },
-    { id: 'growth', icon: FiTrendingUp, doodle: 'see-my-growth', label: 'See your growth', desc: 'Notice lessons, habits, and change over time.' },
-    { id: 'productivity', icon: FiZap, doodle: 'shape-my-future', label: 'Move things forward', desc: 'Save wins, blockers, and stories you can use later.' },
+    { id: 'clarity', icon: FiCpu, doodle: 'steady-me', label: NOTIVE_VOICE.onboarding.goalLabels.clarity, desc: NOTIVE_VOICE.onboarding.goalDescriptions.clarity },
+    { id: 'memory', icon: FiCamera, doodle: 'moon', label: NOTIVE_VOICE.onboarding.goalLabels.memory, desc: NOTIVE_VOICE.onboarding.goalDescriptions.memory },
+    { id: 'growth', icon: FiTrendingUp, doodle: 'see-my-growth', label: NOTIVE_VOICE.onboarding.goalLabels.growth, desc: NOTIVE_VOICE.onboarding.goalDescriptions.growth },
+    { id: 'productivity', icon: FiZap, doodle: 'shape-my-future', label: NOTIVE_VOICE.onboarding.goalLabels.productivity, desc: NOTIVE_VOICE.onboarding.goalDescriptions.productivity },
 ];
 
 const TRACKS: Array<{ id: OnboardingTrack; label: string; desc: string }> = [
@@ -70,26 +71,26 @@ const OUTPUT_GOALS: Array<{ id: OnboardingOutputGoal; label: string }> = [
 const STARTER_PROMPTS: Record<OnboardingGoal, Record<OnboardingTrack, string[]>> = {
     clarity: {
         life: [
-            'What is on my mind today?',
-            'What moment today felt most important?',
+            'What happened today that feels important to understand?',
+            'Which moment today keeps standing out to me?',
         ],
         career: [
-            'What is my most important next step for school or work?',
-            'What task am I avoiding, and how will I start?',
+            'What happened today at school or work that is worth understanding better?',
+            'Which task or conversation from today still feels unfinished in my head?',
         ],
         both: [
-            'What one choice today could help both life and work?',
-            'Where am I overthinking, and what small step can I take?',
+            'What moment today touched both my life and my future?',
+            'What am I still trying to make sense of from today?',
         ],
     },
     memory: {
         life: [
             'What moment from today do I want to remember?',
-            'Who shaped my day, and what did I learn?',
+            'What detail from today do I not want to lose?',
         ],
         career: [
             'What project or task today is worth saving for later?',
-            'What did I make or improve today?',
+            'What did I make, learn, or improve today that I may want later?',
         ],
         both: [
             'What happened today that shaped both my life and future?',
@@ -98,30 +99,30 @@ const STARTER_PROMPTS: Record<OnboardingGoal, Record<OnboardingTrack, string[]>>
     },
     growth: {
         life: [
-            'What did I learn about myself today?',
-            'Where did I handle something better today?',
+            'What did this moment teach me about myself today?',
+            'What strength or skill showed up in how I handled today?',
         ],
         career: [
-            'What skill did I practice today, and what improved?',
-            'What hard thing did I get through today?',
+            'What skill did I practice today, and what does it show?',
+            'What challenge today gave me useful evidence about how I work?',
         ],
         both: [
-            'What lesson today can help me grow in life and work?',
-            'How did I show resilience today in real action?',
+            'What lesson from today could matter later in life or work?',
+            'What does today show about the way I handle real situations?',
         ],
     },
     productivity: {
         life: [
-            'What did I finish today, and what got in the way?',
-            'What is one small routine that would improve tomorrow?',
+            'What from today might become useful later?',
+            'What part of today would be worth turning into a reusable note?',
         ],
         career: [
-            'What did I get done today, and what is next?',
-            'What priority got done today, and what blocked progress?',
+            'What did I do today that could become evidence later?',
+            'What project, task, or result from today is worth saving for future use?',
         ],
         both: [
-            'What went well today, and what can I do better tomorrow?',
-            'Which action today had the highest impact across life and career?',
+            'What from today could be useful again in another context?',
+            'Which moment today could turn into a story, lesson, or proof point later?',
         ],
     },
 };
@@ -664,18 +665,18 @@ function OnboardingPageContent() {
 
                             <div className="workspace-soft-panel rounded-2xl p-4">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                    <div>
-                                        <div className="type-card-title text-strong">More details</div>
-                                        <p className="type-micro mt-1 text-default">
-                                            Add more now, or let Notive learn as you go and update it later in your profile.
-                                        </p>
-                                    </div>
+                                        <div>
+                                            <div className="type-card-title text-strong">Optional profile details</div>
+                                            <p className="type-micro mt-1 text-default">
+                                            Add a little more now, or let Notive learn as you write and update this later in settings.
+                                            </p>
+                                        </div>
                                     <button
                                         type="button"
                                         onClick={() => setShowOptionalProfile((current) => !current)}
                                         className="workspace-button-outline type-label-sm rounded-xl px-3 py-2"
                                     >
-                                        {showOptionalProfile ? 'Hide' : 'Add More'}
+                                        {showOptionalProfile ? 'Hide optional details' : 'Add optional details'}
                                     </button>
                                 </div>
 
@@ -722,27 +723,53 @@ function OnboardingPageContent() {
                                             </div>
                                         </div>
 
-                                        <div>
-                                            <p className="type-body-sm mb-3 text-default">What do you want to use these notes for later?</p>
-                                            <div className="flex flex-wrap gap-2">
-                                                {OUTPUT_GOALS.map((item) => (
-                                                    <button
-                                                        key={item.id}
-                                                        type="button"
-                                                        onClick={() => toggleOutputGoal(item.id)}
-                                                        className={`type-label-md rounded-xl border px-3 py-2 ${
-                                                            selectedOutputGoals.includes(item.id)
-                                                                ? 'border-primary/40 bg-primary/15 text-strong'
-                                                                : 'workspace-button-outline text-soft'
-                                                        }`}
-                                                    >
-                                                        {item.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
                                     </div>
                                 )}
+
+                                {/* Output goals — always visible */}
+                                <div className="mt-5">
+                                    <p className="type-body-sm mb-3 text-default">What do you want to use these notes for later?</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {OUTPUT_GOALS.map((item) => (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                onClick={() => toggleOutputGoal(item.id)}
+                                                className={`type-label-md rounded-xl border px-3 py-2 ${
+                                                    selectedOutputGoals.includes(item.id)
+                                                        ? 'border-primary/40 bg-primary/15 text-strong'
+                                                        : 'workspace-button-outline text-soft'
+                                                }`}
+                                            >
+                                                {item.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Portfolio preview — shown when career goals selected */}
+                                    {selectedOutputGoals.some(g =>
+                                        ['resume-stories', 'interview-examples', 'college-statement', 'portfolio'].includes(g)
+                                    ) && (
+                                        <div className="mt-4 rounded-2xl border border-[rgba(var(--paper-border),0.5)] bg-[rgba(var(--paper-border),0.08)] p-4">
+                                            <p className="type-overline text-muted mb-3">What your notes become</p>
+                                            <div className="rounded-xl bg-white/60 p-3 mb-2">
+                                                <p className="text-xs text-muted mb-1">Resume bullet &middot; extracted from a note about your internship</p>
+                                                <p className="text-sm text-strong font-medium" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                                                    &ldquo;Coordinated cross-team communication during product launch, reducing missed handoffs by identifying recurring blockers across 3 weekly standups.&rdquo;
+                                                </p>
+                                            </div>
+                                            <div className="rounded-xl bg-white/60 p-3">
+                                                <p className="text-xs text-muted mb-1">Interview story &middot; Situation + Action extracted</p>
+                                                <p className="text-sm text-strong font-medium" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                                                    &ldquo;When our timeline shifted, I took the lead on re-scoping the deliverables...&rdquo;
+                                                </p>
+                                            </div>
+                                            <p className="mt-3 text-xs text-muted">
+                                                Notive extracts this from what you write &mdash; no extra steps.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </motion.div>
                     )}
@@ -786,7 +813,7 @@ function OnboardingPageContent() {
                             </button>
 
                             <div className="workspace-soft-panel type-micro mt-6 rounded-xl p-4 text-default">
-                                You can bring in old memories later in Me after your first note is saved.
+                                You can bring in old posts, files, and memories later in Me after your first note is saved.
                             </div>
 
                             <div className="workspace-soft-panel type-micro mt-3 rounded-xl p-4 text-default space-y-1.5">
@@ -798,10 +825,10 @@ function OnboardingPageContent() {
                             </div>
 
                             <div className="workspace-soft-panel type-micro mt-3 rounded-xl p-4 text-default space-y-1.5">
-                                <p className="font-semibold text-xs">Notive learns your patterns as you write</p>
+                                <p className="font-semibold text-xs">Notive builds useful context as you write</p>
                                 <p className="text-xs opacity-80">
-                                    Vocabulary, emotional range, life balance, and growth language
-                                    are tracked privately — just pattern detection from your words.
+                                    Notive privately tracks themes, lessons, vocabulary, and story signals
+                                    so your diary becomes more useful over time.
                                 </p>
                                 <p className="text-xs opacity-60">
                                     You can connect Spotify and health data later in Me → Privacy &amp; Data.
@@ -822,7 +849,7 @@ function OnboardingPageContent() {
                                 Give Notive the best start on your device.
                             </p>
                             <p className="type-body-sm mb-6 text-soft">
-                                These permissions are optional. Enable what feels useful — you can change them anytime in settings.
+                                These permissions are optional. Turn on what helps you capture memories more easily. You can change them anytime in settings.
                             </p>
 
                             <div className="space-y-3">
@@ -889,8 +916,8 @@ function OnboardingPageContent() {
                             <div className="workspace-soft-panel type-micro mt-6 rounded-xl p-4 text-default space-y-1.5">
                                 <p className="font-semibold text-xs">Why these permissions?</p>
                                 <p className="text-xs opacity-80">
-                                    Notifications remind you to write. Voice lets you speak instead of type.
-                                    Location quietly tags where you were when you wrote something meaningful.
+                                    Notifications help you come back. Voice lets you speak instead of type.
+                                    Location can tag where a memory happened when that context matters.
                                 </p>
                                 <p className="text-xs opacity-60">
                                     Nothing is shared. You stay in control in Me → Privacy &amp; Data.

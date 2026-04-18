@@ -41,6 +41,9 @@ const NOTIFICATION_CATEGORY_BY_TYPE: Record<string, NotificationCategory> = {
     insight: 'insights',
     insights: 'insights',
     insight_ready: 'insights',
+    portfolio_evidence: 'insights',
+    weekly_digest: 'insights',
+    re_engagement: 'reminders',
 };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>

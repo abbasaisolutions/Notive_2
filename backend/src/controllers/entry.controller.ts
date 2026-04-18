@@ -12,6 +12,13 @@ import { sanitizeHtml } from '../utils/html';
 import { buildEntryStorySignal, deriveExperienceEvidence, OpportunityEntry } from '../services/opportunity.service';
 import studentActionService from '../services/student-action.service';
 import guidedReflectionService from '../services/guided-reflection.service';
+import { PushNotificationService } from '../services/push-notification.service';
+import {
+    shouldCreateNotificationForType,
+    shouldSendPushForType,
+} from '../services/notification-preferences.service';
+
+const pushService = new PushNotificationService(prisma);
 import {
     buildEntryListWhere,
     filterEntriesByTemporalContext,
@@ -614,7 +621,7 @@ export const createEntry = async (req: Request, res: Response) => {
             createdAt: entry.createdAt,
             analysis: entry.analysis,
         });
-        const { mergedAnalysis } = await studentActionService.persistEntrySignals({
+        const { mergedAnalysis, response: studentActionResponse } = await studentActionService.persistEntrySignals({
             entryId: entry.id,
             userId,
             title: entry.title,
@@ -642,7 +649,72 @@ export const createEntry = async (req: Request, res: Response) => {
         // Fire-and-forget: generate Notive Noticed insights in the background
         guidedReflectionService.generateNotiveInsights(entry.id, userId).catch(() => {});
 
+        // Fire-and-forget: notify when career evidence is extracted
+        setImmediate(async () => {
+            try {
+                const opportunityEntry: OpportunityEntry = {
+                    id: entry.id,
+                    title: entry.title,
+                    content: entry.content,
+                    reflection: entry.reflection,
+                    mood: entry.mood,
+                    tags: entry.tags as string[],
+                    skills: entry.skills as string[],
+                    lessons: entry.lessons as string[],
+                    createdAt: entry.createdAt,
+                    analysis: mergedAnalysis,
+                };
+                const evidence = deriveExperienceEvidence(opportunityEntry);
+                if (evidence.completeness.score < 60) return;
+
+                const userProfile = await prisma.userProfile.findUnique({
+                    where: { userId },
+                    select: { personalizationSignals: true },
+                });
+                const signals = userProfile?.personalizationSignals ?? null;
+                if (!shouldCreateNotificationForType(signals, 'portfolio_evidence')) return;
+
+                const titleSnippet = entry.title
+                    || entry.content.replace(/<[^>]*>/g, '').slice(0, 40).trim()
+                    || 'your latest entry';
+
+                const notification = await prisma.inAppNotification.create({
+                    data: {
+                        userId,
+                        type: 'portfolio_evidence',
+                        title: 'New story found in your writing',
+                        body: `Notive extracted a story from "${titleSnippet}".`,
+                        data: {
+                            entryId: entry.id,
+                            link: `/portfolio?highlight=${entry.id}`,
+                        },
+                    },
+                    select: { id: true },
+                });
+
+                if (shouldSendPushForType(signals, 'portfolio_evidence')) {
+                    await pushService.sendPushNotification(userId, {
+                        title: 'New story found in your writing',
+                        body: `Notive extracted a story from "${titleSnippet}".`,
+                        data: {
+                            type: 'portfolio_evidence',
+                            entryId: entry.id,
+                            link: `/portfolio?highlight=${entry.id}`,
+                            notificationId: notification.id,
+                        },
+                    }).catch(() => null);
+                }
+            } catch { /* non-critical */ }
+        });
+
         const wordCount = content.trim().split(/\s+/).length;
+
+        const safetySurface = studentActionResponse.risk.level !== 'none'
+            ? {
+                risk: studentActionResponse.risk,
+                safetyCard: studentActionResponse.safetyCard,
+            }
+            : null;
 
         return res.status(201).json({
             entry: attachEntryStorySignal(responseEntry),
@@ -650,6 +722,7 @@ export const createEntry = async (req: Request, res: Response) => {
                 .map(t => t.name)
                 .filter(tag => !providedTagKeys.has(tag.toLowerCase())),
             suggestions: nlpFallback?.suggestions || null,
+            ...(safetySurface ? { safety: safetySurface } : {}),
             ...(wordCount < MIN_WORDS_FOR_ENTRY_INSIGHTS ? { insufficientContent: true } : {}),
         });
     } catch (error) {

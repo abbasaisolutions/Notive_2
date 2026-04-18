@@ -97,6 +97,7 @@ export default function NotificationsPage() {
     const [markingAll, setMarkingAll] = useState(false);
     const [activeNotificationId, setActiveNotificationId] = useState<string | null>(null);
     const [savingPreferences, setSavingPreferences] = useState(false);
+    const [activePanel, setActivePanel] = useState<'inbox' | 'settings'>('inbox');
     const [preferences, setPreferences] = useState<ResolvedNotificationPreferences>(() => extractNotificationPreferences(null));
 
     useEffect(() => {
@@ -223,8 +224,38 @@ export default function NotificationsPage() {
                     </div>
                 </section>
 
-                <section className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
-                    <div className="workspace-panel rounded-[2rem] p-6">
+                <section className="workspace-panel rounded-[2rem] p-4 md:p-5">
+                    <div className="flex flex-wrap gap-2" role="tablist" aria-label="Notifications sections">
+                        {([
+                            ['inbox', 'Inbox'],
+                            ['settings', 'Settings'],
+                        ] as const).map(([id, label]) => {
+                            const isActive = activePanel === id;
+                            return (
+                                <button
+                                    key={id}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={isActive}
+                                    onClick={() => setActivePanel(id)}
+                                    className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                                        isActive ? 'bg-[rgb(107,143,113)] text-white' : 'workspace-pill'
+                                    }`}
+                                >
+                                    {label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <p className="mt-3 text-sm text-ink-secondary">
+                        {activePanel === 'inbox'
+                            ? 'Review what landed first, then open settings only when you want less noise.'
+                            : 'Control what can interrupt you and when it should stay quiet.'}
+                    </p>
+                </section>
+
+                {activePanel === 'inbox' ? (
+                    <section className="workspace-panel rounded-[2rem] p-6">
                         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                             <div className="flex gap-2">
                                 {(['all', 'unread'] as NotificationFilter[]).map((option) => (
@@ -272,14 +303,17 @@ export default function NotificationsPage() {
                                 </button>
                             </div>
                         )}
-                    </div>
-
-                    <div className="space-y-6">
+                    </section>
+                ) : (
+                    <section className="space-y-6">
                         <section className="workspace-panel rounded-[2rem] p-6">
                             <div className="flex items-start justify-between gap-4">
                                 <div>
                                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-ink-muted">Settings</p>
-                                    <h2 className="workspace-heading mt-2 text-2xl font-serif">Notification types</h2>
+                                    <h2 className="workspace-heading mt-2 text-2xl font-serif">Notification settings</h2>
+                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">
+                                        Choose which updates can reach you before you tune quiet hours.
+                                    </p>
                                 </div>
                                 <div className="text-xs text-ink-secondary">{savingPreferences ? 'Saving…' : 'Saved automatically'}</div>
                             </div>
@@ -305,7 +339,7 @@ export default function NotificationsPage() {
                                 <FiMoon className="mt-1 text-ink-muted" />
                                 <div>
                                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-ink-muted">Quiet Hours</p>
-                                    <h2 className="workspace-heading mt-2 text-2xl font-serif">Hold push overnight</h2>
+                                    <h2 className="workspace-heading mt-2 text-2xl font-serif">Quiet hours</h2>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">Quiet hours suppress push banners, but keep the in-app notification here.</p>
                                 </div>
                             </div>
@@ -330,8 +364,8 @@ export default function NotificationsPage() {
                                 <Link href="/profile" className="workspace-soft-panel flex items-center justify-between rounded-[1.3rem] px-4 py-3 transition-colors hover:opacity-90"><span className="text-sm font-semibold">Device permissions</span><FiCheck size={16} /></Link>
                             </div>
                         </section>
-                    </div>
-                </section>
+                    </section>
+                )}
             </div>
         </div>
     );

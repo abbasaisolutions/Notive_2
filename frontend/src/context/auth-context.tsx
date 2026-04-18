@@ -58,6 +58,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const REFRESH_TOKEN_KEY = 'notive_refresh_token';
 const REFRESH_RETRY_DELAY_MS = 30000;
+const REFRESH_SERVER_RETRY_DELAY_MS = 10000;
 
 const friendlyAuthMessage = (message: unknown, fallback: string) => {
     const normalized = typeof message === 'string' ? message.trim() : '';
@@ -147,31 +148,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 body = JSON.stringify({ refreshToken: storedRefreshToken });
             }
 
-            const response = await fetch(resolveApiRequestUrl('/auth/refresh'), {
-                method: 'POST',
-                credentials: 'include', // Include cookies (web)
-                headers,
-                body,
-            });
+            try {
+                const response = await fetch(resolveApiRequestUrl('/auth/refresh'), {
+                    method: 'POST',
+                    credentials: 'include', // Include cookies (web)
+                    headers,
+                    body,
+                });
 
-            if (!response.ok) {
-                if (response.status === 401) {
-                    refreshBlockedUntilRef.current = Date.now() + REFRESH_RETRY_DELAY_MS;
-                    if (isNative) {
+                if (!response.ok) {
+                    refreshBlockedUntilRef.current = Date.now() + (
+                        response.status === 401
+                            ? REFRESH_RETRY_DELAY_MS
+                            : REFRESH_SERVER_RETRY_DELAY_MS
+                    );
+
+                    if (response.status === 401 && isNative) {
                         await secureStorage.remove(REFRESH_TOKEN_KEY);
                     }
+
+                    return null;
                 }
+
+                const data = await readResponseJson<Partial<SessionPayload>>(response);
+                if (typeof data?.accessToken !== 'string' || !data.user) {
+                    refreshBlockedUntilRef.current = Date.now() + REFRESH_SERVER_RETRY_DELAY_MS;
+                    return null;
+                }
+
+                await applySessionPayload(data as SessionPayload);
+
+                return data.accessToken as string;
+            } catch (error) {
+                refreshBlockedUntilRef.current = Date.now() + REFRESH_SERVER_RETRY_DELAY_MS;
+                logger.error('Session refresh request failed', error);
                 return null;
             }
-
-            const data = await readResponseJson<Partial<SessionPayload>>(response);
-            if (typeof data?.accessToken !== 'string' || !data.user) {
-                return null;
-            }
-
-            await applySessionPayload(data as SessionPayload);
-
-            return data.accessToken as string;
         })();
 
         refreshInFlightRef.current = refreshPromise;

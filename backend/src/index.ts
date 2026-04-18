@@ -109,9 +109,23 @@ const bootstrap = async () => {
                     .catch(() => {});
             };
 
+            const runWeeklyJobs = () => {
+                const weeklyKey = `scheduler:weekly:${new Date().toISOString().slice(0, 16)}`;
+                void tryAcquireDistributedLock(weeklyKey, 300)
+                    .then((acquired) => {
+                        if (!acquired) return;
+                        return Promise.all([
+                            reminderService.dispatchWeeklyDigests().catch(() => null),
+                            reminderService.dispatchReEngagementEmails().catch(() => null),
+                        ]);
+                    })
+                    .catch(() => {});
+            };
+
             runReminderDispatch();
             runInactiveTokenCleanup();
             setInterval(runReminderDispatch, 60_000);
+            setInterval(runWeeklyJobs, 60_000);
             setInterval(runInactiveTokenCleanup, 6 * 60 * 60 * 1000);
         });
 

@@ -22,7 +22,7 @@ import useTelemetry from '@/hooks/use-telemetry';
 import { useToast } from '@/context/toast-context';
 import { NOTIFICATION_BADGE_REFRESH_EVENT, refreshNotificationBadge } from '@/hooks/use-notification-count';
 import { getMoodEmoji } from '@/constants/moods';
-import { FiArrowLeft, FiChevronDown, FiSearch, FiSliders } from 'react-icons/fi';
+import { FiArrowLeft, FiChevronDown, FiMapPin, FiSearch, FiSliders } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo, buildSearchString } from '@/utils/navigation';
 import {
     buildSeasonAnchorMap,
@@ -1030,6 +1030,7 @@ function TimelinePageContent() {
     const [pendingRestore, setPendingRestore] = useState<TimelineContextSnapshot | null>(null);
     const [recentFilterPresets, setRecentFilterPresets] = useState<TimelineFilterPreset[]>([]);
     const [isFilterStudioOpen, setIsFilterStudioOpen] = useState(false);
+    const [isQuickJumpOpen, setIsQuickJumpOpen] = useState(false);
     const [isControlDeckOpen, setIsControlDeckOpen] = useState<boolean>(() => {
         const hasSource = normalizeSourceFilter(searchParams.get('source')) !== 'all';
         return Boolean(
@@ -1820,8 +1821,10 @@ function TimelinePageContent() {
 
     const collapsedFilterChips = isFilterStudioOpen ? activeFilterChips : activeFilterChips.slice(0, 3);
     const hiddenFilterChipCount = Math.max(0, activeFilterChips.length - collapsedFilterChips.length);
-    const openControlDeck = useCallback((options?: { focusSearch?: boolean; source?: 'search' | 'tools' }) => {
+    const openControlDeck = useCallback((options?: { focusSearch?: boolean; source?: 'search' | 'tools' | 'jump'; panel?: 'search' | 'filters' | 'jump' }) => {
         setIsControlDeckOpen(true);
+        setIsFilterStudioOpen(options?.panel === 'filters');
+        setIsQuickJumpOpen(options?.panel === 'jump');
         void trackEvent({
             eventType: 'timeline_controls_opened',
             value: options?.source || 'tools',
@@ -1841,19 +1844,14 @@ function TimelinePageContent() {
     const closeControlDeck = useCallback(() => {
         setIsControlDeckOpen(false);
         setIsFilterStudioOpen(false);
+        setIsQuickJumpOpen(false);
     }, []);
     const openFilterStudio = useCallback(() => {
-        setIsControlDeckOpen(true);
-        setIsFilterStudioOpen(true);
-        void trackEvent({
-            eventType: 'timeline_controls_opened',
-            value: 'filters',
-            metadata: {
-                hasActiveFilters: hasTimelineFilters,
-                surface,
-            },
-        });
-    }, [hasTimelineFilters, surface, trackEvent]);
+        openControlDeck({ source: 'tools', panel: 'filters' });
+    }, [openControlDeck]);
+    const openQuickJumpDeck = useCallback(() => {
+        openControlDeck({ source: 'jump', panel: 'jump' });
+    }, [openControlDeck]);
 
     const applyRecentPreset = (preset: TimelineFilterPreset) => {
         applyTimelineFilters({
@@ -2279,9 +2277,9 @@ function TimelinePageContent() {
     const timelineSearchLead = timelineStats.hasActiveFilters ? 'Refine this memory slice' : 'Find memories fast';
     const timelineSearchHint = timelineStats.hasActiveFilters
         ? activeFilterSummary
-        : 'Start with search. Filters, map view, and jumps stay tucked away until you want them.';
+        : 'Start with search. Filters, map view, and jump shortcuts stay tucked away until you want them.';
     const quickJumpDescription = activeQuickJumpMode === 'chapters'
-        ? 'Jump straight into the strongest season instead of scanning the full timeline.'
+        ? 'Jump straight into the strongest group or season instead of scanning the full timeline.'
         : activeQuickJumpMode === 'recent'
             ? 'Bring back a search pattern you just used without rebuilding it.'
             : activeQuickJumpMode === 'dates'
@@ -2346,7 +2344,7 @@ function TimelinePageContent() {
                                     type="button"
                                     onClick={() => {
                                         scrollToTop();
-                                        openControlDeck({ focusSearch: true, source: 'search' });
+                                        openControlDeck({ focusSearch: true, source: 'search', panel: 'search' });
                                     }}
                                     className="workspace-button-outline rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em]"
                                 >
@@ -2388,7 +2386,7 @@ function TimelinePageContent() {
                             <div className="flex items-center gap-2">
                                 <button
                                     type="button"
-                                    onClick={() => openControlDeck({ focusSearch: true, source: 'search' })}
+                                    onClick={() => openControlDeck({ focusSearch: true, source: 'search', panel: 'search' })}
                                     className="workspace-muted-panel inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition hover:opacity-85"
                                     aria-label="Search memories"
                                 >
@@ -2428,13 +2426,23 @@ function TimelinePageContent() {
                                         className="workspace-pill inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85"
                                     >
                                         <FiSliders size={12} aria-hidden="true" />
-                                        Filters
+                                        More filters
                                         {activeFilterChips.length > 0 && (
                                             <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[0.6rem] text-primary">
                                                 {activeFilterChips.length}
                                             </span>
                                         )}
                                     </button>
+                                    {activeQuickJumpMode && (
+                                        <button
+                                            type="button"
+                                            onClick={openQuickJumpDeck}
+                                            className="workspace-pill inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85"
+                                        >
+                                            <FiMapPin size={12} aria-hidden="true" />
+                                            Jump to
+                                        </button>
+                                    )}
                                     {surface !== 'timeline' && (
                                         <button
                                             type="button"
@@ -2479,9 +2487,10 @@ function TimelinePageContent() {
                                         type="button"
                                         onClick={() => {
                                             if (isFilterStudioOpen) {
-                                                closeControlDeck();
+                                                setIsFilterStudioOpen(false);
                                             } else {
                                                 setIsFilterStudioOpen(true);
+                                                setIsQuickJumpOpen(false);
                                             }
                                         }}
                                         aria-expanded={isFilterStudioOpen}
@@ -2501,12 +2510,36 @@ function TimelinePageContent() {
                                             className={`transition-transform ${isFilterStudioOpen ? 'rotate-180' : ''}`}
                                         />
                                     </button>
+                                    {activeQuickJumpMode && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (isQuickJumpOpen) {
+                                                    setIsQuickJumpOpen(false);
+                                                } else {
+                                                    setIsQuickJumpOpen(true);
+                                                    setIsFilterStudioOpen(false);
+                                                }
+                                            }}
+                                            aria-expanded={isQuickJumpOpen}
+                                            aria-controls="timeline-quick-jump"
+                                            className="workspace-pill inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.1em] transition hover:opacity-85"
+                                        >
+                                            <FiMapPin size={13} aria-hidden="true" />
+                                            Jump to
+                                            <FiChevronDown
+                                                size={13}
+                                                aria-hidden="true"
+                                                className={`transition-transform ${isQuickJumpOpen ? 'rotate-180' : ''}`}
+                                            />
+                                        </button>
+                                    )}
                                     <button
                                         type="button"
                                         onClick={closeControlDeck}
                                         className="workspace-button-outline flex-shrink-0 rounded-full px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.1em]"
                                     >
-                                        Close
+                                        Done
                                     </button>
                                 </div>
 
@@ -2527,7 +2560,7 @@ function TimelinePageContent() {
                                         {!isFilterStudioOpen && hiddenFilterChipCount > 0 && (
                                             <button
                                                 type="button"
-                                                onClick={() => setIsFilterStudioOpen(true)}
+                                                onClick={openFilterStudio}
                                                 className="workspace-button-outline rounded-full border-dashed px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.08em]"
                                             >
                                                 +{hiddenFilterChipCount} more
@@ -2644,8 +2677,8 @@ function TimelinePageContent() {
                         )}
                     </div>
 
-                    {isFilterStudioOpen && activeQuickJumpMode && (
-                        <div className="workspace-soft-panel mt-2 rounded-[1.2rem] p-3">
+                    {isQuickJumpOpen && activeQuickJumpMode && (
+                        <div id="timeline-quick-jump" className="workspace-soft-panel mt-2 rounded-[1.2rem] p-3">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                                 <div>
                                     <span className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-muted">
@@ -2664,7 +2697,7 @@ function TimelinePageContent() {
                                     >
                                         {availableQuickJumpModes.map((mode) => (
                                             <option key={mode} value={mode} className="bg-surface-1">
-                                                {mode === 'chapters' ? 'Chapters' : mode === 'recent' ? 'Recent searches' : 'Dates'}
+                                                {mode === 'chapters' ? 'Groups' : mode === 'recent' ? 'Recent searches' : 'Dates'}
                                             </option>
                                         ))}
                                     </select>
@@ -2695,7 +2728,7 @@ function TimelinePageContent() {
 
                                     {activeQuickJumpMode === 'chapters' && lifeSeasonCards.length > 0 && (
                                         <label className="mt-3 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.1em] text-ink-muted">
-                                            Chapter
+                                            Group
                                             <select
                                                 value={lifeSeasonCards.some((season) => season.anchorMonthKey === activeMonth?.key) ? activeMonth?.key || '' : ''}
                                                 onChange={(event) => {
@@ -2705,7 +2738,7 @@ function TimelinePageContent() {
                                                 }}
                                                 className="workspace-input rounded-full px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/35"
                                             >
-                                                <option value="" disabled className="bg-surface-1">Choose a chapter</option>
+                                                <option value="" disabled className="bg-surface-1">Choose a group</option>
                                                 {lifeSeasonCards.map((season) => (
                                                     <option key={season.id} value={season.anchorMonthKey} className="bg-surface-1">
                                                         {season.title} ({season.entryCount})

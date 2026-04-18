@@ -101,8 +101,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
     const [modalOpen, setModalOpen] = useState(false);
     const [modalProvider, setModalProvider] = useState<ProviderKey>('instagram');
     const [providerSetupIssues, setProviderSetupIssues] = useState<Partial<Record<ProviderKey, string>>>({});
-    const [showWorkflowDetails, setShowWorkflowDetails] = useState(false);
-    const [showArchiveImport, setShowArchiveImport] = useState(false);
+    const [showAdvancedImportTools, setShowAdvancedImportTools] = useState(false);
     const [switchConfirmProvider, setSwitchConfirmProvider] = useState<ProviderKey | null>(null);
 
     const clearImportQueryParams = useCallback(() => {
@@ -395,6 +394,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
         }
         return 'Start by connecting Instagram or Facebook so outside memories can move into Notive.';
     }, [connectedCount, hasAnyConnected, status?.total]);
+    const advancedImportToolsLabel = showAdvancedImportTools ? 'Hide import tools' : 'More import tools';
     const timelineHref = useMemo(() => {
         const source = importResult?.source?.toLowerCase();
         if (source === 'instagram' || source === 'facebook') {
@@ -485,11 +485,12 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                     <div className="flex flex-wrap items-center gap-2">
                         <button
                             type="button"
-                            onClick={() => setShowWorkflowDetails((current) => !current)}
+                            onClick={() => setShowAdvancedImportTools((current) => !current)}
                             className="workspace-button-outline rounded-lg px-3 py-2 text-xs"
-                            aria-expanded={showWorkflowDetails}
+                            aria-expanded={showAdvancedImportTools}
+                            aria-controls="import-advanced-tools"
                         >
-                            {showWorkflowDetails ? 'Hide details' : 'Show details'}
+                            {advancedImportToolsLabel}
                         </button>
                         <button
                             onClick={() => {
@@ -545,8 +546,8 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                         </div>
                     </div>
 
-                    {showWorkflowDetails && (
-                        <>
+                    {showAdvancedImportTools && (
+                        <div id="import-advanced-tools" className="space-y-5">
                             {status && (
                                 <section>
                                     <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">Current totals</p>
@@ -572,7 +573,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                             )}
 
                             <div className="workspace-soft-panel rounded-2xl p-4">
-                                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">Step 2: Field mapping</p>
+                                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">How importing works</p>
                                 <p className="text-xs leading-relaxed text-ink-secondary">
                                     Imported posts map to entry fields as follows:
                                     <span className="workspace-heading"> title</span> from caption or message,
@@ -584,7 +585,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                             </div>
 
                             <div className="workspace-soft-panel rounded-2xl p-4">
-                                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">Step 3: Review in {NOTIVE_VOICE.surfaces.memoryAtlas}</p>
+                                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-muted">Review in {NOTIVE_VOICE.surfaces.memoryAtlas}</p>
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className="text-xs text-ink-secondary">
                                         After import, open {NOTIVE_VOICE.surfaces.memoryAtlas.toLowerCase()} and filter or search imported memories.
@@ -594,49 +595,40 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                                     </Link>
                                 </div>
                             </div>
-                        </>
-                    )}
-                </section>
 
-                <section className="workspace-soft-panel mt-5 rounded-2xl p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Archive import</p>
-                            <p className="mt-1 text-sm text-ink-secondary">Upload a ZIP or JSON export only if direct connection is not the easiest route.</p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setShowArchiveImport((current) => !current)}
-                            className="workspace-button-outline rounded-lg px-3 py-2 text-xs"
-                            aria-expanded={showArchiveImport}
-                        >
-                            {showArchiveImport ? 'Hide upload tools' : 'Show upload tools'}
-                        </button>
-                    </div>
-                    {showArchiveImport && (
-                        <div className="mt-4">
-                            {archiveError && <p className="mb-2 text-xs text-ink-secondary">{archiveError}</p>}
-                            <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-2">
-                                <label className="workspace-button-outline cursor-pointer rounded-xl px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.08em]">
-                                    {isArchiveImporting ? 'Importing...' : 'Instagram ZIP/JSON'}
-                                    <input
-                                        type="file"
-                                        accept=".zip,.json,application/zip,application/json"
-                                        onChange={onArchiveFileChange('instagram')}
-                                        disabled={isArchiveImporting}
-                                        className="hidden"
-                                    />
-                                </label>
-                                <label className="workspace-button-outline cursor-pointer rounded-xl px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.08em]">
-                                    {isArchiveImporting ? 'Importing...' : 'Facebook ZIP/JSON'}
-                                    <input
-                                        type="file"
-                                        accept=".zip,.json,application/zip,application/json"
-                                        onChange={onArchiveFileChange('facebook')}
-                                        disabled={isArchiveImporting}
-                                        className="hidden"
-                                    />
-                                </label>
+                            <div className="workspace-soft-panel rounded-2xl p-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Archive files</p>
+                                        <p className="mt-1 text-sm text-ink-secondary">Upload a ZIP or JSON export only if direct connection is not the easiest route.</p>
+                                    </div>
+                                    <span className="workspace-pill-muted rounded-full px-3 py-1 text-xs text-[rgb(var(--text-primary))]">Optional path</span>
+                                </div>
+                                <div className="mt-4">
+                                    {archiveError && <p className="mb-2 text-xs text-ink-secondary">{archiveError}</p>}
+                                    <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-2">
+                                        <label className="workspace-button-outline cursor-pointer rounded-xl px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.08em]">
+                                            {isArchiveImporting ? 'Importing...' : 'Instagram ZIP/JSON'}
+                                            <input
+                                                type="file"
+                                                accept=".zip,.json,application/zip,application/json"
+                                                onChange={onArchiveFileChange('instagram')}
+                                                disabled={isArchiveImporting}
+                                                className="hidden"
+                                            />
+                                        </label>
+                                        <label className="workspace-button-outline cursor-pointer rounded-xl px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.08em]">
+                                            {isArchiveImporting ? 'Importing...' : 'Facebook ZIP/JSON'}
+                                            <input
+                                                type="file"
+                                                accept=".zip,.json,application/zip,application/json"
+                                                onChange={onArchiveFileChange('facebook')}
+                                                disabled={isArchiveImporting}
+                                                className="hidden"
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}

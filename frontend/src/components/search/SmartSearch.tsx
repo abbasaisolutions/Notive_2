@@ -9,7 +9,8 @@ import { useAuth } from '@/context/auth-context';
 import { API_URL, DEBOUNCE_DELAY } from '@/constants/config';
 import { getMoodEmoji } from '@/constants/moods';
 import useApi from '@/hooks/use-api';
-import { FiSearch, FiX, FiXCircle } from 'react-icons/fi';
+import { useToast } from '@/context/toast-context';
+import { FiAlertTriangle, FiSearch, FiX, FiXCircle } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
 
 interface SearchResult {
@@ -29,15 +30,18 @@ interface SearchResult {
 export function SmartSearch() {
     const { accessToken } = useAuth();
     const { apiFetch } = useApi();
+    const toast = useToast();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);
+    const [searchError, setSearchError] = useState(false);
 
     const performSearch = useCallback(async (searchQuery: string) => {
         if (!accessToken || !searchQuery.trim()) return;
 
         setIsSearching(true);
+        setSearchError(false);
         try {
             const response = await apiFetch(`${API_URL}/entries/search?q=${encodeURIComponent(searchQuery)}`);
 
@@ -45,19 +49,26 @@ export function SmartSearch() {
                 const data = await response.json();
                 setResults(data.results || []);
                 setShowResults(true);
+            } else {
+                setSearchError(true);
+                setShowResults(true);
+                toast.error('Search failed. Please try again.');
             }
-        } catch (error) {
-            console.error('Search failed:', error);
+        } catch {
+            setSearchError(true);
+            setShowResults(true);
+            toast.error('Search failed. Check your connection and try again.');
         } finally {
             setIsSearching(false);
         }
-    }, [accessToken, apiFetch]);
+    }, [accessToken, apiFetch, toast]);
 
     // Debounced search
     useEffect(() => {
         if (!query.trim()) {
             setResults([]);
             setShowResults(false);
+            setSearchError(false);
             return;
         }
 
@@ -251,8 +262,21 @@ export function SmartSearch() {
                 </div>
             )}
 
+            {/* Search Error */}
+            {showResults && searchError && !isSearching && (
+                <div className="absolute top-full mt-2 w-full workspace-panel rounded-2xl p-8 z-50 text-center">
+                    <div className="mb-3 inline-flex items-center justify-center rounded-full bg-red-500/10 p-3 text-red-500">
+                        <FiAlertTriangle size={24} aria-hidden="true" />
+                    </div>
+                    <h4 className="workspace-heading font-bold mb-2">Search unavailable</h4>
+                    <p className="text-ink-secondary text-sm">
+                        Something went wrong. Try again in a moment.
+                    </p>
+                </div>
+            )}
+
             {/* No Results */}
-            {showResults && query && !isSearching && results.length === 0 && (
+            {showResults && query && !isSearching && !searchError && results.length === 0 && (
                 <div className="absolute top-full mt-2 w-full workspace-panel rounded-2xl p-8 z-50 text-center">
                     <div className="mb-3 inline-flex items-center justify-center rounded-full bg-white/5 p-3 text-ink-secondary">
                         <FiSearch size={24} aria-hidden="true" />

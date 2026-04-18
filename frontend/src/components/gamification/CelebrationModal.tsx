@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useGamification } from '@/context/gamification-context';
 import { FiAward, FiTrendingUp } from 'react-icons/fi';
 
@@ -37,6 +37,43 @@ const Confetti = () => {
 
 export default function CelebrationModal() {
     const { showCelebration, celebrationType, newBadge, dismissCelebration, stats } = useGamification();
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const previousFocusRef = useRef<HTMLElement | null>(null);
+
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            dismissCelebration();
+            return;
+        }
+        if (e.key !== 'Tab' || !dialogRef.current) return;
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    }, [dismissCelebration]);
+
+    useEffect(() => {
+        if (!showCelebration) return;
+        previousFocusRef.current = document.activeElement as HTMLElement;
+        document.addEventListener('keydown', handleKeyDown);
+        const timer = setTimeout(() => {
+            dialogRef.current?.querySelector<HTMLElement>('button')?.focus();
+        }, 50);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            clearTimeout(timer);
+            previousFocusRef.current?.focus();
+        };
+    }, [showCelebration, handleKeyDown]);
 
     if (!showCelebration) return null;
 
@@ -46,9 +83,9 @@ export default function CelebrationModal() {
             <div
                 className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
                 onClick={dismissCelebration}
-                onKeyDown={(e) => { if (e.key === 'Escape') dismissCelebration(); }}
             >
                 <div
+                    ref={dialogRef}
                     role="dialog"
                     aria-modal="true"
                     aria-label="Celebration"

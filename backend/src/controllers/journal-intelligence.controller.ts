@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { buildJournalIntelligence } from '../services/journal-intelligence.service';
 import { buildDashboardInsights } from '../services/dashboard-insights.service';
 import { fetchInsightInputs } from '../services/insight-inputs.service';
+import { applySurfaceFeedback } from '../services/insight-surface-feedback.service';
 
 /**
  * GET /api/v1/analytics/journal-intelligence
@@ -51,7 +52,8 @@ export const getInsightsBundle = async (req: Request, res: Response) => {
         // keeps the same recency bias with a single query.
         const { entries, analyses } = await fetchInsightInputs(userId!, { take: 150 });
 
-        const dashboardInsights = buildDashboardInsights(entries, analyses);
+        const rawInsights = buildDashboardInsights(entries, analyses);
+        const dashboardInsights = await applySurfaceFeedback(userId!, rawInsights);
 
         const intelligence = entries.length >= 3
             ? buildJournalIntelligence(entries, analyses)

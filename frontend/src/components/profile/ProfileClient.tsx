@@ -10,7 +10,7 @@ import { usePushNotifications } from '@/context/push-notification-context';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { hasCompletedOnboardingRequirements } from '@/utils/onboarding';
 import { openNativeNotificationSettings } from '@/services/native-notification-settings.service';
-import { FiBell, FiDownload, FiEdit3, FiLogOut, FiMessageCircle, FiShield } from 'react-icons/fi';
+import { FiBell, FiDownload, FiEdit3, FiLogOut, FiMessageCircle, FiShield, FiTarget, FiUser } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
 import { SUPPORT_EMAIL } from '@/config/legal';
 import { passthroughImageLoader } from '@/lib/image-loader';
@@ -172,7 +172,7 @@ export default function ProfileClient() {
                             href="/profile"
                             className={`rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition-colors ${activeTab === 'about' ? 'border border-primary/25 bg-primary/15 text-[rgb(var(--text-primary))]' : 'text-ink-secondary hover:text-[rgb(var(--text-primary))]'}`}
                         >
-                            About Me
+                            Profile
                         </Link>
                         <Link
                             href="/profile?tab=privacy"
@@ -185,6 +185,58 @@ export default function ProfileClient() {
 
                 {activeTab === 'about' ? (
                     <>
+                        <section className="workspace-panel rounded-[2rem] p-6">
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <h2 className="workspace-heading text-lg font-semibold">Settings</h2>
+                                    <p className="mt-1 text-sm text-ink-secondary">
+                                        Jump straight to the section you want to change.
+                                    </p>
+                                </div>
+                                <Link href="/profile/edit" className="text-xs text-ink-muted transition-colors hover:text-[rgb(var(--text-primary))]">
+                                    Open all
+                                </Link>
+                            </div>
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                <Link href="/profile/edit?tab=profile" className="workspace-muted-panel flex items-start gap-4 rounded-2xl p-4 transition-colors hover:opacity-90">
+                                    <FiUser size={18} className="text-ink-muted mt-0.5 shrink-0" aria-hidden="true" />
+                                    <div>
+                                        <p className="workspace-heading text-sm font-semibold">Profile</p>
+                                        <p className="mt-1 text-sm leading-6 text-ink-secondary">
+                                            Photo, name, bio, and personal details.
+                                        </p>
+                                    </div>
+                                </Link>
+                                <Link href="/profile/edit?tab=preferences" className="workspace-muted-panel flex items-start gap-4 rounded-2xl p-4 transition-colors hover:opacity-90">
+                                    <FiTarget size={18} className="text-ink-muted mt-0.5 shrink-0" aria-hidden="true" />
+                                    <div>
+                                        <p className="workspace-heading text-sm font-semibold">Goals & Coach</p>
+                                        <p className="mt-1 text-sm leading-6 text-ink-secondary">
+                                            Goals, writing style, and how Notive guides you.
+                                        </p>
+                                    </div>
+                                </Link>
+                                <Link href="/profile/edit?tab=security" className="workspace-muted-panel flex items-start gap-4 rounded-2xl p-4 transition-colors hover:opacity-90">
+                                    <FiShield size={18} className="text-ink-muted mt-0.5 shrink-0" aria-hidden="true" />
+                                    <div>
+                                        <p className="workspace-heading text-sm font-semibold">Sign-in & Security</p>
+                                        <p className="mt-1 text-sm leading-6 text-ink-secondary">
+                                            Sign-in email, password, and account protection.
+                                        </p>
+                                    </div>
+                                </Link>
+                                <Link href="/profile/edit?tab=reminders" className="workspace-muted-panel flex items-start gap-4 rounded-2xl p-4 transition-colors hover:opacity-90">
+                                    <FiBell size={18} className="text-ink-muted mt-0.5 shrink-0" aria-hidden="true" />
+                                    <div>
+                                        <p className="workspace-heading text-sm font-semibold">Reminders</p>
+                                        <p className="mt-1 text-sm leading-6 text-ink-secondary">
+                                            Daily reflection timing and notification nudges.
+                                        </p>
+                                    </div>
+                                </Link>
+                            </div>
+                        </section>
+
                         {/* Bio + basics */}
                         <section className="workspace-panel rounded-[2rem] p-6">
                             <p className="text-sm leading-7 text-ink-secondary">
@@ -261,7 +313,7 @@ export default function ProfileClient() {
                     <>
                         {/* Privacy & Data tab */}
                         <section className="workspace-panel rounded-[2rem] p-6 space-y-3">
-                            <h2 className="workspace-heading text-lg font-semibold">Data & Privacy</h2>
+                            <h2 className="workspace-heading text-lg font-semibold">Privacy & Data</h2>
                             <div className="grid gap-3">
                                 <Link
                                     href="/profile/edit?tab=privacy"

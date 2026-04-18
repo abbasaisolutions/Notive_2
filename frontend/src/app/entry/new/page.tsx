@@ -30,11 +30,13 @@ import {
 } from '@/services/voice-transcription.service';
 import { appendReturnTo } from '@/utils/navigation';
 import { normalizeTag, isValidTag } from '@/utils/tags';
+import { normalizeMood } from '@/constants/moods';
 import { useToast } from '@/context/toast-context';
 import { usePushNotifications } from '@/context/push-notification-context';
 import { refreshNotificationBadge } from '@/hooks/use-notification-count';
 import { Spinner } from '@/components/ui';
 import FirstEntryHandoff from '@/components/entry/FirstEntryHandoff';
+import PostSaveSafetyDialog, { isSafetyAlertsEnabled } from '@/components/safety/PostSaveSafetyDialog';
 import { prepareImageForUpload } from '@/utils/image-upload';
 import {
     buildBrowserFallbackTranscription,
@@ -290,7 +292,21 @@ function NewEntryPageContent() {
     const [audioLevel, setAudioLevel] = useState(0);
     const [recordingElapsed, setRecordingElapsed] = useState(0);
     const [isBackgroundRefining, setIsBackgroundRefining] = useState(false);
-    const [mirrorSentence, setMirrorSentence] = useState<string | null>(null);
+    const [mirrorData, setMirrorData] = useState<{
+        people: string[];
+        topics: string[];
+        growthFlag: boolean;
+        phrase?: string;
+        mood?: string;
+        lesson?: string;
+        strengths?: string[];
+        goals?: string[];
+    } | null>(null);
+    const [safetyPrompt, setSafetyPrompt] = useState<{
+        risk: import('@/components/action/types').StudentRisk;
+        safetyCard: import('@/components/action/types').StudentSafetyCard | null;
+        onContinue: () => void;
+    } | null>(null);
     const [showFirstEntryHandoff, setShowFirstEntryHandoff] = useState(entrySource === 'onboarding');
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -749,6 +765,11 @@ function NewEntryPageContent() {
             if (audioParam) {
                 setAudioUrl(audioParam);
             }
+        }
+
+        const moodParam = normalizeMood(searchParams.get('mood'));
+        if (moodParam) {
+            setMoodOverride(moodParam);
         }
     }, [user, searchParams, loadDraft, clearDraft, gentleReflectionTags, setExtractedData, setAiInsights]);
 
@@ -1371,33 +1392,82 @@ function NewEntryPageContent() {
                     pushAskedRef.current = true;
                     void requestPushPermission();
                 }
+                const safetyFromSave = data?.safety && data.safety.risk && data.safety.risk.level !== 'none'
+                    ? data.safety
+                    : null;
+                const shouldShowSafetyPrompt = !!safetyFromSave && !entryId && isSafetyAlertsEnabled();
+
                 if (!entryId && isGentleReflectionEntry && data.entry?.id) {
                     if (user?.id && gentleReflectionId) {
                         markGentleReflectionCompleted(user.id, gentleReflectionId);
                     }
 
                     toast.success('Note saved');
-                    router.push(appendReturnTo(`/entry/view?id=${data.entry.id}`, backHref));
+                    const reflectionTarget = appendReturnTo(`/entry/view?id=${data.entry.id}`, backHref);
+                    if (shouldShowSafetyPrompt) {
+                        setSafetyPrompt({
+                            risk: safetyFromSave.risk,
+                            safetyCard: safetyFromSave.safetyCard,
+                            onContinue: () => {
+                                setSafetyPrompt(null);
+                                router.push(reflectionTarget);
+                            },
+                        });
+                    } else {
+                        router.push(reflectionTarget);
+                    }
                     return;
                 }
 
                 toast.success('Note saved');
 
-                // ── Mirror: show a brief reflection before navigating ──
-                const sentence = extractedData?.growthPoints && extractedData.growthPoints.length > 0
-                    ? 'This entry had more growth language than your average.'
-                    : extractedData?.overallSentiment === 'mixed'
-                        ? "There's a small gap between your stated mood and your writing — that's worth sitting with."
-                        : extractedData?.keyPhrases && extractedData.keyPhrases.length >= 3
-                            ? `You keep circling "${extractedData.keyPhrases[0]}" — that thread might mean something.`
-                            : null;
+                if (shouldShowSafetyPrompt) {
+                    setSafetyPrompt({
+                        risk: safetyFromSave.risk,
+                        safetyCard: safetyFromSave.safetyCard,
+                        onContinue: () => {
+                            setSafetyPrompt(null);
+                            router.push(backHref);
+                        },
+                    });
+                    return;
+                }
 
-                if (sentence && !entryId) {
-                    setMirrorSentence(sentence);
+                // ── Mirror: show extraction summary before navigating ──
+                const people = extractedData?.people?.map(p => p.name).slice(0, 2) ?? [];
+                const topics = extractedData?.insights?.slice(0, 1).map(i => i.content) ?? [];
+                const growthFlag = (extractedData?.growthPoints?.length ?? 0) > 0;
+                const phrase = extractedData?.keyPhrases?.[0];
+                const lesson = extractedData?.insights?.find(i => i.type === 'lesson')?.content
+                    ?? extractedData?.insights?.[0]?.content;
+                const strengths = extractedData?.growthPoints
+                    ?.filter((point) => point.type === 'strength')
+                    .slice(0, 2)
+                    .map((point) => point.insight) ?? [];
+                const goals = extractedData?.goals?.slice(0, 2).map(g => g.goal) ?? [];
+                const hasMirrorContent = people.length > 0
+                    || topics.length > 0
+                    || growthFlag
+                    || phrase
+                    || lesson
+                    || strengths.length > 0
+                    || goals.length > 0;
+
+                if (hasMirrorContent && !entryId) {
+                    setMirrorData({
+                        people,
+                        topics,
+                        growthFlag,
+                        phrase,
+                        mood: (moodOverride || extractedData?.primaryEmotion?.emotion) ?? undefined,
+                        lesson,
+                        strengths: strengths.length > 0 ? strengths : undefined,
+                        goals: goals.length > 0 ? goals : undefined,
+                    });
                     mirrorTimerRef.current = setTimeout(() => {
-                        setMirrorSentence(null);
+                        setMirrorData(null);
                         router.push(backHref);
-                    }, 5000);
+                    }, 6000);
                 } else {
                     router.push(backHref);
                 }
@@ -1647,6 +1717,13 @@ function NewEntryPageContent() {
             {showFirstEntryHandoff && (
                 <FirstEntryHandoff onDismiss={() => setShowFirstEntryHandoff(false)} />
             )}
+            {safetyPrompt && (
+                <PostSaveSafetyDialog
+                    risk={safetyPrompt.risk}
+                    safetyCard={safetyPrompt.safetyCard}
+                    onContinue={safetyPrompt.onContinue}
+                />
+            )}
             <h1 className="sr-only">New Entry</h1>
             {!isWhisperMode && (
                 <>
@@ -1715,10 +1792,15 @@ function NewEntryPageContent() {
                             onClick={() => setShowAdvancedTools((prev) => !prev)}
                             className="w-full flex items-center justify-between gap-3 text-left"
                         >
-                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">
-                                {showAdvancedTools ? 'Hide details' : 'More details'}
-                            </p>
-                            <span className="text-xs text-ink-muted">{showAdvancedTools ? '−' : '+'}</span>
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Writing tools</p>
+                                <p className="mt-1 text-sm text-ink-secondary">
+                                    {showAdvancedTools
+                                        ? 'Insights, mood, tags, and formatting are open.'
+                                        : 'Open insights, mood, tags, and formatting only when you need them.'}
+                                </p>
+                            </div>
+                            <span className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">{showAdvancedTools ? 'Hide' : 'Open'}</span>
                         </button>
 
                         <div className={`transition-all duration-300 ease-in-out ${showAdvancedTools ? 'max-h-[2400px] opacity-100 mt-4' : 'max-h-0 opacity-0 overflow-hidden'}`}>
@@ -1898,24 +1980,65 @@ function NewEntryPageContent() {
             </div>
             )}
 
-            {/* ── The Mirror: post-save reflection card ── */}
+            {/* ── The Mirror: post-save extraction card ── */}
             <AnimatePresence>
-                {mirrorSentence && (
+                {mirrorData && (
                     <motion.div
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 12 }}
                         transition={{ duration: 0.4, ease: 'easeOut' }}
-                        className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-sm rounded-[1.25rem] border border-[rgba(138,154,111,0.25)] bg-[rgba(248,244,237,0.96)] px-4 py-3 shadow-[0_4px_20px_rgba(92,92,92,0.12)] backdrop-blur-sm"
+                        className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-sm rounded-[1.25rem] border border-[rgba(138,154,111,0.25)] bg-[rgba(248,244,237,0.96)] px-4 py-3.5 shadow-[0_4px_20px_rgba(92,92,92,0.12)] backdrop-blur-sm"
                     >
-                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(138,154,111)]">Notive noticed</p>
-                        <p className="mt-1 text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))] italic" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-                            {mirrorSentence}
-                        </p>
+                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(138,154,111)]">Notive found in this entry</p>
+                        <ul className="mt-1.5 space-y-0.5">
+                            {mirrorData.lesson && (
+                                <li className="text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))] italic" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                                    Lesson: {mirrorData.lesson}
+                                </li>
+                            )}
+                            {mirrorData.strengths && mirrorData.strengths.length > 0 && (
+                                <li className="text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                                    {mirrorData.strengths.length === 1
+                                        ? `Strength spotted: ${mirrorData.strengths[0]}`
+                                        : `Strengths: ${mirrorData.strengths.join(', ')}`}
+                                </li>
+                            )}
+                            {mirrorData.goals && mirrorData.goals.length > 0 && (
+                                <li className="text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                                    {mirrorData.goals.length === 1
+                                        ? `Goal spotted: ${mirrorData.goals[0]}`
+                                        : `Goals: ${mirrorData.goals.join(', ')}`}
+                                </li>
+                            )}
+                            {mirrorData.people.length > 0 && (
+                                <li className="text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                                    {mirrorData.people.length === 1
+                                        ? `${mirrorData.people[0]} mentioned`
+                                        : `${mirrorData.people.join(' and ')} mentioned`}
+                                </li>
+                            )}
+                            {mirrorData.topics.length > 0 && !mirrorData.lesson && (
+                                <li className="text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))] italic" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                                    {mirrorData.topics[0]}
+                                </li>
+                            )}
+                            {mirrorData.growthFlag && (
+                                <li className="text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                                    Growth language detected
+                                </li>
+                            )}
+                            {mirrorData.phrase && (
+                                <li className="text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))] italic" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                                    You kept coming back to &ldquo;{mirrorData.phrase}&rdquo;
+                                </li>
+                            )}
+                        </ul>
+                        <p className="mt-1.5 text-[0.65rem] text-[rgb(107,107,107)]">Your record is growing.</p>
                         <button
                             onClick={() => {
                                 if (mirrorTimerRef.current) clearTimeout(mirrorTimerRef.current);
-                                setMirrorSentence(null);
+                                setMirrorData(null);
                                 router.push(backHref);
                             }}
                             className="mt-1 text-[0.65rem] text-[rgb(107,107,107)] hover:text-[rgb(var(--paper-ink))]"

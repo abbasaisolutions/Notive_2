@@ -3,6 +3,7 @@ import { authMiddleware } from '../middleware/auth.middleware';
 import {
     getActivity,
     getDashboardInsights,
+    getMoodForecast,
     getMoodTrends,
     getStats,
     getSummary,
@@ -22,6 +23,7 @@ router.get('/stats', getStats);
 router.get('/summary', getSummary);
 router.get('/timeline-summary', getTimelineSummary);
 router.get('/moods', getMoodTrends);
+router.get('/mood-forecast', getMoodForecast);
 router.get('/activity', getActivity);
 router.get('/dashboard-insights', getDashboardInsights);
 router.get('/tag-themes', getTagThemes);

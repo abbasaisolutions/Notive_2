@@ -154,17 +154,17 @@ export default function ImportPage() {
     const nextAction = useMemo(() => {
         if (queueCounts.needs_attention > 0) {
             return {
-                label: 'Strengthen weak stories',
+                label: 'Strengthen thin story drafts',
                 href: appendReturnTo('/portfolio?view=evidence&filter=needs_attention', currentReturnTo),
-                description: `${queueCounts.needs_attention} stories need more detail before they become reusable evidence.`,
+                description: `${queueCounts.needs_attention} imported stories need more detail before they become reusable evidence.`,
             };
         }
 
         if (queueCounts.ready_to_verify > 0) {
             return {
-                label: 'Verify strong imports',
+                label: 'Review strong imported stories',
                 href: appendReturnTo('/portfolio?view=evidence&filter=ready_to_verify', currentReturnTo),
-                description: `${queueCounts.ready_to_verify} stories are structured and ready for verification.`,
+                description: `${queueCounts.ready_to_verify} imported stories already have enough structure to review and reuse.`,
             };
         }
 
@@ -179,7 +179,7 @@ export default function ImportPage() {
         return {
             label: 'Connect a provider',
             href: '#social-import-panel',
-            description: 'Start with Instagram or Facebook so imported memories can move into your evidence queue.',
+            description: 'Start with Instagram or Facebook so older memories can move into the same diary and story system.',
         };
     }, [currentReturnTo, queueCounts.needs_attention, queueCounts.ready_to_verify, status?.facebook, status?.instagram]);
 
@@ -196,7 +196,7 @@ export default function ImportPage() {
         if ((status?.instagram || 0) + (status?.facebook || 0) > 0) {
             return `${(status?.instagram || 0) + (status?.facebook || 0)} imported notes are waiting in your timeline.`;
         }
-        return 'Start by connecting a provider so imported memories can move into your evidence queue.';
+        return 'Start by connecting a provider so older memories can become useful notes, lessons, and stories here too.';
     }, [queueCounts.needs_attention, queueCounts.ready_to_export, queueCounts.ready_to_verify, status?.facebook, status?.instagram]);
 
     const leadTopic = useMemo(
@@ -236,16 +236,16 @@ export default function ImportPage() {
                 <AppPanel className="space-y-5">
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                         <SectionHeader
-                            kicker="Imports"
-                            title="Move outside memories into your story pipeline"
-                            description="Connect apps, review imported notes, verify the strongest stories, and move them into packs you can use."
+                            kicker={NOTIVE_VOICE.surfaces.memoryInbox}
+                            title={NOTIVE_VOICE.imports.title}
+                            description={NOTIVE_VOICE.imports.description}
                             as="h1"
                         />
 
                         <div className="flex flex-wrap gap-2">
                             <TagPill tone="primary">{connectedCount}/2 connected</TagPill>
                             <TagPill>{(status?.instagram || 0) + (status?.facebook || 0)} imported entries</TagPill>
-                            <TagPill>{queueCounts.ready_to_export} ready to use</TagPill>
+                            <TagPill>{queueCounts.ready_to_export} ready to reuse</TagPill>
                         </div>
                     </div>
 
@@ -270,7 +270,7 @@ export default function ImportPage() {
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     <TagPill tone="primary">{connectedCount}/2 connected</TagPill>
                                     <TagPill>{(status?.instagram || 0) + (status?.facebook || 0)} imported entries</TagPill>
-                                    <TagPill>{queueCounts.ready_to_export} ready to use</TagPill>
+                                    <TagPill>{queueCounts.ready_to_export} ready to reuse</TagPill>
                                     {leadTopic && <TagPill tone="primary">{leadTopic}</TagPill>}
                                 </div>
                             </div>
@@ -280,7 +280,7 @@ export default function ImportPage() {
                                 className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
                                 aria-expanded={showImportDetails}
                             >
-                                {showImportDetails ? 'Hide extra import paths' : 'Show more import paths'}
+                                {showImportDetails ? 'Hide other import routes' : 'Show other import routes'}
                                 <FiChevronDown size={14} className={`transition-transform ${showImportDetails ? 'rotate-180' : ''}`} aria-hidden="true" />
                             </button>
                         </div>
@@ -304,8 +304,8 @@ export default function ImportPage() {
                         <AppPanel className="space-y-4">
                             <SectionHeader
                                 kicker="More Paths"
-                                title="Choose a different import move"
-                                description="Jump straight into the part of the pipeline that matches what these imported memories need next."
+                                title="Choose how to use imported memories"
+                                description="Jump straight into the part of the pipeline that matches what these imported memories can become next."
                             />
                             <div className="grid gap-3 lg:grid-cols-3">
                                 <Link
@@ -314,7 +314,7 @@ export default function ImportPage() {
                                 >
                                     <FiLayers size={18} className="text-primary" aria-hidden="true" />
                                     <h3 className="workspace-heading mt-3 text-lg font-semibold">Review imported notes</h3>
-                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">Open imported memories in time order and read them before editing.</p>
+                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">Open imported memories in time order and decide what is worth keeping.</p>
                                 </Link>
                                 <Link
                                     href={appendReturnTo('/portfolio?view=evidence&filter=needs_attention', currentReturnTo)}
@@ -330,13 +330,13 @@ export default function ImportPage() {
                                     className="workspace-soft-panel rounded-2xl p-4 transition hover:opacity-95"
                                 >
                                     <FiGrid size={18} className="text-primary" aria-hidden="true" />
-                                    <h3 className="workspace-heading mt-3 text-lg font-semibold">Fix weak stories</h3>
-                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">Send low-detail notes into the story queue and fill in the missing parts.</p>
+                                    <h3 className="workspace-heading mt-3 text-lg font-semibold">Fill in missing detail</h3>
+                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">Send low-detail notes into the story queue and add the missing lesson, skill, or evidence.</p>
                                 </Link>
                                 <div className="workspace-soft-panel rounded-2xl p-4">
                                     <FiCheckCircle size={18} className="text-primary" aria-hidden="true" />
-                                    <h3 className="workspace-heading mt-3 text-lg font-semibold">Open an output directly</h3>
-                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">Once strong stories are checked, jump straight into the output you need.</p>
+                                    <h3 className="workspace-heading mt-3 text-lg font-semibold">Open a reusable output</h3>
+                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">Once strong stories are checked, jump straight into the output you need later.</p>
                                     <div className="mt-4 flex flex-wrap gap-2">
                                         <Link
                                             href={appendReturnTo('/portfolio?view=export&pack=resume', currentReturnTo)}
@@ -391,8 +391,8 @@ export default function ImportPage() {
                         <AppPanel className="space-y-4">
                             <SectionHeader
                                 kicker="Queue Status"
-                                title="See what each imported story needs next"
-                                description="Use status to decide whether imports need more detail, checking, or are ready to use."
+                                title="See what each imported story contains already"
+                                description="Use status to decide whether imports need more detail, review, or are ready to reuse."
                             />
                             <ActionBar className="gap-2 overflow-x-auto">
                                 {(['needs_attention', 'ready_to_verify', 'ready_to_export', 'verified'] as StoryEngineStatus[]).map((statusKey) => (

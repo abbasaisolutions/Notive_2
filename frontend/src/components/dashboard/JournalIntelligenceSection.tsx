@@ -54,26 +54,27 @@ export default function JournalIntelligenceSection({ intel }: Props) {
     const pills = useMemo(() => {
         const candidates: InsightPill[] = [];
 
-        // Vocabulary: interesting if growing or rich
+        // Vocabulary: interesting if growing or rich — show the actual new words
         if (intel.vocabulary.totalUniqueWords > 50) {
             const score = (intel.vocabulary.growthRate > 5 ? 20 : 0)
                 + (intel.vocabulary.recentNewWords.length > 0 ? 15 : 0)
                 + (intel.vocabulary.rarityScore > 50 ? 10 : 0);
             if (score > 0) {
+                const newWords = intel.vocabulary.recentNewWords.slice(0, 3);
                 candidates.push({
                     key: 'vocabulary',
                     icon: '🌱',
                     label: 'Words',
-                    value: intel.vocabulary.growthRate > 0
-                        ? `+${intel.vocabulary.growthRate}% growth`
-                        : `${intel.vocabulary.totalUniqueWords} unique`,
+                    value: newWords.length > 0
+                        ? `New: ${newWords.join(', ')}`
+                        : `${intel.vocabulary.totalUniqueWords} unique words`,
                     accent: 'rgba(199,220,203,0.85)',
                     interestScore: score,
                 });
             }
         }
 
-        // Life balance: interesting if imbalanced or something neglected
+        // Life balance: show what they write about most and what's missing
         const activeAreas = intel.lifeBalance.areas.filter((a) => a.entryCount > 0).length;
         if (activeAreas >= 3) {
             const score = (intel.lifeBalance.neglectedArea ? 25 : 0)
@@ -85,8 +86,8 @@ export default function JournalIntelligenceSection({ intel }: Props) {
                     icon: '⚖️',
                     label: 'Balance',
                     value: intel.lifeBalance.neglectedArea
-                        ? `${intel.lifeBalance.neglectedArea} needs attention`
-                        : `${intel.lifeBalance.balanceScore}/100`,
+                        ? `Mostly ${intel.lifeBalance.dominantArea} · ${intel.lifeBalance.neglectedArea} quiet`
+                        : `Mostly ${intel.lifeBalance.dominantArea}`,
                     accent: 'rgba(234,216,189,0.85)',
                     interestScore: score,
                 });
@@ -108,55 +109,62 @@ export default function JournalIntelligenceSection({ intel }: Props) {
             });
         }
 
-        // Growth mindset: interesting if clearly leaning one way
+        // Growth mindset: show the actual phrases extracted
         const totalMindset = intel.selfTalk.growthStatements + intel.selfTalk.fixedStatements;
         if (totalMindset >= 5) {
             const ratio = intel.selfTalk.ratio;
             const score = (ratio > 0.75 || ratio < 0.35 ? 20 : 5)
                 + (intel.growthLanguage.recentTrend !== 'stable' ? 15 : 0);
+            const topPhrase = intel.growthLanguage.topPhrases[0]?.phrase;
             candidates.push({
                 key: 'mindset',
                 icon: '🧠',
                 label: 'Mindset',
-                value: intel.selfTalk.label,
+                value: topPhrase
+                    ? `"${topPhrase}" (${intel.growthLanguage.totalGrowthPhrases}×)`
+                    : intel.selfTalk.label,
                 accent: ratio >= 0.5 ? 'rgba(199,220,203,0.85)' : 'rgba(232,186,167,0.85)',
                 interestScore: score,
             });
         }
 
-        // Gratitude: interesting if streak or trending
+        // Gratitude: show count and themes, not density scores
         if (intel.gratitude.totalExpressions >= 3) {
             const score = (intel.gratitude.streak > 2 ? 20 : 0)
                 + (intel.gratitude.recentTrend !== 'stable' ? 15 : 0)
                 + (intel.gratitude.depthScore > 50 ? 10 : 0);
             if (score > 0) {
+                const theme = intel.gratitude.topThemes[0];
                 candidates.push({
                     key: 'gratitude',
                     icon: '🙏',
                     label: 'Gratitude',
-                    value: intel.gratitude.streak > 0
-                        ? `${intel.gratitude.streak}d streak`
-                        : `${intel.gratitude.recentTrend}`,
+                    value: theme
+                        ? `${intel.gratitude.totalExpressions}× · mostly ${theme}`
+                        : `${intel.gratitude.totalExpressions} moments this week`,
                     accent: 'rgba(199,220,203,0.7)',
                     interestScore: score,
                 });
             }
         }
 
-        // Writing voice: interesting if distinctly one voice type
+        // Writing voice: show the emotions expressed, not a score
         if (intel.entryCount >= 5) {
             const futureHeavy = intel.writingVoice.tenseDistribution.future > 25;
             const questionHeavy = intel.writingVoice.questionFrequency > 1.5;
             const score = (futureHeavy ? 15 : 0) + (questionHeavy ? 15 : 0)
                 + (intel.emotionalRange.complexityScore > 60 ? 10 : 0);
             if (score > 0) {
+                const emotions = intel.emotionalRange.emotionList.slice(0, 3).join(', ');
                 candidates.push({
                     key: 'voice',
                     icon: '✍️',
                     label: 'Voice',
                     value: questionHeavy ? 'Curious explorer'
                         : futureHeavy ? 'Future thinker'
-                            : `${intel.emotionalRange.uniqueEmotions} emotions`,
+                            : emotions
+                                ? `${intel.emotionalRange.uniqueEmotions} emotions: ${emotions}`
+                                : `${intel.emotionalRange.uniqueEmotions} emotions expressed`,
                     accent: 'rgba(199,216,232,0.85)',
                     interestScore: score,
                 });

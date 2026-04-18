@@ -4,6 +4,7 @@ import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
 import { hashToken } from '../utils/token-security';
 import { verifyGoogleCredential } from '../utils/google-auth';
 import { setRefreshTokenCookie } from '../utils/refresh-token-cookie';
+import { emailService } from '../services/email.service';
 
 const getRefreshTokenExpiry = (): Date => {
     const expiry = new Date();
@@ -105,6 +106,9 @@ export const googleSignIn = async (req: Request, res: Response) => {
                     avatarUrl: picture,
                 },
             });
+
+            // Fire-and-forget welcome email
+            emailService.sendWelcomeEmail(user).catch(() => {});
         }
 
         // Generate tokens

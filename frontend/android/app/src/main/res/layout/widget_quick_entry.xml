@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/widget_headline"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/widget_quick_entry_prompt"
+        android:textSize="14sp"
+        android:textStyle="italic"
+        android:textColor="#4A4438"
+        android:fontFamily="serif"
+        android:gravity="start"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="4"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:id="@+id/widget_mood_happy"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="😊"
+            android:textSize="22sp"
+            android:background="@drawable/widget_mood_button"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="@string/widget_mood_happy_desc" />
+
+        <TextView
+            android:id="@+id/widget_mood_calm"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="😌"
+            android:textSize="22sp"
+            android:background="@drawable/widget_mood_button"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="@string/widget_mood_calm_desc" />
+
+        <TextView
+            android:id="@+id/widget_mood_anxious"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="😟"
+            android:textSize="22sp"
+            android:background="@drawable/widget_mood_button"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="@string/widget_mood_anxious_desc" />
+
+        <TextView
+            android:id="@+id/widget_mood_tired"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="😴"
+            android:textSize="22sp"
+            android:background="@drawable/widget_mood_button"
+            android:contentDescription="@string/widget_mood_tired_desc" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_write_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/widget_quick_entry_cta"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/widget_cta_button"
+        android:gravity="center"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:layout_marginTop="8dp" />
+</LinearLayout>

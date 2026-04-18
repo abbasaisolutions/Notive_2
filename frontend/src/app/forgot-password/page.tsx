@@ -15,6 +15,7 @@ import {
     quietNotebookPageStyle,
     quietNotebookPanelStyle,
 } from '@/components/marketing/NotiveShowcase';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { FiArrowLeft, FiLock, FiMail } from 'react-icons/fi';
 
 export default function ForgotPasswordPage() {
@@ -59,9 +60,9 @@ export default function ForgotPasswordPage() {
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
                     <QuietNotebookAuthIllustration
                         src="/images/hero-5.jpg"
-                        alt="Teen checking Notive on a phone and keeping one calm next step after a full day."
+                        alt="Teen checking Notive on a phone before returning to their private diary."
                         eyebrow="Password help"
-                        body="Reset access quietly, return to your notes, and pick up the thread without losing the calm tone of the space."
+                        body={NOTIVE_VOICE.auth.forgotBody}
                     />
 
                     <motion.div
@@ -81,10 +82,10 @@ export default function ForgotPasswordPage() {
                                 Password reset
                             </p>
                             <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong md:text-[3rem]">
-                                One note today. One clearer tomorrow.
+                                {NOTIVE_VOICE.auth.forgotTitle}
                             </h1>
                             <p className="mt-4 max-w-xl text-sm leading-7 text-default md:text-base">
-                                Reset your password, then come back to the notes, patterns, and story pieces you are still building.
+                                {NOTIVE_VOICE.auth.forgotBody}
                             </p>
                         </div>
 
@@ -180,4 +181,3 @@ export default function ForgotPasswordPage() {
         </div>
     );
 }
-

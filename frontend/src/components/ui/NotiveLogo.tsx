@@ -110,6 +110,7 @@ export default function NotiveLogo({ size = 'md', variant = 'full', href, classN
             alt={VARIANT_ALTS[variant]}
             width={width}
             height={height}
+            style={{ width: 'auto', height: 'auto' }}
             className={`${VARIANT_ROUNDED[variant]} ${VARIANT_FIT[variant]} ${className}`.trim()}
             priority
         />

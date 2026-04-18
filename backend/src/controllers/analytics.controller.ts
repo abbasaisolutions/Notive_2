@@ -4,6 +4,7 @@ import prisma from '../config/prisma';
 import { buildProfileContextSummary } from '../services/profile-context.service';
 import { buildAnalyticsSummary, type AnalyticsPeriod } from '../services/analytics-summary.service';
 import { buildDashboardInsights } from '../services/dashboard-insights.service';
+import { applySurfaceFeedback } from '../services/insight-surface-feedback.service';
 import { fetchInsightInputs } from '../services/insight-inputs.service';
 import { evaluatePromptLearningModels } from '../services/prompt-learning-evaluation.service';
 import { buildPromptExperimentReport } from '../services/prompt-experiment-report.service';
@@ -15,6 +16,7 @@ import {
     persistPromptLearningPolicySnapshot,
 } from '../services/prompt-learning-policy-snapshot.service';
 import { buildTimelineSignatureSummary } from '../services/timeline-signature.service';
+import moodForecastService from '../services/mood-forecast.service';
 import {
     buildEntryListWhere,
     filterEntriesByTemporalContext,
@@ -296,6 +298,19 @@ export const getMoodTrends = async (req: Request, res: Response) => {
 };
 
 /**
+ * Mood forecast — day-of-week patterns across recent entries.
+ */
+export const getMoodForecast = async (req: Request, res: Response) => {
+    try {
+        const forecast = await moodForecastService.getForecast(req.userId);
+        return res.json(forecast);
+    } catch (error) {
+        console.error('Get mood forecast error:', error);
+        return res.status(500).json({ message: 'Failed to build mood forecast' });
+    }
+};
+
+/**
  * Get writing activity (for heatmap)
  */
 export const getActivity = async (req: Request, res: Response) => {
@@ -529,7 +544,8 @@ export const getDashboardInsights = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
         const { entries, analyses } = await fetchInsightInputs(userId!, { take: 150 });
-        const insights = buildDashboardInsights(entries, analyses);
+        const raw = buildDashboardInsights(entries, analyses);
+        const insights = await applySurfaceFeedback(userId!, raw);
         return res.json(insights);
     } catch (error) {
         console.error('Get dashboard insights error:', error);

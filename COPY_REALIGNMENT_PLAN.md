@@ -4,7 +4,7 @@ Date: April 8, 2026
 
 ## Goal
 
-Align Notive copy to a youth-focused, inclusive voice that feels confident, supportive, and practical without narrowing the product to "students and early-career" by default.
+Align Notive copy to a private-diary, memory-to-value voice that feels confident, useful, and practical without narrowing the product to "students and early-career" by default.
 
 ## Audience
 
@@ -23,11 +23,11 @@ Guidance:
 
 Primary line:
 
-"Capture real moments. See patterns. Build your story."
+"Capture real moments. Keep what matters. Turn it into something useful."
 
 Support line:
 
-"A private place for young people to make sense of life, relationships, school, work, and what comes next."
+"A private diary that makes it easy to capture real moments, then turn them into lessons, skills, patterns, and stories you can use later."
 
 ## Tone
 
@@ -49,11 +49,12 @@ Avoid:
 
 ## Copy Rules
 
-1. Prefer verbs like `capture`, `notice`, `understand`, `build`, and `use`.
+1. Prefer verbs like `capture`, `keep`, `understand`, `extract`, `build`, and `use`.
 2. Replace soft filler like `gentle nudge`, `calm place`, and `magic` with clearer, more practical language.
 3. Mention school, work, relationships, and the future as contexts, not identity boxes.
 4. Keep empathy on sensitive surfaces, but do not undersell the product's practical value.
 5. Do not imply therapy, automatic story generation, or instant insights from too little data.
+6. Keep support and safety language secondary unless the user explicitly asks for help reaching out or a risk trigger is active.
 
 ## Wave A
 

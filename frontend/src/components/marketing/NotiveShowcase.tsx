@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import NotiveLogo from '@/components/ui/NotiveLogo';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 
 type StoryCard = {
     src: string;
@@ -39,33 +40,33 @@ export const quietNotebookPanelStyle: CSSProperties = {
 export const storyCards: StoryCard[] = [
     {
         src: '/images/hero-1.jpg',
-        alt: 'Teen reading a Notive action brief on a phone after feeling overwhelmed, using one short counselor message as the next calm step.',
-        caption: 'Action Brief',
-        story: 'He usually feels steadier after reaching out, so Notive turns the moment into one short message to a counselor instead of another hour of looping.',
+        alt: 'Teen capturing a real moment in Notive on a phone so the memory is saved while it is still fresh.',
+        caption: 'Capture Fast',
+        story: 'Save the real moment before it disappears, whether it starts as a quick note, a voice thought, or a photo-backed memory.',
     },
     {
         src: '/images/hero-2.jpg',
-        alt: 'Teen reviewing a Notive strength, evidence, and readiness table that turns journal notes into clearer college essay material.',
-        caption: 'Strength / Evidence / Readiness States',
-        story: 'Her notes already show self-advocacy and resilience. Notive gathers the evidence and points to a calmer college-essay direction she can actually use.',
+        alt: 'Teen reviewing a Notive story workspace that pulls lessons, skills, and evidence from saved notes.',
+        caption: 'Extract Meaning',
+        story: 'Notive pulls lessons, skills, and useful signals out of saved memories so the user does not have to decode every note alone.',
     },
     {
         src: '/images/hero-3.jpg',
-        alt: 'Teen using Notive to choose a trusted friend after a messy group chat and sending one honest text after school.',
-        caption: 'Why this person',
-        story: 'After a messy group chat, Notive points her back to the friend who has been steady before and drafts the first honest text instead of a perfect one.',
+        alt: 'Teen revisiting an older diary entry in Notive after a new memory brings it back into focus.',
+        caption: 'Reconnect Memory',
+        story: 'An older note becomes useful again when Notive surfaces the related memory and shows what still connects between then and now.',
     },
     {
         src: '/images/hero-4.jpg',
-        alt: 'Teen seeing a Notive adaptive focus card that suggests one small task and a quick capture when the week feels heavier.',
-        caption: 'Adaptive Focus Card',
-        story: 'When the week feels heavier, Notive does not flood the screen. It suggests one small task, quick capture, then continue when there is room.',
+        alt: 'Teen seeing a Notive dashboard that connects one recent note to patterns, lessons, and story status.',
+        caption: 'Notice Patterns',
+        story: 'After a few entries, repeating themes start to become visible so scattered moments turn into clearer patterns and direction.',
     },
     {
         src: '/images/hero-5.jpg',
-        alt: 'Teen checking Notive on a phone and keeping one calm next step as a gentle action after a full day.',
-        caption: 'One calm next step',
-        story: 'She does not need a whole plan tonight. Notive helps her keep one calm next step and the part of the day that is still worth carrying forward.',
+        alt: 'Teen reviewing a Notive story output on a phone and turning diary material into something reusable later.',
+        caption: 'Use It Later',
+        story: 'Saved moments can become resume bullets, interview stories, personal summaries, or proof of growth when the user actually needs them.',
     },
 ];
 
@@ -147,10 +148,10 @@ export function QuietNotebookHero() {
                         }}
                     >
                         <h1 className="max-w-2xl text-[2rem] font-semibold leading-[1.08] tracking-[-0.03em] text-[rgb(38,34,30)] md:text-[3.55rem]">
-                            Drop what happened. See one calm next step. Keep the part that helps you grow.
+                            {NOTIVE_VOICE.home.heroTitle}
                         </h1>
                         <p className="mt-4 max-w-xl text-sm leading-7 text-[rgb(76,70,62)] md:text-base">
-                            Notive is a quiet notebook for real moments, one useful reflection, and the next move you can actually make.
+                            {NOTIVE_VOICE.home.heroBody}
                         </p>
                         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                             <Link
@@ -162,7 +163,7 @@ export function QuietNotebookHero() {
                                     color: 'rgb(255,251,245)',
                                 }}
                             >
-                                Start with one note
+                                {NOTIVE_VOICE.home.heroPrimaryCta}
                             </Link>
                             <Link
                                 href="/login"
@@ -172,7 +173,7 @@ export function QuietNotebookHero() {
                                     border: '1.5px solid rgba(92,92,92,0.2)',
                                 }}
                             >
-                                Sign in
+                                {NOTIVE_VOICE.home.heroSecondaryCta}
                             </Link>
                         </div>
                     </div>
@@ -188,14 +189,14 @@ export function RealStudentsRealMoves() {
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
                     <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
-                        Real students, real moves
+                        {NOTIVE_VOICE.home.showcaseEyebrow}
                     </p>
                     <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[rgb(39,35,31)] md:text-[2.35rem]">
-                        Five quiet ways Notive helps a hard moment become a clearer next step.
+                        {NOTIVE_VOICE.home.showcaseTitle}
                     </h2>
                 </div>
                 <p className="max-w-xl text-sm leading-7 text-[rgb(84,78,70)]">
-                    These are not hype stories. They are ordinary school-day moments where one calmer prompt, message, or story seed changes what happens next.
+                    {NOTIVE_VOICE.home.showcaseBody}
                 </p>
             </div>
 

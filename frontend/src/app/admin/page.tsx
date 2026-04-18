@@ -8,7 +8,7 @@ import useApi from '@/hooks/use-api';
 import { ActionBar, AppPanel, EmptyState, SectionHeader, StatTile, TagPill } from '@/components/ui/surface';
 import AdminPerformanceOverview, { type AdminPerformanceOverviewData } from '@/components/admin/AdminPerformanceOverview';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
-import { FiAlertCircle, FiLock, FiSearch, FiShield, FiX } from 'react-icons/fi';
+import { FiAlertCircle, FiChevronDown, FiLock, FiSearch, FiShield, FiX } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
 
 type TrackFilter = 'all' | 'personal' | 'professional' | 'blended' | 'unknown';
@@ -230,6 +230,7 @@ export default function AdminPage() {
     const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
     const [onlyNeedsSupport, setOnlyNeedsSupport] = useState(false);
     const [completionLte, setCompletionLte] = useState(40);
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [scanLimitReached, setScanLimitReached] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
@@ -256,6 +257,17 @@ export default function AdminPage() {
         ? ROLE_OPTIONS
         : ROLE_OPTIONS.filter((option) => option.id === 'all' || option.id === 'USER');
     const activeFilterCount = [trackFilter !== 'all', stageFilter !== 'all', roleFilter !== 'all', onlyNeedsSupport].filter(Boolean).length;
+    const activeFilterLabels = [
+        trackFilter !== 'all' ? `Track: ${TRACK_OPTIONS.find((option) => option.id === trackFilter)?.label || trackFilter}` : null,
+        stageFilter !== 'all' ? `Stage: ${STAGE_OPTIONS.find((option) => option.id === stageFilter)?.label || formatStage(stageFilter)}` : null,
+        roleFilter !== 'all' ? `Role: ${formatRole(roleFilter)}` : null,
+        onlyNeedsSupport ? `Help <= ${completionLte}%` : null,
+    ].filter((value): value is string => Boolean(value));
+    const advancedFiltersLabel = showAdvancedFilters
+        ? 'Hide advanced filters'
+        : activeFilterCount > 0
+            ? `Advanced filters (${activeFilterCount})`
+            : 'Advanced filters';
 
     const resetActionDrafts = () => {
         setActionReason('');
@@ -337,6 +349,7 @@ export default function AdminPage() {
         setRoleFilter('all');
         setOnlyNeedsSupport(false);
         setCompletionLte(40);
+        setShowAdvancedFilters(false);
         setPage(1);
     };
 
@@ -594,51 +607,71 @@ export default function AdminPage() {
                     <form onSubmit={onSearchSubmit} className="flex flex-col gap-3 md:flex-row">
                         <input type="text" placeholder="Search name or email" value={search} onChange={(e) => setSearch(e.target.value)} className="workspace-input flex-1 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/35" />
                         <button type="submit" className="rounded-xl border border-primary/30 bg-primary/15 px-6 py-3 text-sm font-semibold text-[rgb(var(--text-primary))] transition-colors hover:bg-primary/25">Search</button>
+                        <button
+                            type="button"
+                            onClick={() => setShowAdvancedFilters((current) => !current)}
+                            aria-expanded={showAdvancedFilters}
+                            aria-controls="admin-advanced-filters"
+                            className="workspace-button-outline inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.1em]"
+                        >
+                            {advancedFiltersLabel}
+                            <FiChevronDown size={14} className={`transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} aria-hidden="true" />
+                        </button>
                     </form>
 
-                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_320px]">
-                        <div className="space-y-2">
-                            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Track</p>
-                            <ActionBar>
-                                {TRACK_OPTIONS.map((item) => (
-                                    <button key={item.id} type="button" onClick={() => { setTrackFilter(item.id); setPage(1); }} className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${trackFilter === item.id ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-[rgb(var(--text-primary))]'}`}>{item.label}</button>
-                                ))}
-                            </ActionBar>
+                    {activeFilterLabels.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                            {activeFilterLabels.map((label) => (
+                                <TagPill key={label} tone="muted">{label}</TagPill>
+                            ))}
                         </div>
-                        <div className="space-y-2">
-                            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Stage</p>
-                            <ActionBar>
-                                {STAGE_OPTIONS.map((item) => (
-                                    <button key={item.id} type="button" onClick={() => { setStageFilter(item.id); setPage(1); }} className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${stageFilter === item.id ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-[rgb(var(--text-primary))]'}`}>{item.label}</button>
-                                ))}
-                            </ActionBar>
-                        </div>
-                        <div className="space-y-2">
-                            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Role</p>
-                            <ActionBar>
-                                {visibleRoleOptions.map((item) => (
-                                    <button key={item.id} type="button" onClick={() => { setRoleFilter(item.id); setPage(1); }} className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${roleFilter === item.id ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-[rgb(var(--text-primary))]'}`}>{item.label}</button>
-                                ))}
-                            </ActionBar>
-                        </div>
-                        <div className="workspace-soft-panel rounded-2xl p-4">
-                            <div className="flex items-center justify-between gap-3">
-                                <div>
-                                    <p className="text-sm font-semibold workspace-heading">Help focus</p>
-                                    <p className="mt-1 text-xs text-ink-secondary">Show users at or below this setup score.</p>
-                                </div>
-                                <button type="button" onClick={() => { setOnlyNeedsSupport((prev) => !prev); setPage(1); }} className={`relative h-7 w-12 rounded-full border transition-colors ${onlyNeedsSupport ? 'border-primary/35 bg-primary/15' : 'border-ink-muted/20 bg-white/[0.03]'}`} aria-pressed={onlyNeedsSupport}>
-                                    <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${onlyNeedsSupport ? 'left-6' : 'left-1'}`} />
-                                </button>
+                    )}
+
+                    {showAdvancedFilters && (
+                        <div id="admin-advanced-filters" className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_320px]">
+                            <div className="space-y-2">
+                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Track</p>
+                                <ActionBar>
+                                    {TRACK_OPTIONS.map((item) => (
+                                        <button key={item.id} type="button" onClick={() => { setTrackFilter(item.id); setPage(1); }} className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${trackFilter === item.id ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-[rgb(var(--text-primary))]'}`}>{item.label}</button>
+                                    ))}
+                                </ActionBar>
                             </div>
-                            {onlyNeedsSupport && (
-                                <div className="mt-4">
-                                    <div className="mb-2 flex items-center justify-between text-xs text-ink-secondary"><span>Setup limit</span><span>{completionLte}%</span></div>
-                                    <input type="range" min={0} max={100} step={5} value={completionLte} onChange={(event) => { setCompletionLte(Number(event.target.value)); setPage(1); }} className="w-full accent-primary" />
+                            <div className="space-y-2">
+                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Stage</p>
+                                <ActionBar>
+                                    {STAGE_OPTIONS.map((item) => (
+                                        <button key={item.id} type="button" onClick={() => { setStageFilter(item.id); setPage(1); }} className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${stageFilter === item.id ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-[rgb(var(--text-primary))]'}`}>{item.label}</button>
+                                    ))}
+                                </ActionBar>
+                            </div>
+                            <div className="space-y-2">
+                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Role</p>
+                                <ActionBar>
+                                    {visibleRoleOptions.map((item) => (
+                                        <button key={item.id} type="button" onClick={() => { setRoleFilter(item.id); setPage(1); }} className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${roleFilter === item.id ? 'bg-primary/15 text-primary' : 'text-ink-secondary hover:text-[rgb(var(--text-primary))]'}`}>{item.label}</button>
+                                    ))}
+                                </ActionBar>
+                            </div>
+                            <div className="workspace-soft-panel rounded-2xl p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-sm font-semibold workspace-heading">Help focus</p>
+                                        <p className="mt-1 text-xs text-ink-secondary">Show users at or below this setup score.</p>
+                                    </div>
+                                    <button type="button" onClick={() => { setOnlyNeedsSupport((prev) => !prev); setPage(1); }} className={`relative h-7 w-12 rounded-full border transition-colors ${onlyNeedsSupport ? 'border-primary/35 bg-primary/15' : 'border-ink-muted/20 bg-white/[0.03]'}`} aria-pressed={onlyNeedsSupport}>
+                                        <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${onlyNeedsSupport ? 'left-6' : 'left-1'}`} />
+                                    </button>
                                 </div>
-                            )}
+                                {onlyNeedsSupport && (
+                                    <div className="mt-4">
+                                        <div className="mb-2 flex items-center justify-between text-xs text-ink-secondary"><span>Setup limit</span><span>{completionLte}%</span></div>
+                                        <input type="range" min={0} max={100} step={5} value={completionLte} onChange={(event) => { setCompletionLte(Number(event.target.value)); setPage(1); }} className="w-full accent-primary" />
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {scanLimitReached && (
                         <div className="flex items-start gap-3 rounded-2xl workspace-soft-panel p-4 text-sm workspace-heading">

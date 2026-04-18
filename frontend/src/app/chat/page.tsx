@@ -7,7 +7,7 @@ import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useContextNavigation from '@/hooks/use-context-navigation';
 import { ActionBar, AppPanel, EmptyState, TagPill } from '@/components/ui/surface';
-import { FiArrowLeft, FiArrowRight, FiSend, FiSettings } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiSend } from 'react-icons/fi';
 import ActionBriefPanel from '@/components/action/ActionBriefPanel';
 import BridgeCard from '@/components/action/BridgeCard';
 import SafetyBanner from '@/components/safety/SafetyBanner';
@@ -16,8 +16,9 @@ import useTelemetry from '@/hooks/use-telemetry';
 import { Spinner } from '@/components/ui';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
+import { NOTIVE_VOICE, type NotiveChatLens } from '@/content/notive-voice';
 
-type GuidedLens = 'clarity' | 'memory' | 'growth' | 'patterns' | 'bridge';
+type GuidedLens = NotiveChatLens | 'clarity' | 'growth' | 'bridge';
 
 interface MessageMeta {
     mode?: 'guided_reflection' | 'llm' | 'hosted_fallback';
@@ -69,9 +70,8 @@ export default function ChatPage() {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [coachStatus, setCoachStatus] = useState<CoachStatus | null>(null);
-    const [selectedLens, setSelectedLens] = useState<GuidedLens>('clarity');
+    const [selectedLens, setSelectedLens] = useState<GuidedLens>('stories');
     const [requestedLens, setRequestedLens] = useState<GuidedLens | null>(null);
-    const [showLensOptions, setShowLensOptions] = useState(false);
     const [isStatusLoading, setIsStatusLoading] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +88,8 @@ export default function ChatPage() {
             || lens === 'growth'
             || lens === 'patterns'
             || lens === 'bridge'
+            || lens === 'lessons'
+            || lens === 'stories'
         ) {
             setRequestedLens(lens);
         }
@@ -220,16 +222,22 @@ export default function ChatPage() {
         : coachAvailable
             ? 'live'
             : 'disabled';
-    const suggestions = coachStatus?.suggestions || [
-        'What feels like the biggest pattern in my notes lately?',
-        'Help me talk to someone about this.',
-        'Which past entry feels closest to how I am doing now?',
-        'What should I write about tonight?',
-    ];
+    const suggestions = coachStatus?.suggestions || NOTIVE_VOICE.chat.suggestions;
     const guidedLenses = coachStatus?.lenses || [];
     const lensLabelMap = new Map(guidedLenses.map((lens) => [lens.id, lens.label]));
     const selectedLensLabel = lensLabelMap.get(selectedLens) || selectedLens;
+    const activeGuidedLens = guidedLenses.find((lens) => lens.id === selectedLens) || null;
 
+    const handleLensSelection = (lensId: GuidedLens) => {
+        setSelectedLens(lensId);
+        void trackEvent({
+            eventType: 'guide_lens_selected',
+            value: lensId,
+            metadata: {
+                mode: coachMode,
+            },
+        });
+    };
 
     const handleStarterSelection = (prompt: string, surface: 'starter_deck' | 'suggestion_chip' | 'follow_up_prompt') => {
         setInput(prompt);
@@ -266,6 +274,8 @@ export default function ChatPage() {
         if (!hasHighlights && !hasPrompts && !hasActionable) return null;
 
         const isBridgeMode = message.meta.lens === 'bridge';
+        const hasElevatedRisk = message.meta.risk?.level === 'orange' || message.meta.risk?.level === 'red';
+        const showSupportPanels = isBridgeMode || hasElevatedRisk;
 
         return (
             <div className="mt-3 space-y-3">
@@ -278,7 +288,7 @@ export default function ChatPage() {
                     />
                 )}
 
-                {isBridgeMode && message.meta.bridge && (
+                {showSupportPanels && message.meta.bridge && (
                     <BridgeCard
                         bridge={message.meta.bridge}
                         surface="guide"
@@ -288,21 +298,11 @@ export default function ChatPage() {
                     />
                 )}
 
-                {message.meta.brief && (
+                {showSupportPanels && message.meta.brief && (
                     <ActionBriefPanel
                         brief={message.meta.brief}
                         surface="guide"
                         openEntryHref={(entryId) => `/entry/view?id=${entryId}`}
-                    />
-                )}
-
-                {!isBridgeMode && message.meta.bridge && (
-                    <BridgeCard
-                        bridge={message.meta.bridge}
-                        surface="guide"
-                        openEntryHref={(entryId) => `/entry/view?id=${entryId}`}
-                        onCopyDraft={() => handleBridgeCopy(message.meta?.bridge?.recommendedRecipient || 'trusted contact', 'guide_card')}
-                        variant="notebook"
                     />
                 )}
 
@@ -367,55 +367,50 @@ export default function ChatPage() {
                         <div>
                             <h1 className="text-lg font-semibold workspace-heading">AskNotive</h1>
                             <p className="text-xs text-ink-muted">
-                                {coachAvailable ? 'Ask about your notes, patterns, or what to write next' : 'Unavailable in this environment'}
+                                {coachAvailable ? NOTIVE_VOICE.chat.subtitle : 'Unavailable in this environment'}
                             </p>
                         </div>
                     </div>
-                    {coachMode === 'guided' && guidedLenses.length > 0 && (
-                        <button
-                            type="button"
-                            onClick={() => setShowLensOptions((current) => !current)}
-                            className="workspace-button-ghost inline-flex h-10 w-10 items-center justify-center rounded-xl transition-colors"
-                            aria-label="Change reflection lens"
-                            title={`Lens: ${selectedLensLabel}`}
-                        >
-                            <FiSettings size={18} aria-hidden="true" />
-                        </button>
-                    )}
                 </AppPanel>
+
+                {coachMode === 'guided' && guidedLenses.length > 0 && (
+                    <AppPanel className="space-y-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Reflection lens</p>
+                                <h2 className="workspace-heading mt-2 text-lg font-semibold">{selectedLensLabel}</h2>
+                                <p className="mt-1 text-sm leading-7 text-ink-secondary">
+                                    {activeGuidedLens?.description || 'Choose the lens that best matches what you want to understand or reuse from your notes.'}
+                                </p>
+                            </div>
+                            <TagPill tone="primary">Note understanding</TagPill>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {guidedLenses.map((lens) => {
+                                const active = selectedLens === lens.id;
+                                return (
+                                    <button
+                                        key={lens.id}
+                                        type="button"
+                                        aria-pressed={active}
+                                        onClick={() => handleLensSelection(lens.id)}
+                                        className={`rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${
+                                            active
+                                                ? 'border-primary/35 bg-primary/15 text-primary'
+                                                : 'workspace-button-outline text-ink-secondary'
+                                        }`}
+                                        title={lens.description}
+                                    >
+                                        {lens.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </AppPanel>
+                )}
 
                 <AppPanel className="min-h-[60vh]">
                     <div className="space-y-4" aria-live="polite" aria-atomic="false" aria-label="Conversation">
-                        {showLensOptions && coachMode === 'guided' && guidedLenses.length > 0 && (
-                            <div className="workspace-soft-panel rounded-2xl px-4 py-4">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mb-3">Reflection lens</p>
-                                <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-5">
-                                    {guidedLenses.map((lens) => {
-                                        const active = selectedLens === lens.id;
-                                        return (
-                                            <button
-                                                key={lens.id}
-                                                type="button"
-                                                aria-pressed={active}
-                                                onClick={() => {
-                                                    setSelectedLens(lens.id);
-                                                    setShowLensOptions(false);
-                                                }}
-                                                className={`rounded-2xl border px-3 py-3 text-left transition-colors ${
-                                                    active
-                                                        ? 'border-[rgb(var(--brand))]/35 bg-[rgb(var(--brand))]/15 workspace-heading'
-                                                        : 'workspace-button-outline'
-                                                }`}
-                                            >
-                                                <p className="text-xs uppercase tracking-[0.12em] text-[rgb(var(--text-muted))]">{lens.label}</p>
-                                                <p className="mt-1 text-xs leading-5 text-[rgb(var(--text-secondary))]">{lens.description}</p>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
                         {!coachAvailable && (
                             <div className="workspace-soft-panel rounded-2xl px-4 py-4 text-sm">
                                 <p className="font-medium workspace-heading">AskNotive is paused here.</p>
@@ -526,7 +521,7 @@ export default function ChatPage() {
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
                             aria-label="Message to your guide"
-                            placeholder={coachAvailable ? 'Ask about your notes, a feeling, or what to write next...' : 'Guide is unavailable right now.'}
+                            placeholder={coachAvailable ? 'Ask about a memory, a lesson, a pattern, or a story you want to reuse...' : 'Guide is unavailable right now.'}
                             rows={1}
                             disabled={!coachAvailable}
                             className="workspace-input flex-1 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(var(--brand))]/35 resize-none"

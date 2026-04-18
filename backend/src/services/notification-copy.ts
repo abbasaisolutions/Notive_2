@@ -82,6 +82,15 @@ const MESSAGE_BANK: Record<string, NotificationCopy[]> = {
         { title: 'Your space is here \u2728', body: 'Whenever feels right' },
     ],
 
+    // ── Streak at risk (active streak, hasn't written today) ───────────────
+    streak_at_risk: [
+        { title: 'Your streak is still alive \u{1F525}', body: 'One entry keeps it going' },
+        { title: 'Still on track \u2728', body: 'Write anything to hold your streak' },
+        { title: 'Keep it going \u{1F4D3}', body: "Today still counts \u2014 you've got time" },
+        { title: 'Your streak is waiting \u{1F4AC}', body: 'Even one line is enough' },
+        { title: 'Before the day ends \u{1F319}', body: 'Your streak is in your hands' },
+    ],
+
     // ── First hello (no entries ever) ─────────────────────────────────────
     first_hello: [
         { title: "Hey, it's Notive \u2728", body: "What's on your mind?" },

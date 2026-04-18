@@ -6,15 +6,15 @@ Date: March 28, 2026
 
 Do not position Notive as a generic AI journaling app.
 
-Position Notive as a private reflection-to-story platform for young people figuring out life, relationships, school, work, and what comes next:
+Position Notive as a private diary and memory-to-value platform:
 
-"Capture real moments, see your patterns, and build a story you can use."
+"Capture real moments. Keep what matters. Turn it into something useful."
 
 This fits the product better than a broad "mental health companion" claim and gives Notive a sharper wedge in a crowded journaling market.
 
 Secondary framing for decks and founder conversations:
 
-"We do not tell you what to do. We help you see what is already true."
+"We do not invent your story. We help you extract it from real life."
 
 That line is strong because it separates Notive from prescriptive self-improvement apps without pushing the brand into therapy or generic productivity territory.
 
@@ -42,7 +42,7 @@ That direction is already visible in the product:
 
 ### Category
 
-Private reflection and story-building platform.
+Private diary and story-building platform.
 
 Optional category language for founder decks:
 
@@ -62,12 +62,13 @@ Secondary:
 
 ### Brand Promise
 
-Notive helps you keep the moments that matter, understand what they mean, and turn them into stories you can actually use.
+Notive helps you keep the moments that matter, understand what they contain, and turn them into lessons, skills, patterns, and stories you can actually use.
 
 ### Brand Pillars
 
 - Real moments: Start with honest capture, not polished performance.
-- Clear patterns: Show what keeps returning in mood, themes, voice, and growth.
+- Kept memory: Make it easy to save moments worth returning to.
+- Extracted value: Pull out lessons, skills, signals, and patterns from what was captured.
 - Usable story: Help users turn lived experience into language for decisions, applications, interviews, and self-understanding.
 - Private trust: Treat journal data as sensitive, personal material.
 
@@ -75,11 +76,11 @@ Notive helps you keep the moments that matter, understand what they mean, and tu
 
 Most self-improvement products prescribe.
 
-Notive reflects.
+Notive helps people extract meaning from what already happened.
 
 Most journaling apps help users capture.
 
-Notive helps users capture, notice, and reuse.
+Notive helps users capture, keep, understand, and reuse.
 
 Most career tools ask people to invent a story after the fact.
 
@@ -87,13 +88,13 @@ Notive helps them build that story from real life as it happens.
 
 ## Brand Story
 
-Most people already have the raw material for growth. It is sitting in scattered notes, half-finished journal entries, voice memos, and memories they never turn into anything useful.
+Most people already have the raw material for something useful. It is sitting in scattered notes, half-finished journal entries, voice memos, and memories they never turn into anything usable.
 
 Notive exists to close that gap.
 
-It helps people capture life while it is happening, notice the patterns that are shaping them, and build stories they can carry into the next version of themselves.
+It helps people capture life while it is happening, keep what matters, notice the patterns inside it, and build stories they can carry into later decisions, opportunities, and conversations.
 
-Notive is not about journaling for journaling's sake. It is about turning reflection into clarity, confidence, and story capital.
+Notive is not about journaling for journaling's sake. It is about turning saved memories into practical value.
 
 A useful founder-story frame if you want a stronger emotional contrast:
 
@@ -103,15 +104,15 @@ A useful founder-story frame if you want a stronger emotional contrast:
 
 ### One-line Positioning
 
-Notive is a private journal that helps you turn real moments into patterns, and patterns into stories you can use.
+Notive is a private diary that helps you turn real moments into lessons, patterns, and stories you can use.
 
 ### Short Homepage Version
 
-Save real moments. See your patterns. Build stories for life, school, and work.
+Capture real moments. Keep what matters. Use it later.
 
 ### Founder Pitch Version
 
-Most journaling tools help you capture the past. Notive helps you capture it, understand it, and reuse it. We help young people turn reflection into practical story capital for growth, applications, interviews, and better decisions.
+Most journaling tools help you capture the past. Notive helps you capture it, understand it, and reuse it. We help people turn saved moments into practical story material for applications, interviews, decisions, and self-understanding.
 
 ### Differentiator Line
 

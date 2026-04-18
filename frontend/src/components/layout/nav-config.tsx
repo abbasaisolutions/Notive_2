@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { buildProfileContextSummary, type ProfileContextSource } from '@/services/profile-context.service';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import {
     FiBell,
     FiBookOpen,
@@ -82,11 +83,11 @@ const homeNavItem: NavItem = { href: '/dashboard', label: 'Home', shortLabel: 'H
 const writeNavItem: NavItem = { href: '/entry/new', label: 'Write', shortLabel: 'Write', icon: icons.write, isMain: true, matchPrefixes: ['/entry/new', '/entry/edit'] };
 const memoriesNavItem: NavItem = { href: '/timeline', label: 'Memories', shortLabel: 'Memories', icon: icons.memories, matchPrefixes: ['/timeline'] };
 const notificationsNavItem: NavItem = { href: '/notifications', label: 'Notifications', shortLabel: 'Alerts', icon: icons.notifications, matchPrefixes: ['/notifications'] };
-const guideNavItem: NavItem = { href: '/chat', label: 'AskNotive', shortLabel: 'Ask', icon: icons.guide, matchPrefixes: ['/chat'] };
+const guideNavItem: NavItem = { href: '/chat', label: NOTIVE_VOICE.surfaces.reflectionCoach, shortLabel: 'Ask', icon: icons.guide, matchPrefixes: ['/chat'] };
 const groupsNavItem: NavItem = { href: '/chapters', label: 'Groups', shortLabel: 'Groups', icon: icons.chapters, matchPrefixes: ['/chapters'] };
-const importsNavItem: NavItem = { href: '/import', label: 'Imports', shortLabel: 'Imports', icon: icons.imports, matchPrefixes: ['/import'] };
-const storiesNavItem: NavItem = { href: '/portfolio', label: 'Stories', shortLabel: 'Stories', icon: icons.stories, matchPrefixes: ['/portfolio'] };
-const profileNavItem: NavItem = { href: '/profile', label: 'Me', shortLabel: 'Me', icon: icons.profile, matchPrefixes: ['/profile'] };
+const importsNavItem: NavItem = { href: '/import', label: NOTIVE_VOICE.surfaces.memoryInbox, shortLabel: 'Bring In', icon: icons.imports, matchPrefixes: ['/import'] };
+const storiesNavItem: NavItem = { href: '/portfolio', label: NOTIVE_VOICE.surfaces.outcomeStudio, shortLabel: 'Stories', icon: icons.stories, matchPrefixes: ['/portfolio'] };
+const profileNavItem: NavItem = { href: '/profile', label: NOTIVE_VOICE.surfaces.profileStudio, shortLabel: 'Me', icon: icons.profile, matchPrefixes: ['/profile'] };
 const adminNavItem: NavItem = { href: '/admin', label: 'Admin', shortLabel: 'Admin', icon: icons.admin, matchPrefixes: ['/admin'], allowedRoles: ['ADMIN', 'SUPERADMIN'] };
 
 export const primaryNavItems: NavItem[] = [
@@ -208,10 +209,10 @@ export const getProfileReadinessAction = (completionScore: number): RouteAction 
 };
 
 export const journeyStages: JourneyStage[] = [
-    { id: 'capture', label: 'Write', description: 'Save moments while they are still fresh.', href: '/entry/new' },
-    { id: 'organize', label: 'Groups', description: 'Group related memories so they are easy to find.', href: '/chapters' },
-    { id: 'reflect', label: 'AskNotive', description: 'Get grounded advice based on your notes.', href: '/chat' },
-    { id: 'apply', label: 'Stories', description: 'Turn moments into clear stories you can use later.', href: '/portfolio' },
+    { id: 'capture', label: 'Write', description: 'Capture a real moment while it is still fresh.', href: '/entry/new' },
+    { id: 'organize', label: 'Groups', description: 'Keep related memories easy to revisit and compare.', href: '/chapters' },
+    { id: 'reflect', label: 'AskNotive', description: 'Understand your notes, extract lessons, and build reusable stories.', href: '/chat' },
+    { id: 'apply', label: 'Stories', description: 'Turn saved moments into outputs you can use later.', href: '/portfolio' },
     { id: 'account', label: 'Me', description: 'Choose your goals, settings, and privacy.', href: '/profile' },
 ];
 
@@ -234,12 +235,12 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
         prefix: '/dashboard',
         meta: {
             title: 'Home',
-            description: 'Pick up where you left off, write something new, or reopen a useful thread from your notes.',
+            description: 'Pick up where you left off, revisit a saved memory, or turn a recent note into something useful.',
             section: 'Main',
             breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Home' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
             secondaryAction: { label: 'Open Memories', shortLabel: 'Memories', href: '/timeline' },
-            visibleInfo: ['Recent notes', 'Days in a row', 'Next step'],
+            visibleInfo: ['Recent notes', 'Patterns', 'Story progress'],
             journeyStage: 'capture',
             headerMode: 'none',
         },
@@ -303,10 +304,10 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
     {
         prefix: '/import',
         meta: {
-            title: 'Imports',
-            description: 'Bring old posts, notes, and files into Notive so they can become useful stories.',
+            title: 'Bring In',
+            description: 'Bring old posts, notes, and files into Notive so they can become useful memories, lessons, and stories.',
             section: 'Organize',
-            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Imports' }],
+            breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Bring In' }],
             primaryAction: { label: 'Open Memories', shortLabel: 'Memories', href: '/timeline' },
             secondaryAction: { label: 'Open Stories', shortLabel: 'Stories', href: '/portfolio?view=evidence' },
             visibleInfo: ['Connected apps', 'Import queue', 'Ready items'],
@@ -318,12 +319,12 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
         prefix: '/chat',
         meta: {
             title: 'AskNotive',
-            description: 'Get grounded advice based on your notes — one next step, one support draft, or a clearer question.',
+            description: 'Understand your notes, extract what matters, and turn saved moments into something reusable.',
             section: 'Reflect',
             breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'AskNotive' }],
             primaryAction: { label: 'Open Memories', shortLabel: 'Memories', href: '/timeline' },
             secondaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
-            visibleInfo: ['Action brief', 'Bridge draft', 'Next step'],
+            visibleInfo: ['Memories', 'Lessons', 'Stories'],
             journeyStage: 'reflect',
             headerMode: 'none',
         },
@@ -332,7 +333,7 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
         prefix: '/portfolio',
         meta: {
             title: 'Stories',
-            description: 'Open resume, statement, interview, and growth tools built from your notes.',
+            description: 'Open resume, statement, interview, and growth tools built from your saved moments.',
             section: 'Apply',
             breadcrumbs: [{ label: 'Home', href: '/dashboard' }, { label: 'Stories' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },

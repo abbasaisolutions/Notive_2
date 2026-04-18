@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import type { IconType } from 'react-icons';
 import { FiCalendar, FiCheckSquare, FiEdit3, FiHeart, FiMoon, FiMessageSquare, FiX } from 'react-icons/fi';
 
@@ -106,6 +106,44 @@ interface TemplatesModalProps {
 }
 
 export default function TemplatesModal({ isOpen, onClose, onSelect }: TemplatesModalProps) {
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const previousFocusRef = useRef<HTMLElement | null>(null);
+
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            onClose();
+            return;
+        }
+        if (e.key !== 'Tab' || !dialogRef.current) return;
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    }, [onClose]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        previousFocusRef.current = document.activeElement as HTMLElement;
+        document.addEventListener('keydown', handleKeyDown);
+        const timer = setTimeout(() => {
+            dialogRef.current?.querySelector<HTMLElement>('button')?.focus();
+        }, 50);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            clearTimeout(timer);
+            previousFocusRef.current?.focus();
+        };
+    }, [isOpen, handleKeyDown]);
+
     if (!isOpen) return null;
 
     const handleSelect = (template: Template) => {
@@ -118,9 +156,9 @@ export default function TemplatesModal({ isOpen, onClose, onSelect }: TemplatesM
         <div
             className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             onClick={onClose}
-            onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
         >
             <div
+                ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="templates-modal-title"

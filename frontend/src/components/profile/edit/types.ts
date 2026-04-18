@@ -66,10 +66,10 @@ export type EditTab = 'profile' | 'preferences' | 'security' | 'privacy' | 'remi
 export type EditableTab = Exclude<EditTab, 'security' | 'reminders'>;
 
 export const TAB_ITEMS: Array<{ id: EditTab; label: string; Icon: IconType }> = [
-    { id: 'profile', label: 'About', Icon: FiUser },
-    { id: 'preferences', label: 'Goals', Icon: FiTarget },
-    { id: 'security', label: 'Security', Icon: FiShield },
-    { id: 'privacy', label: 'Data', Icon: FiBox },
+    { id: 'profile', label: 'Profile', Icon: FiUser },
+    { id: 'preferences', label: 'Goals & Coach', Icon: FiTarget },
+    { id: 'security', label: 'Sign-in & Security', Icon: FiShield },
+    { id: 'privacy', label: 'Privacy & Data', Icon: FiBox },
     { id: 'reminders', label: 'Reminders', Icon: FiBell },
 ];
 
@@ -78,7 +78,10 @@ export const EDITABLE_TABS: EditableTab[] = ['profile', 'preferences', 'privacy'
 export const LEGACY_TAB_MAP: Record<string, EditTab> = {
     profile: 'profile',
     preferences: 'preferences',
+    coach: 'preferences',
     security: 'security',
+    signin: 'security',
+    'sign-in': 'security',
     privacy: 'privacy',
     reminders: 'reminders',
     personalization: 'preferences',

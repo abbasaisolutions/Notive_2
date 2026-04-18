@@ -13,6 +13,7 @@ import {
     quietNotebookPageStyle,
     quietNotebookPanelStyle,
 } from '@/components/marketing/NotiveShowcase';
+import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { useAuth } from '@/context/auth-context';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useApi from '@/hooks/use-api';
@@ -109,9 +110,9 @@ export default function CompleteProfilePage() {
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
                     <QuietNotebookAuthIllustration
                         src="/images/hero-2.jpg"
-                        alt="Teen reviewing a Notive strength, evidence, and readiness table that turns journal notes into clearer college essay material."
+                        alt="Teen reviewing saved notes in Notive while finishing profile setup."
                         eyebrow="One quick detail"
-                        body="Before we reopen your notebook, add your birthday so Notive can keep age-aware and seasonal reflection cues grounded in the right context."
+                        body={NOTIVE_VOICE.auth.profileBody}
                     />
 
                     <motion.div
@@ -131,17 +132,17 @@ export default function CompleteProfilePage() {
                                 Finish profile
                             </p>
                             <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong md:text-[3rem]">
-                                Share your date of birth so we can personalize your experience.
+                                {NOTIVE_VOICE.auth.profileTitle}
                             </h1>
                             <p className="mt-4 max-w-xl text-sm leading-7 text-default md:text-base">
-                                Your date of birth stays between us. We&apos;ll tailor guidance with your school stage, seasonal timing, and reflection cues in mind.
+                                {NOTIVE_VOICE.auth.profileBody}
                             </p>
                         </div>
 
                         <div className="app-paper-soft mt-6 overflow-hidden rounded-[1.5rem] lg:hidden">
                             <Image
                                 src="/images/hero-2.jpg"
-                                alt="Teen reviewing a Notive strength, evidence, and readiness table that turns journal notes into clearer college essay material."
+                                alt="Teen reviewing saved notes in Notive while finishing profile setup."
                                 width={1144}
                                 height={768}
                                 className="h-52 w-full object-cover object-center"
@@ -183,9 +184,9 @@ export default function CompleteProfilePage() {
                             >
                                 <p>What this unlocks right away:</p>
                                 <ul className="mt-2 space-y-2 text-soft">
-                                    <li>Age-aware reflection language that fits better.</li>
-                                    <li>Seasonal cues for school-year and life-stage context.</li>
-                                    <li>A more grounded base for future personality and horoscope-style summaries.</li>
+                                    <li>Examples and prompts that better match your stage of life.</li>
+                                    <li>More relevant memory, lesson, and story suggestions over time.</li>
+                                    <li>Cleaner personalization for future summaries and outputs.</li>
                                 </ul>
                             </div>
 
