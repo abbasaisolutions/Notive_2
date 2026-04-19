@@ -5,7 +5,7 @@ import Link from 'next/link';
 import NotiveLogo from '@/components/ui/NotiveLogo';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiCamera, FiCpu, FiTrendingUp, FiZap, FiBell, FiMic, FiMapPin, FiCheck, FiX } from 'react-icons/fi';
+import { FiCamera, FiCpu, FiTrendingUp, FiZap } from 'react-icons/fi';
 import type { IconType } from 'react-icons';
 import { NotebookDoodle, type NotebookDoodleName } from '@/components/dashboard/NotebookDoodles';
 import { Button } from '@/components/ui/form-elements';
@@ -24,15 +24,6 @@ import {
 import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { unwrapSetupReturnTo } from '@/utils/redirect';
 import { Spinner } from '@/components/ui';
-import { App } from '@capacitor/app';
-import {
-    type PermissionKind,
-    type AllPermissions,
-    checkAllPermissions,
-    requestPermission as requestDevicePermission,
-    markPermissionsOnboardingDone,
-} from '@/services/device-permissions.service';
-import { isNativePlatform } from '@/utils/platform';
 
 const GOALS: Array<{ id: OnboardingGoal; icon: IconType; doodle: NotebookDoodleName; label: string; desc: string }> = [
     { id: 'clarity', icon: FiCpu, doodle: 'steady-me', label: NOTIVE_VOICE.onboarding.goalLabels.clarity, desc: NOTIVE_VOICE.onboarding.goalDescriptions.clarity },
@@ -131,7 +122,6 @@ const ONBOARDING_STEPS = [
     { id: 1, label: 'Goal' },
     { id: 2, label: 'Context' },
     { id: 3, label: 'Starter' },
-    { id: 4, label: 'Permissions' },
 ];
 
 type ProfileSnapshot = {
@@ -162,33 +152,6 @@ const deriveResumeStepFromProfile = (profile: ProfileSnapshot): number => {
     return 3;
 };
 
-/* ─── Permission card metadata ──────────────────────── */
-const PERMISSION_CARDS: Array<{
-    kind: PermissionKind;
-    icon: IconType;
-    label: string;
-    reason: string;
-}> = [
-    {
-        kind: 'notifications',
-        icon: FiBell,
-        label: 'Notifications',
-        reason: 'Reminders to write, shared-memory activity, and updates when insights are ready.',
-    },
-    {
-        kind: 'microphone',
-        icon: FiMic,
-        label: 'Microphone',
-        reason: 'Voice capture so you can speak your notes instead of typing.',
-    },
-    {
-        kind: 'location',
-        icon: FiMapPin,
-        label: 'Location',
-        reason: 'Tag entries with where you were — a quiet context layer.',
-    },
-];
-
 function OnboardingPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -209,12 +172,6 @@ function OnboardingPageContent() {
     const [isProgressSaving, setIsProgressSaving] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSigningOut, setIsSigningOut] = useState(false);
-    const [permissionStatuses, setPermissionStatuses] = useState<AllPermissions>({
-        notifications: 'prompt',
-        microphone: 'prompt',
-        location: 'prompt',
-    });
-    const [requestingPermission, setRequestingPermission] = useState<PermissionKind | null>(null);
     const hasHydratedProfileRef = useRef(false);
     const safeReturnTo = useMemo(
         () => unwrapSetupReturnTo(searchParams.get('returnTo')),
@@ -272,62 +229,6 @@ function OnboardingPageContent() {
         setSelectedPrompt(promptOptions[0]);
     }, [promptOptions, selectedPrompt, step]);
 
-    const refreshPermissions = useCallback(async () => {
-        const result = await checkAllPermissions();
-        setPermissionStatuses(result);
-    }, []);
-
-    // Check device permissions whenever the permissions step is visible and
-    // refresh when the app regains focus in case the user changed OS settings.
-    useEffect(() => {
-        if (step !== 4) return;
-
-        let cancelled = false;
-        const runRefresh = async () => {
-            const result = await checkAllPermissions();
-            if (!cancelled) {
-                setPermissionStatuses(result);
-            }
-        };
-
-        void runRefresh();
-
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                void runRefresh();
-            }
-        };
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        let appListenerPromise: Promise<{ remove: () => Promise<void> } | null> | null = null;
-        if (isNativePlatform()) {
-            appListenerPromise = App.addListener('appStateChange', ({ isActive }) => {
-                if (isActive) {
-                    void runRefresh();
-                }
-            }).catch(() => null);
-        }
-
-        return () => {
-            cancelled = true;
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            if (appListenerPromise) {
-                void appListenerPromise.then((listener) => listener?.remove?.()).catch(() => {});
-            }
-        };
-    }, [step]);
-
-    const handleRequestPermission = async (kind: PermissionKind) => {
-        setRequestingPermission(kind);
-        try {
-            const result = await requestDevicePermission(kind);
-            setPermissionStatuses((prev) => ({ ...prev, [kind]: result.status }));
-            void refreshPermissions();
-        } finally {
-            setRequestingPermission(null);
-        }
-    };
-
     const isCompletedProfile = hasCompletedOnboardingFromProfile(user?.profile);
     const firstIncompleteStep = useMemo(() => {
         if (isCompletedProfile) return null;
@@ -340,9 +241,8 @@ function OnboardingPageContent() {
     const canContinue =
         (step === 1 && !!goal) ||
         (step === 2 && !!track) ||
-        (step === 3 && selectedPrompt !== null) ||
-        step === 4; // permissions step is always continuable (skip or grant)
-    const maxReachableStep = firstIncompleteStep ?? 4;
+        (step === 3 && selectedPrompt !== null);
+    const maxReachableStep = firstIncompleteStep ?? 3;
 
     const buildStepPayload = (currentStep: number): Record<string, unknown> => {
         const payload: Record<string, unknown> = {};
@@ -413,15 +313,6 @@ function OnboardingPageContent() {
             return;
         }
 
-        // Step 3 → advance to permissions step
-        if (step === 3) {
-            const saved = await saveStepProgress(step);
-            if (!saved) return;
-            setStep(4);
-            return;
-        }
-
-        // Step 4 (permissions) → finish onboarding
         if (!goal || !track || selectedPrompt === null) return;
 
         const completedAt = new Date().toISOString();
@@ -443,11 +334,6 @@ function OnboardingPageContent() {
                 const data = await response.json().catch(() => null);
                 throw new Error(data?.message || 'Couldn\u2019t finish setup. Please try again.');
             }
-
-            // Mark permissions onboarding done only after the profile save
-            // succeeds — otherwise a failed save leaves a stale local flag
-            // that changes future push-init behavior incorrectly.
-            markPermissionsOnboardingDone();
 
             saveOnboardingState({
                 completed: true,
@@ -550,7 +436,7 @@ function OnboardingPageContent() {
                 </div>
 
                 <div className="mb-4 text-center">
-                    <div className="type-overline text-muted">Setup {step}/4</div>
+                    <div className="type-overline text-muted">Setup {step}/3</div>
                     <h1 className="type-display-lg mt-2 text-strong">Choose how Notive should help you first.</h1>
                     <p className="type-body-sm mx-auto mt-3 max-w-2xl text-default">
                         Pick your goal, choose the part of life to focus on, and start with one easy first question for your first note.
@@ -831,96 +717,7 @@ function OnboardingPageContent() {
                                     so your diary becomes more useful over time.
                                 </p>
                                 <p className="text-xs opacity-60">
-                                    You can connect Spotify and health data later in Me → Privacy &amp; Data.
-                                </p>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {step === 4 && (
-                        <motion.div
-                            key="permissions"
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -12 }}
-                            className="workspace-panel rounded-3xl p-6 md:p-8"
-                        >
-                            <p className="type-body-md mb-2 text-default">
-                                Give Notive the best start on your device.
-                            </p>
-                            <p className="type-body-sm mb-6 text-soft">
-                                These permissions are optional. Turn on what helps you capture memories more easily. You can change them anytime in settings.
-                            </p>
-
-                            <div className="space-y-3">
-                                {PERMISSION_CARDS.map((card) => {
-                                    const status = permissionStatuses[card.kind];
-                                    const isGranted = status === 'granted';
-                                    const isDenied = status === 'denied';
-                                    const isRequesting = requestingPermission === card.kind;
-                                    const isUnavailable = status === 'unavailable';
-                                    const Icon = card.icon;
-
-                                    return (
-                                        <div
-                                            key={card.kind}
-                                            className={`flex items-center gap-4 rounded-2xl border p-4 transition-colors ${
-                                                isGranted
-                                                    ? 'border-primary/40 bg-primary/10'
-                                                    : isDenied
-                                                        ? 'border-[rgba(var(--paper-apricot),0.4)] bg-[rgba(var(--paper-apricot),0.08)]'
-                                                        : 'workspace-soft-panel'
-                                            }`}
-                                        >
-                                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                                                isGranted ? 'bg-primary/20 text-primary' : 'bg-[rgba(var(--paper-border),0.18)] text-soft'
-                                            }`}>
-                                                <Icon size={20} aria-hidden="true" />
-                                            </div>
-
-                                            <div className="flex-1 min-w-0">
-                                                <div className="type-card-title text-strong">{card.label}</div>
-                                                <div className="type-micro mt-0.5 text-default">{card.reason}</div>
-                                            </div>
-
-                                            <div className="shrink-0">
-                                                {isGranted && (
-                                                    <span className="inline-flex items-center gap-1 type-label-sm text-primary">
-                                                        <FiCheck size={16} aria-hidden="true" /> On
-                                                    </span>
-                                                )}
-                                                {isDenied && (
-                                                    <span className="inline-flex items-center gap-1 type-label-sm text-soft">
-                                                        <FiX size={16} aria-hidden="true" /> Denied
-                                                    </span>
-                                                )}
-                                                {isUnavailable && (
-                                                    <span className="type-label-sm text-disabled">N/A</span>
-                                                )}
-                                                {!isGranted && !isDenied && !isUnavailable && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRequestPermission(card.kind)}
-                                                        disabled={isRequesting}
-                                                        className="workspace-button-outline type-label-sm rounded-xl px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
-                                                    >
-                                                        {isRequesting ? 'Asking\u2026' : 'Enable'}
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            <div className="workspace-soft-panel type-micro mt-6 rounded-xl p-4 text-default space-y-1.5">
-                                <p className="font-semibold text-xs">Why these permissions?</p>
-                                <p className="text-xs opacity-80">
-                                    Notifications help you come back. Voice lets you speak instead of type.
-                                    Location can tag where a memory happened when that context matters.
-                                </p>
-                                <p className="text-xs opacity-60">
-                                    Nothing is shared. You stay in control in Me → Privacy &amp; Data.
+                                    Android permissions like notifications, mic, and location will be requested by the system when they matter, not during setup.
                                 </p>
                             </div>
                         </motion.div>
@@ -947,8 +744,8 @@ function OnboardingPageContent() {
                             {isProgressSaving ? 'Saving...' : 'Save for Later'}
                         </button>
                         <Button onClick={goNext} disabled={!canContinue || isSubmitting || isProgressSaving}>
-                            {step === 4
-                                ? (isSubmitting ? 'Finishing...' : 'Finish Setup')
+                            {step === 3
+                                ? (isSubmitting ? 'Starting...' : 'Start Writing')
                                 : (isProgressSaving ? 'Saving...' : 'Continue')}
                         </Button>
                     </div>

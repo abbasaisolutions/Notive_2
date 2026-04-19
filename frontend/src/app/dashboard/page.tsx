@@ -7,6 +7,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FiBookOpen, FiClock, FiEdit3, FiGrid, FiMic } from 'react-icons/fi';
 import useApi from '@/hooks/use-api';
 import { getSavedDraftWordCount } from '@/hooks/use-entry-draft';
@@ -78,6 +79,8 @@ const DashboardNotebookView = dynamic(() => import('@/components/dashboard/Dashb
 });
 import { Spinner } from '@/components/ui';
 import NotiveLoadingScreen from '@/components/ui/NotiveLoadingScreen';
+import PullToRefreshIndicator from '@/components/layout/PullToRefreshIndicator';
+import usePullToRefresh from '@/hooks/use-pull-to-refresh';
 
 type DashboardAction = {
     label: string;
@@ -492,6 +495,7 @@ export default function DashboardPage() {
     const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { apiFetch } = useApi();
     const { trackEvent } = useTelemetry();
+    const router = useRouter();
     const { stats: gamificationStats, isLoading: gamificationLoading, refreshStats: refreshGamificationStats } = useGamification();
     const [entries, setEntries] = useState<Entry[]>([]);
     const [resurfacedMoments, setResurfacedMoments] = useState<ResurfacedMoment[]>([]);
@@ -532,6 +536,7 @@ export default function DashboardPage() {
     const [supportMap, setSupportMap] = useState<DashboardSupportMap | null>(null);
     const [deviceSignals, setDeviceSignals] = useState<DeviceContextSummary | null>(null);
     const [wellnessSubmitted, setWellnessSubmitted] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
         const fromProfile = getOnboardingStateFromProfile(user?.profile);
@@ -753,7 +758,7 @@ export default function DashboardPage() {
             controller.abort();
             deferredTasks.forEach((timer) => clearTimeout(timer));
         };
-    }, [user, apiFetch]);
+    }, [apiFetch, refreshKey, user]);
 
     useEffect(() => {
         if (!user?.id || isLoading || !gentleReflectionsEnabled) {
@@ -844,6 +849,16 @@ export default function DashboardPage() {
         totalWords: totalWords ?? 0,
         currentStreak: streak ?? 0,
     }), [entries, themeClusters, totalWords, streak]);
+    const handlePullToRefresh = useCallback(async () => {
+        router.refresh();
+        await refreshGamificationStats();
+        setRefreshKey((current) => current + 1);
+    }, [refreshGamificationStats, router]);
+
+    const pullToRefresh = usePullToRefresh({
+        enabled: true,
+        onRefresh: handlePullToRefresh,
+    });
 
     if (authLoading) {
         return (
@@ -1035,54 +1050,62 @@ export default function DashboardPage() {
 
     if (process.env.NEXT_PUBLIC_DASHBOARD_REFINED !== '0') {
         return (
-            <DashboardNotebookView
-                firstName={firstName}
-                avatarUrl={safeUser.avatarUrl}
-                todayLabel={todayLabel}
-                locationLabel={profileLocation}
-                userBirthDate={safeUser.profile?.birthDate ? String(safeUser.profile.birthDate) : null}
-                profileTags={profileTags}
-                entries={entries}
-                themeClusters={themeClusters}
-                resurfacedMoments={resurfacedMoments}
-                totalWords={totalWords}
-                todayBrief={todayBrief}
-                focusCard={focusCard}
-                recommendedHref={recommendedHref}
-                openDashboardEntryHref={openDashboardEntryHref}
-                gentleReflection={gentleReflection}
-                gentleJournalHref={gentleJournalHref}
-                timelineHref={timelineHref}
-                portfolioHref={portfolioHref}
-                guideHref={guideHref}
-                dashboardReturnTo={dashboardReturnTo}
-                hasSafetyFocus={!!(todayAction && (todayAction.risk.level === 'orange' || todayAction.risk.level === 'red'))}
-                setGentleReflectionsEnabled={setGentleReflectionsEnabled}
-                setGentleReflection={setGentleReflection}
-                gentleReflectionsEnabled={gentleReflectionsEnabled}
-                handleAcceptGentleReflection={handleAcceptGentleReflection}
-                handleDismissGentleReflection={handleDismissGentleReflection}
-                todayBridge={todayBridge}
-                handleDashboardBridgeCopy={handleDashboardBridgeCopy}
-                showThenNow={showThenNow}
-                oldestEntry={oldestEntry}
-                daysSinceFirst={daysSinceFirst}
-                wellnessSubmitted={wellnessSubmitted}
-                deviceSignals={deviceSignals}
-                hasDeviceSignals={hasDeviceSignals}
-                writerDNA={writerDNA}
-                dashboardInsights={dashboardInsights}
-                journalIntel={journalIntel}
-                weeklyDigest={weeklyDigest}
-                storyOverview={storyOverview}
-                hasCheckedInToday={hasCheckedInToday}
-                todayCheckInMood={todayCheckInMood}
-                onDailyCheckIn={handleDailyCheckIn}
-                supportMap={supportMap}
-                heroInsight={heroInsight}
-                heroInsightLoading={heroInsightLoading}
-                insightTier={insightTier}
-            />
+            <>
+                <PullToRefreshIndicator
+                    pullDistance={pullToRefresh.pullDistance}
+                    progress={pullToRefresh.progress}
+                    isReady={pullToRefresh.isReady}
+                    isRefreshing={pullToRefresh.isRefreshing}
+                />
+                <DashboardNotebookView
+                    firstName={firstName}
+                    avatarUrl={safeUser.avatarUrl}
+                    todayLabel={todayLabel}
+                    locationLabel={profileLocation}
+                    userBirthDate={safeUser.profile?.birthDate ? String(safeUser.profile.birthDate) : null}
+                    profileTags={profileTags}
+                    entries={entries}
+                    themeClusters={themeClusters}
+                    resurfacedMoments={resurfacedMoments}
+                    totalWords={totalWords}
+                    todayBrief={todayBrief}
+                    focusCard={focusCard}
+                    recommendedHref={recommendedHref}
+                    openDashboardEntryHref={openDashboardEntryHref}
+                    gentleReflection={gentleReflection}
+                    gentleJournalHref={gentleJournalHref}
+                    timelineHref={timelineHref}
+                    portfolioHref={portfolioHref}
+                    guideHref={guideHref}
+                    dashboardReturnTo={dashboardReturnTo}
+                    hasSafetyFocus={!!(todayAction && (todayAction.risk.level === 'orange' || todayAction.risk.level === 'red'))}
+                    setGentleReflectionsEnabled={setGentleReflectionsEnabled}
+                    setGentleReflection={setGentleReflection}
+                    gentleReflectionsEnabled={gentleReflectionsEnabled}
+                    handleAcceptGentleReflection={handleAcceptGentleReflection}
+                    handleDismissGentleReflection={handleDismissGentleReflection}
+                    todayBridge={todayBridge}
+                    handleDashboardBridgeCopy={handleDashboardBridgeCopy}
+                    showThenNow={showThenNow}
+                    oldestEntry={oldestEntry}
+                    daysSinceFirst={daysSinceFirst}
+                    wellnessSubmitted={wellnessSubmitted}
+                    deviceSignals={deviceSignals}
+                    hasDeviceSignals={hasDeviceSignals}
+                    writerDNA={writerDNA}
+                    dashboardInsights={dashboardInsights}
+                    journalIntel={journalIntel}
+                    weeklyDigest={weeklyDigest}
+                    storyOverview={storyOverview}
+                    hasCheckedInToday={hasCheckedInToday}
+                    todayCheckInMood={todayCheckInMood}
+                    onDailyCheckIn={handleDailyCheckIn}
+                    supportMap={supportMap}
+                    heroInsight={heroInsight}
+                    heroInsightLoading={heroInsightLoading}
+                    insightTier={insightTier}
+                />
+            </>
         );
     }
 
@@ -1098,6 +1121,12 @@ export default function DashboardPage() {
 
     return (
         <div className="min-h-screen pb-32 md:pb-20">
+            <PullToRefreshIndicator
+                pullDistance={pullToRefresh.pullDistance}
+                progress={pullToRefresh.progress}
+                isReady={pullToRefresh.isReady}
+                isRefreshing={pullToRefresh.isRefreshing}
+            />
             <main className="mx-auto w-full max-w-4xl px-4 py-6 md:px-6 md:py-10 space-y-4 lg:ml-0 lg:mr-auto">
 
                 {/* ── Tier 0: Empty state ──────────────────────────── */}

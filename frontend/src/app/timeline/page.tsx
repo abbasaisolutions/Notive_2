@@ -39,6 +39,8 @@ import {
 } from '@/utils/timeline-context';
 import { buildTimelineMonthGroups, buildTimelineMonthKey } from '@/utils/timeline-groups';
 import { writeWorkspaceResume } from '@/utils/workspace-resume';
+import PullToRefreshIndicator from '@/components/layout/PullToRefreshIndicator';
+import usePullToRefresh from '@/hooks/use-pull-to-refresh';
 
 interface Entry {
     id: string;
@@ -1061,6 +1063,7 @@ function TimelinePageContent() {
     const [sentBundles, setSentBundles] = useState<SentBundle[]>([]);
     const [sentBundlesLoading, setSentBundlesLoading] = useState(false);
     const [entryShareStats, setEntryShareStats] = useState<EntryShareStats>({});
+    const [refreshKey, setRefreshKey] = useState(0);
 
     const restoreInitRef = useRef(false);
     const entriesRef = useRef<Entry[]>([]);
@@ -1322,7 +1325,7 @@ function TimelinePageContent() {
             mounted = false;
             controller.abort();
         };
-    }, [fetchEntriesPage, fetchTimelineSummary, fetchEntryShareStats, user]);
+    }, [fetchEntriesPage, fetchTimelineSummary, fetchEntryShareStats, refreshKey, user]);
 
     useEffect(() => {
         setSourceFilter(normalizeSourceFilter(searchParams.get('source')));
@@ -2019,7 +2022,7 @@ function TimelinePageContent() {
         if (surface !== 'shared') return;
 
         void loadSharedSurface({ markNotifications: true });
-    }, [loadSharedSurface, surface]);
+    }, [loadSharedSurface, refreshKey, surface]);
 
     // Initial unread count (for badge)
     useEffect(() => {
@@ -2047,6 +2050,16 @@ function TimelinePageContent() {
         () => entries.map((e) => ({ id: e.id, title: e.title, content: e.content, mood: e.mood, createdAt: e.createdAt })),
         [entries],
     );
+
+    const handlePullToRefresh = useCallback(async () => {
+        router.refresh();
+        setRefreshKey((current) => current + 1);
+    }, [router]);
+
+    const pullToRefresh = usePullToRefresh({
+        enabled: true,
+        onRefresh: handlePullToRefresh,
+    });
 
     const ensureTimelineMonthLoaded = useCallback(async (monthKey: string) => {
         const monthLoaded = () => entriesRef.current.some((entry) => buildTimelineMonthKey(entry.createdAt) === monthKey);
@@ -2301,6 +2314,12 @@ function TimelinePageContent() {
 
     return (
         <div className="min-h-screen px-3 md:px-8 py-3 md:py-10">
+            <PullToRefreshIndicator
+                pullDistance={pullToRefresh.pullDistance}
+                progress={pullToRefresh.progress}
+                isReady={pullToRefresh.isReady}
+                isRefreshing={pullToRefresh.isRefreshing}
+            />
             <AnimatePresence>
                 {isMobileTimelineRailVisible && visibleEntries.length > 0 && (
                     <motion.div
