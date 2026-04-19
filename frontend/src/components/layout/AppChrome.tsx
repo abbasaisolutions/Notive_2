@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { App as CapacitorApp } from '@capacitor/app';
-import { Keyboard } from '@capacitor/keyboard';
+import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
 import { StatusBar, Style as StatusBarStyle } from '@capacitor/status-bar';
 import { useAuth } from '@/context/auth-context';
 import { useGamification } from '@/context/gamification-context';
@@ -18,6 +18,7 @@ import { API_URL } from '@/constants/config';
 import { extractNativeAppPath } from '@/utils/native-app-links';
 import { isNativeCapacitorPlatform } from '@/utils/sso';
 import { resolveAuthenticatedPublicEntryDestination } from '@/utils/public-entry-routing';
+import { getNativeBackHandler } from '@/utils/native-navigation';
 
 export default function AppChrome() {
     const router = useRouter();
@@ -107,13 +108,33 @@ export default function AppChrome() {
         const HOME_ROUTES = new Set(['/', '/dashboard']);
         let removed = false;
         let removeListener: (() => Promise<void>) | null = null;
+        let isHandlingBackPress = false;
 
         void CapacitorApp.addListener('backButton', ({ canGoBack }) => {
-            if (canGoBack && !HOME_ROUTES.has(window.location.pathname)) {
-                router.back();
-            } else {
-                void CapacitorApp.minimizeApp();
+            if (isHandlingBackPress) {
+                return;
             }
+
+            isHandlingBackPress = true;
+
+            void (async () => {
+                try {
+                    const nativeBackHandler = getNativeBackHandler();
+                    if (nativeBackHandler && await nativeBackHandler()) {
+                        return;
+                    }
+
+                    if (canGoBack && !HOME_ROUTES.has(window.location.pathname)) {
+                        router.back();
+                    } else {
+                        await CapacitorApp.minimizeApp();
+                    }
+                } finally {
+                    window.setTimeout(() => {
+                        isHandlingBackPress = false;
+                    }, 180);
+                }
+            })();
         }).then((listener) => {
             if (removed) {
                 void listener.remove();
@@ -141,8 +162,88 @@ export default function AppChrome() {
         void StatusBar.setBackgroundColor({ color: '#F8F4ED' }).catch(() => {});
 
         // Keyboard: resize body so inputs are not obscured
-        void Keyboard.setResizeMode({ mode: 'body' as any }).catch(() => {});
+        void Keyboard.setResizeMode({ mode: KeyboardResize.Body }).catch(() => {});
         void Keyboard.setScroll({ isDisabled: false }).catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        if (!isNativeCapacitorPlatform() || typeof window === 'undefined' || !window.visualViewport) {
+            return;
+        }
+
+        const root = document.documentElement;
+        const visualViewport = window.visualViewport;
+        let animationFrameId = 0;
+
+        const getFocusedEditable = () => {
+            const activeElement = document.activeElement;
+            if (!(activeElement instanceof HTMLElement)) {
+                return null;
+            }
+
+            if (activeElement.matches('input, textarea, [contenteditable="true"], [contenteditable=""], .ProseMirror')) {
+                return activeElement;
+            }
+
+            const editableParent = activeElement.closest?.('input, textarea, [contenteditable="true"], [contenteditable=""], .ProseMirror');
+            return editableParent instanceof HTMLElement ? editableParent : null;
+        };
+
+        const syncViewportInsets = () => {
+            const keyboardInset = Math.max(
+                Math.round(window.innerHeight - visualViewport.height - visualViewport.offsetTop),
+                0,
+            );
+            root.style.setProperty('--keyboard-inset', `${keyboardInset}px`);
+
+            const focusedEditable = getFocusedEditable();
+            if (!focusedEditable || keyboardInset < 96) {
+                return;
+            }
+
+            const visibleBottom = visualViewport.offsetTop + visualViewport.height - 28;
+            const focusedRect = focusedEditable.getBoundingClientRect();
+
+            if (focusedRect.bottom > visibleBottom || focusedRect.top < visualViewport.offsetTop + 16) {
+                focusedEditable.scrollIntoView({
+                    block: 'center',
+                    inline: 'nearest',
+                    behavior: 'smooth',
+                });
+            }
+        };
+
+        const scheduleViewportSync = () => {
+            if (animationFrameId) {
+                window.cancelAnimationFrame(animationFrameId);
+            }
+
+            animationFrameId = window.requestAnimationFrame(() => {
+                animationFrameId = 0;
+                syncViewportInsets();
+            });
+        };
+
+        const handleFocusIn = () => {
+            window.setTimeout(scheduleViewportSync, 60);
+        };
+
+        visualViewport.addEventListener('resize', scheduleViewportSync);
+        visualViewport.addEventListener('scroll', scheduleViewportSync);
+        window.addEventListener('focusin', handleFocusIn);
+        document.addEventListener('selectionchange', scheduleViewportSync);
+        scheduleViewportSync();
+
+        return () => {
+            visualViewport.removeEventListener('resize', scheduleViewportSync);
+            visualViewport.removeEventListener('scroll', scheduleViewportSync);
+            window.removeEventListener('focusin', handleFocusIn);
+            document.removeEventListener('selectionchange', scheduleViewportSync);
+            if (animationFrameId) {
+                window.cancelAnimationFrame(animationFrameId);
+            }
+            root.style.removeProperty('--keyboard-inset');
+        };
     }, []);
 
     return (

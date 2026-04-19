@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
@@ -19,7 +20,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import EntryTopBar from '@/components/entry/new/EntryTopBar';
 import EntryEditorCard from '@/components/entry/new/EntryEditorCard';
 import FloatingRecordBar from '@/components/entry/new/FloatingRecordBar';
-import EntryInsightsPanel from '@/components/entry/new/EntryInsightsPanel';
+const EntryInsightsPanel = dynamic(() => import('@/components/entry/new/EntryInsightsPanel'), { ssr: false });
 import {
     attachVoiceTranscriptionJob,
     createVoiceTranscriptionJob,
@@ -32,11 +33,11 @@ import { appendReturnTo } from '@/utils/navigation';
 import { normalizeTag, isValidTag } from '@/utils/tags';
 import { normalizeMood } from '@/constants/moods';
 import { useToast } from '@/context/toast-context';
-import { usePushNotifications } from '@/context/push-notification-context';
 import { refreshNotificationBadge } from '@/hooks/use-notification-count';
 import { Spinner } from '@/components/ui';
-import FirstEntryHandoff from '@/components/entry/FirstEntryHandoff';
-import PostSaveSafetyDialog, { isSafetyAlertsEnabled } from '@/components/safety/PostSaveSafetyDialog';
+const FirstEntryHandoff = dynamic(() => import('@/components/entry/FirstEntryHandoff'), { ssr: false });
+const PostSaveSafetyDialog = dynamic(() => import('@/components/safety/PostSaveSafetyDialog'), { ssr: false });
+import { isSafetyAlertsEnabled } from '@/utils/safety-alerts';
 import { prepareImageForUpload } from '@/utils/image-upload';
 import {
     buildBrowserFallbackTranscription,
@@ -67,26 +68,46 @@ import {
     normalizeCategory,
     normalizeLifeArea,
 } from '@/constants/life-areas';
+import {
+    checkPermission,
+    hasSeenRuntimePermissionPrompt,
+    markRuntimePermissionPromptSeen,
+    requestPermission,
+} from '@/services/device-permissions.service';
 import { captureEntryLocation, type EntryLocation } from '@/services/location-context.service';
 import { captureDeviceSnapshot, type DeviceSnapshot } from '@/services/device-context.service';
 import { hapticSuccess, hapticError, hapticTap, hapticWarning } from '@/services/haptics.service';
+import { isNativeCapacitorPlatform } from '@/utils/sso';
+import { getNativeBackHandler, setNativeBackHandler } from '@/utils/native-navigation';
 import type { IconType } from 'react-icons';
 import {
     FiAlertCircle,
     FiAlertTriangle,
     FiFrown,
+    FiHeart,
     FiHelpCircle,
+    FiMoon,
     FiSmile,
+    FiStar,
     FiSun,
+    FiWind,
     FiZap,
 } from 'react-icons/fi';
 
+// Core-10 check-in emotions — spans Russell's valence × arousal circumplex
+// and Ekman/Plutchik basic-emotion coverage. Ordered by real-world frequency so
+// the most common picks sit at the start of the horizontal scroll row.
 const MOODS = [
     { icon: FiSmile, label: 'Happy', value: 'happy' },
     { icon: FiSun, label: 'Calm', value: 'calm' },
-    { icon: FiFrown, label: 'Sad', value: 'sad' },
+    { icon: FiMoon, label: 'Tired', value: 'tired' },
     { icon: FiAlertCircle, label: 'Anxious', value: 'anxious' },
+    { icon: FiFrown, label: 'Sad', value: 'sad' },
+    { icon: FiHeart, label: 'Grateful', value: 'grateful' },
+    { icon: FiWind, label: 'Frustrated', value: 'frustrated' },
     { icon: FiHelpCircle, label: 'Thoughtful', value: 'thoughtful' },
+    { icon: FiZap, label: 'Excited', value: 'excited' },
+    { icon: FiStar, label: 'Hopeful', value: 'hopeful' },
 ] satisfies Array<{ icon: IconType; label: string; value: string }>;
 
 type DraftConflict = {
@@ -239,17 +260,11 @@ function NewEntryPageContent() {
     const { loadDraft, saveDraft, clearDraft } = useEntryDraft(user?.id ?? null);
     const { backHref, backLabel, navigateBack } = useContextNavigation('/dashboard', 'dashboard');
     const toast = useToast();
-    const {
-        isPermissionGranted: pushPermissionGranted,
-        permissionState: pushPermissionState,
-        isLoading: pushLoading,
-        requestPermission: requestPushPermission,
-    } = usePushNotifications();
-    const pushAskedRef = useRef(false);
     const modeParam = searchParams.get('mode');
     const isQuickMode = modeParam !== 'full';
     const isWhisperRequested = modeParam === 'whisper';
     const isWhisperMode = isWhisperRequested || (!modeParam && new Date().getHours() >= 22);
+    const shouldAutoRecord = searchParams.get('autoRecord') === '1';
     const entrySource = searchParams.get('source');
     const reminderNotificationId = searchParams.get('notificationId') || '';
     const isGentleReflectionEntry = entrySource === GENTLE_REFLECTION_SOURCE;
@@ -273,6 +288,7 @@ function NewEntryPageContent() {
     const [isVoiceProcessing, setIsVoiceProcessing] = useState(false);
     const [voiceCapture, setVoiceCapture] = useState<VoiceCaptureState | null>(null);
     const [voiceJob, setVoiceJob] = useState<VoiceTranscriptionJob | null>(null);
+    const [liveTranscriptText, setLiveTranscriptText] = useState('');
     const [duplicateCandidates, setDuplicateCandidates] = useState<DuplicateCandidate[]>([]);
     const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
     const [duplicateError, setDuplicateError] = useState('');
@@ -402,6 +418,7 @@ function NewEntryPageContent() {
         autoRestart: true,
         onFinal: (text: string) => {
             if (!text.trim()) return;
+            setLiveTranscriptText((current) => appendVoiceText(current, text));
             browserTranscriptRef.current = appendVoiceText(browserTranscriptRef.current, text);
             // Live insert finalized phrases into the editor as user speaks
             setContent((current) => appendVoiceText(current, text));
@@ -437,17 +454,74 @@ function NewEntryPageContent() {
         voiceRecordingStartedAtRef.current = null;
     }, [stopVoiceMediaStream]);
 
-    // Silently capture location when entry page loads (if permission already granted)
     useEffect(() => {
         let cancelled = false;
-        captureEntryLocation()
-            .then((loc) => { if (!cancelled && loc) setEntryLocation(loc); })
-            .catch(() => {});
         captureDeviceSnapshot()
             .then((snap) => { if (!cancelled) setDeviceSnapshot(snap); })
             .catch(() => {});
         return () => { cancelled = true; };
     }, []);
+
+    // Let Android ask for location in the writing flow itself instead of onboarding.
+    useEffect(() => {
+        let cancelled = false;
+        let timer: number | null = null;
+
+        const applyCapturedLocation = async () => {
+            const location = await captureEntryLocation();
+            if (!cancelled && location) {
+                setEntryLocation(location);
+            }
+        };
+
+        const syncEntryLocation = async () => {
+            if (!isNativeCapacitorPlatform()) {
+                await applyCapturedLocation();
+                return;
+            }
+
+            if (!user?.id) {
+                return;
+            }
+
+            const { status } = await checkPermission('location');
+
+            if (cancelled) {
+                return;
+            }
+
+            if (status === 'granted') {
+                await applyCapturedLocation();
+                return;
+            }
+
+            if (shouldAutoRecord || status !== 'prompt' || hasSeenRuntimePermissionPrompt('location', user.id)) {
+                return;
+            }
+
+            timer = window.setTimeout(() => {
+                markRuntimePermissionPromptSeen('location', user.id);
+                void requestPermission('location')
+                    .then(async (result) => {
+                        if (cancelled || result.status !== 'granted') {
+                            return;
+                        }
+
+                        await applyCapturedLocation();
+                    })
+                    .catch(() => {});
+            }, 1100);
+        };
+
+        void syncEntryLocation();
+
+        return () => {
+            cancelled = true;
+            if (timer) {
+                window.clearTimeout(timer);
+            }
+        };
+    }, [shouldAutoRecord, user?.id]);
 
     useEffect(() => {
         return () => {
@@ -646,13 +720,14 @@ function NewEntryPageContent() {
         const stagedTranscript = stagedVoiceCapture?.transcript || null;
         const voiceText = searchParams.get('voice');
         const promptText = searchParams.get('prompt');
+        const sharedText = entrySource === 'share' ? searchParams.get('text') : null;
         const audioParam = stagedVoiceCapture?.audioUrl || searchParams.get('audioUrl');
         const seededVoiceCapture = stagedTranscript
             ? toVoiceCaptureState(stagedTranscript)
             : voiceText?.trim()
                 ? toVoiceCaptureState(buildBrowserFallbackTranscription(voiceText, DEFAULT_VOICE_LANGUAGE_MODE))
                 : null;
-        const seededText = stagedTranscript?.cleanTranscript || voiceText || '';
+        const seededText = stagedTranscript?.cleanTranscript || voiceText || sharedText || '';
         const savedDraft = loadDraft();
         const restoredVoiceCapture = parseStoredVoiceCapture(savedDraft?.analysis?.voice);
         const restoredVoiceJob = parseStoredVoiceJob(savedDraft?.analysis?.voice, savedDraft?.audioUrl || audioParam || null);
@@ -948,15 +1023,19 @@ function NewEntryPageContent() {
 
     const persistDraftSnapshot = useCallback((pendingSyncOverride: boolean) => {
         saveDraft({
+            entryId,
             content,
             contentHtml,
             title: titleOverride,
             mood: moodOverride,
             tags: tagsOverride,
             audioUrl,
+            entryMode: isQuickMode ? 'quick' : 'full',
             category,
             lifeArea,
             chapterId: collectionId,
+            location: entryLocation,
+            deviceContext: deviceSnapshot as Record<string, unknown> | null,
             analysis: buildPersistedAnalysis(),
             updatedAt: Date.now(),
             pendingSync: pendingSyncOverride,
@@ -968,6 +1047,10 @@ function NewEntryPageContent() {
         collectionId,
         content,
         contentHtml,
+        deviceSnapshot,
+        entryId,
+        entryLocation,
+        isQuickMode,
         lifeArea,
         moodOverride,
         saveDraft,
@@ -1086,6 +1169,7 @@ function NewEntryPageContent() {
 
         setVoiceError(null);
         setVoiceJob(null);
+        setLiveTranscriptText('');
         browserTranscriptRef.current = '';
         audioChunksRef.current = [];
         shouldProcessVoiceStopRef.current = true;
@@ -1181,7 +1265,7 @@ function NewEntryPageContent() {
     useEffect(() => {
         if (autoRecordTriggeredRef.current) return;
         if (!draftInitRef.current) return;
-        if (searchParams.get('autoRecord') !== '1') return;
+        if (!shouldAutoRecord) return;
         if (!isVoiceSupported || isVoiceProcessing || isRecording) return;
 
         autoRecordTriggeredRef.current = true;
@@ -1190,7 +1274,7 @@ function NewEntryPageContent() {
             startRecording();
         }, 150);
         return () => clearTimeout(timer);
-    }, [searchParams, isVoiceSupported, isVoiceProcessing, isRecording, startRecording]);
+    }, [shouldAutoRecord, isVoiceSupported, isVoiceProcessing, isRecording, startRecording]);
 
     // Elapsed recording timer
     useEffect(() => {
@@ -1239,6 +1323,79 @@ function NewEntryPageContent() {
         });
         navigateBack();
     }, [audioUrl, content, isQuickMode, navigateBack, pendingSync, persistDraftSnapshot, tagsOverride.length, titleOverride, trackEvent]);
+
+    useEffect(() => {
+        if (!isNativeCapacitorPlatform()) {
+            return;
+        }
+
+        const handleNativeBack = async () => {
+            if (isRecording) {
+                stopRecording();
+                toast.info(
+                    'Recording paused',
+                    'Press back once more when you are ready to leave. We kept your note in place.',
+                );
+                return true;
+            }
+
+            const hasDraftableContent = Boolean(
+                content.trim()
+                || titleOverride.trim()
+                || audioUrl
+                || tagsOverride.length > 0
+            );
+
+            if (!hasDraftableContent) {
+                return false;
+            }
+
+            if (draftPersistTimeoutRef.current) {
+                clearTimeout(draftPersistTimeoutRef.current);
+            }
+            if (autoSaveTimeoutRef.current) {
+                clearTimeout(autoSaveTimeoutRef.current);
+            }
+
+            const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+            persistDraftSnapshot(pendingSync || offline);
+            if (offline) {
+                setPendingSync(true);
+            }
+
+            void trackEvent({
+                eventType: 'entry_finish_later',
+                value: 'native_back',
+                metadata: {
+                    hasDraftableContent: true,
+                    offline,
+                },
+            });
+
+            navigateBack();
+            return true;
+        };
+
+        setNativeBackHandler(handleNativeBack);
+
+        return () => {
+            if (getNativeBackHandler() === handleNativeBack) {
+                setNativeBackHandler(null);
+            }
+        };
+    }, [
+        audioUrl,
+        content,
+        isRecording,
+        navigateBack,
+        pendingSync,
+        persistDraftSnapshot,
+        stopRecording,
+        tagsOverride.length,
+        titleOverride,
+        toast,
+        trackEvent,
+    ]);
 
     const handleSave = useCallback(async (isAutoSave = false) => {
         const normalizedContent = content.trim();
@@ -1380,18 +1537,6 @@ function NewEntryPageContent() {
                     hapticSuccess();
                 }
                 clearDraft();
-                // After the user's first-ever save, prompt for push permission with context.
-                // Guard: only once per session, and only if permission state is resolved.
-                if (
-                    !entryId
-                    && !pushPermissionGranted
-                    && (pushPermissionState === 'prompt' || pushPermissionState === 'prompt-with-rationale')
-                    && !pushLoading
-                    && !pushAskedRef.current
-                ) {
-                    pushAskedRef.current = true;
-                    void requestPushPermission();
-                }
                 const safetyFromSave = data?.safety && data.safety.risk && data.safety.risk.level !== 'none'
                     ? data.safety
                     : null;
@@ -1509,11 +1654,7 @@ function NewEntryPageContent() {
         lifeArea,
         moodOverride,
         persistDraftSnapshot,
-        pushLoading,
-        pushPermissionGranted,
-        pushPermissionState,
         refreshStats,
-        requestPushPermission,
         router,
         tagsOverride,
         titleOverride,
@@ -1765,6 +1906,7 @@ function NewEntryPageContent() {
                     voiceError={voiceError}
                     voiceReviewRequired={voiceCapture?.reviewRequired}
                     voiceStatusMessage={voiceStatusMessage}
+                    transcriptText={liveTranscriptText}
                     interimText={interimText}
                     onStartRecording={startRecording}
                     onStopRecording={stopRecording}
@@ -1953,6 +2095,7 @@ function NewEntryPageContent() {
                 <FloatingRecordBar
                     audioLevel={audioLevel}
                     elapsed={recordingElapsed}
+                    transcriptText={liveTranscriptText}
                     interimText={interimText}
                     onStop={stopRecording}
                 />

@@ -4,6 +4,7 @@ import React from 'react';
 import { StructuredEntryData } from '@/services/structured-data.service';
 import { FiChevronDown, FiZap } from 'react-icons/fi';
 import type { IconType } from 'react-icons';
+import { hapticTap } from '@/services/haptics.service';
 
 type MoodOption = {
     icon: IconType;
@@ -262,15 +263,21 @@ export default function EntryInsightsPanel({
 
                         <div>
                             <label className="text-xs font-medium text-ink-muted mb-2 block uppercase tracking-[0.12em]">Mood</label>
-                            <div className="flex flex-wrap gap-2">
+                            <div
+                                className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                                role="radiogroup"
+                                aria-label="Mood"
+                            >
                                 {moods.map((m) => (
                                     <button
                                         key={m.value}
-                                        onClick={() => setMoodOverride(moodOverride === m.value ? null : m.value)}
-                                        className={`px-2.5 py-2 rounded-xl text-sm flex items-center gap-1.5 transition-all border ${displayMood === m.value
+                                        onClick={() => { hapticTap(); setMoodOverride(moodOverride === m.value ? null : m.value); }}
+                                        className={`shrink-0 snap-start px-2.5 py-2 rounded-xl text-sm flex items-center gap-1.5 transition-all border ${displayMood === m.value
                                             ? 'bg-primary border-primary text-[rgb(var(--paper-soft))] shadow-lg shadow-primary/25'
                                             : 'workspace-button-outline text-ink-secondary'
                                             }`}
+                                        role="radio"
+                                        aria-checked={displayMood === m.value}
                                         title={m.label}
                                     >
                                         <m.icon size={14} aria-hidden="true" />

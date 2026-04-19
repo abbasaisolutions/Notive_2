@@ -14,6 +14,7 @@ import { ToastProvider, ToastContainer } from "@/context/toast-context";
 import ErrorBoundary from "@/components/error-boundary";
 import ReducedMotionProvider from "@/components/ReducedMotionProvider";
 import AppChrome from "@/components/layout/AppChrome";
+import BackgroundSyncCoordinator from "@/components/layout/BackgroundSyncCoordinator";
 import RouteHeader from "@/components/layout/RouteHeader";
 import PageTransition from "@/components/layout/PageTransition";
 import OfflineBanner from "@/components/layout/OfflineBanner";
@@ -127,7 +128,23 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
+            <head>
+                <style
+                    dangerouslySetInnerHTML={{
+                        __html: `html,body{background:#F8F4ED;margin:0}
+#notive-cold-shell{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#F8F4ED;z-index:0;pointer-events:none;transition:opacity .3s ease-out}
+body:has(.app-shell) #notive-cold-shell{opacity:0}
+#notive-cold-shell svg{opacity:.75}`,
+                    }}
+                />
+            </head>
             <body className={`${jakarta.variable} ${fraunces.variable} font-sans tracking-[0.005em]`}>
+                <div id="notive-cold-shell" aria-hidden="true">
+                    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="32" cy="32" r="28" stroke="#8A9A6F" strokeWidth="2" opacity="0.4" />
+                        <path d="M20 38c4-12 12-18 24-16-2 12-10 20-24 18z" fill="#8A9A6F" opacity="0.6" />
+                    </svg>
+                </div>
                 <ErrorBoundary>
                     <ReducedMotionProvider>
                     <GoogleProviderWrapper>
@@ -151,7 +168,7 @@ export default function RootLayout({
                                                         id="main-content"
                                                         className="flex-1 w-full relative z-10 app-shell spotlight-grid"
                                                         tabIndex={-1}
-                                                        style={{ paddingBottom: 'var(--app-bottom-clearance, 0px)' }}
+                                                        style={{ paddingBottom: 'max(var(--app-bottom-clearance, 0px), var(--keyboard-inset, 0px))' }}
                                                     >
                                                         <Suspense fallback={null}>
                                                             <RouteHeader />
@@ -169,6 +186,7 @@ export default function RootLayout({
                                                         </footer>
                                                     </main>
                                                 </div>
+                                                <BackgroundSyncCoordinator />
                                                 <OfflineBanner />
                                                 <ToastContainer />
                                                 <PushNotificationPermissionPrompt />

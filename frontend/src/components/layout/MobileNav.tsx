@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from '@/context/auth-context';
 import { useGamification } from '@/context/gamification-context';
 import { useTheme } from '@/context/theme-context';
@@ -22,6 +22,8 @@ import {
     isNavItemActive,
     shouldHideGlobalNav,
 } from './nav-config';
+import { setNativeBackHandler } from '@/utils/native-navigation';
+import { hapticTap } from '@/services/haptics.service';
 
 export default function MobileNav() {
     const pathname = usePathname();
@@ -35,6 +37,7 @@ export default function MobileNav() {
     const [isMoreOpen, setIsMoreOpen] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [capturePhase, setCapturePhase] = useState(0); // 0=plus, 1=mic, 2=plus, 3=pen
+    const prefersReducedMotion = useReducedMotion();
     const isPaper = theme === 'paper';
     const workspaceMaturity = getWorkspaceMaturity({
         role: user?.role ?? null,
@@ -65,11 +68,31 @@ export default function MobileNav() {
         setIsMoreOpen(false);
     }, [pathname]);
 
-    // Alternate icon on the capture FAB: + → mic → + → pen
+    // Alternate icon on the capture FAB: + → mic → + → pen.
+    // Pause when the tab is hidden (saves battery) and honor reduced-motion.
     useEffect(() => {
-        const interval = setInterval(() => setCapturePhase(p => (p + 1) % 4), 1600);
-        return () => clearInterval(interval);
-    }, []);
+        if (prefersReducedMotion) return;
+        let interval: ReturnType<typeof setInterval> | null = null;
+        const start = () => {
+            if (interval) return;
+            interval = setInterval(() => setCapturePhase(p => (p + 1) % 4), 1600);
+        };
+        const stop = () => {
+            if (!interval) return;
+            clearInterval(interval);
+            interval = null;
+        };
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible') start();
+            else stop();
+        };
+        handleVisibility();
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibility);
+            stop();
+        };
+    }, [prefersReducedMotion]);
 
     // Prefetch entry route so navigation is near-instant
     useEffect(() => {
@@ -79,6 +102,11 @@ export default function MobileNav() {
 
     useEffect(() => {
         if (!isMoreOpen) return;
+
+        setNativeBackHandler(() => {
+            setIsMoreOpen(false);
+            return true;
+        });
 
         const handleEscape = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
@@ -93,6 +121,7 @@ export default function MobileNav() {
         return () => {
             document.body.style.overflow = previousOverflow;
             window.removeEventListener('keydown', handleEscape);
+            setNativeBackHandler(null);
         };
     }, [isMoreOpen]);
 
@@ -170,6 +199,7 @@ export default function MobileNav() {
     };
 
     const handleCaptureTap = () => {
+        hapticTap();
         setIsMoreOpen(false);
         // Mic phase → voice mode; all other phases → text mode
         if (capturePhase === 1) {
@@ -293,11 +323,13 @@ export default function MobileNav() {
                                         {/* Subtle inner ring */}
                                         <div className="absolute inset-[3px] rounded-[1.4rem] border border-white/15" />
                                         {/* Breathing glow ring */}
-                                        <motion.div
-                                            className="absolute -inset-1 rounded-[2rem] border-2 border-[#A3B87F]/40"
-                                            animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0.15, 0.5] }}
-                                            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                                        />
+                                        {!prefersReducedMotion && (
+                                            <motion.div
+                                                className="absolute -inset-1 rounded-[2rem] border-2 border-[#A3B87F]/40"
+                                                animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0.15, 0.5] }}
+                                                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                                            />
+                                        )}
 
                                         <div className="relative z-10 flex h-8 w-8 items-center justify-center">
                                             <AnimatePresence mode="wait">
@@ -350,6 +382,7 @@ export default function MobileNav() {
                             <Link
                                 key={item.href}
                                 href={item.href}
+                                onClick={() => { if (!isActive) hapticTap(); }}
                                 aria-current={isActive ? 'page' : undefined}
                                 className={`relative z-10 flex min-h-[44px] flex-1 flex-col items-center justify-center rounded-2xl px-2 py-1.5 transition-all ${isActive ? 'text-accent' : 'text-muted hover:text-strong'}`}
                             >
@@ -391,7 +424,7 @@ export default function MobileNav() {
                     {moreSectionItems.length > 0 && (
                         <button
                             type="button"
-                            onClick={() => setIsMoreOpen(!isMoreOpen)}
+                            onClick={() => { hapticTap(); setIsMoreOpen(!isMoreOpen); }}
                             aria-expanded={isMoreOpen}
                             aria-controls="mobile-more-drawer"
                             aria-current={isMoreSectionActive ? 'page' : undefined}

@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
-import { Spinner } from '@/components/ui';
+import { ConfirmDialog, Spinner } from '@/components/ui';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { useAuth } from '@/context/auth-context';
@@ -24,6 +24,8 @@ import { ProfileSection } from './ProfileSection';
 import { SecuritySection } from './SecuritySection';
 import RemindersSection from './RemindersSection';
 import { mergeGentleReflectionSetting, isGentleReflectionEnabled } from '@/utils/gentle-reflection';
+import { isNativeCapacitorPlatform } from '@/utils/sso';
+import { getNativeBackHandler, setNativeBackHandler } from '@/utils/native-navigation';
 import {
     addTag,
     asPromptFrequency,
@@ -78,6 +80,10 @@ const resolveKnownProfileUpdatedAt = (source: SnapshotUser | null | undefined): 
         : undefined;
 };
 
+type PendingLeaveAction =
+    | { kind: 'back' }
+    | { kind: 'href'; href: string };
+
 export function ProfileSettingsEditor() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -124,7 +130,12 @@ export function ProfileSettingsEditor() {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    const [pendingLeaveAction, setPendingLeaveAction] = useState<PendingLeaveAction | null>(null);
     const hasPassword = Boolean(user?.hasPassword);
+    const pendingLeaveActionRef = useRef<PendingLeaveAction | null>(null);
+    const historyGuardActiveRef = useRef(false);
+    const skipNextPopstateRef = useRef(false);
+    const leaveTransitionTimerRef = useRef<number | null>(null);
 
     const resetNoticeState = () => {
         setNotice(null);
@@ -203,12 +214,74 @@ export function ProfileSettingsEditor() {
         sensitiveSessionExpiresAt &&
         new Date(sensitiveSessionExpiresAt).getTime() > Date.now()
     );
+    const leaveGuardOpen = pendingLeaveAction !== null;
 
     const clearSensitiveSession = () => {
         setSensitiveActionToken('');
         setSensitiveSessionExpiresAt(null);
         setReauthPassword('');
     };
+
+    const openLeaveGuard = useCallback((action: PendingLeaveAction) => {
+        pendingLeaveActionRef.current = action;
+        setPendingLeaveAction(action);
+    }, []);
+
+    const dismissLeaveGuard = useCallback(() => {
+        pendingLeaveActionRef.current = null;
+        setPendingLeaveAction(null);
+    }, []);
+
+    const confirmLeaveGuard = useCallback(() => {
+        const action = pendingLeaveActionRef.current;
+        pendingLeaveActionRef.current = null;
+        setPendingLeaveAction(null);
+
+        if (!action) {
+            return;
+        }
+
+        const releaseHistoryGuard = (navigate: (usedHistoryGuard: boolean) => void) => {
+            if (typeof window === 'undefined' || !historyGuardActiveRef.current) {
+                navigate(false);
+                return;
+            }
+
+            historyGuardActiveRef.current = false;
+            skipNextPopstateRef.current = true;
+            window.history.back();
+
+            if (leaveTransitionTimerRef.current) {
+                window.clearTimeout(leaveTransitionTimerRef.current);
+            }
+
+            leaveTransitionTimerRef.current = window.setTimeout(() => {
+                leaveTransitionTimerRef.current = null;
+                navigate(true);
+            }, 0);
+        };
+
+        if (action.kind === 'href') {
+            releaseHistoryGuard((usedHistoryGuard) => {
+                if (usedHistoryGuard) {
+                    router.replace(action.href);
+                    return;
+                }
+
+                router.push(action.href);
+            });
+            return;
+        }
+
+        releaseHistoryGuard(() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+                router.back();
+                return;
+            }
+
+            router.push('/profile');
+        });
+    }, [router]);
 
     useEffect(() => {
         if (!hasDirtyChanges || typeof window === 'undefined') {
@@ -223,6 +296,148 @@ export function ProfileSettingsEditor() {
         window.addEventListener('beforeunload', handleBeforeUnload);
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [hasDirtyChanges]);
+
+    useEffect(() => {
+        return () => {
+            if (leaveTransitionTimerRef.current) {
+                window.clearTimeout(leaveTransitionTimerRef.current);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!hasDirtyChanges || typeof window === 'undefined') {
+            return;
+        }
+
+        if (!historyGuardActiveRef.current) {
+            window.history.pushState(
+                {
+                    ...(typeof window.history.state === 'object' && window.history.state !== null ? window.history.state : {}),
+                    __notiveProfileEditGuard: true,
+                },
+                '',
+                window.location.href,
+            );
+            historyGuardActiveRef.current = true;
+        }
+
+        const handlePopState = () => {
+            if (skipNextPopstateRef.current) {
+                skipNextPopstateRef.current = false;
+                return;
+            }
+
+            window.history.go(1);
+
+            if (!leaveGuardOpen) {
+                openLeaveGuard({ kind: 'back' });
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [hasDirtyChanges, leaveGuardOpen, openLeaveGuard]);
+
+    useEffect(() => {
+        if (hasDirtyChanges || !historyGuardActiveRef.current || typeof window === 'undefined') {
+            return;
+        }
+
+        historyGuardActiveRef.current = false;
+        skipNextPopstateRef.current = true;
+        window.history.back();
+    }, [hasDirtyChanges]);
+
+    useEffect(() => {
+        if (hasDirtyChanges || !leaveGuardOpen) {
+            return;
+        }
+
+        dismissLeaveGuard();
+    }, [dismissLeaveGuard, hasDirtyChanges, leaveGuardOpen]);
+
+    useEffect(() => {
+        if (!hasDirtyChanges || typeof document === 'undefined') {
+            return;
+        }
+
+        const handleDocumentClick = (event: MouseEvent) => {
+            if (
+                leaveGuardOpen
+                || event.defaultPrevented
+                || event.button !== 0
+                || event.metaKey
+                || event.ctrlKey
+                || event.shiftKey
+                || event.altKey
+            ) {
+                return;
+            }
+
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) {
+                return;
+            }
+
+            const anchor = target.closest('a[href]');
+            if (!(anchor instanceof HTMLAnchorElement)) {
+                return;
+            }
+
+            if (anchor.target && anchor.target !== '_self') {
+                return;
+            }
+
+            if (anchor.hasAttribute('download')) {
+                return;
+            }
+
+            const nextUrl = new URL(anchor.href, window.location.href);
+            const currentUrl = new URL(window.location.href);
+
+            if (nextUrl.origin !== currentUrl.origin) {
+                return;
+            }
+
+            if (nextUrl.pathname === currentUrl.pathname) {
+                return;
+            }
+
+            event.preventDefault();
+            openLeaveGuard({
+                kind: 'href',
+                href: `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`,
+            });
+        };
+
+        document.addEventListener('click', handleDocumentClick, true);
+        return () => document.removeEventListener('click', handleDocumentClick, true);
+    }, [hasDirtyChanges, leaveGuardOpen, openLeaveGuard]);
+
+    useEffect(() => {
+        if (!isNativeCapacitorPlatform() || !hasDirtyChanges) {
+            return;
+        }
+
+        const handleNativeBack = async () => {
+            if (leaveGuardOpen) {
+                dismissLeaveGuard();
+                return true;
+            }
+
+            openLeaveGuard({ kind: 'back' });
+            return true;
+        };
+
+        setNativeBackHandler(handleNativeBack);
+
+        return () => {
+            if (getNativeBackHandler() === handleNativeBack) {
+                setNativeBackHandler(null);
+            }
+        };
+    }, [dismissLeaveGuard, hasDirtyChanges, leaveGuardOpen, openLeaveGuard]);
 
     const activeEditableTab = EDITABLE_TABS.find((tab) => tab === activeTab) || null;
     const activeTabItem = TAB_ITEMS.find((tab) => tab.id === activeTab) || TAB_ITEMS[0];
@@ -1538,6 +1753,17 @@ export function ProfileSettingsEditor() {
                     </div>
                 </div>
             )}
+
+            <ConfirmDialog
+                open={leaveGuardOpen}
+                title="Leave without saving?"
+                description="You still have unsaved profile changes. If you leave now, those edits will be lost."
+                actionLabel="Leave without saving"
+                cancelLabel="Stay here"
+                isDangerous
+                onConfirm={confirmLeaveGuard}
+                onCancel={dismissLeaveGuard}
+            />
         </div>
     );
 }

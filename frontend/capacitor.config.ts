@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from '@capacitor/cli';
+import { KeyboardResize } from '@capacitor/keyboard';
 
 const devServerUrl = process.env.CAPACITOR_DEV_SERVER_URL?.trim();
 
@@ -7,6 +8,10 @@ const config: CapacitorConfig = {
   appName: 'Notive',
   webDir: 'out',
   plugins: {
+    Keyboard: {
+      resize: KeyboardResize.Body,
+      resizeOnFullScreen: true,
+    },
     SocialLogin: {
       providers: {
         google: true,

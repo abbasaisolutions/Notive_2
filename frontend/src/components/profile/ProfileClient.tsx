@@ -453,7 +453,11 @@ export default function ProfileClient() {
                                 Send Feedback
                             </a>
                             {isAdminUser && (
-                                <Link href="/admin" className="text-primary hover:underline">
+                                <Link
+                                    href="/admin"
+                                    className="inline-flex items-center gap-1.5 text-primary hover:underline"
+                                >
+                                    <FiShield size={15} aria-hidden="true" />
                                     Admin
                                 </Link>
                             )}

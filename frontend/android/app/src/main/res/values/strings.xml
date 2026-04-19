@@ -6,9 +6,19 @@
     <string name="custom_url_scheme">com.notive.app</string>
     <string name="widget_quick_entry_description">Notive — quick mood + note from your home screen.</string>
     <string name="widget_quick_entry_prompt">How are you right now?</string>
+    <string name="widget_quick_entry_prompt_morning">Good morning. How are you starting the day?</string>
+    <string name="widget_quick_entry_prompt_afternoon">Midday check-in — how are you now?</string>
+    <string name="widget_quick_entry_prompt_evening">Winding down. How did today feel?</string>
+    <string name="widget_quick_entry_prompt_night">Late thought? Jot it before bed.</string>
     <string name="widget_quick_entry_cta">Write a note</string>
     <string name="widget_mood_happy_desc">Log a happy moment</string>
     <string name="widget_mood_calm_desc">Log a calm moment</string>
     <string name="widget_mood_anxious_desc">Log feeling anxious</string>
     <string name="widget_mood_tired_desc">Log feeling tired</string>
+    <string name="shortcut_write_short">Write</string>
+    <string name="shortcut_write_long">Write a new note</string>
+    <string name="shortcut_voice_short">Voice</string>
+    <string name="shortcut_voice_long">Capture a voice note</string>
+    <string name="shortcut_review_short">Review</string>
+    <string name="shortcut_review_long">Today\'s review</string>
 </resources>

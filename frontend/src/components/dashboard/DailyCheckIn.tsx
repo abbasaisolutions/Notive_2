@@ -2,10 +2,10 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MOOD_EMOJIS } from '@/constants/moods';
+import { CHECKIN_MOODS, MOOD_EMOJIS } from '@/constants/moods';
 import { useToast } from '@/context/toast-context';
 
-const QUICK_MOODS = ['happy', 'calm', 'grateful', 'thoughtful', 'tired', 'anxious', 'sad', 'frustrated'] as const;
+const QUICK_MOODS = CHECKIN_MOODS;
 
 type CheckInState = 'idle' | 'selected' | 'writing' | 'saving' | 'done';
 
@@ -93,8 +93,12 @@ export default function DailyCheckIn({ hasCheckedInToday, todayMood = null, onSu
                 <p className="text-[0.62rem] text-[rgb(107,107,107)]">Counts toward your streak</p>
             </div>
 
-            {/* Mood emoji row */}
-            <div className="mt-3 flex flex-wrap justify-center gap-1.5 sm:gap-2">
+            {/* Mood emoji row — horizontal scroll, most common first, swipe left for more */}
+            <div
+                className="mt-3 -mx-4 flex snap-x snap-mandatory gap-1.5 overflow-x-auto scroll-smooth px-4 pb-1 sm:gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                role="radiogroup"
+                aria-label="How are you feeling"
+            >
                 {QUICK_MOODS.map((mood) => {
                     const isSelected = selectedMood === mood;
                     return (
@@ -103,13 +107,14 @@ export default function DailyCheckIn({ hasCheckedInToday, todayMood = null, onSu
                             type="button"
                             whileTap={{ scale: 0.9 }}
                             onClick={() => handleMoodTap(mood)}
-                            className={`flex flex-col items-center gap-1 rounded-xl px-2 py-1.5 transition-colors ${
+                            className={`flex shrink-0 snap-start flex-col items-center gap-1 rounded-xl px-2 py-1.5 transition-colors ${
                                 isSelected
                                     ? 'bg-[rgba(138,154,111,0.15)] ring-1 ring-[rgba(138,154,111,0.4)]'
                                     : 'hover:bg-[rgba(92,92,92,0.06)]'
                             }`}
+                            role="radio"
                             aria-label={mood}
-                            aria-pressed={isSelected}
+                            aria-checked={isSelected}
                         >
                             <span className={`text-xl transition-transform ${isSelected ? 'scale-110' : ''}`}>
                                 {MOOD_EMOJIS[mood] ?? '😐'}
