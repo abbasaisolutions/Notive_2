@@ -24,6 +24,7 @@ type EntryEditorCardProps = {
     voiceError: string | null;
     voiceReviewRequired?: boolean;
     voiceStatusMessage?: string | null;
+    transcriptText?: string;
     interimText: string;
     onStartRecording: () => void;
     onStopRecording: () => void;
@@ -49,6 +50,7 @@ export default function EntryEditorCard({
     isVoiceProcessing = false,
     isVoiceSupported,
     voiceError,
+    transcriptText = '',
     interimText,
     onStartRecording,
     onStopRecording,
@@ -101,7 +103,9 @@ export default function EntryEditorCard({
     }, []);
 
     const hasContent = content.trim().length > 0;
+    const committedTranscript = transcriptText.trim();
     const interimWords = interimText.trim().split(/\s+/).filter(Boolean);
+    const showLiveTranscript = isRecording || isVoiceProcessing || Boolean(voiceStatusMessage) || interimWords.length > 0;
     const utilityPanelClass = 'workspace-soft-panel';
     const mutedTextClass = 'text-muted';
     const bodyTextClass = 'text-default';
@@ -148,28 +152,51 @@ export default function EntryEditorCard({
             )}
 
             {/* Live transcription preview — word-by-word stagger with mic arcs */}
-            {interimText && (
+            {showLiveTranscript && (
                 <div aria-live="polite" aria-label="Live transcription" className={`mt-3 rounded-2xl border p-3 voice-interim-card ${utilityPanelClass}`}>
                     <div className="flex items-start gap-3">
-                        {/* Animated mic arc rings */}
                         <div className="recording-arc-container mt-0.5 flex-shrink-0">
                             <span className="mic-arc-ring mic-arc-ring-1" />
                             <span className="mic-arc-ring mic-arc-ring-2" />
                             <span className="mic-arc-ring mic-arc-ring-3" />
                             <FiMic size={11} className="relative z-10 text-[rgb(var(--paper-sage))]" aria-hidden="true" />
                         </div>
-                        {/* Words fade in one by one */}
-                        <p className={`${bodyTextClass} type-body-sm font-serif italic leading-relaxed`}>
-                            {interimWords.map((word, i) => (
-                                <span
-                                    key={`${word}-${i}`}
-                                    className="word-appear-in mr-[0.25em]"
-                                    style={{ animationDelay: `${Math.min(i * 40, 500)}ms` }}
-                                >
-                                    {word}
-                                </span>
-                            ))}
-                        </p>
+                        <div className="min-w-0 flex-1">
+                            <div className="mb-2">
+                                <p className="type-overline text-muted">
+                                    {isVoiceProcessing ? 'Refining transcript' : isRecording ? 'Live transcript' : 'Transcript preview'}
+                                </p>
+                                <p className="type-micro text-muted">
+                                    {isVoiceProcessing
+                                        ? 'We are cleaning up the transcript while keeping your draft visible.'
+                                        : 'Final phrases land in your note as you speak.'}
+                                </p>
+                            </div>
+                            <div className="max-h-32 overflow-y-auto pr-1">
+                                {committedTranscript ? (
+                                    <p className={`${bodyTextClass} type-body-sm font-serif leading-relaxed`}>
+                                        {committedTranscript}
+                                    </p>
+                                ) : (
+                                    <p className="type-body-sm italic text-muted">
+                                        Listening for your first phrase...
+                                    </p>
+                                )}
+                                {interimWords.length > 0 && (
+                                    <p className="mt-2 type-body-sm font-serif italic leading-relaxed text-muted">
+                                        {interimWords.map((word, i) => (
+                                            <span
+                                                key={`${word}-${i}`}
+                                                className="word-appear-in mr-[0.25em]"
+                                                style={{ animationDelay: `${Math.min(i * 40, 500)}ms` }}
+                                            >
+                                                {word}
+                                            </span>
+                                        ))}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

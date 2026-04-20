@@ -1,38 +1,30 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { useAuth } from '@/context/auth-context';
-import { hasCompletedPermissionsOnboarding } from '@/services/device-permissions.service';
-import { openNativeNotificationSettings } from '@/services/native-notification-settings.service';
+import {
+    hasSeenRuntimePermissionPrompt,
+    markRuntimePermissionPromptSeen,
+} from '@/services/device-permissions.service';
+import { isNativePlatform } from '@/utils/platform';
 import logger from '@/utils/logger';
 
-const PROMPT_SNOOZE_UNTIL_KEY = 'notive_push_prompt_snooze_until';
-const SOFT_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
-const DENIAL_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
-
-function readPromptSnoozeUntil(): number {
-    try {
-        const raw = localStorage.getItem(PROMPT_SNOOZE_UNTIL_KEY);
-        const parsed = raw ? Number(raw) : 0;
-        return Number.isFinite(parsed) ? parsed : 0;
-    } catch {
-        return 0;
-    }
-}
-
-function persistPromptSnooze(until: number): void {
-    try { localStorage.setItem(PROMPT_SNOOZE_UNTIL_KEY, String(until)); } catch { /* noop */ }
-}
-
-function clearPromptSnooze(): void {
-    try { localStorage.removeItem(PROMPT_SNOOZE_UNTIL_KEY); } catch { /* noop */ }
-}
+const AUTO_PROMPT_BLOCKLIST = [
+    '/onboarding',
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/reset-password',
+    '/entry/new',
+    '/share',
+    '/shared',
+];
 
 /**
- * Component that handles push notification permission requests
- * Shows a subtle prompt to enable push notifications
+ * Triggers the native Android/iOS notification permission sheet directly at
+ * runtime instead of showing a custom pre-permission modal.
  */
 export function PushNotificationPermissionPrompt() {
     const {
@@ -44,172 +36,70 @@ export function PushNotificationPermissionPrompt() {
     } = usePushNotifications();
     const { user } = useAuth();
     const pathname = usePathname();
-    const [showPrompt, setShowPrompt] = useState(false);
-    const [snoozedUntil, setSnoozedUntil] = useState(() => readPromptSnoozeUntil());
-    const canRequestInApp = permissionState === 'prompt' || permissionState === 'prompt-with-rationale';
-    const hasCompletedOnboarding = Boolean(user?.profile?.onboardingCompletedAt) || hasCompletedPermissionsOnboarding();
-    const shouldSuppressPrompt = pathname?.startsWith('/onboarding');
-    const shouldAutoPrompt = Boolean(
-        user
-        && hasCompletedOnboarding
-        && !shouldSuppressPrompt
-        && isSupported
-        && !isPermissionGranted
-        && !isLoading
-        && canRequestInApp,
-    );
+    const userId = user?.id ?? null;
+    const hasCompletedOnboarding = Boolean(user?.profile?.onboardingCompletedAt);
+    const shouldSuppressPrompt = AUTO_PROMPT_BLOCKLIST.some((prefix) => pathname?.startsWith(prefix));
 
     useEffect(() => {
-        if (isPermissionGranted) {
-            setShowPrompt(false);
-            setSnoozedUntil(0);
-            clearPromptSnooze();
+        if (!isNativePlatform()) {
             return;
         }
 
-        // Only auto-show while the OS still says we can request in-app.
-        if (!shouldAutoPrompt) {
-            if (!canRequestInApp && showPrompt) {
-                setShowPrompt(false);
+        if (!userId || !hasCompletedOnboarding || shouldSuppressPrompt) {
+            return;
+        }
+
+        if (!isSupported || isPermissionGranted || isLoading) {
+            return;
+        }
+
+        // Only auto-prompt on the first untouched state. If Android returns
+        // prompt-with-rationale or denied, future changes should come from the
+        // user's explicit action in Settings.
+        if (permissionState !== 'prompt') {
+            return;
+        }
+
+        if (hasSeenRuntimePermissionPrompt('notifications', userId)) {
+            return;
+        }
+
+        let cancelled = false;
+        const timer = window.setTimeout(() => {
+            if (cancelled) {
+                return;
             }
-            return;
-        }
 
-        if (showPrompt || snoozedUntil > Date.now()) {
-            return;
-        }
+            markRuntimePermissionPromptSeen('notifications', userId);
+            void requestPushPermission()
+                .then((granted) => {
+                    logger.debug(
+                        granted
+                            ? 'Native notification permission granted from runtime prompt'
+                            : 'Native notification permission dismissed or denied from runtime prompt',
+                    );
+                })
+                .catch((error) => {
+                    logger.error('Failed to auto-request native notification permission:', error);
+                });
+        }, 900);
 
-        const timer = setTimeout(() => {
-            setShowPrompt(true);
-        }, 6000);
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+        };
+    }, [
+        hasCompletedOnboarding,
+        isLoading,
+        isPermissionGranted,
+        isSupported,
+        permissionState,
+        requestPushPermission,
+        shouldSuppressPrompt,
+        userId,
+    ]);
 
-        return () => clearTimeout(timer);
-    }, [canRequestInApp, isPermissionGranted, shouldAutoPrompt, showPrompt, snoozedUntil]);
-
-    useEffect(() => {
-        if (isPermissionGranted && showPrompt) {
-            setShowPrompt(false);
-        }
-    }, [isPermissionGranted, showPrompt]);
-
-    const handleRequestPermission = async () => {
-        try {
-            const granted = await requestPushPermission();
-            if (granted) {
-                logger.debug('Push notification permission granted');
-                setShowPrompt(false);
-                setSnoozedUntil(0);
-                clearPromptSnooze();
-            } else {
-                handleDismiss(DENIAL_SNOOZE_MS);
-                logger.debug('Push notification permission denied');
-            }
-        } catch (error) {
-            logger.error('Failed to request push permission:', error);
-        }
-    };
-
-    const handleOpenSettings = async () => {
-        const opened = await openNativeNotificationSettings();
-        if (!opened) {
-            handleDismiss();
-        }
-    };
-
-    const handleDismiss = (durationMs = SOFT_SNOOZE_MS) => {
-        const nextSnoozeUntil = Date.now() + durationMs;
-        setShowPrompt(false);
-        setSnoozedUntil(nextSnoozeUntil);
-        persistPromptSnooze(nextSnoozeUntil);
-    };
-
-    if (!showPrompt) {
-        return null;
-    }
-
-    const title = canRequestInApp ? 'Stay in the loop' : 'Notifications are off';
-    const body = canRequestInApp
-        ? 'Get reminders to write, know when friends share memories with you, and see when insights are ready.'
-        : 'Notifications are turned off in your device settings. Tap below to open settings and turn them back on.';
-
-    return (
-        <div
-            className="fixed inset-0 z-[120] flex items-end justify-center sm:items-center"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="push-permission-title"
-            aria-describedby="push-permission-description"
-        >
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => handleDismiss()} />
-
-            {/* Card */}
-            <div
-                className="relative mx-4 w-full max-w-sm animate-in slide-in-from-bottom-6 duration-300"
-                style={{ marginBottom: 'var(--app-notification-dialog-offset, 0px)' }}
-            >
-                <div className="workspace-panel rounded-2xl shadow-2xl p-6">
-                    {/* Icon — bell for prompt, alert for denied */}
-                    <div className="flex justify-center mb-4">
-                        <div className={`h-12 w-12 rounded-full flex items-center justify-center ${canRequestInApp ? 'bg-primary/10' : 'bg-amber-500/10'}`}>
-                            {canRequestInApp ? (
-                                <svg
-                                    className="h-6 w-6 text-primary"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                >
-                                    <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-                                </svg>
-                            ) : (
-                                <svg
-                                    className="h-6 w-6 text-amber-600"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                >
-                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                            )}
-                        </div>
-                    </div>
-
-                    <h3 id="push-permission-title" className="text-base font-semibold text-[rgb(var(--text-primary))] text-center">
-                        {title}
-                    </h3>
-
-                    <p id="push-permission-description" className="text-sm text-ink-secondary text-center mt-2 leading-relaxed">
-                        {body}
-                    </p>
-
-                    <div className="flex flex-col gap-2 mt-5">
-                        {canRequestInApp ? (
-                            <button
-                                type="button"
-                                onClick={handleRequestPermission}
-                                className="w-full px-4 py-2.5 text-sm font-semibold rounded-xl primary-cta text-white transition-all"
-                            >
-                                Enable notifications
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={handleOpenSettings}
-                                className="w-full px-4 py-2.5 text-sm font-semibold rounded-xl primary-cta text-white transition-all"
-                            >
-                                Open notification settings
-                            </button>
-                        )}
-                        <button
-                            type="button"
-                            onClick={() => handleDismiss()}
-                            className="w-full px-4 py-2.5 text-sm font-medium rounded-xl text-ink-secondary hover:text-[rgb(var(--text-primary))] hover:bg-white/5 transition-all"
-                        >
-                            {canRequestInApp ? 'Maybe later' : 'Got it'}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+    return null;
 }
 
 export default PushNotificationPermissionPrompt;

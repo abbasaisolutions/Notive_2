@@ -9,6 +9,8 @@ import android.content.Intent;
 import android.net.Uri;
 import android.widget.RemoteViews;
 
+import java.util.Calendar;
+
 public class QuickEntryWidgetProvider extends AppWidgetProvider {
 
     private static final String BASE_SCHEME = "com.notive.app";
@@ -16,9 +18,11 @@ public class QuickEntryWidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+        int promptRes = resolveTimeOfDayPrompt();
         for (int widgetId : appWidgetIds) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_quick_entry);
 
+            views.setTextViewText(R.id.widget_headline, context.getString(promptRes));
             views.setOnClickPendingIntent(R.id.widget_mood_happy, buildMoodIntent(context, "happy"));
             views.setOnClickPendingIntent(R.id.widget_mood_calm, buildMoodIntent(context, "calm"));
             views.setOnClickPendingIntent(R.id.widget_mood_anxious, buildMoodIntent(context, "anxious"));
@@ -28,6 +32,14 @@ public class QuickEntryWidgetProvider extends AppWidgetProvider {
 
             appWidgetManager.updateAppWidget(widgetId, views);
         }
+    }
+
+    private static int resolveTimeOfDayPrompt() {
+        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        if (hour >= 5 && hour < 12) return R.string.widget_quick_entry_prompt_morning;
+        if (hour >= 12 && hour < 17) return R.string.widget_quick_entry_prompt_afternoon;
+        if (hour >= 17 && hour < 22) return R.string.widget_quick_entry_prompt_evening;
+        return R.string.widget_quick_entry_prompt_night;
     }
 
     public static void refreshAll(Context context) {

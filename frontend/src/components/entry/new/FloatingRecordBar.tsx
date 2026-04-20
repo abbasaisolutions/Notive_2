@@ -8,6 +8,8 @@ type FloatingRecordBarProps = {
     audioLevel: number;
     /** Elapsed recording time in seconds */
     elapsed: number;
+    /** Finalized transcript captured during this recording */
+    transcriptText: string;
     /** Current interim text from speech recognition */
     interimText: string;
     onStop: () => void;
@@ -25,7 +27,7 @@ const BAR_COUNT = 24;
  * Floating record bar shown at the bottom of the entry page during voice recording.
  * Shows a waveform visualizer, elapsed timer, live text preview, and stop button.
  */
-export default function FloatingRecordBar({ audioLevel, elapsed, interimText, onStop }: FloatingRecordBarProps) {
+export default function FloatingRecordBar({ audioLevel, elapsed, transcriptText, interimText, onStop }: FloatingRecordBarProps) {
     const barsRef = useRef<number[]>(Array(BAR_COUNT).fill(0.08));
     const [bars, setBars] = useState<number[]>(barsRef.current);
     const frameRef = useRef<number>(0);
@@ -55,8 +57,8 @@ export default function FloatingRecordBar({ audioLevel, elapsed, interimText, on
         return () => cancelAnimationFrame(rafId);
     }, [audioLevel]);
 
+    const committedTranscript = transcriptText.trim();
     const previewWords = interimText.trim().split(/\s+/).filter(Boolean);
-    const displayWords = previewWords.slice(-8); // Show last 8 words
 
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50 voice-record-bar-enter">
@@ -92,6 +94,7 @@ export default function FloatingRecordBar({ audioLevel, elapsed, interimText, on
 
                         {/* Stop button */}
                         <button
+                            type="button"
                             onClick={onStop}
                             className="flex-shrink-0 flex items-center gap-1.5 rounded-full bg-[rgba(138,154,111,0.15)] border border-[rgba(138,154,111,0.3)] px-3 py-1.5 text-[rgb(var(--paper-sage))] transition-all active:scale-95"
                             aria-label="Stop recording"
@@ -101,23 +104,36 @@ export default function FloatingRecordBar({ audioLevel, elapsed, interimText, on
                         </button>
                     </div>
 
-                    {/* Live text preview */}
-                    {displayWords.length > 0 && (
-                        <div className="flex items-center gap-2 overflow-hidden">
-                            <FiMic size={12} className="flex-shrink-0 text-[rgb(var(--paper-sage))] opacity-60" aria-hidden="true" />
-                            <p className="type-body-sm text-muted italic truncate">
-                                {displayWords.map((word, i) => (
-                                    <span
-                                        key={`${word}-${i}`}
-                                        className="word-appear-in mr-[0.25em]"
-                                        style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
-                                    >
-                                        {word}
-                                    </span>
-                                ))}
-                            </p>
+                    <div className="rounded-2xl border border-[rgba(138,154,111,0.15)] bg-[rgba(255,255,255,0.55)] px-3 py-2">
+                        <div className="mb-1 flex items-center gap-2">
+                            <FiMic size={12} className="flex-shrink-0 text-[rgb(var(--paper-sage))] opacity-70" aria-hidden="true" />
+                            <p className="type-overline text-muted">Live transcript</p>
                         </div>
-                    )}
+                        <div className="max-h-20 overflow-y-auto pr-1">
+                            {committedTranscript ? (
+                                <p className="type-body-sm leading-relaxed text-default">
+                                    {committedTranscript}
+                                </p>
+                            ) : (
+                                <p className="type-body-sm italic text-muted">
+                                    Listening for your words...
+                                </p>
+                            )}
+                            {previewWords.length > 0 && (
+                                <p className="mt-1 type-body-sm italic leading-relaxed text-muted">
+                                    {previewWords.map((word, i) => (
+                                        <span
+                                            key={`${word}-${i}`}
+                                            className="word-appear-in mr-[0.25em]"
+                                            style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
+                                        >
+                                            {word}
+                                        </span>
+                                    ))}
+                                </p>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

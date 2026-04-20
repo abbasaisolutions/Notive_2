@@ -30,6 +30,12 @@ export interface AllPermissions {
 }
 
 const PERMISSIONS_STORAGE_KEY = 'notive_permissions_onboarding_done';
+const RUNTIME_PERMISSION_PROMPT_VERSION = 1;
+
+const getRuntimePermissionPromptKey = (
+    kind: PermissionKind,
+    userId: string | null | undefined,
+) => `notive_runtime_permission_prompt_v${RUNTIME_PERMISSION_PROMPT_VERSION}_${kind}_${userId || 'anon'}`;
 
 /* ─── Notification ──────────────────────────────────── */
 
@@ -213,4 +219,28 @@ export function hasCompletedPermissionsOnboarding(): boolean {
 export function markPermissionsOnboardingDone(): void {
     if (typeof window === 'undefined') return;
     localStorage.setItem(PERMISSIONS_STORAGE_KEY, 'true');
+}
+
+export function hasSeenRuntimePermissionPrompt(
+    kind: PermissionKind,
+    userId: string | null | undefined,
+): boolean {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(getRuntimePermissionPromptKey(kind, userId)) === 'true';
+}
+
+export function markRuntimePermissionPromptSeen(
+    kind: PermissionKind,
+    userId: string | null | undefined,
+): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(getRuntimePermissionPromptKey(kind, userId), 'true');
+}
+
+export function clearRuntimePermissionPromptSeen(
+    kind: PermissionKind,
+    userId: string | null | undefined,
+): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(getRuntimePermissionPromptKey(kind, userId));
 }

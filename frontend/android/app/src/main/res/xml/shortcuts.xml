@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="write_now"
+        android:enabled="true"
+        android:icon="@drawable/ic_stat_notive"
+        android:shortcutShortLabel="@string/shortcut_write_short"
+        android:shortcutLongLabel="@string/shortcut_write_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.notive.app"
+            android:targetClass="com.notive.app.MainActivity"
+            android:data="com.notive.app://quick-entry?source=shortcut" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="voice_note"
+        android:enabled="true"
+        android:icon="@drawable/ic_stat_notive"
+        android:shortcutShortLabel="@string/shortcut_voice_short"
+        android:shortcutLongLabel="@string/shortcut_voice_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.notive.app"
+            android:targetClass="com.notive.app.MainActivity"
+            android:data="com.notive.app://quick-entry?source=shortcut&amp;mode=voice" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="review"
+        android:enabled="true"
+        android:icon="@drawable/ic_stat_notive"
+        android:shortcutShortLabel="@string/shortcut_review_short"
+        android:shortcutLongLabel="@string/shortcut_review_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.notive.app"
+            android:targetClass="com.notive.app.MainActivity"
+            android:data="com.notive.app://review?source=shortcut" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+</shortcuts>

@@ -103,7 +103,9 @@
       "Bash(python3 -c ':*)",
       "Bash(powershell.exe -Command \"Get-Content -Path 'C:\\\\\\\\tmp\\\\\\\\keystore_b64.txt' -Raw | Set-Clipboard; Write-Host 'Copied to clipboard!'\")",
       "Bash(tee /tmp/backend-tsc.log)",
-      "Bash(tee /tmp/frontend-tsc.log)"
+      "Bash(tee /tmp/frontend-tsc.log)",
+      "WebSearch",
+      "Bash(git -C /c/Users/mtabe/Notive diff -- .claude/settings.json)"
     ],
     "additionalDirectories": [
       "c:\\Users\\mtabe\\Notive\\frontend\\src\\out",

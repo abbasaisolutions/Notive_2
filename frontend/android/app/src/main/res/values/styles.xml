@@ -15,6 +15,12 @@
         <item name="android:background">@color/notive_background</item>
         <item name="android:windowBackground">@color/notive_background</item>
         <item name="android:colorBackground">@color/notive_background</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
     </style>
 
 
@@ -22,6 +28,8 @@
         <item name="android:background">@drawable/splash</item>
         <item name="android:windowBackground">@color/notive_background</item>
         <item name="android:windowSplashScreenBackground">@color/notive_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/notive_background</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import useApi from '@/hooks/use-api';
+import { emitSyncStatusChanged, markSyncIssue, markSyncSuccess } from '@/services/sync-status.service';
 
 const DB_NAME = 'notive_upload_queue';
 const STORE_NAME = 'queue';
@@ -23,6 +24,12 @@ export type UploadResult = {
     url: string;
     fileName: string;
     createdAt: number;
+};
+
+export type QueuedUploadSummary = {
+    count: number;
+    fileNames: string[];
+    newestCreatedAt: number | null;
 };
 
 const openDb = (): Promise<IDBDatabase> => {
@@ -76,6 +83,24 @@ const saveResults = (results: UploadResult[]) => {
     localStorage.setItem(RESULTS_KEY, JSON.stringify(results));
 };
 
+export const getQueuedUploadSummary = async (): Promise<QueuedUploadSummary> => {
+    try {
+        const items = await getQueueItems();
+        const sortedItems = [...items].sort((a, b) => b.createdAt - a.createdAt);
+        return {
+            count: sortedItems.length,
+            fileNames: sortedItems.slice(0, 3).map((item) => item.fileName),
+            newestCreatedAt: sortedItems[0]?.createdAt ?? null,
+        };
+    } catch {
+        return {
+            count: 0,
+            fileNames: [],
+            newestCreatedAt: null,
+        };
+    }
+};
+
 export const useUploadQueue = () => {
     const { apiFetch } = useApi();
     const [queueCount, setQueueCount] = useState(0);
@@ -106,6 +131,7 @@ export const useUploadQueue = () => {
             createdAt: Date.now(),
         });
         await refreshQueueCount();
+        emitSyncStatusChanged();
         return id;
     }, [refreshQueueCount]);
 
@@ -122,6 +148,7 @@ export const useUploadQueue = () => {
         if (items.length === 0) return;
 
         const results = loadResults();
+        let completedAnyUpload = false;
 
         for (const item of items) {
             try {
@@ -151,14 +178,21 @@ export const useUploadQueue = () => {
                 }
 
                 await removeQueueItem(item.id);
+                completedAnyUpload = true;
             } catch (error) {
                 console.error('Queued upload failed:', error);
+                markSyncIssue(error instanceof Error ? error.message : 'Queued upload failed.');
                 // Stop processing to avoid busy retries when offline
                 break;
             }
         }
 
         await refreshQueueCount();
+        if (completedAnyUpload) {
+            markSyncSuccess();
+        } else {
+            emitSyncStatusChanged();
+        }
     }, [apiFetch, refreshQueueCount]);
 
     const clearUploadResult = useCallback((id: string) => {
