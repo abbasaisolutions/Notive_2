@@ -396,7 +396,12 @@ export default function MobileNav() {
                                                 className={`ring-2 transition-all ${isActive ? 'ring-accent' : 'ring-transparent'}`}
                                             />
                                             {unreadCount > 0 && (
-                                                <span className="absolute -top-0.5 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-[rgb(107,143,113)]" />
+                                                <span
+                                                    className="absolute -top-0.5 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-[rgb(107,143,113)] text-white text-[10px] font-bold leading-none px-1 shadow-sm"
+                                                    aria-label={`${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}`}
+                                                >
+                                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                                </span>
                                             )}
                                         </span>
                                     ) : (

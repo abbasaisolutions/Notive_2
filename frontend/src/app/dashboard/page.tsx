@@ -8,8 +8,9 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiBookOpen, FiClock, FiEdit3, FiGrid, FiMic } from 'react-icons/fi';
+import { FiBell, FiBookOpen, FiClock, FiEdit3, FiGrid, FiMic } from 'react-icons/fi';
 import useApi from '@/hooks/use-api';
+import { useNotificationCount } from '@/hooks/use-notification-count';
 import { getSavedDraftWordCount } from '@/hooks/use-entry-draft';
 import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
@@ -497,6 +498,7 @@ export default function DashboardPage() {
     const { trackEvent } = useTelemetry();
     const router = useRouter();
     const { stats: gamificationStats, isLoading: gamificationLoading, refreshStats: refreshGamificationStats } = useGamification();
+    const { unreadCount: unreadNotificationCount } = useNotificationCount();
     const [entries, setEntries] = useState<Entry[]>([]);
     const [resurfacedMoments, setResurfacedMoments] = useState<ResurfacedMoment[]>([]);
     const [onThisDayEntries, setOnThisDayEntries] = useState<Array<{
@@ -1239,6 +1241,28 @@ export default function DashboardPage() {
                 <Gate minTier={2} currentTier={insightTier}>
                     <ReviewBanner totalEntries={entries.length} />
                 </Gate>
+
+                {/* ── Pending notifications pill (mobile parity with web sidebar badge) ── */}
+                {unreadNotificationCount > 0 && (
+                    <Link
+                        href="/notifications"
+                        className="flex items-center gap-3 rounded-2xl border border-[rgba(107,143,113,0.28)] bg-[rgba(107,143,113,0.08)] px-4 py-2.5 transition-colors hover:bg-[rgba(107,143,113,0.14)]"
+                        aria-label={`${unreadNotificationCount} unread notification${unreadNotificationCount === 1 ? '' : 's'}, view all`}
+                    >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgb(107,143,113)] text-white">
+                            <FiBell size={15} aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                            <span className="type-label-md block text-strong">
+                                {unreadNotificationCount} new notification{unreadNotificationCount === 1 ? '' : 's'}
+                            </span>
+                            <span className="type-micro block text-ink-muted">Tap to review</span>
+                        </span>
+                        <svg className="h-4 w-4 shrink-0 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </Link>
+                )}
 
                 {/* ── Daily Check-In (tier 1+) ───────────────────── */}
                 <Gate minTier={1} currentTier={insightTier}>
