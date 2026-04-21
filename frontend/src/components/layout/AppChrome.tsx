@@ -6,9 +6,11 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
 import { StatusBar, Style as StatusBarStyle } from '@capacitor/status-bar';
 import { useAuth } from '@/context/auth-context';
+import { hapticTap } from '@/services/haptics.service';
 import { useGamification } from '@/context/gamification-context';
 import ProgressivePersonalizationPrompt from '@/components/smart/ProgressivePersonalizationPrompt';
 import MobileNav from '@/components/layout/MobileNav';
+import NotificationBell from '@/components/layout/NotificationBell';
 import Sidebar from '@/components/layout/Sidebar';
 import CelebrationModal from '@/components/gamification/CelebrationModal';
 import FloatingVoiceButton from '@/components/voice/FloatingVoiceButton';
@@ -153,6 +155,27 @@ export default function AppChrome() {
         };
     }, [router]);
 
+    // Delegated haptic feedback for chip-scroller taps (all chip rows share
+    // the .chip-scroller class, so one listener covers every row).
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+
+        const handler = (event: Event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            const scroller = target.closest('.chip-scroller');
+            if (!scroller) return;
+            const interactive = target.closest('button, a, [role="radio"], [role="tab"]');
+            if (!interactive || !scroller.contains(interactive)) return;
+            hapticTap();
+        };
+
+        document.addEventListener('pointerdown', handler, { passive: true });
+        return () => {
+            document.removeEventListener('pointerdown', handler);
+        };
+    }, []);
+
     // StatusBar + Keyboard configuration (native only)
     useEffect(() => {
         if (!isNativeCapacitorPlatform()) return;
@@ -251,6 +274,7 @@ export default function AppChrome() {
             {!hideNav && <Sidebar />}
             {!hideAuxiliary && (
                 <>
+                    <NotificationBell />
                     <MobileNav />
                     {showCalmAuxiliary && <CelebrationModal />}
                     {showCalmAuxiliary && (

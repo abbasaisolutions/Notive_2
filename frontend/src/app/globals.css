@@ -1681,6 +1681,37 @@
   display: none;
 }
 
+/* Canonical horizontal chip/pill scroller — same pattern used for
+   portfolio workspace switcher, check-in moods, filter rows, etc. */
+.chip-scroller {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  padding-bottom: 0.25rem;
+  /* Fade edges so off-screen chips hint at "swipe for more" */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, black 14px, black calc(100% - 14px), transparent 100%);
+          mask-image: linear-gradient(to right, transparent 0, black 14px, black calc(100% - 14px), transparent 100%);
+}
+.chip-scroller::-webkit-scrollbar {
+  display: none;
+}
+.chip-scroller > * {
+  flex-shrink: 0;
+  scroll-snap-align: center;
+  white-space: nowrap;
+}
+.chip-scroller > *:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(var(--paper-sage), 0.55), 0 0 0 4px rgba(var(--paper-bg), 0.9);
+  border-radius: 9999px;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

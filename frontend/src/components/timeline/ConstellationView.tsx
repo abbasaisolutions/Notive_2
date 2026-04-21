@@ -54,7 +54,7 @@ export default function ConstellationView({ model, totalEntries, currentReturnTo
                         title="Meaning View"
                         description="Time is one way to read your life. This view lets you browse the ideas, moods, and skills your recent entries orbit around."
                     />
-                    <ActionBar className="overflow-x-auto border-white/10 bg-black/20">
+                    <ActionBar scroll className="border-white/10 bg-black/20">
                         <TagPill tone="primary">{totalEntries} matching entries</TagPill>
                         <TagPill>{model.nodes.length - 1} active signals</TagPill>
                         <span className="text-xs text-ink-secondary">{model.headline}</span>

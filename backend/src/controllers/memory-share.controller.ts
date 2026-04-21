@@ -1126,6 +1126,35 @@ export const markSharedNotificationsRead = async (req: Request, res: Response) =
 };
 
 /**
+ * Mark every unread shared-memory bundle recipient row as read for the caller.
+ * PATCH /api/v1/memory-share/received/read-all
+ */
+export const markAllReceivedRead = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId;
+        const result = await prisma.sharedMemoryRecipient.updateMany({
+            where: {
+                recipientId: userId,
+                readAt: null,
+                status: {
+                    in: [
+                        MemoryShareAccessStatus.PENDING,
+                        MemoryShareAccessStatus.ACCEPTED,
+                    ],
+                },
+                bundle: { status: 'ACTIVE' },
+            },
+            data: { readAt: new Date() },
+        });
+
+        return res.json({ message: 'Shared memories marked as read', count: result.count });
+    } catch (error) {
+        console.error('Mark all received read error:', error);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+/**
  * Revoke a shared bundle (sender only).
  * DELETE /api/v1/memory-share/bundles/:id
  */

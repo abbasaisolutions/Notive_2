@@ -475,7 +475,7 @@ export default function TimelineView({ entries, seasonAnchorsByMonthKey = {}, on
                                                         if (!hasPills && !onShareEntry) return null;
 
                                                         return (
-                                                            <div className="flex items-center gap-1 mt-1.5 overflow-x-auto flex-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                                            <div className="chip-scroller gap-1 mt-1.5">
                                                                 {visible.map(pill => (
                                                                     <span key={pill.key} className={pillClass(pill.type)} title={pill.fullLabel}>
                                                                         {pill.label}

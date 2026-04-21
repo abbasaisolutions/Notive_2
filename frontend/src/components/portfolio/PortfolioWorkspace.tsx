@@ -32,6 +32,7 @@ import { API_URL } from '@/constants/config';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useTelemetry from '@/hooks/use-telemetry';
+import { useChipScroller } from '@/hooks/use-chip-scroller';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import {
     buildRecentViews,
@@ -852,6 +853,8 @@ export default function PortfolioWorkspace() {
         if (!hasHydratedWorkspaceRef.current) return;
         setRecentViews((current) => buildRecentViews(activeView, current));
     }, [activeView]);
+
+    const { containerRef: workspaceChipRowRef, registerItem: registerWorkspaceChip } = useChipScroller(activeView);
 
     useEffect(() => {
         if (!hasHydratedWorkspaceRef.current) return;
@@ -2055,59 +2058,20 @@ export default function PortfolioWorkspace() {
         const verifiedRate = overview && overview.stats.experienceCount > 0
             ? overview.stats.verifiedCount / overview.stats.experienceCount
             : 0;
-        const outputGoals = overview?.profileContext?.outputGoals || [];
         const topSkillsPreview = (overview?.topSkills || []).slice(0, 6);
         const topLessonsPreview = (overview?.topLessons || []).slice(0, 6);
         const lensReadiness = overview?.profileContext?.completionScore || 0;
-        const growthFocus = lensReadiness < 60
-            ? {
-                title: 'Tune your story lens',
-                description: 'Your direction settings are still light. Tightening them will make the rest of the progress view more useful.',
-                actionLabel: 'Tune story lens',
-                actionHref: profileHref,
-                actionView: null as PortfolioView | null,
-            }
-            : evidenceSummary.avgScore < 70
-                ? {
-                    title: 'Strengthen story quality next',
-                    description: `Average story quality is ${evidenceSummary.avgScore}%. Sharpening a few core stories will improve every export and interview answer.`,
-                    actionLabel: 'Open Evidence Queue',
-                    actionHref: null as string | null,
-                    actionView: 'evidence' as PortfolioView,
-                }
-                : verifiedRate < 0.5
-                    ? {
-                        title: 'Verify more proof',
-                        description: `${formatRatioPercent(verifiedRate)} of stories are verified. Moving a few stronger stories into verified proof will make this system more reliable.`,
-                        actionLabel: 'Open Evidence Queue',
-                        actionHref: null as string | null,
-                        actionView: 'evidence' as PortfolioView,
-                    }
-                    : (overview?.topSkills?.[0]
-                        ? {
-                            title: `${overview.topSkills[0]} is surfacing most`,
-                            description: 'Your strongest repeated skill is getting clearer. Rehearse or reuse the stories that prove it best.',
-                            actionLabel: 'Open Interview',
-                            actionHref: null as string | null,
-                            actionView: 'interview' as PortfolioView,
-                        }
-                        : {
-                            title: 'Your story system is getting stronger',
-                            description: 'Keep the momentum small and consistent. The main trendline is already giving you a useful read.',
-                            actionLabel: 'Open Stories',
-                            actionHref: null as string | null,
-                            actionView: 'export' as PortfolioView,
-                        });
 
         return (
-            <div className="space-y-6">
-                <AppPanel className="space-y-5">
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                        <SectionHeader
-                            kicker="Progress"
-                            title="Keep growth readable"
-                            description="Start with one headline read, one main trendline, and a small set of supporting context cards."
-                        />
+            <div className="space-y-4">
+                <AppPanel className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="min-w-0">
+                            <p className="type-overline text-muted">Progress</p>
+                            <p className="type-body-sm text-soft">
+                                Verified {formatRatioPercent(verifiedRate)} · Quality {evidenceSummary.avgScore}% · Lens {lensReadiness}%
+                            </p>
+                        </div>
                         <ActionBar>
                             {(['week', 'month'] as const).map((period) => (
                                 <button
@@ -2115,7 +2079,7 @@ export default function PortfolioWorkspace() {
                                     type="button"
                                     onClick={() => setTrendPeriod(period)}
                                     aria-pressed={trendPeriod === period}
-                                    className={`rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-colors ${
+                                    className={`rounded-lg px-2.5 py-1.5 type-label-sm font-semibold uppercase tracking-[0.08em] transition-colors ${
                                         trendPeriod === period
                                             ? 'bg-primary/15 text-primary'
                                             : 'workspace-button-ghost text-ink-secondary'
@@ -2127,153 +2091,71 @@ export default function PortfolioWorkspace() {
                         </ActionBar>
                     </div>
 
-                    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)]">
-                        <div className="rounded-[28px] border border-primary/25 bg-primary/12 p-4">
-                            <div className="flex items-start gap-3">
-                                <div className="rounded-2xl border border-primary/30 bg-primary/15 p-3 text-primary">
-                                    <FiTrendingUp size={18} aria-hidden="true" />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best next move</p>
-                                    <h3 className="workspace-heading mt-2 text-lg font-semibold">{growthFocus.title}</h3>
-                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">{growthFocus.description}</p>
-                                </div>
-                            </div>
-                            <div className="mt-4">
-                                {growthFocus.actionView ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            const targetView = growthFocus.actionView;
-                                            if (!targetView) return;
-                                            switchView(targetView);
-                                        }}
-                                        className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
-                                    >
-                                        {growthFocus.actionLabel}
-                                        <FiArrowRight size={14} aria-hidden="true" />
-                                    </button>
-                                ) : (
-                                    <Link
-                                        href={growthFocus.actionHref || captureHref}
-                                        className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
-                                    >
-                                        {growthFocus.actionLabel}
-                                        <FiArrowRight size={14} aria-hidden="true" />
-                                    </Link>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="workspace-panel rounded-[28px] p-4">
-                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current read</p>
-                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                                <div className="workspace-soft-panel rounded-2xl p-4">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Verified rate</p>
-                                    <p className="workspace-heading mt-2 text-lg font-semibold">{formatRatioPercent(verifiedRate)}</p>
-                                </div>
-                                <div className="workspace-soft-panel rounded-2xl p-4">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Story quality</p>
-                                    <p className="workspace-heading mt-2 text-lg font-semibold">{evidenceSummary.avgScore}%</p>
-                                </div>
-                            </div>
-                            <p className="mt-4 text-sm leading-7 text-ink-secondary">
-                                Lens readiness is {lensReadiness}%, and {overview?.topSkills.length || 0} repeated skill{(overview?.topSkills.length || 0) === 1 ? '' : 's'} are surfacing so far.
+                    {/* Consolidated "Your read" — 3 lean rows, no nested cards */}
+                    <div className="space-y-3 rounded-2xl border border-[rgba(92,92,92,0.12)] bg-white/40 p-3">
+                        {/* Row 1: Lens snapshot */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            <FiFlag size={14} aria-hidden="true" className="shrink-0 text-primary" />
+                            <p className="type-overline text-muted">Lens</p>
+                            <p className="type-body-sm min-w-0 flex-1 truncate text-strong">
+                                {overview?.profileContext?.primaryGoal || 'Goal not set'}
+                                <span className="text-muted"> · </span>
+                                {overview?.profileContext?.focusArea || 'Focus not set'}
+                                <span className="text-muted"> · </span>
+                                {formatLabel(overview?.profileContext?.writingPreference) || 'Style not set'}
                             </p>
-                        </div>
-                    </div>
-
-                    <div className="grid gap-3 xl:grid-cols-3">
-                        <div className="workspace-panel rounded-[28px] p-4">
-                            <div className="flex items-center gap-2 text-primary">
-                                <FiFlag size={16} aria-hidden="true" />
-                                <p className="text-xs uppercase tracking-[0.12em]">Current lens</p>
-                            </div>
-                            <div className="mt-4 grid gap-3">
-                                <div className="workspace-soft-panel rounded-2xl p-4">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Primary goal</p>
-                                    <p className="workspace-heading mt-2 text-sm font-semibold">{overview?.profileContext?.primaryGoal || 'Not set yet'}</p>
-                                </div>
-                                <div className="workspace-soft-panel rounded-2xl p-4">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Focus area</p>
-                                    <p className="workspace-heading mt-2 text-sm font-semibold">{overview?.profileContext?.focusArea || 'Not set yet'}</p>
-                                </div>
-                                <div className="workspace-soft-panel rounded-2xl p-4">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Capture style</p>
-                                    <p className="workspace-heading mt-2 text-sm font-semibold">{formatLabel(overview?.profileContext?.writingPreference)}</p>
-                                </div>
-                            </div>
-                            <div className="mt-4 flex flex-wrap gap-2">
-                                {outputGoals.length > 0 ? outputGoals.map((goal) => <TagPill key={goal}>{formatLabel(goal)}</TagPill>) : <TagPill tone="muted">Set output goals</TagPill>}
-                            </div>
                             <Link
                                 href={profileHref}
-                                className="workspace-button-outline mt-4 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
+                                className="type-label-sm inline-flex shrink-0 items-center gap-1 rounded-lg border border-[rgba(92,92,92,0.18)] bg-white/70 px-2.5 py-1 font-semibold text-soft transition-colors hover:text-strong"
                             >
-                                <FiTool size={14} aria-hidden="true" />
-                                Tune story lens
+                                <FiTool size={12} aria-hidden="true" />
+                                Tune
                             </Link>
                         </div>
 
-                        <div className="workspace-panel rounded-[28px] p-4">
-                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Repeated material</p>
-                            <div className="mt-4 space-y-4">
-                                <div>
-                                    <p className="workspace-heading text-sm font-semibold">Skills surfacing most</p>
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        {topSkillsPreview.length > 0 ? topSkillsPreview.map((skill) => (
-                                            <TagPill key={skill} tone="primary">{skill}</TagPill>
-                                        )) : (
-                                            <TagPill tone="muted">Capture a few more stories</TagPill>
-                                        )}
-                                    </div>
-                                </div>
-                                <div>
-                                    <p className="workspace-heading text-sm font-semibold">Lessons worth carrying forward</p>
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        {topLessonsPreview.length > 0 ? topLessonsPreview.map((lesson) => (
-                                            <TagPill key={lesson}>{lesson}</TagPill>
-                                        )) : (
-                                            <TagPill tone="muted">Patterns will show up here</TagPill>
-                                        )}
-                                    </div>
-                                </div>
+                        {/* Row 2: Skills & lessons surfacing */}
+                        {(topSkillsPreview.length > 0 || topLessonsPreview.length > 0) && (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <p className="type-overline mr-1 text-muted">Surfacing</p>
+                                {topSkillsPreview.slice(0, 4).map((skill) => (
+                                    <TagPill key={skill} tone="primary">{skill}</TagPill>
+                                ))}
+                                {topLessonsPreview.slice(0, 3).map((lesson) => (
+                                    <TagPill key={lesson}>{lesson}</TagPill>
+                                ))}
+                                {topSkillsPreview.length + topLessonsPreview.length > 7 && (
+                                    <span className="type-micro text-muted">+{topSkillsPreview.length + topLessonsPreview.length - 7} more</span>
+                                )}
                             </div>
-                        </div>
+                        )}
 
-                        <div className="workspace-panel rounded-[28px] p-4">
-                            <div className="flex items-center gap-2 text-primary">
-                                <FiClock size={16} aria-hidden="true" />
-                                <p className="text-xs uppercase tracking-[0.12em]">Return points</p>
-                            </div>
-                            <p className="mt-4 text-sm leading-7 text-ink-secondary">
-                                Jump back to the studio areas you used most recently or resume the last saved path.
-                            </p>
-                            <div className="mt-4 flex flex-wrap gap-2">
-                                {recentViewLinks.length > 0 ? recentViewLinks.map((view) => (
+                        {/* Row 3: Return points */}
+                        {(resumeSession || recentViewLinks.length > 0) && (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <FiClock size={12} aria-hidden="true" className="shrink-0 text-muted" />
+                                <p className="type-overline mr-1 text-muted">Pick up</p>
+                                {resumeSession && (
+                                    <button
+                                        type="button"
+                                        onClick={resumePreviousSession}
+                                        className="type-label-sm inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 font-semibold text-primary transition-colors hover:bg-primary/15"
+                                    >
+                                        <FiArrowRight size={12} aria-hidden="true" />
+                                        {buildResumeLabel(resumeSession)}
+                                    </button>
+                                )}
+                                {recentViewLinks.slice(0, 3).map((view) => (
                                     <button
                                         key={view}
                                         type="button"
                                         onClick={() => switchView(view)}
-                                        className="workspace-button-outline rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
+                                        className="type-label-sm rounded-full border border-[rgba(92,92,92,0.18)] bg-white/60 px-2.5 py-1 font-semibold text-soft transition-colors hover:text-strong"
                                     >
                                         {portfolioViewLabels[view]}
                                     </button>
-                                )) : (
-                                    <TagPill tone="muted">Your recent studio paths will show here</TagPill>
-                                )}
+                                ))}
                             </div>
-                            {resumeSession && (
-                                <button
-                                    type="button"
-                                    onClick={resumePreviousSession}
-                                    className="mt-4 inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
-                                >
-                                    <FiArrowRight size={14} aria-hidden="true" />
-                                    Resume {buildResumeLabel(resumeSession)}
-                                </button>
-                            )}
-                        </div>
+                        )}
                     </div>
 
                 </AppPanel>
@@ -2789,8 +2671,8 @@ export default function PortfolioWorkspace() {
     ];
 
     return (
-        <div className="space-y-6 px-1 pb-32 pt-2">
-            <AppPanel className="workspace-panel sticky top-20 z-20 overflow-hidden space-y-5">
+        <div className="space-y-4 px-1 pb-32 pt-2">
+            <AppPanel className="workspace-panel relative overflow-hidden space-y-3">
                 <div
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-0 opacity-70"
@@ -2798,162 +2680,101 @@ export default function PortfolioWorkspace() {
                         background: 'radial-gradient(circle at top left, rgba(var(--brand), 0.12), transparent 38%)',
                     }}
                 />
-                <div className="relative grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-                    <div className="space-y-4">
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Stories</p>
-                                <h1 className="workspace-heading mt-1 text-3xl font-semibold">{NOTIVE_VOICE.stories.title}</h1>
-                                <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">
-                                    {NOTIVE_VOICE.stories.description}
-                                </p>
-                            </div>
-                            <div className="workspace-pill-muted inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs uppercase tracking-[0.12em]">
-                                <ActiveViewIcon size={14} aria-hidden="true" />
-                                Current workspace: {currentWorkspaceLabel}
-                            </div>
-                        </div>
 
-                        <div className="workspace-soft-panel rounded-[28px] p-4">
-                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Studio snapshot</p>
-                            <h2 className="workspace-heading mt-2 text-lg font-semibold">{storySnapshotTitle}</h2>
-                            <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{storySnapshotDescription}</p>
-                            <div className="mt-4 flex flex-wrap gap-2">
-                                <TagPill tone="primary">{filterCounts.ready_to_export} ready to reuse</TagPill>
-                                <TagPill tone={filterCounts.needs_attention > 0 ? 'muted' : 'default'}>
-                                    {filterCounts.needs_attention} need detail
-                                </TagPill>
-                                <TagPill>{overview.interviewStories.length} ready to rehearse</TagPill>
-                            </div>
-                        </div>
+                {/* Header: Status-driven headline (what matters now) */}
+                <div className="relative space-y-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="type-overline text-muted">Stories</p>
+                        <span className="type-overline text-muted" aria-hidden="true">·</span>
+                        <span className="type-overline inline-flex items-center gap-1 text-primary">
+                            <ActiveViewIcon size={11} aria-hidden="true" />
+                            {currentWorkspaceLabel}
+                        </span>
+                        {resumeSession && (
+                            <button
+                                type="button"
+                                onClick={resumePreviousSession}
+                                className="type-micro ml-auto inline-flex items-center gap-1 rounded-full text-soft transition-colors hover:text-strong"
+                            >
+                                <FiClock size={12} aria-hidden="true" />
+                                Resume
+                            </button>
+                        )}
                     </div>
-
-                    <div className="grid gap-3">
-                        <div className="rounded-[28px] border border-primary/25 bg-primary/12 p-4">
-                            <div className="flex items-start gap-3">
-                                <div className="rounded-2xl border border-primary/30 bg-primary/15 p-3 text-primary">
-                                    <FiZap size={18} aria-hidden="true" />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best next use</p>
-                                    <h2 className="workspace-heading mt-2 text-lg font-semibold">{nextAction.title}</h2>
-                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">{nextAction.description}</p>
-                                </div>
-                            </div>
-                            <div className="mt-4">
-                                {nextAction.targetView ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            const targetView = nextAction.targetView;
-                                            if (!targetView) return;
-                                            if (targetView === 'export' && nextAction.targetExportType) {
-                                                void openStudio(nextAction.targetExportType);
-                                                return;
-                                            }
-                                            switchView(targetView);
-                                        }}
-                                        className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
-                                    >
-                                        {nextAction.actionLabel}
-                                        <FiArrowRight size={14} aria-hidden="true" />
-                                    </button>
-                                ) : (
-                                    <Link
-                                        href={nextAction.actionHref || captureHref}
-                                        className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
-                                    >
-                                        {nextAction.actionLabel}
-                                        <FiArrowRight size={14} aria-hidden="true" />
-                                    </Link>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="workspace-panel rounded-[24px] p-4">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <div className="workspace-icon-badge rounded-2xl p-2 text-ink-secondary">
-                                    <ActiveViewIcon size={16} aria-hidden="true" />
-                                </div>
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current workspace</p>
-                                <TagPill>{currentWorkspaceLabel}</TagPill>
-                            </div>
-                            <p className="mt-3 text-sm leading-7 text-ink-secondary">{currentWorkspaceDescription}</p>
-                            {resumeSession && (
-                                <div className="mt-4">
-                                    <button
-                                        type="button"
-                                        onClick={resumePreviousSession}
-                                        className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
-                                    >
-                                        Resume last place
-                                        <FiClock size={14} aria-hidden="true" />
-                                    </button>
-                                </div>
-                            )}
-                        </div>
+                    <h1 className="type-page-title text-strong">{storySnapshotTitle}</h1>
+                    <p className="type-body-sm max-w-2xl text-soft">{storySnapshotDescription}</p>
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        <TagPill tone="primary">{filterCounts.ready_to_export} ready to reuse</TagPill>
+                        <TagPill tone={filterCounts.needs_attention > 0 ? 'muted' : 'default'}>
+                            {filterCounts.needs_attention} need detail
+                        </TagPill>
+                        <TagPill>{overview.interviewStories.length} ready to rehearse</TagPill>
                     </div>
                 </div>
 
-                <div className="workspace-panel space-y-4 rounded-[22px] p-4">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Switch workspace</p>
-                            <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                Jump straight to the output surface you want without opening another drawer first.
-                            </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            <TagPill tone="primary">Recommended: {recommendedWorkspaceLabel}</TagPill>
-                            {recentWorkspaceSummary && <TagPill tone="muted">Recent: {recentWorkspaceSummary}</TagPill>}
-                        </div>
+                {/* Primary action: Best next use — single compact row */}
+                <div className="relative flex flex-wrap items-center gap-2.5 rounded-xl border border-primary/25 bg-primary/10 p-2.5">
+                    <div className="shrink-0 rounded-lg border border-primary/30 bg-primary/15 p-1.5 text-primary">
+                        <FiZap size={14} aria-hidden="true" />
                     </div>
+                    <div className="min-w-0 flex-1">
+                        <p className="type-label-md font-semibold text-strong">{nextAction.title}</p>
+                        <p className="type-micro line-clamp-1 text-soft">{nextAction.description}</p>
+                    </div>
+                    {nextAction.targetView ? (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const targetView = nextAction.targetView;
+                                if (!targetView) return;
+                                if (targetView === 'export' && nextAction.targetExportType) {
+                                    void openStudio(nextAction.targetExportType);
+                                    return;
+                                }
+                                switchView(targetView);
+                            }}
+                            className="workspace-button-primary type-label-sm inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold"
+                        >
+                            {nextAction.actionLabel}
+                            <FiArrowRight size={13} aria-hidden="true" />
+                        </button>
+                    ) : (
+                        <Link
+                            href={nextAction.actionHref || captureHref}
+                            className="workspace-button-primary type-label-sm inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold"
+                        >
+                            {nextAction.actionLabel}
+                            <FiArrowRight size={13} aria-hidden="true" />
+                        </Link>
+                    )}
+                </div>
 
-                    <div className="flex gap-2 overflow-x-auto pb-1">
-                        {workspaceDestinations.map(({ id, label, detail, icon: Icon, active, recommended, onClick }) => (
-                            <button
-                                key={id}
-                                type="button"
-                                onClick={onClick}
-                                className={`min-w-[170px] shrink-0 rounded-2xl px-4 py-3 text-left transition-colors ${
-                                    active
-                                        ? 'workspace-button-primary shadow-lg shadow-primary/20'
-                                        : 'workspace-button-outline'
-                                }`}
-                                title={detail}
-                            >
-                                <div className="flex items-start justify-between gap-3">
-                                    <span className="inline-flex min-w-0 items-center gap-3">
-                                        <span className={`rounded-xl border p-2 ${active ? 'border-primary/20 bg-primary/15' : 'workspace-icon-badge'}`}>
-                                            <Icon size={15} aria-hidden="true" />
-                                        </span>
-                                        <span className="min-w-0">
-                                            <span className="block text-sm font-semibold">{label}</span>
-                                            <span className="block text-xs uppercase tracking-[0.12em] opacity-80">{detail}</span>
-                                        </span>
-                                    </span>
-                                    <span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
-                                        active
-                                            ? 'bg-white/15'
-                                            : recommended
-                                                ? 'bg-primary/15 text-primary'
-                                                : 'bg-white/10 text-ink-secondary'
-                                    }`}>
-                                        {active ? 'Current' : recommended ? 'Next' : 'Open'}
-                                    </span>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="workspace-soft-panel rounded-2xl px-4 py-3">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Keep the rest tucked away</p>
-                        <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                            {resumeSession
-                                ? 'Resume last place stays in the card above, so switching workspaces can stay a one-tap choice.'
-                                : 'Switch workspaces in one tap and keep the rest of the studio tucked away until you need it.'}
-                        </p>
-                    </div>
+                {/* Workspace switcher — horizontal chip row */}
+                <div ref={workspaceChipRowRef} className="chip-scroller relative -mx-1 px-1">
+                    {workspaceDestinations.map(({ id, label, detail, icon: Icon, active, recommended, onClick }) => (
+                        <button
+                            key={id}
+                            ref={registerWorkspaceChip(id)}
+                            type="button"
+                            onClick={onClick}
+                            title={detail}
+                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-left transition-colors ${
+                                active
+                                    ? 'border-primary/40 bg-primary/15 text-strong'
+                                    : recommended
+                                        ? 'border-primary/25 bg-primary/5 text-soft hover:text-strong'
+                                        : 'border-[rgba(92,92,92,0.18)] bg-white/50 text-soft hover:text-strong'
+                            }`}
+                        >
+                            <Icon size={13} aria-hidden="true" className={active ? 'text-primary' : ''} />
+                            <span className="type-label-sm font-semibold">{label}</span>
+                            {recommended && !active && (
+                                <span className="type-micro rounded-full bg-primary/15 px-1.5 py-0.5 font-semibold uppercase tracking-wide text-primary">
+                                    Next
+                                </span>
+                            )}
+                        </button>
+                    ))}
                 </div>
             </AppPanel>
 

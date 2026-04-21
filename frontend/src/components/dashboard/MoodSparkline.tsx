@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { getMoodEmoji, getMoodScore, normalizeMood } from '@/constants/moods';
 
 type MoodSparklineProps = {
     entries: Array<{ mood: string | null; createdAt: string }>;
@@ -10,6 +11,14 @@ const RECENT_WINDOW_DAYS = 14;
 
 const toDateKey = (value: Date) => `${value.getFullYear()}-${value.getMonth()}-${value.getDate()}`;
 
+// Map canonical 1–10 mood score to a 1–5 valence band for the sparkline.
+const moodToValence = (mood: string | null | undefined): number | null => {
+    const normalized = normalizeMood(mood);
+    if (!normalized) return null;
+    const score = getMoodScore(normalized);
+    return 1 + ((score - 1) / 9) * 4;
+};
+
 const getRecentMoodDayCount = (entries: MoodSparklineProps['entries']) => {
     const cutoff = new Date();
     cutoff.setHours(0, 0, 0, 0);
@@ -17,27 +26,13 @@ const getRecentMoodDayCount = (entries: MoodSparklineProps['entries']) => {
 
     const recentDays = new Set<string>();
     entries.forEach((entry) => {
-        if (!entry.mood || MOOD_VALENCE[entry.mood] === undefined) return;
+        if (moodToValence(entry.mood) === null) return;
         const createdAt = new Date(entry.createdAt);
         if (createdAt < cutoff) return;
         recentDays.add(toDateKey(createdAt));
     });
 
     return recentDays.size;
-};
-
-const MOOD_VALENCE: Record<string, number> = {
-    happy: 5, excited: 5, motivated: 5, proud: 5,
-    grateful: 4, hopeful: 4, calm: 4,
-    thoughtful: 3,
-    tired: 2, sad: 2,
-    anxious: 1, frustrated: 1,
-};
-
-const MOOD_EMOJI: Record<string, string> = {
-    happy: '😊', calm: '😌', sad: '😔', anxious: '😟',
-    frustrated: '😤', thoughtful: '🤔', motivated: '⚡', tired: '😴',
-    grateful: '🙏', hopeful: '🌱', excited: '🎉', proud: '💪',
 };
 
 export const hasMeaningfulMoodHistory = (entries: MoodSparklineProps['entries']) =>
@@ -62,11 +57,12 @@ export default function MoodSparkline({ entries }: MoodSparklineProps) {
             return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` === dateKey;
         });
 
-        const moodEntry = dayEntries.find((e) => e.mood && MOOD_VALENCE[e.mood] !== undefined);
+        const moodEntry = dayEntries.find((e) => moodToValence(e.mood) !== null);
+        const normalizedMood = normalizeMood(moodEntry?.mood);
         dayBuckets.push({
             dayLabel: getDayName(target.getDay()),
-            valence: moodEntry?.mood ? (MOOD_VALENCE[moodEntry.mood] ?? 3) : null,
-            mood: moodEntry?.mood ?? null,
+            valence: moodToValence(moodEntry?.mood),
+            mood: normalizedMood,
         });
     }
 
@@ -109,17 +105,21 @@ export default function MoodSparkline({ entries }: MoodSparklineProps) {
     });
 
     // Top theme (from most common mood)
-    const topThinkingAbout = dominantMood
-        ? (dominantMood === 'anxious' ? 'what\u2019s ahead'
-            : dominantMood === 'thoughtful' ? 'the bigger picture'
-                : dominantMood === 'calm' ? 'finding your pace'
-                    : dominantMood === 'motivated' ? 'making moves'
-                        : dominantMood === 'sad' ? 'working through it'
-                            : dominantMood === 'happy' ? 'what\u2019s going well'
-                                : dominantMood === 'grateful' ? 'what matters'
-                                    : dominantMood === 'tired' ? 'taking it slow'
-                                        : 'your rhythm')
-        : null;
+    const THEME_BY_MOOD: Record<string, string> = {
+        anxious: 'what\u2019s ahead',
+        thoughtful: 'the bigger picture',
+        calm: 'finding your pace',
+        motivated: 'making moves',
+        sad: 'working through it',
+        happy: 'what\u2019s going well',
+        grateful: 'what matters',
+        tired: 'taking it slow',
+        excited: 'what\u2019s lighting you up',
+        hopeful: 'what could come next',
+        frustrated: 'what needs to shift',
+        neutral: 'your rhythm',
+    };
+    const topThinkingAbout = dominantMood ? (THEME_BY_MOOD[dominantMood] ?? 'your rhythm') : null;
     const moodLabel = dominantMood ? dominantMood.charAt(0).toUpperCase() + dominantMood.slice(1) : null;
 
     // Build SVG sparkline path
@@ -159,7 +159,7 @@ export default function MoodSparkline({ entries }: MoodSparklineProps) {
                 </p>
                 {dominantMood && (
                     <span className="text-sm" title={dominantMood}>
-                        {MOOD_EMOJI[dominantMood] ?? ''}
+                        {getMoodEmoji(dominantMood)}
                     </span>
                 )}
             </div>
@@ -168,7 +168,8 @@ export default function MoodSparkline({ entries }: MoodSparklineProps) {
             <svg
                 viewBox={`0 0 ${width} ${height}`}
                 className="h-12 w-full"
-                aria-hidden="true"
+                role="img"
+                aria-label={`Mood over the last 14 days${moodLabel ? `, mostly ${moodLabel.toLowerCase()}` : ''}${trendLabel ? `, ${trendLabel}` : ''}${bestDay ? `. Best day: ${bestDay}` : ''}.`}
             >
                 {pathD && (
                     <path

@@ -172,7 +172,7 @@ export default function ChaptersPage() {
                             />
                         </div>
 
-                        <ActionBar className="overflow-x-auto">
+                        <ActionBar scroll>
                             <Link
                                 href={captureHref}
                                 className="rounded-xl px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))]"

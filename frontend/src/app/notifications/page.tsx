@@ -10,6 +10,7 @@ import { useToast } from '@/context/toast-context';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { refreshNotificationBadge } from '@/hooks/use-notification-count';
+import { useSharedUnreadCount } from '@/hooks/use-shared-unread-count';
 import {
     extractNotificationPreferences,
     mergeNotificationPreferencesIntoSignals,
@@ -86,6 +87,7 @@ export default function NotificationsPage() {
     const { user, syncUser } = useAuth();
     const { isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const toast = useToast();
+    const { unreadCount: sharedUnreadCount } = useSharedUnreadCount();
 
     const [filter, setFilter] = useState<NotificationFilter>('all');
     const [notifications, setNotifications] = useState<InboxNotification[]>([]);
@@ -162,11 +164,18 @@ export default function NotificationsPage() {
     const markAllRead = useCallback(async () => {
         setMarkingAll(true);
         try {
-            const response = await apiFetch('/notifications/read-all', { method: 'PATCH' });
-            if (!response.ok) throw new Error('Couldn’t mark everything as read.');
+            const [inboxResponse, sharedResponse] = await Promise.all([
+                apiFetch('/notifications/read-all', { method: 'PATCH' }),
+                apiFetch('/memory-share/received/read-all', { method: 'PATCH' }).catch(() => null),
+            ]);
+            if (!inboxResponse.ok) throw new Error('Couldn’t mark everything as read.');
             setNotifications((current) => filter === 'unread' ? [] : current.map((item) => ({ ...item, readAt: new Date().toISOString() })));
             setUnreadCount(0);
             refreshNotificationBadge();
+            if (sharedResponse && !sharedResponse.ok) {
+                // Inbox cleared but shared-memory bulk update failed — surface a soft warning.
+                toast.error('Inbox cleared, but shared memories didn’t update. Try again.');
+            }
         } catch (error: any) {
             toast.error(error?.message || 'Couldn’t mark everything as read.');
         } finally {
@@ -208,125 +217,183 @@ export default function NotificationsPage() {
     if (!isAuthenticated) return null;
 
     return (
-        <div className="min-h-screen px-4 py-6 md:px-8 md:py-10">
-            <div className="mx-auto max-w-6xl space-y-6">
-                <section className="workspace-panel rounded-[2rem] p-6 md:p-8">
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-ink-muted">Notification Center</p>
-                    <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                        <div>
-                            <h1 className="workspace-heading text-3xl font-serif md:text-4xl">See what landed, then tune the noise</h1>
-                            <p className="mt-2 max-w-3xl text-sm leading-7 text-ink-secondary">Review reminders, shared-memory activity, and friend updates in one place.</p>
-                        </div>
-                        <div className="flex gap-3">
-                            <div className="workspace-soft-panel rounded-[1.4rem] px-4 py-3 text-center"><div className="text-xs uppercase tracking-[0.12em] text-ink-muted">Unread</div><div className="workspace-heading mt-1 text-2xl font-serif">{unreadCount}</div></div>
-                            <div className="workspace-soft-panel rounded-[1.4rem] px-4 py-3 text-center"><div className="text-xs uppercase tracking-[0.12em] text-ink-muted">Visible</div><div className="workspace-heading mt-1 text-2xl font-serif">{notifications.length}</div></div>
-                        </div>
+        <div className="px-4 py-4 md:px-8 md:py-6">
+            <div className="mx-auto max-w-3xl space-y-3">
+                {/* Compact header */}
+                <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                        <h1 className="type-page-title text-strong">Notifications</h1>
+                        <p className="type-micro text-muted">
+                            {(() => {
+                                const parts: string[] = [];
+                                if (unreadCount > 0) parts.push(`${unreadCount} unread`);
+                                if (sharedUnreadCount > 0) parts.push(`${sharedUnreadCount} new memor${sharedUnreadCount === 1 ? 'y' : 'ies'}`);
+                                if (parts.length === 0) return 'All caught up';
+                                return parts.join(' · ');
+                            })()}
+                        </p>
                     </div>
-                </section>
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            type="button"
+                            onClick={() => void loadNotifications(filter)}
+                            aria-label="Refresh"
+                            className="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(92,92,92,0.15)] bg-white/60 text-soft transition-colors hover:text-strong"
+                        >
+                            <FiRefreshCw size={15} aria-hidden="true" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => void markAllRead()}
+                            disabled={markingAll || (unreadCount === 0 && sharedUnreadCount === 0)}
+                            className="type-label-sm rounded-full bg-[rgb(107,143,113)] px-3 py-1.5 font-semibold text-white transition-opacity disabled:opacity-40"
+                        >
+                            {markingAll ? 'Saving…' : 'Mark all read'}
+                        </button>
+                    </div>
+                </div>
 
-                <section className="workspace-panel rounded-[2rem] p-4 md:p-5">
-                    <div className="flex flex-wrap gap-2" role="tablist" aria-label="Notifications sections">
-                        {([
-                            ['inbox', 'Inbox'],
-                            ['settings', 'Settings'],
-                        ] as const).map(([id, label]) => {
-                            const isActive = activePanel === id;
-                            return (
-                                <button
-                                    key={id}
-                                    type="button"
-                                    role="tab"
-                                    aria-selected={isActive}
-                                    onClick={() => setActivePanel(id)}
-                                    className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                                        isActive ? 'bg-[rgb(107,143,113)] text-white' : 'workspace-pill'
-                                    }`}
-                                >
-                                    {label}
-                                </button>
-                            );
-                        })}
-                    </div>
-                    <p className="mt-3 text-sm text-ink-secondary">
-                        {activePanel === 'inbox'
-                            ? 'Review what landed first, then open settings only when you want less noise.'
-                            : 'Control what can interrupt you and when it should stay quiet.'}
-                    </p>
-                </section>
+                {/* Combined tab + filter row */}
+                <div className="chip-scroller" role="tablist" aria-label="Notifications sections">
+                    {([
+                        ['inbox', 'Inbox'],
+                        ['settings', 'Settings'],
+                    ] as const).map(([id, label]) => {
+                        const isActive = activePanel === id;
+                        return (
+                            <button
+                                key={id}
+                                type="button"
+                                role="tab"
+                                aria-selected={isActive}
+                                onClick={() => setActivePanel(id)}
+                                className={`type-label-sm shrink-0 rounded-full px-3 py-1.5 font-semibold transition-colors ${
+                                    isActive ? 'bg-[rgb(107,143,113)] text-white' : 'border border-[rgba(92,92,92,0.15)] bg-white/50 text-soft hover:text-strong'
+                                }`}
+                            >
+                                {label}
+                            </button>
+                        );
+                    })}
+                    {activePanel === 'inbox' && (
+                        <>
+                            <span className="mx-1 h-5 w-px shrink-0 bg-[rgba(92,92,92,0.18)]" aria-hidden="true" />
+                            {(['all', 'unread'] as NotificationFilter[]).map((option) => {
+                                const isActive = filter === option;
+                                return (
+                                    <button
+                                        key={option}
+                                        type="button"
+                                        onClick={() => setFilter(option)}
+                                        className={`type-label-sm shrink-0 rounded-full px-3 py-1.5 font-semibold transition-colors ${
+                                            isActive ? 'bg-[rgba(107,143,113,0.14)] text-[rgb(107,143,113)] ring-1 ring-[rgba(107,143,113,0.35)]' : 'text-soft hover:text-strong'
+                                        }`}
+                                    >
+                                        {option === 'all' ? 'All' : 'Unread'}
+                                    </button>
+                                );
+                            })}
+                        </>
+                    )}
+                </div>
 
                 {activePanel === 'inbox' ? (
-                    <section className="workspace-panel rounded-[2rem] p-6">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                            <div className="flex gap-2">
-                                {(['all', 'unread'] as NotificationFilter[]).map((option) => (
-                                    <button key={option} type="button" onClick={() => setFilter(option)} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === option ? 'bg-[rgb(107,143,113)] text-white' : 'workspace-pill'}`}>
-                                        {option === 'all' ? 'All activity' : 'Unread only'}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="flex gap-2">
-                                <button type="button" onClick={() => void loadNotifications(filter)} className="workspace-button-outline rounded-xl px-4 py-2 text-sm font-semibold"><FiRefreshCw size={14} className="inline-block mr-2" />Refresh</button>
-                                <button type="button" onClick={() => void markAllRead()} disabled={markingAll || unreadCount === 0} className="workspace-button-primary rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60">{markingAll ? 'Saving…' : 'Mark all read'}</button>
-                            </div>
-                        </div>
-
-                        <div className="mt-5 space-y-3">
-                            {loading && <div className="flex items-center justify-center py-16"><Spinner size="md" /></div>}
-                            {empty && (
-                                <div className="workspace-soft-panel rounded-[1.6rem] px-5 py-10 text-center">
-                                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(107,143,113,0.12)] text-[rgb(107,143,113)]">{filter === 'unread' ? <FiBellOff size={20} /> : <FiBell size={20} />}</div>
-                                    <h2 className="workspace-heading mt-4 text-xl font-serif">{filter === 'unread' ? 'You’re all caught up' : 'No notifications yet'}</h2>
+                    <div className="space-y-1.5">
+                        {loading && <div className="flex items-center justify-center py-12"><Spinner size="md" /></div>}
+                        {empty && (
+                            <div className="rounded-2xl border border-[rgba(92,92,92,0.12)] bg-white/60 px-5 py-10 text-center">
+                                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(107,143,113,0.12)] text-[rgb(107,143,113)]">
+                                    {filter === 'unread' ? <FiBellOff size={18} /> : <FiBell size={18} />}
                                 </div>
-                            )}
-                            {!loading && notifications.map((notification) => (
-                                <button key={notification.id} type="button" onClick={() => void openNotification(notification)} className={`w-full rounded-[1.4rem] border p-4 text-left ${notification.readAt ? 'border-[rgba(92,92,92,0.1)] bg-white/60' : 'border-[rgba(107,143,113,0.22)] bg-[rgba(107,143,113,0.05)]'}`}>
-                                    <div className="flex items-start gap-3">
-                                        <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${notification.readAt ? 'bg-[rgba(92,92,92,0.18)]' : 'bg-[rgb(107,143,113)]'}`} />
+                                <p className="type-label-md mt-3 text-strong">{filter === 'unread' ? 'You’re all caught up' : 'No notifications yet'}</p>
+                            </div>
+                        )}
+                        {!loading && notifications.map((notification) => {
+                            const isRead = Boolean(notification.readAt);
+                            return (
+                                <button
+                                    key={notification.id}
+                                    type="button"
+                                    onClick={() => void openNotification(notification)}
+                                    aria-label={`${isRead ? 'Read' : 'Unread'} notification: ${notification.title}`}
+                                    className={`w-full rounded-xl border px-3 py-2.5 text-left transition-all ${
+                                        isRead
+                                            ? 'border-dashed border-[rgba(92,92,92,0.18)] bg-transparent opacity-60 hover:opacity-100 hover:bg-white/60'
+                                            : 'border-[rgba(107,143,113,0.3)] bg-[rgba(107,143,113,0.08)] shadow-sm hover:bg-[rgba(107,143,113,0.12)]'
+                                    }`}
+                                >
+                                    <div className="flex items-start gap-2.5">
+                                        <span
+                                            aria-hidden="true"
+                                            className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                                                isRead ? 'bg-transparent ring-1 ring-[rgba(92,92,92,0.25)]' : 'bg-[rgb(107,143,113)]'
+                                            }`}
+                                        />
                                         <div className="min-w-0 flex-1">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">{notification.type.replace(/_/g, ' ')}</span>
-                                                <span className="text-[0.72rem] text-ink-muted">{formatRelativeTime(notification.createdAt)}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`type-micro font-semibold uppercase tracking-wide ${isRead ? 'text-muted' : 'text-[rgb(107,143,113)]'}`}>
+                                                    {notification.type.replace(/_/g, ' ')}
+                                                </span>
+                                                <span className="type-micro text-muted">· {formatRelativeTime(notification.createdAt)}</span>
                                             </div>
-                                            <p className="workspace-heading mt-2 text-base font-semibold">{notification.title}</p>
-                                            {notification.body && <p className="mt-1 text-sm leading-7 text-ink-secondary">{notification.body}</p>}
+                                            <p className={`type-label-md mt-0.5 ${isRead ? 'font-normal text-muted' : 'font-semibold text-strong'}`}>
+                                                {notification.title}
+                                            </p>
+                                            {notification.body && (
+                                                <p className={`type-body-sm mt-0.5 line-clamp-2 ${isRead ? 'text-muted' : 'text-soft'}`}>
+                                                    {notification.body}
+                                                </p>
+                                            )}
                                         </div>
                                         {activeNotificationId === notification.id && <Spinner size="sm" />}
                                     </div>
                                 </button>
-                            ))}
-                        </div>
+                            );
+                        })}
 
                         {hasMore && (
-                            <div className="mt-5 flex justify-center">
-                                <button type="button" onClick={() => void loadNotifications(filter, page + 1, true)} disabled={loadingMore} className="workspace-button-outline rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60">
+                            <div className="flex justify-center pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => void loadNotifications(filter, page + 1, true)}
+                                    disabled={loadingMore}
+                                    className="type-label-sm rounded-full border border-[rgba(92,92,92,0.18)] bg-white/60 px-4 py-1.5 font-semibold text-soft disabled:opacity-60"
+                                >
                                     {loadingMore ? 'Loading…' : 'Load more'}
                                 </button>
                             </div>
                         )}
-                    </section>
+                    </div>
                 ) : (
-                    <section className="space-y-6">
-                        <section className="workspace-panel rounded-[2rem] p-6">
-                            <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-3">
+                        <section className="rounded-2xl border border-[rgba(92,92,92,0.12)] bg-white/60 p-4">
+                            <div className="flex items-center justify-between gap-3">
                                 <div>
-                                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-ink-muted">Settings</p>
-                                    <h2 className="workspace-heading mt-2 text-2xl font-serif">Notification settings</h2>
-                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                        Choose which updates can reach you before you tune quiet hours.
-                                    </p>
+                                    <h2 className="type-label-md font-semibold text-strong">Notification types</h2>
+                                    <p className="type-micro text-muted">Choose which updates can reach you.</p>
                                 </div>
-                                <div className="text-xs text-ink-secondary">{savingPreferences ? 'Saving…' : 'Saved automatically'}</div>
+                                <span className="type-micro text-muted">{savingPreferences ? 'Saving…' : 'Auto-saved'}</span>
                             </div>
-                            <div className="mt-5 space-y-3">
+                            <div className="mt-3 space-y-1.5">
                                 {([
                                     ['reminders', 'Reminders'],
                                     ['sharedMemories', 'Shared memories'],
                                     ['friendActivity', 'Friend activity'],
                                     ['insights', 'Insights'],
                                 ] as const).map(([key, label]) => (
-                                    <div key={key} className="workspace-soft-panel flex items-center justify-between rounded-[1.3rem] px-4 py-3">
-                                        <span className="text-sm font-semibold text-[rgb(var(--text-primary))]">{label}</span>
-                                        <button type="button" role="switch" aria-checked={preferences[key]} onClick={() => void savePreferences({ ...preferences, [key]: !preferences[key] })} className={`inline-flex h-7 w-12 items-center rounded-full border px-1 ${preferences[key] ? 'border-[rgb(107,143,113)] bg-[rgb(107,143,113)] justify-end' : 'border-[rgba(92,92,92,0.14)] bg-[rgba(92,92,92,0.12)] justify-start'}`}>
+                                    <div key={key} className="flex items-center justify-between rounded-xl bg-white/50 px-3 py-2">
+                                        <span className="type-label-md text-strong">{label}</span>
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={preferences[key]}
+                                            onClick={() => void savePreferences({ ...preferences, [key]: !preferences[key] })}
+                                            className={`inline-flex h-6 w-10 items-center rounded-full border px-0.5 transition-colors ${
+                                                preferences[key]
+                                                    ? 'border-[rgb(107,143,113)] bg-[rgb(107,143,113)] justify-end'
+                                                    : 'border-[rgba(92,92,92,0.14)] bg-[rgba(92,92,92,0.12)] justify-start'
+                                            }`}
+                                        >
                                             <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
                                         </button>
                                     </div>
@@ -334,37 +401,68 @@ export default function NotificationsPage() {
                             </div>
                         </section>
 
-                        <section className="workspace-panel rounded-[2rem] p-6">
-                            <div className="flex items-start gap-3">
-                                <FiMoon className="mt-1 text-ink-muted" />
-                                <div>
-                                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-ink-muted">Quiet Hours</p>
-                                    <h2 className="workspace-heading mt-2 text-2xl font-serif">Quiet hours</h2>
-                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">Quiet hours suppress push banners, but keep the in-app notification here.</p>
+                        <section className="rounded-2xl border border-[rgba(92,92,92,0.12)] bg-white/60 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-2">
+                                    <FiMoon className="mt-0.5 text-ink-muted" size={16} />
+                                    <div>
+                                        <h2 className="type-label-md font-semibold text-strong">Quiet hours</h2>
+                                        <p className="type-micro text-muted">Suppresses push banners · keeps in-app items</p>
+                                    </div>
                                 </div>
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={preferences.quietHours.enabled}
+                                    onClick={() => void savePreferences({ ...preferences, quietHours: { ...preferences.quietHours, enabled: !preferences.quietHours.enabled, timezone: deviceTimezone } })}
+                                    className={`inline-flex h-6 w-10 shrink-0 items-center rounded-full border px-0.5 transition-colors ${
+                                        preferences.quietHours.enabled
+                                            ? 'border-[rgb(107,143,113)] bg-[rgb(107,143,113)] justify-end'
+                                            : 'border-[rgba(92,92,92,0.14)] bg-[rgba(92,92,92,0.12)] justify-start'
+                                    }`}
+                                >
+                                    <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
+                                </button>
                             </div>
-                            <div className="mt-5 space-y-4">
-                                <div className="workspace-soft-panel flex items-center justify-between rounded-[1.3rem] px-4 py-3">
-                                    <div className="text-sm text-ink-secondary">Using {deviceTimezone}</div>
-                                    <button type="button" role="switch" aria-checked={preferences.quietHours.enabled} onClick={() => void savePreferences({ ...preferences, quietHours: { ...preferences.quietHours, enabled: !preferences.quietHours.enabled, timezone: deviceTimezone } })} className={`inline-flex h-7 w-12 items-center rounded-full border px-1 ${preferences.quietHours.enabled ? 'border-[rgb(107,143,113)] bg-[rgb(107,143,113)] justify-end' : 'border-[rgba(92,92,92,0.14)] bg-[rgba(92,92,92,0.12)] justify-start'}`}>
-                                        <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
-                                    </button>
+                            {preferences.quietHours.enabled && (
+                                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                    <label className="rounded-xl bg-white/50 px-3 py-2">
+                                        <span className="type-micro uppercase tracking-wide text-muted">Start</span>
+                                        <input
+                                            type="time"
+                                            value={preferences.quietHours.start}
+                                            onChange={(event) => void savePreferences({ ...preferences, quietHours: { ...preferences.quietHours, start: event.target.value, timezone: deviceTimezone } })}
+                                            className="workspace-input mt-1 h-9 w-full px-2 text-sm"
+                                        />
+                                    </label>
+                                    <label className="rounded-xl bg-white/50 px-3 py-2">
+                                        <span className="type-micro uppercase tracking-wide text-muted">End</span>
+                                        <input
+                                            type="time"
+                                            value={preferences.quietHours.end}
+                                            onChange={(event) => void savePreferences({ ...preferences, quietHours: { ...preferences.quietHours, end: event.target.value, timezone: deviceTimezone } })}
+                                            className="workspace-input mt-1 h-9 w-full px-2 text-sm"
+                                        />
+                                    </label>
                                 </div>
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <label className="workspace-soft-panel rounded-[1.3rem] px-4 py-3"><span className="text-xs uppercase tracking-[0.12em] text-ink-muted">Start</span><input type="time" value={preferences.quietHours.start} onChange={(event) => void savePreferences({ ...preferences, quietHours: { ...preferences.quietHours, start: event.target.value, timezone: deviceTimezone } })} className="workspace-input mt-3 h-11 w-full px-3" /></label>
-                                    <label className="workspace-soft-panel rounded-[1.3rem] px-4 py-3"><span className="text-xs uppercase tracking-[0.12em] text-ink-muted">End</span><input type="time" value={preferences.quietHours.end} onChange={(event) => void savePreferences({ ...preferences, quietHours: { ...preferences.quietHours, end: event.target.value, timezone: deviceTimezone } })} className="workspace-input mt-3 h-11 w-full px-3" /></label>
-                                </div>
-                            </div>
+                            )}
+                            <p className="type-micro mt-2 text-muted">Using {deviceTimezone}</p>
                         </section>
 
-                        <section className="workspace-panel rounded-[2rem] p-6">
-                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-ink-muted">Related</p>
-                            <div className="mt-4 grid gap-3">
-                                <Link href="/profile/edit?tab=reminders" className="workspace-soft-panel flex items-center justify-between rounded-[1.3rem] px-4 py-3 transition-colors hover:opacity-90"><span className="text-sm font-semibold">Reminder schedule</span><FiClock size={16} /></Link>
-                                <Link href="/profile" className="workspace-soft-panel flex items-center justify-between rounded-[1.3rem] px-4 py-3 transition-colors hover:opacity-90"><span className="text-sm font-semibold">Device permissions</span><FiCheck size={16} /></Link>
+                        <section className="rounded-2xl border border-[rgba(92,92,92,0.12)] bg-white/60 p-4">
+                            <h2 className="type-label-md font-semibold text-strong">Related</h2>
+                            <div className="mt-2 grid gap-1.5">
+                                <Link href="/profile/edit?tab=reminders" className="flex items-center justify-between rounded-xl bg-white/50 px-3 py-2 transition-colors hover:bg-white/80">
+                                    <span className="type-label-md text-strong">Reminder schedule</span>
+                                    <FiClock size={14} className="text-soft" />
+                                </Link>
+                                <Link href="/profile" className="flex items-center justify-between rounded-xl bg-white/50 px-3 py-2 transition-colors hover:bg-white/80">
+                                    <span className="type-label-md text-strong">Device permissions</span>
+                                    <FiCheck size={14} className="text-soft" />
+                                </Link>
                             </div>
                         </section>
-                    </section>
+                    </div>
                 )}
             </div>
         </div>

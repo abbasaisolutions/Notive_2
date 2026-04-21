@@ -26,6 +26,10 @@ export const MOOD_SCORES: Record<string, number> = {
     angry: 2,
 };
 
+// Aliases normalize synonyms onto the canonical Core-10 moods. The check-in
+// set (happy, excited, calm, grateful, hopeful, thoughtful, tired, sad,
+// anxious, frustrated) stays first-class — do NOT alias any of those away,
+// or the dashboards will silently drop user selections.
 export const MOOD_ALIAS_MAP: Record<string, string> = {
     angry: 'frustrated',
     mad: 'frustrated',
@@ -33,8 +37,9 @@ export const MOOD_ALIAS_MAP: Record<string, string> = {
     irritated: 'frustrated',
     annoyed: 'frustrated',
     upset: 'frustrated',
-    hopeful: 'motivated',
-    optimistic: 'motivated',
+    optimistic: 'hopeful',
+    thrilled: 'excited',
+    energized: 'excited',
     joy: 'happy',
     joyful: 'happy',
     happiness: 'happy',
