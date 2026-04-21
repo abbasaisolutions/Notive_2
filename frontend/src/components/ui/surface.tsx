@@ -161,10 +161,19 @@ export function TagPill({
 export function ActionBar({
     children,
     className,
+    scroll = false,
 }: {
     children: React.ReactNode;
     className?: string;
+    scroll?: boolean;
 }) {
+    if (scroll) {
+        return (
+            <div className={cn('workspace-actionbar chip-scroller rounded-xl p-2', className)}>
+                {children}
+            </div>
+        );
+    }
     return (
         <div className={cn('workspace-actionbar flex flex-wrap items-center gap-2 rounded-xl p-2', className)}>
             {children}

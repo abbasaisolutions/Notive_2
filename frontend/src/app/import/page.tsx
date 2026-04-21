@@ -394,7 +394,7 @@ export default function ImportPage() {
                                 title="See what each imported story contains already"
                                 description="Use status to decide whether imports need more detail, review, or are ready to reuse."
                             />
-                            <ActionBar className="gap-2 overflow-x-auto">
+                            <ActionBar scroll className="gap-2">
                                 {(['needs_attention', 'ready_to_verify', 'ready_to_export', 'verified'] as StoryEngineStatus[]).map((statusKey) => (
                                     <Link
                                         key={statusKey}

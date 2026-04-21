@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CHECKIN_MOODS, MOOD_EMOJIS } from '@/constants/moods';
 import { useToast } from '@/context/toast-context';
+import { useChipScroller } from '@/hooks/use-chip-scroller';
 
 const QUICK_MOODS = CHECKIN_MOODS;
 
@@ -23,6 +24,7 @@ export default function DailyCheckIn({ hasCheckedInToday, todayMood = null, onSu
     const inputRef = useRef<HTMLInputElement>(null);
     const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const toast = useToast();
+    const { containerRef: moodRowRef, registerItem: registerMoodChip } = useChipScroller(selectedMood);
 
     useEffect(() => {
         if (hasCheckedInToday) {
@@ -95,7 +97,8 @@ export default function DailyCheckIn({ hasCheckedInToday, todayMood = null, onSu
 
             {/* Mood emoji row — horizontal scroll, most common first, swipe left for more */}
             <div
-                className="mt-3 -mx-4 flex snap-x snap-mandatory gap-1.5 overflow-x-auto scroll-smooth px-4 pb-1 sm:gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                ref={moodRowRef}
+                className="chip-scroller mt-3 -mx-4 px-4 sm:gap-2"
                 role="radiogroup"
                 aria-label="How are you feeling"
             >
@@ -104,10 +107,11 @@ export default function DailyCheckIn({ hasCheckedInToday, todayMood = null, onSu
                     return (
                         <motion.button
                             key={mood}
+                            ref={registerMoodChip(mood)}
                             type="button"
                             whileTap={{ scale: 0.9 }}
                             onClick={() => handleMoodTap(mood)}
-                            className={`flex shrink-0 snap-start flex-col items-center gap-1 rounded-xl px-2 py-1.5 transition-colors ${
+                            className={`flex flex-col items-center gap-1 rounded-xl px-2 py-1.5 transition-colors ${
                                 isSelected
                                     ? 'bg-[rgba(138,154,111,0.15)] ring-1 ring-[rgba(138,154,111,0.4)]'
                                     : 'hover:bg-[rgba(92,92,92,0.06)]'

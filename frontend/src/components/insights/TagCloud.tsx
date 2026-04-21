@@ -78,7 +78,7 @@ export default function TagCloud({ onSelectTag, selectedTag = null }: TagCloudPr
     };
 
     return (
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide py-0.5">
+        <div className="chip-scroller gap-2 py-0.5">
             <AnimatePresence mode="popLayout">
                 {selectedTag && (
                     <motion.button

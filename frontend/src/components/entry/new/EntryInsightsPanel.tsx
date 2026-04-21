@@ -264,7 +264,7 @@ export default function EntryInsightsPanel({
                         <div>
                             <label className="text-xs font-medium text-ink-muted mb-2 block uppercase tracking-[0.12em]">Mood</label>
                             <div
-                                className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                                className="chip-scroller -mx-1 gap-2 px-1"
                                 role="radiogroup"
                                 aria-label="Mood"
                             >

@@ -22,6 +22,7 @@ import {
     getVisibleLifeBalanceAreas,
     LIFE_BALANCE_RING_CIRCUMFERENCE,
 } from '@/components/dashboard/life-balance';
+import { getMoodEmoji, getMoodScore, normalizeMood } from '@/constants/moods';
 
 type DashboardAction = {
     label: string;
@@ -235,16 +236,9 @@ type DashboardNotebookViewProps = {
 
 type DashboardTab = 'overview' | 'growth' | 'patterns';
 
-const MOOD_EMOJI: Record<string, string> = {
-    happy: '😊',
-    calm: '😌',
-    sad: '😔',
-    anxious: '😟',
-    frustrated: '😤',
-    thoughtful: '🤔',
-    motivated: '⚡',
-    tired: '😴',
-    grateful: '🙏',
+const moodEmojiFor = (mood: string | null | undefined) => {
+    const normalized = normalizeMood(mood);
+    return normalized ? getMoodEmoji(normalized) : '✦';
 };
 
 const TAB_ORDER: DashboardTab[] = ['overview', 'growth', 'patterns'];
@@ -264,16 +258,15 @@ const DAY_LABELS = [
     { short: 'Sat', full: 'Saturday' },
 ] as const;
 
-const MOOD_THREAD_Y: Record<string, number> = {
-    happy: 28,
-    grateful: 32,
-    calm: 36,
-    motivated: 40,
-    thoughtful: 50,
-    tired: 62,
-    sad: 70,
-    anxious: 78,
-    frustrated: 84,
+// Y-position on the mood thread SVG, derived from canonical 1–10 mood score
+// so any mood added to the constants module flows through without edits here.
+// Higher score = happier = higher on the thread (smaller y).
+const moodThreadY = (mood: string | null | undefined): number => {
+    const normalized = normalizeMood(mood);
+    if (!normalized) return 56;
+    const score = getMoodScore(normalized);
+    // score 10 → y=28 (top), score 1 → y=84 (bottom)
+    return 28 + ((10 - score) / 9) * 56;
 };
 
 const FALLBACK_THREAD_POINTS = [76, 40, 68, 48, 58, 44];
@@ -833,7 +826,7 @@ export default function DashboardNotebookView({
             const moodKey = entry.mood ? entry.mood.toLowerCase() : '';
             return {
                 x: 22 + (index * 356) / Math.max(1, recentEmotionEntries.length - 1),
-                y: MOOD_THREAD_Y[moodKey] ?? 56,
+                y: moodThreadY(moodKey),
                 label: new Date(entry.createdAt).toLocaleDateString('en-US', { weekday: 'short' }),
                 mood: moodKey || null,
             };
@@ -853,7 +846,7 @@ export default function DashboardNotebookView({
             ? `${returningThemes} ${returningThemes === 1 ? 'theme is' : 'themes are'} returning lately.`
             : 'A few more notes will sharpen the pattern view.';
     const lastMoodKey = latestEntry?.mood ? String(latestEntry.mood).toLowerCase() : null;
-    const lastMoodEmoji = lastMoodKey ? (MOOD_EMOJI[lastMoodKey] ?? '✦') : null;
+    const lastMoodEmoji = lastMoodKey ? moodEmojiFor(lastMoodKey) : null;
 
     const glanceSignals = [
         {
@@ -886,7 +879,7 @@ export default function DashboardNotebookView({
             note: themeClusters[0]?.label ? formatNotebookLabel(themeClusters[0].label) : 'Forming',
             accent: 'rgba(216,199,232,0.95)',
             meter: buildMeterSegments(Math.min(4, Math.max(returningThemes, themeClusters.length > 0 ? 1 : 0)), 4),
-            badge: strongestEmotion ? `${MOOD_EMOJI[String(strongestEmotion.emotion).toLowerCase()] ?? '✦'} ${formatNotebookLabel(strongestEmotion.emotion)}` : null,
+            badge: strongestEmotion ? `${moodEmojiFor(String(strongestEmotion.emotion))} ${formatNotebookLabel(strongestEmotion.emotion)}` : null,
         },
         {
             key: 'mood',
@@ -1221,12 +1214,12 @@ export default function DashboardNotebookView({
                         {moodShift ? (
                             moodShift.type === 'shift' ? (
                                 <p className="mt-0.5 text-[0.73rem] leading-5 text-[rgb(var(--paper-ink))]">
-                                    {MOOD_EMOJI[moodShift.from.toLowerCase()] ?? '·'} → {MOOD_EMOJI[moodShift.to.toLowerCase()] ?? '·'}
+                                    {moodEmojiFor(moodShift.from)} → {moodEmojiFor(moodShift.to)}
                                     <span className="block text-[0.65rem] text-[rgb(107,107,107)]">{toTitleCase(moodShift.from)} → {toTitleCase(moodShift.to)}</span>
                                 </p>
                             ) : (
                                 <p className="mt-0.5 text-[0.73rem] leading-5 text-[rgb(var(--paper-ink))]">
-                                    {MOOD_EMOJI[moodShift.mood.toLowerCase()] ?? '·'} {toTitleCase(moodShift.mood)}
+                                    {moodEmojiFor(moodShift.mood)} {toTitleCase(moodShift.mood)}
                                     <span className="block text-[0.65rem] text-[rgb(107,107,107)]">{moodShift.streak}× in a row</span>
                                 </p>
                             )
@@ -1343,7 +1336,7 @@ export default function DashboardNotebookView({
                         <p className="section-label">This month vs {periodDelta.periodLabel}</p>
                         {periodDelta.currentTopMood && (
                             <span className="text-[0.55rem] text-[rgb(140,140,140)]">
-                                {MOOD_EMOJI[periodDelta.currentTopMood] ?? '·'} {toTitleCase(periodDelta.currentTopMood)}
+                                {moodEmojiFor(periodDelta.currentTopMood)} {toTitleCase(periodDelta.currentTopMood)}
                             </span>
                         )}
                     </div>
@@ -1658,7 +1651,18 @@ export default function DashboardNotebookView({
                     )}
                 </div>
                 <div className="mt-1.5 rounded-[0.75rem] bg-[rgba(255,255,255,0.5)] px-1 pt-1 pb-0.5">
-                    <svg viewBox="0 0 440 120" className="h-[7.5rem] w-full" aria-label="Emotional thread showing mood changes over recent entries">
+                    <svg
+                        viewBox="0 0 440 120"
+                        className="h-[7.5rem] w-full"
+                        role="img"
+                        aria-label={
+                            moodShift
+                                ? moodShift.type === 'shift'
+                                    ? `Emotional thread across recent entries, shifting from ${moodShift.from} toward ${moodShift.to}.`
+                                    : `Emotional thread across recent entries, stable around ${moodShift.mood}.`
+                                : 'Emotional thread showing mood changes over recent entries.'
+                        }
+                    >
                         {/* Gradient fill under curve */}
                         <defs>
                             <linearGradient id="moodFill" x1="0" y1="0" x2="0" y2="1">
@@ -1698,9 +1702,9 @@ export default function DashboardNotebookView({
                             <g key={`pt-${point.x}-${point.label}`}>
                                 <circle cx={point.x} cy={point.y} r="6" fill="#8A9A6F" opacity="0.08" />
                                 <circle cx={point.x} cy={point.y} r="3.2" fill="#F8F4ED" stroke="#5C5C5C" strokeWidth="1.3" />
-                                {point.mood && MOOD_EMOJI[point.mood] && (
+                                {point.mood && (
                                     <text x={point.x} y={Math.max(14, point.y - 9)} textAnchor="middle" fontSize="8.5">
-                                        {MOOD_EMOJI[point.mood]}
+                                        {moodEmojiFor(point.mood)}
                                     </text>
                                 )}
                                 <text x={point.x} y="103" textAnchor="middle" fontSize="7" fontWeight="500" fill="#5C5C5C">{point.label}</text>
@@ -1926,7 +1930,7 @@ export default function DashboardNotebookView({
                                         href={`/timeline?mood=${encodeURIComponent(emotionKey)}`}
                                         className="flex items-center gap-1.5 rounded-[0.5rem] -mx-1 px-1 py-0.5 transition-colors hover:bg-[rgba(138,154,111,0.06)]"
                                     >
-                                        <span className="w-[1.1rem] text-center text-[0.72rem] leading-none">{MOOD_EMOJI[emotionKey] ?? '·'}</span>
+                                        <span className="w-[1.1rem] text-center text-[0.72rem] leading-none">{moodEmojiFor(emotionKey)}</span>
                                         <span className={`w-[3.5rem] text-[0.6rem] truncate ${isTop ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-[rgb(130,130,130)]'}`}>
                                             {toTitleCase(axis.emotion)}
                                         </span>
@@ -1961,7 +1965,12 @@ export default function DashboardNotebookView({
                             <p className="section-label">Life balance</p>
                             <div className="mt-2 flex items-center gap-3">
                                 <div className="relative h-11 w-11 shrink-0">
-                                    <svg viewBox="0 0 36 36" className="h-11 w-11 -rotate-90">
+                                    <svg
+                                        viewBox="0 0 36 36"
+                                        className="h-11 w-11 -rotate-90"
+                                        role="img"
+                                        aria-label={`Life balance score ${lifeBalanceScoreLabel}, with ${formatNotebookLabel(journalIntel.lifeBalance.dominantArea)} appearing most often${journalIntel.lifeBalance.neglectedArea ? ` and ${formatNotebookLabel(journalIntel.lifeBalance.neglectedArea)} appearing less` : ''}.`}
+                                    >
                                         <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(92,92,92,0.06)" strokeWidth="3.5" />
                                         <circle
                                             cx="18" cy="18" r="15" fill="none"
@@ -2189,7 +2198,7 @@ export default function DashboardNotebookView({
                                 </div>
                             </div>
 
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto scrollbar-hide">
                                 <div role="tablist" aria-label="Dashboard pages" className="inline-flex min-w-full gap-1 rounded-[1.5rem] bg-[rgba(237,228,216,0.72)] p-1 border border-[rgba(92,92,92,0.12)]">
                                     {TAB_ORDER.map((tab) => (
                                         <button
@@ -2248,7 +2257,7 @@ export default function DashboardNotebookView({
                                         >
                                             <div className="flex items-start gap-3">
                                                 <span className="mt-0.5 text-sm" aria-hidden="true">
-                                                    {MOOD_EMOJI[(entry.mood ?? '').toLowerCase()] ?? '✦'}
+                                                    {moodEmojiFor(entry.mood)}
                                                 </span>
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex flex-wrap items-center gap-2">

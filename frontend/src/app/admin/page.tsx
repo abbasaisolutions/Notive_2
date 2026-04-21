@@ -571,7 +571,7 @@ export default function AdminPage() {
                     </div>
                     <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                         <SectionHeader kicker="Admin" title="Manage users" description="Check user activity, find people who need help, and manage accounts." />
-                        <ActionBar className="overflow-x-auto">
+                        <ActionBar scroll>
                             <TagPill tone="primary" className="gap-1.5"><FiShield size={12} aria-hidden="true" />Admin tools</TagPill>
                             <TagPill tone="muted">Active filters {activeFilterCount}</TagPill>
                             <TagPill tone="muted">Results {users.length}</TagPill>
