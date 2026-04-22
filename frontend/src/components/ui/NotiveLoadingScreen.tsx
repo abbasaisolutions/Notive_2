@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { cn } from '@/utils/cn';
+import useHasMounted from '@/hooks/use-has-mounted';
 
 const DEFAULT_PHRASES = [
     'Pulling your notes together...',
@@ -146,7 +147,9 @@ export default function NotiveLoadingScreen({
     className,
 }: NotiveLoadingScreenProps) {
     const [phraseIndex, setPhraseIndex] = useState(0);
-    const prefersReducedMotion = useReducedMotion();
+    const hasMounted = useHasMounted();
+    const reducedMotionPreference = useReducedMotion();
+    const prefersReducedMotion = hasMounted && !!reducedMotionPreference;
     const isInline = variant === 'inline';
 
     useEffect(() => {

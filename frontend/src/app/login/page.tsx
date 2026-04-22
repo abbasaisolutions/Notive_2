@@ -20,6 +20,7 @@ import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { unwrapSetupReturnTo } from '@/utils/redirect';
 import { resolvePostAuthDestination } from '@/utils/auth-routing';
 import { isNativeCapacitorPlatform } from '@/utils/sso';
+import useHasMounted from '@/hooks/use-has-mounted';
 
 type LoginFieldErrors = {
     email?: string;
@@ -43,6 +44,7 @@ const AUTH_SIDE_STRIP = '/images/auth-side-strip.jpg';
 export default function LoginPage() {
     const router = useRouter();
     const { login, loginWithSsoCredential, user, isLoading: authLoading } = useAuth();
+    const hasMounted = useHasMounted();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -146,7 +148,7 @@ export default function LoginPage() {
         setError('Google sign-in didn’t finish. Please try again.');
     }, []);
 
-    if (isNativeCapacitorPlatform() && (authLoading || !!user)) {
+    if (hasMounted && isNativeCapacitorPlatform() && (authLoading || !!user)) {
         return (
             <div className="page-paper-canvas min-h-screen" style={quietNotebookPageStyle}>
                 <NotiveLoadingScreen phrases={LOGIN_PHRASES} phraseInterval={3400} />

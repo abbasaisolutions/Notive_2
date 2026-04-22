@@ -20,6 +20,7 @@ import { clearOnboardingState } from '@/utils/onboarding';
 import { unwrapSetupReturnTo } from '@/utils/redirect';
 import { resolvePostAuthDestination } from '@/utils/auth-routing';
 import { isNativeCapacitorPlatform } from '@/utils/sso';
+import useHasMounted from '@/hooks/use-has-mounted';
 
 const SIGNUP_VALUE_POINTS = [
     'Capture a real moment while it is still fresh',
@@ -38,6 +39,7 @@ const AUTH_SIDE_STRIP = '/images/auth-side-strip.jpg';
 export default function RegisterPage() {
     const router = useRouter();
     const { loginWithSsoCredential, user, isLoading: authLoading } = useAuth();
+    const hasMounted = useHasMounted();
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [safeReturnTo, setSafeReturnTo] = useState<string | null>(null);
@@ -88,7 +90,7 @@ export default function RegisterPage() {
         setError('Google sign-up didn\u2019t finish. Please try again.');
     }, []);
 
-    if (isNativeCapacitorPlatform() && (authLoading || !!user)) {
+    if (hasMounted && isNativeCapacitorPlatform() && (authLoading || !!user)) {
         return (
             <div className="page-paper-canvas min-h-screen" style={quietNotebookPageStyle}>
                 <NotiveLoadingScreen phrases={REGISTER_PHRASES} phraseInterval={3200} />

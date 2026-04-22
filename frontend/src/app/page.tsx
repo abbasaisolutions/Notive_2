@@ -13,6 +13,7 @@ import {
 } from '@/components/marketing/NotiveShowcase';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { isNativeCapacitorPlatform } from '@/utils/sso';
+import useHasMounted from '@/hooks/use-has-mounted';
 
 const HOME_LAUNCH_PHRASES = [
     'Opening your notebook\u2026',
@@ -22,7 +23,8 @@ const HOME_LAUNCH_PHRASES = [
 
 export default function HomePage() {
     const { user, isLoading: authLoading } = useAuth();
-    const shouldHoldNativeHome = isNativeCapacitorPlatform() && (authLoading || !!user);
+    const hasMounted = useHasMounted();
+    const shouldHoldNativeHome = hasMounted && isNativeCapacitorPlatform() && (authLoading || !!user);
 
     if (shouldHoldNativeHome) {
         return (

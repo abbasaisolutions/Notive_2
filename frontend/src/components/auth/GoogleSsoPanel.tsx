@@ -6,6 +6,7 @@ import { getCredentialSsoAvailability } from '@/utils/sso';
 import { ensureNativeGoogleSsoInitialized, signInWithNativeGoogleCredential } from '@/utils/native-google-auth';
 import { resolveFriendlyMessage } from '@/utils/friendly-errors';
 import { FiLoader } from 'react-icons/fi';
+import useHasMounted from '@/hooks/use-has-mounted';
 
 type GoogleSsoPanelMode = 'login' | 'register' | 'reauth';
 
@@ -65,11 +66,22 @@ function GoogleSsoPanelComponent({
     onSuccess,
     onError,
 }: GoogleSsoPanelProps) {
-    const availability = getCredentialSsoAvailability('google');
+    const hasMounted = useHasMounted();
+    const availability = useMemo(
+        () => (hasMounted
+            ? getCredentialSsoAvailability('google')
+            : {
+                enabled: false,
+                clientId: null,
+                reason: 'missing_client_id' as const,
+                surface: 'unavailable' as const,
+            }),
+        [hasMounted],
+    );
     const copy = PANEL_COPY[mode];
     const [nativeLoading, setNativeLoading] = useState(false);
     const [nativeError, setNativeError] = useState<string | null>(null);
-    const showButton = availability.enabled;
+    const showButton = hasMounted && availability.enabled;
     const isNativeSso = availability.enabled && availability.surface === 'native';
     const isInteractionDisabled = isLoading || isBlocked || nativeLoading;
 
@@ -125,7 +137,15 @@ function GoogleSsoPanelComponent({
                     </div>
                 </div>
 
-                {showButton ? (
+                {!hasMounted ? (
+                    <div className={`flex w-full flex-col gap-3 ${ALIGNMENT[align]}`}>
+                        <div
+                            aria-hidden="true"
+                            className="h-10 w-full max-w-[320px] rounded-[1.2rem] border border-[rgba(92,92,92,0.14)] bg-[rgba(255,251,245,0.72)]"
+                        />
+                        <p className="text-xs text-ink-muted">{copy.supportText}</p>
+                    </div>
+                ) : showButton ? (
                     <div className={`flex w-full flex-col gap-3 ${ALIGNMENT[align]}`}>
                         {isNativeSso ? (
                             <button
