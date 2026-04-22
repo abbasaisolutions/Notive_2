@@ -5,6 +5,7 @@ import { buildProfileContextSummary, type ProfileContextSummary } from '../servi
 import { deriveExperienceEvidence } from '../services/opportunity.service';
 import { executeHybridSearch } from '../services/hybrid-search.service';
 import { invalidateAuthUserCache } from '../services/auth-user-cache.service';
+import { serverLogger } from '../utils/server-logger';
 
 const TRACK_FILTERS = new Set(['all', 'personal', 'professional', 'blended', 'unknown']);
 const STAGE_FILTERS = new Set(['all', 'not_started', 'in_progress', 'completed']);
@@ -273,6 +274,29 @@ const buildEvidenceSummary = (rollups: EvidenceRollup[]): EvidenceSummary => {
         usersReadyForExport,
         averageCompletenessScore: Math.round(completenessTotal / rollups.length),
     };
+};
+
+const unwrapAdminDetailResult = <T>(
+    result: PromiseSettledResult<T>,
+    fallback: T,
+    context: {
+        label: string;
+        targetUserId: string;
+        requestId?: string;
+    }
+): T => {
+    if (result.status === 'fulfilled') {
+        return result.value;
+    }
+
+    serverLogger.warn('admin.user_detail_enrichment_failed', {
+        requestId: context.requestId,
+        targetUserId: context.targetUserId,
+        label: context.label,
+        message: result.reason instanceof Error ? result.reason.message : String(result.reason),
+    });
+
+    return fallback;
 };
 
 const buildUserEvidenceRollups = async (userIds: string[]): Promise<Map<string, EvidenceRollup>> => {
@@ -835,7 +859,7 @@ export const getUserDetails = async (req: Request, res: Response) => {
             return res.status(403).json({ message: 'Super admin access required for privileged account details' });
         }
 
-        const [evidenceRollupMap, recentEntries, recentTelemetry, recentAdminActions] = await Promise.all([
+        const enrichmentResults = await Promise.allSettled([
             buildUserEvidenceRollups([user.id]),
             prisma.entry.findMany({
                 where: { userId: user.id, deletedAt: null },
@@ -875,7 +899,61 @@ export const getUserDetails = async (req: Request, res: Response) => {
                     occurredAt: true,
                 },
             }),
-        ]);
+        ] as const);
+
+        const evidenceRollupMap = unwrapAdminDetailResult(
+            enrichmentResults[0],
+            new Map<string, EvidenceRollup>(),
+            {
+                label: 'evidence_rollup',
+                targetUserId: user.id,
+                requestId: res.locals.requestId,
+            }
+        );
+        const recentEntries = unwrapAdminDetailResult(
+            enrichmentResults[1],
+            [] as Array<{
+                id: string;
+                title: string | null;
+                source: string | null;
+                mood: string | null;
+                createdAt: Date;
+            }>,
+            {
+                label: 'recent_entries',
+                targetUserId: user.id,
+                requestId: res.locals.requestId,
+            }
+        );
+        const recentTelemetry = unwrapAdminDetailResult(
+            enrichmentResults[2],
+            [] as Array<{
+                eventType: string;
+                field: string | null;
+                pathname: string | null;
+                occurredAt: Date;
+            }>,
+            {
+                label: 'recent_telemetry',
+                targetUserId: user.id,
+                requestId: res.locals.requestId,
+            }
+        );
+        const recentAdminActions = unwrapAdminDetailResult(
+            enrichmentResults[3],
+            [] as Array<{
+                eventType: string;
+                field: string | null;
+                value: string | null;
+                metadata: unknown;
+                occurredAt: Date;
+            }>,
+            {
+                label: 'recent_admin_actions',
+                targetUserId: user.id,
+                requestId: res.locals.requestId,
+            }
+        );
 
         const evidenceRollup = evidenceRollupMap.get(user.id) || { ...EMPTY_EVIDENCE_ROLLUP };
         const profileContext = buildProfileContextSummary(user.profile);
