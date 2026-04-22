@@ -13,6 +13,7 @@ import useApi from '@/hooks/use-api';
 import { useNotificationCount } from '@/hooks/use-notification-count';
 import { getSavedDraftWordCount } from '@/hooks/use-entry-draft';
 import { API_URL } from '@/constants/config';
+import { getMoodEmoji } from '@/constants/moods';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import {
     getOnboardingState,
@@ -163,11 +164,6 @@ type DashboardSupportMap = {
         reconnectSuggestion: string;
         lastSeen: string;
     }>;
-};
-
-const MOOD_EMOJI: Record<string, string> = {
-    happy: '😊', calm: '😌', sad: '😔', anxious: '😟',
-    frustrated: '😤', thoughtful: '🤔', motivated: '⚡', tired: '😴', grateful: '🙏',
 };
 
 const SCENARIO_VISUALS: Record<HomeActionScenario, { accent: NotebookAccentName; doodle: NotebookDoodleName }> = {
@@ -1443,7 +1439,7 @@ export default function DashboardPage() {
                                         className="notebook-card-soft flex items-start gap-2 rounded-xl p-3 transition-opacity hover:opacity-80"
                                     >
                                         <span className="text-sm mt-0.5 shrink-0" aria-hidden="true">
-                                            {MOOD_EMOJI[entry.mood ?? ''] ?? '✦'}
+                                            {getMoodEmoji(entry.mood)}
                                         </span>
                                         <div className="min-w-0">
                                             <p className="text-sm font-medium truncate" style={{ color: 'rgb(var(--paper-ink, var(--text-strong)))' }}>

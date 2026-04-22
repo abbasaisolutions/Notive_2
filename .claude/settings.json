@@ -107,7 +107,8 @@
       "WebSearch",
       "Bash(git -C /c/Users/mtabe/Notive diff -- .claude/settings.json)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('deps:', Object.keys\\(p.dependencies\\).filter\\(k => k.includes\\('virtual'\\) || k.includes\\('window'\\)\\).join\\(','\\) || 'none'\\); console.log\\('framer:', p.dependencies['framer-motion']\\);\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\mtabe\\Notive\\frontend\\src\\out",

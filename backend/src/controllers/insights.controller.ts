@@ -26,7 +26,10 @@ class InsightsController {
             const periodDays = period === 'week' ? 7 : period === 'month' ? 30 : 365;
             const cutoff = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
 
-            // Fetch entries
+            // Cap at 500 most recent entries in the period. Beyond that, NLP
+            // insights get noisier and the payload dominates. Heavy users
+            // (>500 entries/month) still get meaningful aggregates from a sample.
+            const MAX_INSIGHT_ENTRIES = 500;
             const entries = await prisma.entry.findMany({
                 where: {
                     userId,
@@ -34,6 +37,7 @@ class InsightsController {
                     deletedAt: null,
                 },
                 orderBy: { createdAt: 'desc' },
+                take: MAX_INSIGHT_ENTRIES,
                 select: {
                     content: true,
                     mood: true,

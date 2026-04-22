@@ -167,18 +167,31 @@ export const getStats = async (req: Request, res: Response) => {
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
 
-        // Run all independent queries in parallel
-        const [totalEntries, totalChapters, entriesThisWeek, entries, profile] = await Promise.all([
+        // Streak query: select only createdAt (not content) and cap at 400 — covers
+        // streaks beyond a year even with multiple entries per day. Word count is
+        // aggregated DB-side via raw SUM to avoid pulling full `content` payloads.
+        const [
+            totalEntries,
+            totalChapters,
+            entriesThisWeek,
+            streakEntries,
+            wordCountRow,
+            profile,
+        ] = await Promise.all([
             prisma.entry.count({ where: { userId, deletedAt: null } }),
             prisma.chapter.count({ where: { userId } }),
             prisma.entry.count({ where: { userId, deletedAt: null, createdAt: { gte: weekAgo } } }),
-            // Single fetch used for both streak and word count (cap at 730 days — 2 years is plenty)
             prisma.entry.findMany({
                 where: { userId, deletedAt: null },
                 orderBy: { createdAt: 'desc' },
-                take: 730,
-                select: { createdAt: true, content: true },
+                take: 400,
+                select: { createdAt: true },
             }),
+            prisma.$queryRaw<Array<{ total_chars: bigint | number | null }>>`
+                SELECT COALESCE(SUM(LENGTH("content")), 0) AS total_chars
+                FROM "Entry"
+                WHERE "userId" = ${userId} AND "deletedAt" IS NULL
+            `,
             prisma.userProfile.findUnique({
                 where: { userId },
                 select: {
@@ -205,7 +218,7 @@ export const getStats = async (req: Request, res: Response) => {
         const today = new Date().toDateString();
         const yesterday = new Date(Date.now() - 86400000).toDateString();
 
-        for (const entry of entries) {
+        for (const entry of streakEntries) {
             const entryDate = entry.createdAt.toDateString();
 
             if (!lastDate) {
@@ -232,18 +245,17 @@ export const getStats = async (req: Request, res: Response) => {
         }
 
         longestStreak = Math.max(longestStreak, tempStreak);
-        if (entries.length > 0) {
-            const firstEntryDate = entries[0].createdAt.toDateString();
+        if (streakEntries.length > 0) {
+            const firstEntryDate = streakEntries[0].createdAt.toDateString();
             if (firstEntryDate === today || firstEntryDate === yesterday) {
                 currentStreak = tempStreak;
             }
         }
 
-        // Words written (approximate)
-        const totalWords = entries.reduce(
-            (acc, entry) => acc + entry.content.split(/\s+/).length,
-            0
-        );
+        // ~5 chars per word heuristic — avoids pulling every entry's content just
+        // to call .split() in JS. Close enough for a display stat.
+        const totalChars = Number(wordCountRow[0]?.total_chars ?? 0);
+        const totalWords = Math.round(totalChars / 5);
 
         return res.json({
             totalEntries,

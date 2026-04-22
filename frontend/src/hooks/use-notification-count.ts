@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useApi } from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
+import { createSharedCountStore } from '@/hooks/create-shared-count-store';
 
 /**
  * Lightweight event bus so any component can request a badge refresh
@@ -18,6 +19,12 @@ export function refreshNotificationBadge(): void {
     }
 }
 
+const notificationCountStore = createSharedCountStore({
+    endpoint: `${API_URL}/notifications?unreadOnly=true&limit=1`,
+    getCount: (data) => data.unreadCount ?? data.total ?? 0,
+    refreshEventName: NOTIFICATION_BADGE_REFRESH_EVENT,
+});
+
 /**
  * Polls the notification endpoint for unread count.
  * Returns `{ unreadCount, refresh }`.
@@ -27,52 +34,23 @@ export function refreshNotificationBadge(): void {
 export function useNotificationCount(intervalMs = 60_000) {
     const { accessToken } = useAuth();
     const { apiFetch } = useApi();
-    const [unreadCount, setUnreadCount] = useState(0);
-    const timer = useRef<ReturnType<typeof setInterval>>();
-    const apiFetchRef = useRef(apiFetch);
-    const stoppedRef = useRef(false);
+    const unreadCount = useSyncExternalStore(
+        notificationCountStore.subscribe,
+        notificationCountStore.getSnapshot,
+        notificationCountStore.getSnapshot,
+    );
 
-    // Keep ref current without re-triggering effects
-    apiFetchRef.current = apiFetch;
+    useEffect(() => {
+        return notificationCountStore.connect({
+            accessToken,
+            apiFetch,
+            intervalMs,
+        });
+    }, [accessToken, apiFetch, intervalMs]);
 
     const refresh = useCallback(async () => {
-        if (stoppedRef.current) return;
-        try {
-            const r = await apiFetchRef.current(`${API_URL}/notifications?unreadOnly=true&limit=1`, {
-                retryOnUnauthorized: false,
-            });
-            if (r.ok) {
-                const data = await r.json();
-                setUnreadCount(data.unreadCount ?? data.total ?? 0);
-            } else if (r.status === 401) {
-                // Truly invalid auth — stop polling until accessToken changes
-                stoppedRef.current = true;
-                if (timer.current) clearInterval(timer.current);
-            }
-        } catch { /* network error — keep polling, will retry next interval */ }
+        await notificationCountStore.refresh();
     }, []);
-
-    useEffect(() => {
-        if (!accessToken) {
-            // Not authenticated yet — clear badge and wait
-            setUnreadCount(0);
-            stoppedRef.current = false;
-            if (timer.current) clearInterval(timer.current);
-            return;
-        }
-        // Authenticated — start polling fresh
-        stoppedRef.current = false;
-        refresh();
-        timer.current = setInterval(refresh, intervalMs);
-        return () => { if (timer.current) clearInterval(timer.current); };
-    }, [refresh, intervalMs, accessToken]);
-
-    // Listen for external refresh requests (e.g. after viewing a shared bundle)
-    useEffect(() => {
-        const handler = () => { void refresh(); };
-        window.addEventListener(NOTIFICATION_BADGE_REFRESH_EVENT, handler);
-        return () => window.removeEventListener(NOTIFICATION_BADGE_REFRESH_EVENT, handler);
-    }, [refresh]);
 
     return { unreadCount, refresh };
 }
