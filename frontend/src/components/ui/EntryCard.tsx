@@ -28,6 +28,7 @@ interface EntryCardProps {
 
 export default function EntryCard({ entry, delay = 0 }: EntryCardProps) {
     const pathname = usePathname();
+    const [search, setSearch] = React.useState('');
     const [isPlaying, setIsPlaying] = React.useState(false);
     const audioRef = React.useRef<HTMLAudioElement>(null);
     const normalizedMood = normalizeMood(entry.mood);
@@ -35,12 +36,17 @@ export default function EntryCard({ entry, delay = 0 }: EntryCardProps) {
         ? normalizedMood.charAt(0).toUpperCase() + normalizedMood.slice(1)
         : null;
     const moodColor = getMoodColor(normalizedMood);
-    const displayDate = new Date(entry.createdAt).toLocaleDateString(undefined, {
+    const displayDate = new Date(entry.createdAt).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
     });
-    const currentReturnTo = buildCurrentReturnTo(pathname, typeof window !== 'undefined' ? window.location.search : '');
+    React.useEffect(() => {
+        if (typeof window === 'undefined') return;
+        setSearch(window.location.search);
+    }, [pathname]);
+
+    const currentReturnTo = buildCurrentReturnTo(pathname, search);
     const storySignal = entry.storySignal;
 
     const togglePlay = (e: React.MouseEvent) => {
@@ -168,4 +174,3 @@ export default function EntryCard({ entry, delay = 0 }: EntryCardProps) {
         </motion.div>
     );
 }
-

@@ -27,7 +27,7 @@ export const buildTimelineMonthGroups = <T extends TimelineEntryLike>(
     sortedEntries.forEach((entry, timelineIndex) => {
         const date = new Date(entry.createdAt);
         const key = buildTimelineMonthKey(date);
-        const label = date.toLocaleDateString(undefined, {
+        const label = date.toLocaleDateString('en-US', {
             month: 'long',
             year: 'numeric',
         });

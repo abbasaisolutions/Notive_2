@@ -77,14 +77,14 @@ const DAY_PART_PILL_STYLE: Record<string, string> = {
 };
 
 const formatDate = (value: string) =>
-    new Date(value).toLocaleDateString(undefined, {
+    new Date(value).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
     });
 
 const formatTime = (value: string) =>
-    new Date(value).toLocaleTimeString(undefined, {
+    new Date(value).toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
     });

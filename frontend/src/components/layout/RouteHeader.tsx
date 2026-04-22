@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { getRouteMeta } from '@/components/layout/nav-config';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
@@ -8,11 +9,17 @@ import WorkspaceResumeCard from '@/components/layout/WorkspaceResumeCard';
 
 export default function RouteHeader() {
     const pathname = usePathname();
+    const [search, setSearch] = useState('');
     const routeMeta = getRouteMeta(pathname);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        setSearch(window.location.search);
+    }, [pathname]);
 
     if (!routeMeta || routeMeta.headerMode === 'none') return null;
 
-    const currentReturnTo = buildCurrentReturnTo(pathname, typeof window !== 'undefined' ? window.location.search : '');
+    const currentReturnTo = buildCurrentReturnTo(pathname, search);
 
     return (
         <header className="px-4 pt-3 md:px-8 md:pt-4" aria-label="Page context">
@@ -76,4 +83,3 @@ export default function RouteHeader() {
         </header>
     );
 }
-

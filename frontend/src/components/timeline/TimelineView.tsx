@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { EmptyState } from '@/components/ui';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
@@ -60,10 +60,17 @@ export default function TimelineView({
     entryShareStats = {},
 }: TimelineViewProps) {
     const pathname = usePathname();
+    const [search, setSearch] = useState('');
     const groupedEntries = useMemo(() => buildTimelineMonthGroups(entries), [entries]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        setSearch(window.location.search);
+    }, [pathname]);
+
     const currentReturnTo = useMemo(
-        () => buildCurrentReturnTo(pathname, typeof window !== 'undefined' ? window.location.search : ''),
-        [pathname],
+        () => buildCurrentReturnTo(pathname, search),
+        [pathname, search],
     );
 
     if (entries.length === 0) {
