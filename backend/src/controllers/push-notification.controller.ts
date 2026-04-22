@@ -1,8 +1,15 @@
 import { Request, Response } from 'express';
 import { PushNotificationService } from '../services/push-notification.service';
 import prisma from '../config/prisma';
+import { serverLogger } from '../utils/server-logger';
 
 const pushService = new PushNotificationService(prisma);
+
+const previewPushToken = (token: string) => {
+    const trimmed = token.trim();
+    if (trimmed.length <= 18) return trimmed;
+    return `${trimmed.slice(0, 10)}...${trimmed.slice(-6)}`;
+};
 
 /**
  * Register a device token for push notifications
@@ -33,6 +40,18 @@ export async function registerDeviceToken(
             return;
         }
 
+        serverLogger.info('push.device_token_register_requested', {
+            requestId: res.locals.requestId,
+            userId,
+            platform,
+            tokenPreview: previewPushToken(token),
+            deviceId: deviceId || undefined,
+            deviceName: deviceName || undefined,
+            appVersion: appVersion || undefined,
+            osVersion: osVersion || undefined,
+            userAgent: req.get('user-agent') || undefined,
+        });
+
         const result = await pushService.registerDeviceToken(userId, {
             token,
             platform,
@@ -42,9 +61,24 @@ export async function registerDeviceToken(
             osVersion,
         });
 
+        serverLogger.info('push.device_token_register_succeeded', {
+            requestId: res.locals.requestId,
+            userId,
+            deviceTokenId: result.id,
+            platform: result.platform,
+            tokenPreview: previewPushToken(token),
+        });
+
         res.status(200).json({ success: true, data: result });
     } catch (error) {
         console.error('Error registering device token:', error);
+        serverLogger.error('push.device_token_register_failed', {
+            requestId: res.locals.requestId,
+            userId: req.userId || undefined,
+            platform: typeof req.body?.platform === 'string' ? req.body.platform : undefined,
+            tokenPreview: typeof req.body?.token === 'string' ? previewPushToken(req.body.token) : undefined,
+            message: error instanceof Error ? error.message : String(error),
+        });
         res.status(500).json({ message: 'Failed to register device token' });
     }
 }
