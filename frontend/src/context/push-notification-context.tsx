@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { App } from '@capacitor/app';
 import logger from '@/utils/logger';
 import { useApi } from '@/hooks/use-api';
@@ -71,7 +72,14 @@ const SOCIAL_TOAST_TYPES = new Set([
     'friend_request',
     'friend_accepted',
 ]);
+const INSIGHT_NOTIFICATION_TYPES = new Set([
+    'insight',
+    'insights',
+    'insight_ready',
+]);
 const LEGACY_ANDROID_DEFAULT_SOUND_SEGMENT = '/raw/default';
+const ANDROID_LOCAL_NOTIFICATION_ICON = 'ic_stat_notive';
+const ANDROID_LOCAL_NOTIFICATION_ICON_COLOR = '#8A9A6F';
 
 const ANDROID_PUSH_CHANNEL = {
     id: 'notive_default',
@@ -217,13 +225,76 @@ function hasForegroundNotificationContent(notification: any): boolean {
 }
 
 function shouldUseNativeForegroundAlert(notification: any): boolean {
-    return isNativePlatform() && hasForegroundNotificationContent(notification);
+    return getNativePlatform() === 'ios' && hasForegroundNotificationContent(notification);
+}
+
+function shouldShowAndroidForegroundBanner(notification: any): boolean {
+    return getNativePlatform() === 'android' && hasForegroundNotificationContent(notification);
 }
 
 function shouldResetAndroidChannelSound(existingChannel: { sound?: unknown } | undefined): boolean {
     if (!existingChannel) return false;
     return typeof existingChannel.sound === 'string'
         && existingChannel.sound.includes(LEGACY_ANDROID_DEFAULT_SOUND_SEGMENT);
+}
+
+function normalizeNotificationData(
+    value: unknown,
+): Record<string, string> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return {};
+    }
+
+    return Object.entries(value).reduce<Record<string, string>>((acc, [key, entryValue]) => {
+        if (typeof entryValue === 'string') {
+            acc[key] = entryValue;
+        } else if (typeof entryValue === 'number' || typeof entryValue === 'boolean') {
+            acc[key] = String(entryValue);
+        }
+        return acc;
+    }, {});
+}
+
+function getNotificationData(notification: any): Record<string, string> {
+    return normalizeNotificationData(
+        notification?.notification?.data
+        ?? notification?.notification?.extra
+        ?? notification?.data
+        ?? notification?.extra
+    );
+}
+
+function resolveAndroidNotificationChannelId(type: string | undefined): string {
+    if (type === 'reminder') return 'notive_reminders';
+    if (type && SOCIAL_TOAST_TYPES.has(type)) return 'notive_social';
+    if (type && INSIGHT_NOTIFICATION_TYPES.has(type)) return 'notive_insights';
+    return ANDROID_PUSH_CHANNEL.id;
+}
+
+function resolveAndroidNotificationGroup(type: string | undefined, data: Record<string, string>): string {
+    if (type === 'reminder') return 'reminder';
+    if (data.bundleId) return `${type ?? 'notive'}:${data.bundleId}`;
+    return type ?? 'notive';
+}
+
+function hashNotificationId(value: string): number {
+    let hash = 0;
+    for (let index = 0; index < value.length; index += 1) {
+        hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
+    }
+
+    const normalized = Math.abs(hash);
+    return normalized === 0 ? 1 : normalized;
+}
+
+function resolveAndroidLocalNotificationId(notification: any, data: Record<string, string>): number {
+    const rawId = typeof notification?.id === 'number' || typeof notification?.id === 'string'
+        ? String(notification.id)
+        : data.notificationId
+            || (typeof notification?.tag === 'string' ? notification.tag : '')
+            || `${notification?.title ?? 'notive'}:${notification?.body ?? ''}:${Date.now()}`;
+
+    return hashNotificationId(rawId);
 }
 
 async function readApiErrorMessage(response: Response): Promise<string> {
@@ -543,7 +614,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
     const showNotificationToast = useCallback((notification: any) => {
         const title = notification.title || 'Notive';
         const body = notification.body || '';
-        const data = notification.data || {};
+        const data = getNotificationData(notification);
         const deepLink = data?.link || data?.route;
         const notificationId = typeof data?.notificationId === 'string' ? data.notificationId : undefined;
         const actionLabel = resolveNotificationActionLabel(data?.type, deepLink);
@@ -565,8 +636,49 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         });
     }, [addToast, markNotificationRead, router]);
 
+    const showAndroidForegroundNotification = useCallback(async (notification: any): Promise<boolean> => {
+        if (getPlatform() !== 'android' || !hasForegroundNotificationContent(notification)) {
+            return false;
+        }
+
+        try {
+            const { value: notificationsEnabled } = await LocalNotifications.areEnabled();
+            if (!notificationsEnabled) {
+                return false;
+            }
+
+            const data = getNotificationData(notification);
+            const title = typeof notification?.title === 'string' && notification.title.trim()
+                ? notification.title.trim()
+                : 'Notive';
+            const body = typeof notification?.body === 'string' ? notification.body.trim() : '';
+
+            await LocalNotifications.schedule({
+                notifications: [
+                    {
+                        id: resolveAndroidLocalNotificationId(notification, data),
+                        title,
+                        body,
+                        largeBody: body || undefined,
+                        channelId: resolveAndroidNotificationChannelId(data.type),
+                        group: resolveAndroidNotificationGroup(data.type, data),
+                        smallIcon: ANDROID_LOCAL_NOTIFICATION_ICON,
+                        iconColor: ANDROID_LOCAL_NOTIFICATION_ICON_COLOR,
+                        extra: data,
+                        autoCancel: true,
+                    },
+                ],
+            });
+
+            return true;
+        } catch (error) {
+            logger.error('Failed to show Android foreground notification:', error);
+            return false;
+        }
+    }, [getPlatform]);
+
     const handleNotificationAction = useCallback(async (notification: any) => {
-        const data = notification.notification?.data || notification.data;
+        const data = getNotificationData(notification);
         const notificationId = typeof data?.notificationId === 'string' ? data.notificationId : undefined;
         const deepLink = data?.link || data?.route;
         void markNotificationRead(notificationId);
@@ -634,24 +746,38 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
                 logger.debug('Push notification received:', notification);
                 addNotificationToState(notification);
                 const useNativeForegroundAlert = shouldUseNativeForegroundAlert(notification);
+                const shouldShowAndroidBanner = shouldShowAndroidForegroundBanner(notification);
                 if (!useNativeForegroundAlert) {
                     void removeForegroundDuplicateNotification(notification);
                 }
                 hapticLight();
+                refreshNotificationBadge();
+                if (shouldShowAndroidBanner) {
+                    void showAndroidForegroundNotification(notification).then((didShowBanner) => {
+                        if (!didShowBanner) {
+                            showNotificationToast(notification);
+                        }
+                    });
+                    return;
+                }
                 if (!useNativeForegroundAlert) {
                     showNotificationToast(notification);
                 }
-                refreshNotificationBadge();
             });
 
             PushNotifications.addListener('pushNotificationActionPerformed', (notification: any) => {
                 logger.debug('Push notification action performed:', notification);
                 void handleNotificationAction(notification);
             });
+
+            LocalNotifications.addListener('localNotificationActionPerformed', (notificationAction: any) => {
+                logger.debug('Local notification action performed:', notificationAction);
+                void handleNotificationAction(notificationAction);
+            });
         } catch (error) {
             logger.error('Failed to setup push listeners:', error);
         }
-    }, [addNotificationToState, getPlatform, handleNotificationAction, queueDeviceRegistration, removeForegroundDuplicateNotification, showNotificationToast]);
+    }, [addNotificationToState, getPlatform, handleNotificationAction, queueDeviceRegistration, removeForegroundDuplicateNotification, showAndroidForegroundNotification, showNotificationToast]);
 
     const initializePushNotifications = useCallback(async () => {
         try {
