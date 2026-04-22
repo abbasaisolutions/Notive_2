@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { unwrapSetupReturnTo } from '@/utils/redirect';
 import { appendReturnTo, buildCurrentReturnTo, canUseHistoryBack } from '@/utils/navigation';
@@ -11,7 +11,13 @@ export function useContextNavigation(
 ) {
     const router = useRouter();
     const pathname = usePathname();
-    const search = typeof window !== 'undefined' ? window.location.search : '';
+    const [search, setSearch] = useState('');
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        setSearch(window.location.search);
+    }, [pathname]);
+
     const currentReturnTo = useMemo(
         () => buildCurrentReturnTo(pathname, search),
         [pathname, search]

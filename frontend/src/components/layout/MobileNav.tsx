@@ -28,6 +28,7 @@ import { hapticTap } from '@/services/haptics.service';
 export default function MobileNav() {
     const pathname = usePathname();
     const router = useRouter();
+    const [search, setSearch] = useState('');
     const { user, logout } = useAuth();
     const { stats } = useGamification();
     const { theme } = useTheme();
@@ -52,8 +53,8 @@ export default function MobileNav() {
     );
     const isMoreSectionActive = moreSectionItems.some((item) => isNavItemActive(pathname, item));
     const currentReturnTo = useMemo(
-        () => buildCurrentReturnTo(pathname, typeof window !== 'undefined' ? window.location.search : ''),
-        [pathname]
+        () => buildCurrentReturnTo(pathname, search),
+        [pathname, search]
     );
     const writeEntryHref = useMemo(
         () => appendReturnTo('/entry/new?mode=quick', currentReturnTo),
@@ -66,6 +67,11 @@ export default function MobileNav() {
 
     useEffect(() => {
         setIsMoreOpen(false);
+    }, [pathname]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        setSearch(window.location.search);
     }, [pathname]);
 
     // Alternate icon on the capture FAB: + → mic → + → pen.

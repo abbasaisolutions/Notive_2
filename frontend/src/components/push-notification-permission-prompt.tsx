@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { useAuth } from '@/context/auth-context';
 import {
+    checkPermission,
     hasSeenRuntimePermissionPrompt,
     markRuntimePermissionPromptSeen,
 } from '@/services/device-permissions.service';
@@ -70,13 +71,25 @@ export function PushNotificationPermissionPrompt() {
                 return;
             }
 
-            markRuntimePermissionPromptSeen('notifications', userId);
             void requestPushPermission()
-                .then((granted) => {
+                .then(async (granted) => {
+                    if (granted) {
+                        markRuntimePermissionPromptSeen('notifications', userId);
+                        logger.debug('Native notification permission granted from runtime prompt');
+                        return;
+                    }
+
+                    // Only mark the prompt "seen" when the user made an explicit
+                    // choice (granted or denied). A lingering `prompt` state means
+                    // the system dialog never resolved (app backgrounded, race,
+                    // transient error) — let us retry on the next session instead
+                    // of silently giving up. Same for `unavailable`.
+                    const { status } = await checkPermission('notifications');
+                    if (status === 'denied' || status === 'granted') {
+                        markRuntimePermissionPromptSeen('notifications', userId);
+                    }
                     logger.debug(
-                        granted
-                            ? 'Native notification permission granted from runtime prompt'
-                            : 'Native notification permission dismissed or denied from runtime prompt',
+                        `Native notification permission flow resolved with status=${status}`,
                     );
                 })
                 .catch((error) => {
