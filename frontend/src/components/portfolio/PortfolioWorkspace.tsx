@@ -31,6 +31,7 @@ import { ErrorState, Spinner } from '@/components/ui';
 import { API_URL } from '@/constants/config';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
+import useHasMounted from '@/hooks/use-has-mounted';
 import useTelemetry from '@/hooks/use-telemetry';
 import { useChipScroller } from '@/hooks/use-chip-scroller';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
@@ -421,7 +422,9 @@ export default function PortfolioWorkspace() {
     const { isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { apiFetch } = useApi();
     const { trackEvent } = useTelemetry();
-    const reduceMotion = useReducedMotion();
+    const hasMounted = useHasMounted();
+    const reduceMotionPreference = useReducedMotion();
+    const reduceMotion = hasMounted && !!reduceMotionPreference;
     const previewRequestRef = useRef(0);
     const hasHydratedWorkspaceRef = useRef(false);
     const resumeSessionRef = useRef<PortfolioSessionState | null>(null);

@@ -11,6 +11,7 @@ import { useNotificationCount } from '@/hooks/use-notification-count';
 import { useSharedUnreadCount } from '@/hooks/use-shared-unread-count';
 import { FiMoreHorizontal } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
+import useHasMounted from '@/hooks/use-has-mounted';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import UserAvatar from '@/components/ui/UserAvatar';
 import {
@@ -34,11 +35,13 @@ export default function MobileNav() {
     const { theme } = useTheme();
     const { unreadCount } = useNotificationCount();
     const { unreadCount: sharedUnread } = useSharedUnreadCount();
+    const hasMounted = useHasMounted();
     const navRef = useRef<HTMLElement | null>(null);
     const [isMoreOpen, setIsMoreOpen] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [capturePhase, setCapturePhase] = useState(0); // 0=plus, 1=mic, 2=plus, 3=pen
-    const prefersReducedMotion = useReducedMotion();
+    const reducedMotionPreference = useReducedMotion();
+    const prefersReducedMotion = hasMounted && !!reducedMotionPreference;
     const isPaper = theme === 'paper';
     const workspaceMaturity = getWorkspaceMaturity({
         role: user?.role ?? null,
@@ -77,7 +80,7 @@ export default function MobileNav() {
     // Alternate icon on the capture FAB: + → mic → + → pen.
     // Pause when the tab is hidden (saves battery) and honor reduced-motion.
     useEffect(() => {
-        if (prefersReducedMotion) return;
+        if (!hasMounted || prefersReducedMotion) return;
         let interval: ReturnType<typeof setInterval> | null = null;
         const start = () => {
             if (interval) return;
@@ -98,7 +101,7 @@ export default function MobileNav() {
             document.removeEventListener('visibilitychange', handleVisibility);
             stop();
         };
-    }, [prefersReducedMotion]);
+    }, [hasMounted, prefersReducedMotion]);
 
     // Prefetch entry route so navigation is near-instant
     useEffect(() => {

@@ -79,7 +79,7 @@ export default function OfflineBanner() {
     const [expanded, setExpanded] = useState(false);
     const [snapshot, setSnapshot] = useState<SyncSnapshot>({
         draft: null,
-        isOnline: typeof navigator === 'undefined' ? true : navigator.onLine,
+        isOnline: true,
         lastSuccessfulSyncAt: null,
         lastSyncIssue: null,
         uploads: EMPTY_UPLOAD_SUMMARY,

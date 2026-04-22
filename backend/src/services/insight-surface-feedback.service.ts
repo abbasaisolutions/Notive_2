@@ -12,6 +12,7 @@
  * Cost posture: no LLM calls. Single insert/update per user action.
  */
 
+import { Prisma } from '@prisma/client';
 import prisma from '../config/prisma';
 import type { DashboardInsightsData } from './dashboard-insights.service';
 
@@ -24,8 +25,22 @@ export const VALID_SURFACE_TYPES: InsightSurfaceType[] = [
 export const VALID_SURFACE_REACTIONS: InsightSurfaceReaction[] = ['helpful', 'not_helpful'];
 
 const NEGATIVE_FEEDBACK_LOOKBACK_DAYS = 45;
+const INSIGHT_SURFACE_FEEDBACK_MODEL = 'InsightSurfaceFeedback';
 
 const normalizeKey = (value: string): string => value.trim().toLowerCase();
+
+const isMissingInsightSurfaceFeedbackTableError = (error: unknown): boolean => {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+        return false;
+    }
+
+    if (error.code !== 'P2021') {
+        return false;
+    }
+
+    const target = typeof error.meta?.table === 'string' ? error.meta.table : '';
+    return target.includes(INSIGHT_SURFACE_FEEDBACK_MODEL);
+};
 
 export async function recordSurfaceFeedback(
     userId: string,
@@ -36,11 +51,20 @@ export async function recordSurfaceFeedback(
     const key = normalizeKey(entityKey);
     if (!key) return;
 
-    await prisma.insightSurfaceFeedback.upsert({
-        where: { userId_surfaceType_entityKey: { userId, surfaceType, entityKey: key } },
-        create: { userId, surfaceType, entityKey: key, reaction },
-        update: { reaction, createdAt: new Date() },
-    });
+    try {
+        await prisma.insightSurfaceFeedback.upsert({
+            where: { userId_surfaceType_entityKey: { userId, surfaceType, entityKey: key } },
+            create: { userId, surfaceType, entityKey: key, reaction },
+            update: { reaction, createdAt: new Date() },
+        });
+    } catch (error) {
+        if (isMissingInsightSurfaceFeedbackTableError(error)) {
+            console.warn('[insight-surface-feedback] feedback table missing; skipping feedback persistence');
+            return;
+        }
+
+        throw error;
+    }
 }
 
 type NegativeFeedbackIndex = Record<InsightSurfaceType, Set<string>>;
@@ -73,7 +97,17 @@ export async function applySurfaceFeedback(
     userId: string,
     insights: DashboardInsightsData,
 ): Promise<DashboardInsightsData> {
-    const index = await loadNegativeFeedbackIndex(userId);
+    let index: NegativeFeedbackIndex;
+    try {
+        index = await loadNegativeFeedbackIndex(userId);
+    } catch (error) {
+        if (isMissingInsightSurfaceFeedbackTableError(error)) {
+            console.warn('[insight-surface-feedback] feedback table missing; returning unfiltered insights');
+            return insights;
+        }
+
+        throw error;
+    }
 
     const correlations = insights.correlations.filter(
         (item) => !index.correlation.has(normalizeKey(item.topic)),

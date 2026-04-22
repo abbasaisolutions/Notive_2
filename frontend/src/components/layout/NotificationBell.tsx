@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { FiBell } from 'react-icons/fi';
 import { useAuth } from '@/context/auth-context';
 import { useNotificationCount } from '@/hooks/use-notification-count';
+import useHasMounted from '@/hooks/use-has-mounted';
 import { hapticTap } from '@/services/haptics.service';
 import { shouldHideGlobalNav } from '@/components/layout/nav-config';
 
@@ -21,7 +22,9 @@ export default function NotificationBell() {
     const pathname = usePathname();
     const { user } = useAuth();
     const { unreadCount } = useNotificationCount();
-    const prefersReducedMotion = useReducedMotion();
+    const hasMounted = useHasMounted();
+    const reducedMotionPreference = useReducedMotion();
+    const prefersReducedMotion = hasMounted && !!reducedMotionPreference;
 
     if (!user) return null;
     if (shouldHideGlobalNav(pathname)) return null;
