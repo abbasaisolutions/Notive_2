@@ -71,6 +71,7 @@ const SOCIAL_TOAST_TYPES = new Set([
     'friend_request',
     'friend_accepted',
 ]);
+const LEGACY_ANDROID_DEFAULT_SOUND_SEGMENT = '/raw/default';
 
 const ANDROID_PUSH_CHANNEL = {
     id: 'notive_default',
@@ -78,7 +79,6 @@ const ANDROID_PUSH_CHANNEL = {
     description: 'Reflection prompts, reminders, and important Notive updates.',
     importance: 5 as const,
     visibility: 1 as const,
-    sound: 'default',
     vibration: true,
 };
 
@@ -90,16 +90,14 @@ const ANDROID_PUSH_CHANNELS = [
         description: 'Daily reflection prompts and journaling reminders.',
         importance: 5 as const,   // MAX — heads-up popup like WhatsApp
         visibility: 1 as const,   // PUBLIC — show on lock screen
-        sound: 'default',
         vibration: true,
     },
     {
         id: 'notive_social',
         name: 'Friends & shared memories',
         description: 'Friend requests, shared memories, and reactions.',
-        importance: 4 as const,   // HIGH — heads-up popup for social interactions
+        importance: 5 as const,   // MAX — match messaging-style heads-up behaviour
         visibility: 1 as const,   // PUBLIC — show on lock screen
-        sound: 'default',
         vibration: true,
     },
     {
@@ -108,7 +106,6 @@ const ANDROID_PUSH_CHANNELS = [
         description: 'AI insights ready and analysis updates.',
         importance: 2 as const,
         visibility: 1 as const,
-        sound: 'default',
         vibration: false,
     },
 ];
@@ -212,6 +209,21 @@ function shouldRetryPushRegistration(error: unknown, attempts: number): boolean 
     if (status === null) return true;
     if (status === 401 || status === 403 || status === 429) return true;
     return status >= 500;
+}
+
+function hasForegroundNotificationContent(notification: any): boolean {
+    return typeof notification?.title === 'string' && notification.title.trim().length > 0
+        || typeof notification?.body === 'string' && notification.body.trim().length > 0;
+}
+
+function shouldUseNativeForegroundAlert(notification: any): boolean {
+    return isNativePlatform() && hasForegroundNotificationContent(notification);
+}
+
+function shouldResetAndroidChannelSound(existingChannel: { sound?: unknown } | undefined): boolean {
+    if (!existingChannel) return false;
+    return typeof existingChannel.sound === 'string'
+        && existingChannel.sound.includes(LEGACY_ANDROID_DEFAULT_SOUND_SEGMENT);
 }
 
 async function readApiErrorMessage(response: Response): Promise<string> {
@@ -578,7 +590,8 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
                 const existingChannel = existingChannels.get(channel.id);
                 const needsRecreate = existingChannel
                     && (existingChannel.importance !== channel.importance
-                        || existingChannel.visibility !== channel.visibility);
+                        || existingChannel.visibility !== channel.visibility
+                        || shouldResetAndroidChannelSound(existingChannel));
 
                 if (needsRecreate) {
                     await PushNotifications.deleteChannel({ id: channel.id });
@@ -620,9 +633,14 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
                 logger.debug('Push notification received:', notification);
                 addNotificationToState(notification);
-                void removeForegroundDuplicateNotification(notification);
+                const useNativeForegroundAlert = shouldUseNativeForegroundAlert(notification);
+                if (!useNativeForegroundAlert) {
+                    void removeForegroundDuplicateNotification(notification);
+                }
                 hapticLight();
-                showNotificationToast(notification);
+                if (!useNativeForegroundAlert) {
+                    showNotificationToast(notification);
+                }
                 refreshNotificationBadge();
             });
 
