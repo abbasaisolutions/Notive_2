@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { initializeApp, getApps, App, cert, applicationDefault } from 'firebase-admin/app';
 import { getMessaging, Message } from 'firebase-admin/messaging';
+import { serverLogger } from '../utils/server-logger';
 
 interface PushNotificationPayload {
     title: string;
@@ -42,6 +43,12 @@ const INSIGHT_NOTIFICATION_TYPES = new Set([
 // development still works without a service account file.
 
 let _firebaseApp: App | null = null;
+
+const previewPushToken = (token: string) => {
+    const trimmed = token.trim();
+    if (trimmed.length <= 18) return trimmed;
+    return `${trimmed.slice(0, 10)}...${trimmed.slice(-6)}`;
+};
 
 function getFirebaseApp(): App | null {
     if (_firebaseApp) return _firebaseApp;
@@ -121,6 +128,17 @@ export class PushNotificationService {
                 osVersion: input.osVersion,
                 isActive: true,
             },
+        });
+
+        serverLogger.info('push.device_token_upserted', {
+            userId,
+            deviceTokenId: deviceToken.id,
+            platform: deviceToken.platform,
+            tokenPreview: previewPushToken(input.token),
+            deviceId: input.deviceId || undefined,
+            appVersion: input.appVersion || undefined,
+            osVersion: input.osVersion || undefined,
+            lastUsedAt: deviceToken.lastUsedAt?.toISOString() || undefined,
         });
 
         return {

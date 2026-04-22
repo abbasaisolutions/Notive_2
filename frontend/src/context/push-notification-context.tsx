@@ -6,6 +6,7 @@ import { PushNotifications } from '@capacitor/push-notifications';
 import { App } from '@capacitor/app';
 import logger from '@/utils/logger';
 import { useApi } from '@/hooks/use-api';
+import { useAuth } from '@/context/auth-context';
 import { isNativePlatform, getNativePlatform } from '@/utils/platform';
 import { type PermissionStatus } from '@/services/device-permissions.service';
 import { useToast } from '@/context/toast-context';
@@ -43,8 +44,24 @@ interface PushContextType {
     clearNotifications: () => void;
 }
 
+type DevicePlatform = DeviceToken['platform'];
+
+interface PendingPushRegistration {
+    token: string;
+    platform: DevicePlatform;
+    source: string;
+    queuedAt: string;
+    attempts: number;
+    lastAttemptAt?: string;
+    lastError?: string;
+}
+
 const PushContext = createContext<PushContextType | undefined>(undefined);
 const FOREGROUND_TOAST_DURATION_MS = 6000;
+const PENDING_PUSH_REGISTRATION_KEY = 'notive_pending_push_registration_v1';
+const PUSH_REGISTRATION_BASE_DELAY_MS = 5_000;
+const PUSH_REGISTRATION_MAX_DELAY_MS = 5 * 60_000;
+const PUSH_REGISTRATION_MAX_RETRIES = 6;
 const SOCIAL_TOAST_TYPES = new Set([
     'social',
     'shared_memory',
@@ -108,8 +125,111 @@ function applyResolvedPushPermission(
     return granted;
 }
 
+const getPushRegistrationStorage = (): Storage | null => {
+    if (typeof window === 'undefined') return null;
+    return window.localStorage;
+};
+
+function readPendingPushRegistration(): PendingPushRegistration | null {
+    const storage = getPushRegistrationStorage();
+    if (!storage) return null;
+
+    try {
+        const raw = storage.getItem(PENDING_PUSH_REGISTRATION_KEY);
+        if (!raw) return null;
+
+        const parsed = JSON.parse(raw) as Partial<PendingPushRegistration>;
+        if (
+            typeof parsed.token !== 'string'
+            || typeof parsed.platform !== 'string'
+            || typeof parsed.source !== 'string'
+            || typeof parsed.queuedAt !== 'string'
+        ) {
+            storage.removeItem(PENDING_PUSH_REGISTRATION_KEY);
+            return null;
+        }
+
+        return {
+            token: parsed.token,
+            platform: parsed.platform as DevicePlatform,
+            source: parsed.source,
+            queuedAt: parsed.queuedAt,
+            attempts: typeof parsed.attempts === 'number' ? parsed.attempts : 0,
+            lastAttemptAt: typeof parsed.lastAttemptAt === 'string' ? parsed.lastAttemptAt : undefined,
+            lastError: typeof parsed.lastError === 'string' ? parsed.lastError : undefined,
+        };
+    } catch {
+        storage.removeItem(PENDING_PUSH_REGISTRATION_KEY);
+        return null;
+    }
+}
+
+function writePendingPushRegistration(pending: PendingPushRegistration | null): void {
+    const storage = getPushRegistrationStorage();
+    if (!storage) return;
+
+    if (!pending) {
+        storage.removeItem(PENDING_PUSH_REGISTRATION_KEY);
+        return;
+    }
+
+    storage.setItem(PENDING_PUSH_REGISTRATION_KEY, JSON.stringify(pending));
+}
+
+function getPushTokenPreview(token: string): string {
+    const trimmed = token.trim();
+    if (trimmed.length <= 18) return trimmed;
+    return `${trimmed.slice(0, 10)}...${trimmed.slice(-6)}`;
+}
+
+function getPushRegistrationRetryDelayMs(attempts: number): number {
+    const exponent = Math.max(attempts - 1, 0);
+    return Math.min(PUSH_REGISTRATION_BASE_DELAY_MS * (2 ** exponent), PUSH_REGISTRATION_MAX_DELAY_MS);
+}
+
+function getPushRegistrationStatusCode(error: unknown): number | null {
+    if (!error || typeof error !== 'object') return null;
+    const status = (error as { status?: unknown }).status;
+    return typeof status === 'number' ? status : null;
+}
+
+function getPushRegistrationErrorMessage(error: unknown): string {
+    if (error instanceof Error && error.message.trim()) {
+        return error.message.trim();
+    }
+
+    if (typeof error === 'string' && error.trim()) {
+        return error.trim();
+    }
+
+    return 'Unknown push registration error';
+}
+
+function shouldRetryPushRegistration(error: unknown, attempts: number): boolean {
+    if (attempts >= PUSH_REGISTRATION_MAX_RETRIES) return false;
+
+    const status = getPushRegistrationStatusCode(error);
+    if (status === null) return true;
+    if (status === 401 || status === 403 || status === 429) return true;
+    return status >= 500;
+}
+
+async function readApiErrorMessage(response: Response): Promise<string> {
+    try {
+        const data = await response.json() as { message?: unknown };
+        if (typeof data?.message === 'string' && data.message.trim()) {
+            return data.message.trim();
+        }
+    } catch {
+        // Fall through to status text.
+    }
+
+    return response.statusText || `Request failed with status ${response.status}`;
+}
+
 export function PushNotificationProvider({ children }: { children: ReactNode }) {
     const { apiFetch } = useApi();
+    const { user, accessToken } = useAuth();
     const router = useRouter();
     const { addToast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
@@ -119,6 +239,10 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
     const [deviceTokens, setDeviceTokens] = useState<DeviceToken[]>([]);
     const [notifications, setNotifications] = useState<PushNotification[]>([]);
     const hasInitializedPushRef = useRef(false);
+    const pendingPushRegistrationRef = useRef<PendingPushRegistration | null>(readPendingPushRegistration());
+    const pushRegistrationInFlightRef = useRef(false);
+    const pushRegistrationRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const flushPendingPushRegistrationRef = useRef<(reason?: string) => Promise<void>>(async () => {});
 
     const getPlatform = useCallback((): 'android' | 'ios' | 'web' => {
         return getNativePlatform();
@@ -164,7 +288,25 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         }
     }, []);
 
+    const clearPushRegistrationRetryTimer = useCallback(() => {
+        if (pushRegistrationRetryTimerRef.current) {
+            clearTimeout(pushRegistrationRetryTimerRef.current);
+            pushRegistrationRetryTimerRef.current = null;
+        }
+    }, []);
+
+    const setPendingPushRegistration = useCallback((pending: PendingPushRegistration | null) => {
+        pendingPushRegistrationRef.current = pending;
+        writePendingPushRegistration(pending);
+
+        if (!pending) {
+            clearPushRegistrationRetryTimer();
+        }
+    }, [clearPushRegistrationRetryTimer]);
+
     const fetchDeviceTokens = useCallback(async () => {
+        if (!user?.id) return;
+
         try {
             const response = await apiFetch(DEVICE_TOKENS_API_PATH);
 
@@ -177,35 +319,144 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         } catch (error) {
             logger.error('Failed to fetch device tokens:', error);
         }
-    }, [apiFetch]);
+    }, [apiFetch, user?.id]);
 
-    const registerDevice = useCallback(async (token: string, platform: 'android' | 'ios' | 'web') => {
-        try {
-            const response = await apiFetch(DEVICE_TOKENS_API_PATH, {
-                method: 'POST',
-                body: JSON.stringify({
-                    token,
-                    platform,
-                    deviceId: await getDeviceId(),
-                    deviceName: await getDeviceName(),
-                    appVersion: await getAppVersion(),
-                    osVersion: await getOsVersion(),
-                }),
-            });
+    const performDeviceRegistration = useCallback(async (token: string, platform: DevicePlatform) => {
+        const response = await apiFetch(DEVICE_TOKENS_API_PATH, {
+            method: 'POST',
+            body: JSON.stringify({
+                token,
+                platform,
+                deviceId: await getDeviceId(),
+                deviceName: await getDeviceName(),
+                appVersion: await getAppVersion(),
+                osVersion: await getOsVersion(),
+            }),
+        });
 
-            if (!response.ok) {
-                throw new Error('Failed to register device token');
-            }
-
-            const data = await response.json();
-            logger.debug('Device token registered:', data);
-
-            await fetchDeviceTokens();
-        } catch (error) {
-            logger.error('Failed to register device:', error);
+        if (!response.ok) {
+            const error = new Error(await readApiErrorMessage(response)) as Error & { status?: number };
+            error.status = response.status;
             throw error;
         }
+
+        const data = await response.json();
+        logger.debug('Device token registered:', {
+            platform,
+            token: getPushTokenPreview(token),
+        });
+
+        await fetchDeviceTokens();
+        return data;
     }, [apiFetch, fetchDeviceTokens, getAppVersion, getDeviceId, getDeviceName, getOsVersion]);
+
+    const flushPendingPushRegistration = useCallback(async (reason = 'manual') => {
+        const pending = pendingPushRegistrationRef.current;
+        if (!pending || pushRegistrationInFlightRef.current) {
+            return;
+        }
+
+        if (!user?.id) {
+            logger.debug('Push token registration waiting for authenticated user', {
+                reason,
+                token: getPushTokenPreview(pending.token),
+            });
+            return;
+        }
+
+        pushRegistrationInFlightRef.current = true;
+        clearPushRegistrationRetryTimer();
+
+        const attemptRecord: PendingPushRegistration = {
+            ...pending,
+            attempts: pending.attempts + 1,
+            lastAttemptAt: new Date().toISOString(),
+        };
+        setPendingPushRegistration(attemptRecord);
+
+        try {
+            await performDeviceRegistration(attemptRecord.token, attemptRecord.platform);
+
+            const stillCurrent = pendingPushRegistrationRef.current?.token === attemptRecord.token
+                && pendingPushRegistrationRef.current?.platform === attemptRecord.platform;
+
+            if (stillCurrent) {
+                setPendingPushRegistration(null);
+            }
+        } catch (error) {
+            const message = getPushRegistrationErrorMessage(error);
+            const stillCurrent = pendingPushRegistrationRef.current?.token === attemptRecord.token
+                && pendingPushRegistrationRef.current?.platform === attemptRecord.platform;
+
+            if (stillCurrent) {
+                setPendingPushRegistration({
+                    ...attemptRecord,
+                    lastError: message,
+                });
+            }
+
+            const shouldRetry = shouldRetryPushRegistration(error, attemptRecord.attempts);
+            logger.error('Push token registration failed', {
+                reason,
+                attempts: attemptRecord.attempts,
+                platform: attemptRecord.platform,
+                token: getPushTokenPreview(attemptRecord.token),
+                status: getPushRegistrationStatusCode(error) ?? undefined,
+                message,
+                willRetry: shouldRetry,
+            });
+
+            if (shouldRetry) {
+                const delayMs = getPushRegistrationRetryDelayMs(attemptRecord.attempts);
+                pushRegistrationRetryTimerRef.current = setTimeout(() => {
+                    void flushPendingPushRegistrationRef.current('scheduled-retry');
+                }, delayMs);
+            }
+        } finally {
+            pushRegistrationInFlightRef.current = false;
+        }
+    }, [clearPushRegistrationRetryTimer, performDeviceRegistration, setPendingPushRegistration, user?.id]);
+
+    useEffect(() => {
+        flushPendingPushRegistrationRef.current = flushPendingPushRegistration;
+    }, [flushPendingPushRegistration]);
+
+    const queueDeviceRegistration = useCallback((
+        token: string,
+        platform: DevicePlatform,
+        source: string,
+    ) => {
+        const normalizedToken = token.trim();
+        if (!normalizedToken) {
+            logger.error('Refusing to queue an empty push token', {
+                source,
+                platform,
+            });
+            return;
+        }
+
+        const nextPending: PendingPushRegistration = {
+            token: normalizedToken,
+            platform,
+            source,
+            queuedAt: new Date().toISOString(),
+            attempts: 0,
+        };
+
+        setPendingPushRegistration(nextPending);
+        void flushPendingPushRegistrationRef.current(source);
+    }, [setPendingPushRegistration]);
+
+    const registerDevice = useCallback(async (token: string, platform: DevicePlatform) => {
+        const normalizedToken = token.trim();
+        queueDeviceRegistration(normalizedToken, platform, 'manual-register');
+        await flushPendingPushRegistrationRef.current('manual-register');
+
+        const pending = pendingPushRegistrationRef.current;
+        if (pending?.token === normalizedToken && pending.platform === platform) {
+            throw new Error(pending.lastError || 'Push token registration queued for retry');
+        }
+    }, [queueDeviceRegistration]);
 
     const unregisterDevice = useCallback(async (tokenId: string) => {
         try {
@@ -351,11 +602,15 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
     const setupPushListeners = useCallback(async () => {
         try {
             PushNotifications.addListener('registration', (token: any) => {
-                logger.debug('Push token received:', token.value);
+                const tokenValue = typeof token?.value === 'string' ? token.value.trim() : '';
+                if (!tokenValue) {
+                    logger.error('Push registration returned an empty token', token);
+                    return;
+                }
+
+                logger.debug('Push token received:', getPushTokenPreview(tokenValue));
                 applyResolvedPushPermission('granted', setPermissionState, setIsPermissionGranted);
-                registerDevice(token.value, getPlatform()).catch(err =>
-                    logger.error('Failed to auto-register token:', err)
-                );
+                queueDeviceRegistration(tokenValue, getPlatform(), 'native-registration');
             });
 
             PushNotifications.addListener('registrationError', (error: any) => {
@@ -378,7 +633,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         } catch (error) {
             logger.error('Failed to setup push listeners:', error);
         }
-    }, [addNotificationToState, getPlatform, handleNotificationAction, registerDevice, removeForegroundDuplicateNotification, showNotificationToast]);
+    }, [addNotificationToState, getPlatform, handleNotificationAction, queueDeviceRegistration, removeForegroundDuplicateNotification, showNotificationToast]);
 
     const initializePushNotifications = useCallback(async () => {
         try {
@@ -426,6 +681,21 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         hasInitializedPushRef.current = true;
         void initializePushNotifications();
     }, [initializePushNotifications]);
+
+    useEffect(() => {
+        return () => {
+            clearPushRegistrationRetryTimer();
+        };
+    }, [clearPushRegistrationRetryTimer]);
+
+    useEffect(() => {
+        if (!isNativePlatform()) return;
+        if (!isPermissionGranted) return;
+        if (!user?.id) return;
+
+        void fetchDeviceTokens();
+        void flushPendingPushRegistrationRef.current('auth-ready');
+    }, [accessToken, fetchDeviceTokens, isPermissionGranted, user?.id]);
 
     useEffect(() => {
         if (!isNativePlatform()) return;
