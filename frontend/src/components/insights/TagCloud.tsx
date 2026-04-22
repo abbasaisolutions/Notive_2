@@ -6,7 +6,6 @@ import useApi from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
 import { getMoodColor } from '@/constants/moods';
 import { isCardTag } from '@/utils/tags';
-import { hapticTap } from '@/services/haptics.service';
 
 interface TagTheme {
     tag: string;
@@ -73,7 +72,6 @@ export default function TagCloud({ onSelectTag, selectedTag = null }: TagCloudPr
     if (!themesLoaded || themes.length === 0) return null;
 
     const handleSelect = (tag: string) => {
-        hapticTap();
         onSelectTag?.(selectedTag === tag ? null : tag);
     };
 
@@ -88,7 +86,7 @@ export default function TagCloud({ onSelectTag, selectedTag = null }: TagCloudPr
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
                         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                        onClick={() => { hapticTap(); onSelectTag?.(null); }}
+                        onClick={() => { onSelectTag?.(null); }}
                         className="flex-shrink-0 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
                     >
                         ✕ clear

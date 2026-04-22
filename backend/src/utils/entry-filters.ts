@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { normalizeTag } from '../services/tag-manager.service';
+import { MOOD_ALIAS_MAP, MOOD_SCORES, normalizeMood } from './mood';
 
 const VALID_ENTRY_SOURCES = new Set(['NOTIVE', 'INSTAGRAM', 'FACEBOOK']);
 const VALID_DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
@@ -12,30 +13,11 @@ const ENTRY_DAY_PART_ALIAS_MAP: Record<string, string> = {
     'late night': 'Late night',
     'late-night': 'Late night',
 };
-const ENTRY_MOOD_ALIAS_MAP: Record<string, string> = {
-    angry: 'frustrated',
-    mad: 'frustrated',
-    furious: 'frustrated',
-    irritated: 'frustrated',
-    annoyed: 'frustrated',
-    upset: 'frustrated',
-    hopeful: 'motivated',
-    optimistic: 'motivated',
-    joy: 'happy',
-    joyful: 'happy',
-    happiness: 'happy',
-    sadness: 'sad',
-    lonely: 'sad',
-    loneliness: 'sad',
-    stress: 'anxious',
-    stressed: 'anxious',
-    worried: 'anxious',
-    nervous: 'anxious',
-    exhausted: 'tired',
-    fatigued: 'tired',
-    burnout: 'tired',
-    reflective: 'thoughtful',
-};
+const ENTRY_MOOD_ALIAS_MAP: Record<string, string> = MOOD_ALIAS_MAP;
+const ENTRY_CANONICAL_MOODS = [...new Set([
+    ...Object.keys(MOOD_SCORES),
+    ...Object.values(ENTRY_MOOD_ALIAS_MAP),
+])];
 const buildMoodVariantMap = (): Map<string, string[]> => {
     const grouped = new Map<string, Set<string>>();
 
@@ -46,8 +28,7 @@ const buildMoodVariantMap = (): Map<string, string[]> => {
         grouped.set(canonical, canonicalSet);
     });
 
-    ['happy', 'sad', 'anxious', 'calm', 'frustrated', 'grateful', 'motivated', 'tired', 'thoughtful', 'neutral']
-        .forEach((mood) => {
+    ENTRY_CANONICAL_MOODS.forEach((mood) => {
             const existing = grouped.get(mood) || new Set<string>();
             existing.add(mood);
             grouped.set(mood, existing);
@@ -116,9 +97,8 @@ export const normalizeEntryTheme = (value: unknown): string | null => {
 
 export const normalizeEntryMood = (value: unknown): string | null => {
     if (typeof value !== 'string') return null;
-    const normalized = value.trim().toLowerCase();
-    if (!normalized) return null;
-    return (ENTRY_MOOD_ALIAS_MAP[normalized] || normalized).slice(0, 32);
+    const normalized = normalizeMood(value);
+    return normalized ? normalized.slice(0, 32) : null;
 };
 
 export const normalizeEntryDateKey = (value: unknown): string | null => {

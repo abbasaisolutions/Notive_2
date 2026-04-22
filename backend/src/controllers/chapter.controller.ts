@@ -161,6 +161,11 @@ export const getChapterEntries = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
         const { id } = req.params;
+        const pageRaw = parseInt(req.query.page as string, 10);
+        const limitRaw = parseInt(req.query.limit as string, 10);
+        const page = Number.isFinite(pageRaw) ? Math.max(pageRaw, 1) : 1;
+        const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 100) : 50;
+        const skip = (page - 1) * limit;
 
         const chapter = await prisma.chapter.findFirst({
             where: { id, userId },
@@ -170,22 +175,44 @@ export const getChapterEntries = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Chapter not found' });
         }
 
-        const entries = await prisma.entry.findMany({
-            where: {
-                chapterId: id,
-                userId,
-                deletedAt: null,
-            },
-            orderBy: { createdAt: 'desc' },
-        });
+        const entryWhere = { chapterId: id, userId, deletedAt: null } as const;
+
+        const [entries, total] = await Promise.all([
+            prisma.entry.findMany({
+                where: entryWhere,
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+                select: {
+                    id: true,
+                    title: true,
+                    content: true,
+                    contentHtml: true,
+                    mood: true,
+                    source: true,
+                    category: true,
+                    lifeArea: true,
+                    chapterId: true,
+                    tags: true,
+                    skills: true,
+                    lessons: true,
+                    reflection: true,
+                    analysis: true,
+                    coverImage: true,
+                    locationLat: true,
+                    locationLng: true,
+                    locationName: true,
+                    createdAt: true,
+                    updatedAt: true,
+                },
+            }),
+            prisma.entry.count({ where: entryWhere }),
+        ]);
 
         return res.json({
             chapter,
             entries: entries.map((entry) => {
-                const responseEntry = Object.fromEntries(
-                    Object.entries(entry).filter(([key]) => key !== 'analysis' && key !== 'reflection')
-                ) as Omit<typeof entry, 'analysis' | 'reflection'>;
-
+                const { analysis, reflection, ...responseEntry } = entry;
                 return {
                     ...responseEntry,
                     storySignal: buildEntryStorySignal({
@@ -196,12 +223,18 @@ export const getChapterEntries = async (req: Request, res: Response) => {
                         tags: entry.tags,
                         skills: entry.skills,
                         lessons: entry.lessons,
-                        reflection: entry.reflection,
+                        reflection,
                         createdAt: entry.createdAt,
-                        analysis: entry.analysis,
+                        analysis,
                     }),
                 };
             }),
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
         });
     } catch (error) {
         console.error('Get chapter entries error:', error);

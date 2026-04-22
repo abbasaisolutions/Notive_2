@@ -4,7 +4,6 @@ import React from 'react';
 import { StructuredEntryData } from '@/services/structured-data.service';
 import { FiChevronDown, FiZap } from 'react-icons/fi';
 import type { IconType } from 'react-icons';
-import { hapticTap } from '@/services/haptics.service';
 
 type MoodOption = {
     icon: IconType;
@@ -271,7 +270,7 @@ export default function EntryInsightsPanel({
                                 {moods.map((m) => (
                                     <button
                                         key={m.value}
-                                        onClick={() => { hapticTap(); setMoodOverride(moodOverride === m.value ? null : m.value); }}
+                                        onClick={() => { setMoodOverride(moodOverride === m.value ? null : m.value); }}
                                         className={`shrink-0 snap-start px-2.5 py-2 rounded-xl text-sm flex items-center gap-1.5 transition-all border ${displayMood === m.value
                                             ? 'bg-primary border-primary text-[rgb(var(--paper-soft))] shadow-lg shadow-primary/25'
                                             : 'workspace-button-outline text-ink-secondary'

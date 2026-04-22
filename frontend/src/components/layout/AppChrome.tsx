@@ -8,6 +8,7 @@ import { StatusBar, Style as StatusBarStyle } from '@capacitor/status-bar';
 import { useAuth } from '@/context/auth-context';
 import { hapticTap } from '@/services/haptics.service';
 import { useGamification } from '@/context/gamification-context';
+import { isChipScrollerInteraction } from '@/components/layout/chip-scroller-haptics';
 import ProgressivePersonalizationPrompt from '@/components/smart/ProgressivePersonalizationPrompt';
 import MobileNav from '@/components/layout/MobileNav';
 import NotificationBell from '@/components/layout/NotificationBell';
@@ -155,24 +156,19 @@ export default function AppChrome() {
         };
     }, [router]);
 
-    // Delegated haptic feedback for chip-scroller taps (all chip rows share
-    // the .chip-scroller class, so one listener covers every row).
+    // Delegated haptic feedback for chip-scroller clicks. Using `click` keeps
+    // swipe-to-scroll gestures from buzzing at touch-start.
     useEffect(() => {
         if (typeof document === 'undefined') return;
 
-        const handler = (event: Event) => {
-            const target = event.target;
-            if (!(target instanceof Element)) return;
-            const scroller = target.closest('.chip-scroller');
-            if (!scroller) return;
-            const interactive = target.closest('button, a, [role="radio"], [role="tab"]');
-            if (!interactive || !scroller.contains(interactive)) return;
+        const handler = (event: MouseEvent) => {
+            if (!isChipScrollerInteraction(event.target)) return;
             hapticTap();
         };
 
-        document.addEventListener('pointerdown', handler, { passive: true });
+        document.addEventListener('click', handler);
         return () => {
-            document.removeEventListener('pointerdown', handler);
+            document.removeEventListener('click', handler);
         };
     }, []);
 

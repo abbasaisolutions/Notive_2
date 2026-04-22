@@ -1,5 +1,10 @@
 import prisma from '../config/prisma';
+import { getRedisClient } from '../config/redis';
 import { getMoodScore, normalizeMood } from '../utils/mood';
+import { serverLogger } from '../utils/server-logger';
+
+const CACHE_TTL_SECONDS = 6 * 60 * 60;
+const cacheKey = (userId: string) => `mood-forecast:${userId}`;
 
 export type MoodForecastConfidence = 'low' | 'medium' | 'high';
 
@@ -66,6 +71,44 @@ const buildGentleNote = (
 
 class MoodForecastService {
     async getForecast(userId: string): Promise<MoodForecast> {
+        try {
+            const cached = await getRedisClient().get(cacheKey(userId));
+            if (cached) {
+                return JSON.parse(cached) as MoodForecast;
+            }
+        } catch (error) {
+            serverLogger.warn('mood_forecast.cache_read_failed', {
+                userId,
+                message: error instanceof Error ? error.message : String(error),
+            });
+        }
+
+        const forecast = await this.computeForecast(userId);
+
+        try {
+            await getRedisClient().set(cacheKey(userId), JSON.stringify(forecast), { EX: CACHE_TTL_SECONDS });
+        } catch (error) {
+            serverLogger.warn('mood_forecast.cache_write_failed', {
+                userId,
+                message: error instanceof Error ? error.message : String(error),
+            });
+        }
+
+        return forecast;
+    }
+
+    async invalidate(userId: string): Promise<void> {
+        try {
+            await getRedisClient().del(cacheKey(userId));
+        } catch (error) {
+            serverLogger.warn('mood_forecast.cache_invalidate_failed', {
+                userId,
+                message: error instanceof Error ? error.message : String(error),
+            });
+        }
+    }
+
+    private async computeForecast(userId: string): Promise<MoodForecast> {
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - WINDOW_DAYS);
 
