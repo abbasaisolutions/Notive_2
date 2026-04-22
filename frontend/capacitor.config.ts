@@ -12,6 +12,9 @@ const config: CapacitorConfig = {
       resize: KeyboardResize.Body,
       resizeOnFullScreen: true,
     },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
     SocialLogin: {
       providers: {
         google: true,
