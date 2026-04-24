@@ -722,7 +722,8 @@ function NewEntryPageContent() {
         const stagedVoiceCapture = searchParams.get('voiceSession') ? takePendingVoiceCapture() : null;
         const stagedTranscript = stagedVoiceCapture?.transcript || null;
         const voiceText = searchParams.get('voice');
-        const promptText = searchParams.get('prompt');
+        const eventPromptText = searchParams.get('eventPrompt');
+        const promptText = eventPromptText || searchParams.get('prompt');
         const sharedText = entrySource === 'share' ? searchParams.get('text') : null;
         const audioParam = stagedVoiceCapture?.audioUrl || searchParams.get('audioUrl');
         const seededVoiceCapture = stagedTranscript

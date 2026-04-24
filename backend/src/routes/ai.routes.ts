@@ -12,6 +12,7 @@ import {
     getOpportunityTrends,
     previewActionBrief,
     updateOpportunityEvidence,
+    getEventPrompt,
 } from '../controllers/ai.controller';
 import {
     getHeroDashboardInsight,
@@ -45,6 +46,9 @@ router.get('/opportunity/overview', authMiddleware, getOpportunityOverview);
 router.get('/opportunity/trends', authMiddleware, getOpportunityTrends);
 router.patch('/opportunity/entry/:entryId', authMiddleware, updateOpportunityEvidence);
 router.get('/opportunity/export', authMiddleware, aiLimiter, exportOpportunityPack);
+
+// Calendar event → journal prompt
+router.post('/event-prompt', authMiddleware, aiLimiter, getEventPrompt);
 
 // Insight engine
 router.get('/dashboard-insight', authMiddleware, getHeroDashboardInsight);

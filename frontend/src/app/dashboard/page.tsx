@@ -60,6 +60,8 @@ import {
 import { deriveWriterDNA } from '@/services/writer-dna.service';
 import { getInsightTier, Gate, WhatsComingCard, FirstReadCard, EmptyDashboard } from '@/components/dashboard/ColdStartGate';
 import StreakStrip from '@/components/dashboard/StreakStrip';
+const CalendarOptInCard = dynamic(() => import('@/components/dashboard/CalendarOptInCard'), { ssr: false });
+const UpcomingEventsStrip = dynamic(() => import('@/components/dashboard/UpcomingEventsStrip'), { ssr: false });
 import FirstVisitWalkthrough from '@/components/dashboard/FirstVisitWalkthrough';
 // Dead-branch visualization components — dynamic to exclude from initial bundle
 const PrimeTimePrediction = dynamic(() => import('@/components/dashboard/PrimeTimePrediction'));
@@ -802,6 +804,7 @@ export default function DashboardPage() {
 
     // Keep hooks above early returns so React sees the same order on every render.
     const streak = gamificationLoading ? null : (gamificationStats?.currentStreak ?? null);
+    const [calendarRefreshTrigger, setCalendarRefreshTrigger] = useState(0);
     const totalWords = gamificationLoading ? null : (gamificationStats?.totalWords ?? null);
 
     // ── Daily Check-In ────────────────────────────────
@@ -1192,6 +1195,13 @@ export default function DashboardPage() {
                         timelineHref={timelineHref}
                     />
                 </Gate>
+
+                {/* ── Calendar opt-in / upcoming events (native only) ── */}
+                <UpcomingEventsStrip refreshTrigger={calendarRefreshTrigger} />
+                <CalendarOptInCard
+                    streak={streak ?? 0}
+                    onGranted={() => setCalendarRefreshTrigger((n) => n + 1)}
+                />
 
                 {/* ── Hero Insight Card (tier 3+, LLM-powered) ───── */}
                 <Gate minTier={3} currentTier={insightTier}>

@@ -15,6 +15,7 @@ import {
     OpportunityTemplateVariant,
 } from '../services/opportunity.service';
 import { buildProfileContextSummary } from '../services/profile-context.service';
+import { createLlmChatCompletion, hasLlmProvider, aiRuntime } from '../config/ai';
 import guidedReflectionService, {
     isGuidedReflectionLensValue,
     type GuidedReflectionLensValue,
@@ -765,5 +766,89 @@ export const exportOpportunityPack = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Export opportunity pack error:', error);
         return res.status(500).json({ message: 'Failed to export opportunity pack' });
+    }
+};
+
+// ── Calendar event prompt ────────────────────────────────────────────────────
+
+const EVENT_CATEGORY_PROMPTS: Record<string, string[]> = {
+    class: [
+        'What is one thing you want to actually take away from this?',
+        'What question do you wish you could ask in it?',
+        'What part of this feels relevant to something bigger in your life right now?',
+    ],
+    meeting: [
+        'What do you need them to understand before it starts?',
+        'What outcome would make this worth your time?',
+        'What are you not saying that probably should be said?',
+    ],
+    study: [
+        'What part of this material still feels shaky?',
+        'What would make today\'s session actually stick?',
+        'What are you avoiding and why?',
+    ],
+    social: [
+        'Who do you want to be in that room?',
+        'What do you actually want from this?',
+        'What version of yourself are you bringing today?',
+    ],
+    personal: [
+        'Anything worth noting before you go in?',
+        'What\'s on your mind that you haven\'t said out loud yet?',
+        'What do you hope comes out of this?',
+    ],
+};
+
+export const getEventPrompt = async (req: Request, res: Response) => {
+    try {
+        const { title, category, minutesUntil } = req.body as {
+            title?: string;
+            category?: string;
+            minutesUntil?: number;
+        };
+
+        if (!title?.trim()) {
+            return res.status(400).json({ message: 'Event title is required' });
+        }
+
+        const cat = (category ?? 'personal').toLowerCase();
+        const when = minutesUntil != null && minutesUntil <= 0
+            ? 'happening now'
+            : minutesUntil != null && minutesUntil < 60
+                ? `in ${minutesUntil} min`
+                : minutesUntil != null
+                    ? `in ${Math.round(minutesUntil / 60)}h`
+                    : 'soon';
+
+        // Try LLM first; fall back to deterministic prompts
+        if (hasLlmProvider()) {
+            const system = `You are a thoughtful journaling coach. Given an upcoming calendar event, write one short, honest journal question (1–2 sentences) that helps the user reflect before it happens. No preamble, no quotes, no explanation — just the question.`;
+            const user = `Event: "${title.trim()}" (${when}). Category: ${cat}.`;
+            try {
+                const result = await createLlmChatCompletion({
+                    model: aiRuntime.promptModel,
+                    messages: [
+                        { role: 'system', content: system },
+                        { role: 'user', content: user },
+                    ],
+                    max_tokens: 80,
+                    temperature: 0.7,
+                });
+                const question = result?.choices?.[0]?.message?.content?.trim();
+                if (question) return res.json({ prompt: question });
+            } catch {
+                // fall through to static prompts
+            }
+        }
+
+        const opts = EVENT_CATEGORY_PROMPTS[cat] ?? EVENT_CATEGORY_PROMPTS.personal;
+        // Deterministic by title hash so the same event always gets the same question
+        const idx = [...title].reduce((acc, c) => acc + c.charCodeAt(0), 0) % opts.length;
+        const base = opts[idx];
+        const prompt = `You have "${title.trim()}" ${when}. ${base}`;
+        return res.json({ prompt });
+    } catch (error) {
+        console.error('Event prompt error:', error);
+        return res.status(500).json({ message: 'Failed to generate event prompt' });
     }
 };
