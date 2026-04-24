@@ -865,6 +865,67 @@ export async function recordInsightReaction(
     return true;
 }
 
+type WeeklyDigestEntry = {
+    title: string | null;
+    content: string;
+    reflection: string | null;
+    createdAt: Date;
+};
+
+const normalizeDigestText = (value: string | null | undefined) =>
+    String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+const getDigestSentenceCandidates = (value: string | null | undefined): string[] => {
+    const normalized = normalizeDigestText(value);
+    if (!normalized) return [];
+
+    return normalized
+        .split(/(?<=[.!?])\s+/)
+        .map((sentence) => sentence.trim())
+        .filter(Boolean);
+};
+
+const isDigestSpotlightCandidate = (value: string) => {
+    if (value.length < 36 || value.length > 180) return false;
+    if (value.split(/\s+/).length < 6) return false;
+    if (/https?:\/\//i.test(value)) return false;
+    if (!/[a-z]/i.test(value)) return false;
+    return true;
+};
+
+const scoreDigestSpotlight = (value: string, entryIndex: number, fromReflection: boolean) => {
+    const idealLengthDistance = Math.abs(92 - value.length);
+    const reflectionBonus = fromReflection ? 30 : 0;
+    const recencyBonus = Math.max(0, 14 - entryIndex);
+    return reflectionBonus + recencyBonus - idealLengthDistance;
+};
+
+const pickWeeklyDigestSpotlightLine = (entries: WeeklyDigestEntry[]): string | null => {
+    let best: { score: number; line: string } | null = null;
+
+    for (const [entryIndex, entry] of entries.entries()) {
+        const candidateGroups = [
+            { values: getDigestSentenceCandidates(entry.reflection), fromReflection: true },
+            { values: getDigestSentenceCandidates(entry.content), fromReflection: false },
+        ];
+
+        for (const { values, fromReflection } of candidateGroups) {
+            for (const candidate of values) {
+                if (!isDigestSpotlightCandidate(candidate)) continue;
+
+                const score = scoreDigestSpotlight(candidate, entryIndex, fromReflection);
+                if (!best || score > best.score) {
+                    best = { score, line: candidate };
+                }
+            }
+        }
+    }
+
+    return best ? best.line : null;
+};
+
 /**
  * Generate weekly digest — a deeper synthesis using the insightDeepModel.
  * Returns a structured editorial summarizing the past week.
@@ -874,6 +935,8 @@ export async function generateWeeklyDigest(userId: string): Promise<{
     editorial: string;
     highlights: Array<{ category: string; insight: string }>;
     generatedAt: string;
+    entryCount: number;
+    spotlightLine: string | null;
 } | null> {
     if (!hasLlmProvider()) return null;
 
@@ -910,6 +973,7 @@ export async function generateWeeklyDigest(userId: string): Promise<{
     ]);
 
     if (entries.length < 3) return null;
+    const spotlightLine = pickWeeklyDigestSpotlightLine(entries);
 
     // Build week summary data
     const moods = entries.filter((e) => e.mood).map((e) => e.mood!);
@@ -981,6 +1045,8 @@ Max 3 highlights. Keep the editorial under 200 words.`,
             editorial: String(parsed.editorial || ''),
             highlights: Array.isArray(parsed.highlights) ? parsed.highlights.slice(0, 3) : [],
             generatedAt: new Date().toISOString(),
+            entryCount: entries.length,
+            spotlightLine,
         };
     } catch {
         return null;

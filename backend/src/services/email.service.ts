@@ -7,6 +7,14 @@ const EMAIL_FROM = process.env.EMAIL_FROM || 'Notive <noreply@notive.app>';
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
+const escapeHtml = (value: string) =>
+    value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
 export class EmailService {
     async sendPasswordResetEmail(user: User, token: string): Promise<void> {
         const clientUrl = getConfiguredClientUrl();
@@ -82,25 +90,44 @@ export class EmailService {
         title: string;
         editorial: string;
         highlights: Array<{ category: string; insight: string }>;
+        entryCount: number;
+        spotlightLine: string | null;
     }): Promise<void> {
         const clientUrl = getConfiguredClientUrl();
         const name = user.name || 'there';
+        const reflectionCountLabel = `${digest.entryCount} reflection${digest.entryCount === 1 ? '' : 's'}`;
+        const safeTitle = escapeHtml(digest.title);
+        const safeName = escapeHtml(name);
+        const safeEditorial = escapeHtml(digest.editorial).replace(
+            /\n\n/g,
+            '</p><p style="font-size:15px;line-height:1.7;color:#3d3730;margin-top:12px;">'
+        );
+        const spotlightHtml = digest.spotlightLine
+            ? `
+                <div style="margin:0 0 20px; padding:16px 18px; border-radius:14px; background:#fffaf4; border:1px solid #ece2d4;">
+                    <p style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:#8a9a6f; margin:0 0 8px;">One line that stood out</p>
+                    <p style="font-size:16px; line-height:1.7; color:#26221e; font-style:italic; margin:0;">"${escapeHtml(digest.spotlightLine)}"</p>
+                </div>
+            `
+            : '';
 
         const highlightsHtml = digest.highlights
             .map(h => `
                 <div style="margin-bottom:12px; padding:12px; background:#f5f0ea; border-radius:8px;">
-                    <p style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:#8a9a6f; margin:0 0 4px;">${h.category}</p>
-                    <p style="font-size:14px; color:#26221e; margin:0;">${h.insight}</p>
+                    <p style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:#8a9a6f; margin:0 0 4px;">${escapeHtml(h.category)}</p>
+                    <p style="font-size:14px; color:#26221e; margin:0;">${escapeHtml(h.insight)}</p>
                 </div>
             `).join('');
 
         const html = `
             <div style="font-family:Georgia,'Times New Roman',serif; max-width:480px; margin:0 auto; padding:32px 24px; color:#26221e;">
                 <p style="font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:#8a9a6f; margin:0 0 8px;">Weekly summary from Notive</p>
-                <h2 style="font-size:22px; margin:0 0 20px; font-style:italic;">${digest.title}</h2>
-                <p style="font-size:14px; color:#3d3730; margin-bottom:8px;">Hey ${name},</p>
+                <h2 style="font-size:22px; margin:0 0 20px; font-style:italic;">${safeTitle}</h2>
+                <p style="font-size:14px; color:#3d3730; margin-bottom:8px;">Hey ${safeName},</p>
+                <p style="font-size:14px; color:#3d3730; margin-bottom:14px;">You logged ${reflectionCountLabel} this week.</p>
+                ${spotlightHtml}
                 <p style="font-size:15px; line-height:1.7; color:#3d3730;">
-                    ${digest.editorial.replace(/\n\n/g, '</p><p style="font-size:15px;line-height:1.7;color:#3d3730;margin-top:12px;">')}
+                    ${safeEditorial}
                 </p>
                 <div style="margin:24px 0;">
                     ${highlightsHtml}
