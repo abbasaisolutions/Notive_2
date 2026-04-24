@@ -59,6 +59,7 @@ import {
 } from '@/utils/gentle-reflection';
 import { deriveWriterDNA } from '@/services/writer-dna.service';
 import { getInsightTier, Gate, WhatsComingCard, FirstReadCard, EmptyDashboard } from '@/components/dashboard/ColdStartGate';
+import StreakStrip from '@/components/dashboard/StreakStrip';
 import FirstVisitWalkthrough from '@/components/dashboard/FirstVisitWalkthrough';
 // Dead-branch visualization components — dynamic to exclude from initial bundle
 const PrimeTimePrediction = dynamic(() => import('@/components/dashboard/PrimeTimePrediction'));
@@ -130,6 +131,8 @@ type DashboardWeeklyDigest = {
     editorial: string;
     highlights: Array<{ category: string; insight: string }>;
     generatedAt: string;
+    entryCount?: number;
+    spotlightLine?: string | null;
 };
 
 type DashboardStoryOverview = {
@@ -1180,6 +1183,14 @@ export default function DashboardPage() {
                             </Gate>
                         </div>
                     </section>
+                </Gate>
+
+                {/* ── Streak strip (tier 1+, only when currentStreak >= 2) ── */}
+                <Gate minTier={1} currentTier={insightTier}>
+                    <StreakStrip
+                        currentStreak={streak ?? 0}
+                        timelineHref={timelineHref}
+                    />
                 </Gate>
 
                 {/* ── Hero Insight Card (tier 3+, LLM-powered) ───── */}

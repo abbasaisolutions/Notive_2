@@ -11,6 +11,7 @@ import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { refreshNotificationBadge } from '@/hooks/use-notification-count';
 import { useSharedUnreadCount } from '@/hooks/use-shared-unread-count';
+import { pickRotatingCopy } from '@/utils/rotating-copy';
 import {
     extractNotificationPreferences,
     mergeNotificationPreferencesIntoSignals,
@@ -31,6 +32,38 @@ type InboxNotification = {
 type NotificationFilter = 'all' | 'unread';
 
 const PAGE_SIZE = 25;
+const EMPTY_INBOX_VARIANTS = [
+    {
+        title: 'No notifications yet',
+        description: 'Reminders, shared-memory reactions, and gentle nudges will gather here.',
+    },
+    {
+        title: 'Your inbox is quiet',
+        description: 'Once Notive has something worth tapping you about, it will land here first.',
+    },
+    {
+        title: 'Nothing waiting right now',
+        description: 'This space fills with reminder notes, shared moments, and reflection follow-ups.',
+    },
+    {
+        title: 'A calm page for now',
+        description: 'When your writing rhythm picks up, this inbox starts carrying the small signals around it.',
+    },
+] as const;
+const EMPTY_UNREAD_VARIANTS = [
+    {
+        title: "You're all caught up",
+        description: 'No unread pings are sitting in the stack right now.',
+    },
+    {
+        title: 'Everything here has been opened',
+        description: 'Your unread list is clear for the moment.',
+    },
+    {
+        title: 'No unread notes left',
+        description: 'You cleared the latest reminders and shared-memory activity.',
+    },
+] as const;
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
     value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -212,6 +245,9 @@ export default function NotificationsPage() {
     const hasMore = notifications.length < total;
     const empty = !loading && notifications.length === 0;
     const deviceTimezone = useMemo(() => preferences.quietHours.timezone || resolveDefaultNotificationTimezone(), [preferences.quietHours.timezone]);
+    const emptyCopy = filter === 'unread'
+        ? pickRotatingCopy('empty-notifications-unread', EMPTY_UNREAD_VARIANTS)
+        : pickRotatingCopy('empty-notifications-all', EMPTY_INBOX_VARIANTS);
 
     if (authLoading) return <div className="flex min-h-[60vh] items-center justify-center"><Spinner size="md" /></div>;
     if (!isAuthenticated) return null;
@@ -305,7 +341,23 @@ export default function NotificationsPage() {
                                 <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(107,143,113,0.12)] text-[rgb(107,143,113)]">
                                     {filter === 'unread' ? <FiBellOff size={18} /> : <FiBell size={18} />}
                                 </div>
-                                <p className="type-label-md mt-3 text-strong">{filter === 'unread' ? 'You’re all caught up' : 'No notifications yet'}</p>
+                                <p className="type-label-md mt-3 text-strong">
+                                    {emptyCopy.title}
+                                </p>
+                                <p className="type-body-sm mx-auto mt-1.5 max-w-xs text-soft">
+                                    {emptyCopy.description}
+                                </p>
+                                {filter !== 'unread' && (
+                                    <>
+                                        <Link
+                                            href="/profile/edit?tab=reminders"
+                                            className="type-label-sm mt-4 inline-flex items-center gap-1.5 rounded-full bg-[rgb(107,143,113)] px-4 py-1.5 font-semibold text-white transition-opacity hover:opacity-90"
+                                        >
+                                            <FiClock size={14} aria-hidden="true" />
+                                            Set up a reminder
+                                        </Link>
+                                    </>
+                                )}
                             </div>
                         )}
                         {!loading && notifications.map((notification) => {

@@ -218,6 +218,7 @@ export class PushNotificationService {
         payload: PushNotificationPayload,
         platform?: 'android' | 'ios'
     ): Promise<{ sent: number; failed: number; failedTokens: string[] }> {
+        const notificationType = payload.data?.type;
         const tokens = await this.getUserActiveTokens(userId, platform);
 
         // Set iOS badge count from actual unread notifications
@@ -227,10 +228,22 @@ export class PushNotificationService {
         }
 
         if (tokens.length === 0) {
+            serverLogger.warn('push.send_skipped.no_tokens', {
+                userId,
+                type: notificationType,
+                platformFilter: platform,
+            });
             return { sent: 0, failed: 0, failedTokens: [] };
         }
 
         const app = getFirebaseApp();
+        if (!app) {
+            serverLogger.warn('push.send_skipped.no_fcm_credentials', {
+                userId,
+                type: notificationType,
+                tokenCount: tokens.length,
+            });
+        }
         let sent = 0;
         let failed = 0;
         const failedTokens: string[] = [];
@@ -257,8 +270,26 @@ export class PushNotificationService {
                     await this.markTokenInactive(deviceToken.id).catch(() => {});
                 }
 
-                console.error(`[PushNotificationService] Failed to send to token ${deviceToken.id}:`, error);
+                serverLogger.warn('push.send_failed', {
+                    userId,
+                    type: notificationType,
+                    deviceTokenId: deviceToken.id,
+                    platform: deviceToken.platform,
+                    errorCode: errorCode || undefined,
+                    errorMessage: error?.message,
+                    markedInactive: DEAD_TOKEN_CODES.has(errorCode),
+                });
             }
+        }
+
+        if (sent > 0) {
+            serverLogger.info('push.send_completed', {
+                userId,
+                type: notificationType,
+                sent,
+                failed,
+                usingFcm: Boolean(app),
+            });
         }
 
         return { sent, failed, failedTokens };

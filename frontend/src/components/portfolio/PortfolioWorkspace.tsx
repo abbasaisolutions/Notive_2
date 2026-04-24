@@ -28,6 +28,7 @@ import {
 } from 'react-icons/fi';
 import { ActionBar, AppPanel, EmptyState, SectionHeader, StatTile, TagPill } from '@/components/ui/surface';
 import { ErrorState, Spinner } from '@/components/ui';
+import PortfolioLoadingState from '@/components/portfolio/PortfolioLoadingState';
 import { API_URL } from '@/constants/config';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
@@ -2556,14 +2557,7 @@ export default function PortfolioWorkspace() {
     };
 
     if (authLoading || isLoading) {
-        return (
-            <div className="flex min-h-[50vh] items-center justify-center px-4 py-10">
-                <div className="flex flex-col items-center gap-3 text-center">
-                    <Spinner size="lg" />
-                    <p className="text-sm text-ink-secondary">Getting your saved stories ready...</p>
-                </div>
-            </div>
-        );
+        return <PortfolioLoadingState />;
     }
 
     if (!isAuthenticated) {

@@ -25,6 +25,7 @@ import {
 } from './nav-config';
 import { setNativeBackHandler } from '@/utils/native-navigation';
 import { hapticTap } from '@/services/haptics.service';
+import { audioFeedback } from '@/services/audio-feedback.service';
 
 export default function MobileNav() {
     const pathname = usePathname();
@@ -209,6 +210,7 @@ export default function MobileNav() {
 
     const handleCaptureTap = () => {
         hapticTap();
+        audioFeedback.rustle();
         setIsMoreOpen(false);
         // Mic phase → voice mode; all other phases → text mode
         if (capturePhase === 1) {

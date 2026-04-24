@@ -16,15 +16,12 @@ const PAPER_THEME_PREFIXES = [
     '/chapters',
     '/import',
     '/onboarding',
-    '/calendar',
-    '/life-map',
     '/insights',
     '/admin',
     '/chat',
 ] as const;
 
 const DARK_THEME_PREFIXES = [
-    '/analytics',
     '/share',
 ] as const;
 

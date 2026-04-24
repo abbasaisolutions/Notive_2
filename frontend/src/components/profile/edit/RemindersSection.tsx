@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { FiAlertTriangle, FiBell, FiBellOff, FiCheck } from 'react-icons/fi';
 import { useApi } from '@/hooks/use-api';
 import { useToast } from '@/context/toast-context';
+import DeviceSoundToggle from '@/components/profile/edit/DeviceSoundToggle';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -211,6 +212,12 @@ export default function RemindersSection() {
                     </div>
                 </div>
             )}
+
+            {/* Device sounds — local, per-device preference */}
+            <div className="pt-2">
+                <p className="type-overline text-muted mb-2">This device</p>
+                <DeviceSoundToggle />
+            </div>
 
             {/* Save status */}
             <div className="flex items-center gap-2 min-h-[20px]">

@@ -37,6 +37,7 @@ import { refreshNotificationBadge } from '@/hooks/use-notification-count';
 import { Spinner } from '@/components/ui';
 const FirstEntryHandoff = dynamic(() => import('@/components/entry/FirstEntryHandoff'), { ssr: false });
 const PostSaveSafetyDialog = dynamic(() => import('@/components/safety/PostSaveSafetyDialog'), { ssr: false });
+const CaptureSealOverlay = dynamic(() => import('@/components/entry/CaptureSealOverlay'), { ssr: false });
 import { isSafetyAlertsEnabled } from '@/utils/safety-alerts';
 import { prepareImageForUpload } from '@/utils/image-upload';
 import {
@@ -77,6 +78,7 @@ import {
 import { captureEntryLocation, type EntryLocation } from '@/services/location-context.service';
 import { captureDeviceSnapshot, type DeviceSnapshot } from '@/services/device-context.service';
 import { hapticSuccess, hapticError, hapticTap, hapticWarning } from '@/services/haptics.service';
+import { audioFeedback } from '@/services/audio-feedback.service';
 import { isNativeCapacitorPlatform } from '@/utils/sso';
 import { getNativeBackHandler, setNativeBackHandler } from '@/utils/native-navigation';
 import type { IconType } from 'react-icons';
@@ -324,6 +326,7 @@ function NewEntryPageContent() {
         onContinue: () => void;
     } | null>(null);
     const [showFirstEntryHandoff, setShowFirstEntryHandoff] = useState(entrySource === 'onboarding');
+    const [showCaptureSeal, setShowCaptureSeal] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mirrorTimerRef = useRef<NodeJS.Timeout>();
@@ -1166,6 +1169,7 @@ function NewEntryPageContent() {
         }
 
         hapticSuccess(); // recording start
+        audioFeedback.scratch();
 
         setVoiceError(null);
         setVoiceJob(null);
@@ -1613,6 +1617,11 @@ function NewEntryPageContent() {
                         setMirrorData(null);
                         router.push(backHref);
                     }, 6000);
+                } else if (!entryId) {
+                    setShowCaptureSeal(true);
+                    setTimeout(() => {
+                        router.push(backHref);
+                    }, 650);
                 } else {
                     router.push(backHref);
                 }
@@ -1855,6 +1864,7 @@ function NewEntryPageContent() {
 
     return (
         <div className={`entry-studio min-h-screen selection:bg-primary/30 ${isWhisperMode ? 'bg-[rgb(var(--bg-canvas))] text-[rgb(var(--text-soft))]' : 'text-[rgb(var(--text-primary))]'}`}>
+            <CaptureSealOverlay show={showCaptureSeal} />
             {showFirstEntryHandoff && (
                 <FirstEntryHandoff onDismiss={() => setShowFirstEntryHandoff(false)} />
             )}

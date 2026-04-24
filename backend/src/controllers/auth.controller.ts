@@ -10,6 +10,7 @@ import crypto from 'crypto';
 import { emailService } from '../services/email.service';
 import { hashToken } from '../utils/token-security';
 import { clearRefreshTokenCookie, setRefreshTokenCookie } from '../utils/refresh-token-cookie';
+import { serverLogger } from '../utils/server-logger';
 
 // Calculate expiry date for refresh token (7 days)
 const getRefreshTokenExpiry = (): Date => {
@@ -281,29 +282,53 @@ export const refresh = async (req: Request, res: Response) => {
             });
         }
 
-        if (!storedToken || storedToken.expiresAt < new Date()) {
+        if (!storedToken) {
+            return res.status(401).json({ message: 'Refresh token expired or invalid' });
+        }
+
+        // Reuse detection: a token that was already rotated should never be presented again.
+        // Treat replay as evidence of theft and revoke every active refresh token for the user.
+        if (storedToken.revokedAt) {
+            serverLogger.warn('auth.refresh.reuse_detected', {
+                userId: storedToken.user.id,
+                tokenId: storedToken.id,
+                revokedAt: storedToken.revokedAt.toISOString(),
+                revokedReason: storedToken.revokedReason,
+            });
+            await prisma.refreshToken.updateMany({
+                where: { userId: storedToken.user.id, revokedAt: null },
+                data: { revokedAt: new Date(), revokedReason: 'reuse_detected' },
+            });
+            clearRefreshTokenCookie(res);
+            return res.status(401).json({
+                message: 'Your session was ended for security reasons. Please sign in again.',
+            });
+        }
+
+        if (storedToken.expiresAt < new Date()) {
             return res.status(401).json({ message: 'Refresh token expired or invalid' });
         }
         if (storedToken.user.isBanned) {
-            await prisma.refreshToken.deleteMany({
-                where: { userId: storedToken.user.id },
+            await prisma.refreshToken.updateMany({
+                where: { userId: storedToken.user.id, revokedAt: null },
+                data: { revokedAt: new Date(), revokedReason: 'user_banned' },
             });
             clearRefreshTokenCookie(res);
             return res.status(403).json({ message: 'Your account has been suspended' });
         }
 
-        // Rotate refresh token to reduce replay risk
+        // Rotate refresh token: mark the old token revoked (retaining it for reuse detection)
+        // and mint a fresh one in the same transaction.
         const newRefreshToken = generateRefreshToken({
             userId: storedToken.user.id,
             email: storedToken.user.email,
         });
         const newRefreshTokenHash = hashToken(newRefreshToken);
 
-        await prisma.$transaction([
-            prisma.refreshToken.deleteMany({
-                where: {
-                    token: { in: [refreshTokenHash, refreshToken] },
-                },
+        const [, createdToken] = await prisma.$transaction([
+            prisma.refreshToken.update({
+                where: { id: storedToken.id },
+                data: { revokedAt: new Date(), revokedReason: 'rotated' },
             }),
             prisma.refreshToken.create({
                 data: {
@@ -313,6 +338,11 @@ export const refresh = async (req: Request, res: Response) => {
                 },
             }),
         ]);
+
+        await prisma.refreshToken.update({
+            where: { id: storedToken.id },
+            data: { replacedById: createdToken.id },
+        });
 
         // Generate new access token
         const accessToken = generateAccessToken({

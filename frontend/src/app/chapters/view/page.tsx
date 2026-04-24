@@ -11,6 +11,7 @@ import useContextNavigation from '@/hooks/use-context-navigation';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { AppPanel, EmptyState, SectionHeader, StatTile, TagPill } from '@/components/ui/surface';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
+import { pickRotatingCopy } from '@/utils/rotating-copy';
 import { writeWorkspaceResume } from '@/utils/workspace-resume';
 import { FiArrowLeft } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
@@ -18,6 +19,21 @@ import { getChapterIconComponent } from '@/constants/chapter-icons';
 import { formatStoryConfidence, storyStatusClassName, storyStatusLabel, type StorySignal } from '@/utils/story-engine';
 import { clipCompactPillByLimit, COMPACT_PILL_LIMITS } from '@/utils/tags';
 import { passthroughImageLoader } from '@/lib/image-loader';
+
+const EMPTY_CHAPTER_DETAIL_VARIANTS = [
+    {
+        title: 'No entries in this collection yet',
+        description: 'Route one note here and this collection starts feeling like a real chapter.',
+    },
+    {
+        title: 'This collection is still waiting on its first note',
+        description: 'Add an entry from quick capture or the full editor and it will begin to gather shape here.',
+    },
+    {
+        title: 'An empty chapter can still be promising',
+        description: 'The first memory you place here will give this collection its tone.',
+    },
+] as const;
 
 interface Chapter {
     id: string;
@@ -126,6 +142,7 @@ function ChapterDetailContent() {
     }
 
     const ChapterIcon = getChapterIconComponent(chapter.icon);
+    const emptyCopy = pickRotatingCopy('empty-chapter-detail', EMPTY_CHAPTER_DETAIL_VARIANTS);
 
     return (
         <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
@@ -183,8 +200,8 @@ function ChapterDetailContent() {
 
                 {entries.length === 0 ? (
                     <EmptyState
-                        title="No entries in this collection yet"
-                        description="Add entries from quick capture or the entry editor and route them into this collection as you go."
+                        title={emptyCopy.title}
+                        description={emptyCopy.description}
                         actionLabel="Create Entry"
                         actionHref={captureHref}
                     />

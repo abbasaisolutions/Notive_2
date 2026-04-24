@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { FiShare2 } from 'react-icons/fi';
 import { getMoodColor, getMoodEmoji, normalizeMood } from '@/constants/moods';
 import { appendReturnTo } from '@/utils/navigation';
+import { hapticTap } from '@/services/haptics.service';
+import { audioFeedback } from '@/services/audio-feedback.service';
 import { storyStatusLabel, type StorySignal } from '@/utils/story-engine';
 import { clipCompactPillByLimit, COMPACT_PILL_LIMITS, isCardTag } from '@/utils/tags';
 import type { NotiveInsight } from './NotiveNoticedPanel';
@@ -309,9 +311,13 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
             />
 
             <div className="flex-1 md:w-1/2 pl-11 md:pl-0">
-                <Link href={appendReturnTo(`/entry/view?id=${entry.id}`, currentReturnTo)} className="block group">
+                <Link
+                    href={appendReturnTo(`/entry/view?id=${entry.id}`, currentReturnTo)}
+                    onClick={() => { hapticTap(); audioFeedback.pageTurn(); }}
+                    className="block group"
+                >
                     <div
-                        className={`workspace-panel rounded-[1.25rem] p-2.5 min-[376px]:p-3 border-l-[3px] transition-all duration-300${isFocused ? ' timeline-card-focused' : ''}`}
+                        className={`workspace-panel rounded-[1.25rem] p-2.5 min-[376px]:p-3 border-l-[3px] transition-all duration-300 group-active:scale-[0.985] group-active:shadow-[0_14px_32px_rgba(92,92,92,0.12)]${isFocused ? ' timeline-card-focused' : ''}`}
                         style={{ borderLeftColor: moodColor || 'rgba(141,123,105,0.2)' }}
                     >
                         <div className="flex items-start justify-between gap-1.5 min-[376px]:gap-2 mb-1">

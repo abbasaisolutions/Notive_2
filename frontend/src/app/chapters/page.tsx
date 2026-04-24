@@ -13,6 +13,22 @@ import { writeWorkspaceResume } from '@/utils/workspace-resume';
 import { FiArrowLeft, FiArrowRight, FiBook, FiEdit3, FiPlus } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
 import { CHAPTER_ICON_OPTIONS, CHAPTER_ICON_MAP, ChapterIconKey, getChapterIconComponent, normalizeChapterIcon } from '@/constants/chapter-icons';
+import { pickRotatingCopy } from '@/utils/rotating-copy';
+
+const EMPTY_CHAPTERS_VARIANTS = [
+    {
+        title: 'No groups yet',
+        description: 'Create groups to keep related notes, projects, or recurring life themes together.',
+    },
+    {
+        title: 'Ready to group your notes?',
+        description: 'A group is just a shelf — pull together everything about one season, one person, or one project.',
+    },
+    {
+        title: 'Start your first collection',
+        description: 'Groups help you find, compare, and revisit notes that belong to the same story.',
+    },
+] as const;
 
 interface Chapter {
     id: string;
@@ -202,32 +218,37 @@ export default function ChaptersPage() {
                         <Spinner size="md" />
                     </AppPanel>
                 ) : chapters.length === 0 ? (
-                    <AppPanel className="space-y-6 text-center">
-                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-                            <FiBook size={30} aria-hidden="true" />
-                        </div>
-                        <SectionHeader
-                            kicker={NOTIVE_VOICE.surfaces.storyCollections}
-                            title="No groups yet"
-                            description="Create groups to keep related notes, projects, or recurring life themes together."
-                            className="justify-center text-center"
-                        />
-                        <div className="flex flex-wrap justify-center gap-3">
-                            <button
-                                type="button"
-                                onClick={openCreateModal}
-                                className="rounded-xl border border-primary/30 bg-primary px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
-                            >
-                                Create Your First Group
-                            </button>
-                            <Link
-                                href={captureHref}
-                                className="workspace-button-outline rounded-xl px-5 py-3 text-sm font-semibold text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))]"
-                            >
-                                Quick Capture
-                            </Link>
-                        </div>
-                    </AppPanel>
+                    (() => {
+                        const emptyCopy = pickRotatingCopy('empty-chapters', EMPTY_CHAPTERS_VARIANTS);
+                        return (
+                            <AppPanel className="space-y-6 text-center">
+                                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                                    <FiBook size={30} aria-hidden="true" />
+                                </div>
+                                <SectionHeader
+                                    kicker={NOTIVE_VOICE.surfaces.storyCollections}
+                                    title={emptyCopy.title}
+                                    description={emptyCopy.description}
+                                    className="justify-center text-center"
+                                />
+                                <div className="flex flex-wrap justify-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={openCreateModal}
+                                        className="rounded-xl border border-primary/30 bg-primary px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
+                                    >
+                                        Create Your First Group
+                                    </button>
+                                    <Link
+                                        href={captureHref}
+                                        className="workspace-button-outline rounded-xl px-5 py-3 text-sm font-semibold text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))]"
+                                    >
+                                        Quick Capture
+                                    </Link>
+                                </div>
+                            </AppPanel>
+                        );
+                    })()
                 ) : (
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {chapters.map((chapter) => {

@@ -37,6 +37,7 @@ import {
     markTimelineContextPending,
     type TimelineContextSnapshot,
 } from '@/utils/timeline-context';
+import { pickRotatingCopy } from '@/utils/rotating-copy';
 import { buildTimelineMonthGroups, buildTimelineMonthKey } from '@/utils/timeline-groups';
 import { writeWorkspaceResume } from '@/utils/workspace-resume';
 import PullToRefreshIndicator from '@/components/layout/PullToRefreshIndicator';
@@ -158,6 +159,38 @@ type TimelineFilterPreset = {
 const TIMELINE_PAGE_SIZE = 30;
 const TIMELINE_RECENT_PRESETS_KEY = 'notive_timeline_recent_presets_v1';
 const MAX_TIMELINE_PRESETS = 4;
+const EMPTY_TIMELINE_VARIANTS = [
+    {
+        title: 'Your timeline is empty',
+        subtitle: 'Start writing - every note becomes part of your story.',
+    },
+    {
+        title: 'No memories on the shelf yet',
+        subtitle: 'Your first note gives the timeline something to hold onto.',
+    },
+    {
+        title: 'This page fills one note at a time',
+        subtitle: 'Capture one real moment and the story starts threading itself here.',
+    },
+    {
+        title: 'A blank timeline still counts as a beginning',
+        subtitle: 'Write your first note and let the archive start taking shape.',
+    },
+] as const;
+const EMPTY_SHARED_VARIANTS = [
+    {
+        title: 'Nothing shared yet',
+        subtitle: "When someone shares memories with you, they'll land here.",
+    },
+    {
+        title: 'Your shared shelf is quiet right now',
+        subtitle: 'Accepted requests, memory bundles, and reactions will show up here first.',
+    },
+    {
+        title: 'No shared moments waiting',
+        subtitle: 'Once a friend sends a memory bundle your way, this page wakes up.',
+    },
+] as const;
 const SOURCE_FILTER_OPTIONS: Array<{ key: SourceFilter; label: string }> = [
     { key: 'all', label: 'All Sources' },
     { key: 'notive', label: 'Notive' },
@@ -473,12 +506,14 @@ function SharedWithMeList({ bundles, loading, onRefresh, allowEmptyState = true 
             return null;
         }
 
+        const emptySharedCopy = pickRotatingCopy('empty-shared-memories', EMPTY_SHARED_VARIANTS);
+
         return (
             <EmptyState
                 doodle="steady-me"
                 doodleAccent="sage"
-                title="Nothing shared yet"
-                subtitle="When someone shares memories with you, they'll show up here."
+                title={emptySharedCopy.title}
+                subtitle={emptySharedCopy.subtitle}
             />
         );
     }
@@ -2303,6 +2338,7 @@ function TimelinePageContent() {
         if (typeof window === 'undefined') return;
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
+    const emptyTimelineCopy = pickRotatingCopy('empty-timeline', EMPTY_TIMELINE_VARIANTS);
 
     if (authLoading || isLoading) {
         return <TimelineLoadingState />;
@@ -2877,8 +2913,8 @@ function TimelinePageContent() {
                 >
                     {!timelineStats.hasActiveFilters && visibleEntries.length === 0 && !loadError ? (
                         <EmptyState
-                            title="Your timeline is empty"
-                            subtitle="Start writing — every note becomes part of your story."
+                            title={emptyTimelineCopy.title}
+                            subtitle={emptyTimelineCopy.subtitle}
                             doodle="pen"
                             doodleAccent="sage"
                             action={{ label: 'Write your first note', href: '/entry/new' }}

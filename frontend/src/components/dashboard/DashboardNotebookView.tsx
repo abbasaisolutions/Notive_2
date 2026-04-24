@@ -116,6 +116,8 @@ type DashboardWeeklyDigest = {
     editorial: string;
     highlights: Array<{ category: string; insight: string }>;
     generatedAt: string;
+    entryCount?: number;
+    spotlightLine?: string | null;
 };
 
 type DashboardStoryOverview = {
@@ -707,8 +709,10 @@ export default function DashboardNotebookView({
         : wellnessSubmitted
             ? 'Your last check-in is already part of the thread here. You do not need to explain the whole day again.'
             : 'If today feels noisy, a quick check-in or short chat can give the next note more context.';
-    const weeklyDigestSnippet = weeklyDigest?.editorial
-        ? compactText(weeklyDigest.editorial.replace(/\s+/g, ' '), 170)
+    const weeklyDigestSnippet = weeklyDigest?.spotlightLine
+        ? `"${compactText(weeklyDigest.spotlightLine, 150)}"`
+        : weeklyDigest?.editorial
+            ? compactText(weeklyDigest.editorial.replace(/\s+/g, ' '), 170)
         : null;
     const weeklyDigestHighlights = (weeklyDigest?.highlights || [])
         .map((item) => ({
@@ -1584,6 +1588,11 @@ export default function DashboardNotebookView({
                     <p className="mt-1 text-[0.68rem] leading-[1.35] text-[rgb(107,107,107)]">
                         {weeklyDigestSnippet || growthEvidence}
                     </p>
+                    {typeof weeklyDigest?.entryCount === 'number' && weeklyDigest.entryCount > 0 && (
+                        <p className="mt-1 text-[0.52rem] uppercase tracking-[0.08em] text-[rgb(140,140,140)]">
+                            {weeklyDigest.entryCount} reflection{weeklyDigest.entryCount === 1 ? '' : 's'} this week
+                        </p>
+                    )}
                     {weeklyDigestHighlights.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
                             {weeklyDigestHighlights.map((item) => (

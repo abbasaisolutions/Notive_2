@@ -27,7 +27,12 @@ interface SearchResult {
     matchReasons?: string[];
 }
 
-export function SmartSearch() {
+type SmartSearchProps = {
+    autoFocus?: boolean;
+    onResultClick?: () => void;
+};
+
+export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchProps = {}) {
     const { accessToken } = useAuth();
     const { apiFetch } = useApi();
     const toast = useToast();
@@ -125,6 +130,7 @@ export function SmartSearch() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => query && setShowResults(true)}
+                    autoFocus={autoFocus}
                     placeholder="Search your memory base semantically... (e.g., 'new city', 'team conflict')"
                     className="workspace-input w-full px-5 py-4 pl-14 pr-14 rounded-2xl placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                 />
@@ -176,7 +182,7 @@ export function SmartSearch() {
                             <Link
                                 key={result.id}
                                 href={`/entry/view?id=${result.id}`}
-                                onClick={() => setShowResults(false)}
+                                onClick={() => { setShowResults(false); onResultClick?.(); }}
                                 className="block p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all group"
                             >
                                 <div className="flex items-start gap-3">
@@ -253,7 +259,7 @@ export function SmartSearch() {
                             <Link
                                 href={`/timeline?q=${encodeURIComponent(query)}`}
                                 className="block text-center text-primary hover:text-primary/80 transition-colors text-sm font-medium"
-                                onClick={() => setShowResults(false)}
+                                onClick={() => { setShowResults(false); onResultClick?.(); }}
                             >
                                 View all results →
                             </Link>

@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
+import { pickRotatingCopy } from '@/utils/rotating-copy';
 
 /**
  * Progressive disclosure gates for the dashboard.
@@ -140,7 +141,26 @@ type FirstReadProps = {
     skills?: string[];
 };
 
+const FIRST_READ_READING_DURATION = 900;
+
+const revealItem = {
+    hidden: { opacity: 0, y: 8 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 0.61, 0.36, 1] } },
+};
+
 export function FirstReadCard({ mood, tags, entities, topics, lessons, skills, createdAt }: FirstReadProps) {
+    const reducedMotion = useReducedMotion();
+    const [isReading, setIsReading] = useState(!reducedMotion);
+
+    useEffect(() => {
+        if (reducedMotion) {
+            setIsReading(false);
+            return;
+        }
+        const timer = setTimeout(() => setIsReading(false), FIRST_READ_READING_DURATION);
+        return () => clearTimeout(timer);
+    }, [reducedMotion]);
+
     const hasContent = mood || tags.length > 0
         || (entities && entities.length > 0) || (topics && topics.length > 0)
         || (lessons && lessons.length > 0) || (skills && skills.length > 0);
@@ -150,77 +170,119 @@ export function FirstReadCard({ mood, tags, entities, topics, lessons, skills, c
     const hour = writtenAt.getHours();
     const timeLabel = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
 
+    const staggerContainer = {
+        hidden: {},
+        show: { transition: { staggerChildren: 0.12, delayChildren: 0.05 } },
+    };
+
     return (
         <motion.section
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.3 }}
             className="notebook-card-soft rounded-[1.75rem] p-5"
+            aria-live="polite"
         >
-            <p
-                className="section-label mb-3"
-                style={{ fontStyle: 'italic', fontFamily: 'var(--font-serif, Georgia, serif)' }}
-            >
-                Notive&rsquo;s first read
-            </p>
-
-            <div className="space-y-2">
-                {lessons && lessons.length > 0 && (
-                    <p className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
-                        Lesson extracted: <span className="font-medium">{lessons[0]}</span>
-                    </p>
-                )}
-
-                {skills && skills.length > 0 && (
-                    <p className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
-                        {skills.length === 1 ? 'Skill' : 'Skills'} spotted:{' '}
-                        <span className="font-medium">{skills.slice(0, 3).join(', ')}</span>
-                    </p>
-                )}
-
-                {mood && (
-                    <p className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
-                        Mood detected: <span className="font-medium capitalize">{mood}</span>
-                    </p>
-                )}
-
-                {entities && entities.length > 0 && (
-                    <p className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
-                        {entities.length === 1 ? 'Person mentioned' : 'People mentioned'}:{' '}
-                        <span className="font-medium">{entities.slice(0, 3).join(', ')}</span>
-                    </p>
-                )}
-
-                {topics && topics.length > 0 && (
-                    <p className="text-sm italic" style={{ color: 'rgb(var(--paper-ink-soft))', fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-                        {topics[0]}
-                    </p>
-                )}
-
-                {tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                        {tags.slice(0, 4).map((tag) => (
-                            <span
-                                key={tag}
-                                className="rounded-full border border-[rgba(var(--paper-border),0.5)] bg-[rgba(var(--paper-border),0.12)] px-2.5 py-0.5 text-xs"
-                                style={{ color: 'rgb(var(--paper-ink-soft))' }}
-                            >
-                                {tag}
-                            </span>
-                        ))}
-                    </div>
-                )}
-
-                <p className="text-xs pt-1" style={{ color: 'rgb(var(--paper-ink-muted))' }}>
-                    You write in the {timeLabel}. Your record is building.
+            <div className="mb-3 flex items-center gap-2">
+                <motion.span
+                    aria-hidden="true"
+                    animate={isReading ? { rotate: [0, -6, 6, -4, 4, 0], y: [0, -1, 1, 0] } : { rotate: 0 }}
+                    transition={isReading ? { duration: 0.9, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.2 }}
+                    className="inline-flex"
+                >
+                    <NotebookDoodle name="quill" accent="sage" size={20} />
+                </motion.span>
+                <p
+                    className="section-label"
+                    style={{ fontStyle: 'italic', fontFamily: 'var(--font-serif, Georgia, serif)' }}
+                >
+                    {isReading ? 'Reading your entry…' : 'Notive’s first read'}
                 </p>
             </div>
+
+            <AnimatePresence mode="wait">
+                {!isReading && (
+                    <motion.div
+                        key="read-results"
+                        className="space-y-2"
+                        variants={staggerContainer}
+                        initial="hidden"
+                        animate="show"
+                    >
+                        {lessons && lessons.length > 0 && (
+                            <motion.p variants={revealItem} className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                Lesson extracted: <span className="font-medium">{lessons[0]}</span>
+                            </motion.p>
+                        )}
+
+                        {skills && skills.length > 0 && (
+                            <motion.p variants={revealItem} className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                {skills.length === 1 ? 'Skill' : 'Skills'} spotted:{' '}
+                                <span className="font-medium">{skills.slice(0, 3).join(', ')}</span>
+                            </motion.p>
+                        )}
+
+                        {mood && (
+                            <motion.p variants={revealItem} className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                Mood detected: <span className="font-medium capitalize">{mood}</span>
+                            </motion.p>
+                        )}
+
+                        {entities && entities.length > 0 && (
+                            <motion.p variants={revealItem} className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                {entities.length === 1 ? 'Person mentioned' : 'People mentioned'}:{' '}
+                                <span className="font-medium">{entities.slice(0, 3).join(', ')}</span>
+                            </motion.p>
+                        )}
+
+                        {topics && topics.length > 0 && (
+                            <motion.p variants={revealItem} className="text-sm italic" style={{ color: 'rgb(var(--paper-ink-soft))', fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                                {topics[0]}
+                            </motion.p>
+                        )}
+
+                        {tags.length > 0 && (
+                            <motion.div variants={revealItem} className="flex flex-wrap gap-1.5 pt-1">
+                                {tags.slice(0, 4).map((tag) => (
+                                    <span
+                                        key={tag}
+                                        className="rounded-full border border-[rgba(var(--paper-border),0.5)] bg-[rgba(var(--paper-border),0.12)] px-2.5 py-0.5 text-xs"
+                                        style={{ color: 'rgb(var(--paper-ink-soft))' }}
+                                    >
+                                        {tag}
+                                    </span>
+                                ))}
+                            </motion.div>
+                        )}
+
+                        <motion.p variants={revealItem} className="text-xs pt-1" style={{ color: 'rgb(var(--paper-ink-muted))' }}>
+                            You write in the {timeLabel}. Your record is building.
+                        </motion.p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </motion.section>
     );
 }
 
+const EMPTY_DASHBOARD_VARIANTS = [
+    {
+        title: 'Your dashboard grows with you.',
+        body: 'After your first few notes, Notive starts its magic here and turns moments into patterns.',
+    },
+    {
+        title: 'This page fills in as you write.',
+        body: 'One honest note is all it takes — Notive builds the rest alongside you.',
+    },
+    {
+        title: 'An empty page is a good start.',
+        body: 'Capture a moment from today. Your patterns, lessons, and threads show up on their own.',
+    },
+] as const;
+
 /** Warm empty state for tier 0 (zero entries). */
 export function EmptyDashboard({ writeHref }: { writeHref: string }) {
+    const copy = pickRotatingCopy('empty-dashboard', EMPTY_DASHBOARD_VARIANTS);
     return (
         <motion.section
             initial={{ opacity: 0, y: 16 }}
@@ -233,13 +295,13 @@ export function EmptyDashboard({ writeHref }: { writeHref: string }) {
                 className="notebook-title text-lg"
                 style={{ color: 'rgb(var(--paper-ink))' }}
             >
-                Your dashboard grows with you.
+                {copy.title}
             </h2>
             <p
                 className="notebook-copy mt-2 text-sm mx-auto max-w-xs"
                 style={{ color: 'rgb(var(--paper-ink-soft))' }}
             >
-                After your first few notes, Notive starts its magic here and turns moments into patterns.
+                {copy.body}
             </p>
             <a
                 href={writeHref}

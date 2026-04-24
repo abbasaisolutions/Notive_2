@@ -1,24 +1,33 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useGamification } from '@/context/gamification-context';
 import { useAuth } from '@/context/auth-context';
 import { usePushNotifications } from '@/context/push-notification-context';
+import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { hasCompletedOnboardingRequirements } from '@/utils/onboarding';
+import {
+    buildProfileHighlights,
+    type ProfileHighlightEntry,
+} from '@/utils/profile-highlights';
 import { openNativeNotificationSettings } from '@/services/native-notification-settings.service';
-import { FiBell, FiDownload, FiEdit3, FiLogOut, FiMessageCircle, FiShield, FiTarget, FiUser } from 'react-icons/fi';
+import {
+    FiBell,
+    FiDownload,
+    FiEdit3,
+    FiLogOut,
+    FiMessageCircle,
+    FiShield,
+    FiTarget,
+    FiUser,
+} from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
 import { SUPPORT_EMAIL } from '@/config/legal';
 import { passthroughImageLoader } from '@/lib/image-loader';
-
-function getXPForLevel(level: number) {
-    const thresholds = [0, 100, 300, 600, 1000, 1500, 2500, 4000, 6000, 10000, 999999];
-    return thresholds[Math.min(level - 1, 10)];
-}
 
 function getPinnedSupportSummary(signals: Record<string, unknown> | null | undefined) {
     const supportPreferences = signals?.supportPreferences;
@@ -37,9 +46,17 @@ function getPinnedSupportSummary(signals: Record<string, unknown> | null | undef
 
 type ProfileTab = 'about' | 'privacy';
 
+const PROFILE_HIGHLIGHT_LIMIT = 60;
+
+const formatMonthLabel = (value: string) => new Date(value).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+});
+
 export default function ProfileClient() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { apiFetch } = useApi();
     const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { logout } = useAuth();
     const { stats, refreshStats } = useGamification();
@@ -52,6 +69,7 @@ export default function ProfileClient() {
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isRequestingPush, setIsRequestingPush] = useState(false);
     const [avatarFailed, setAvatarFailed] = useState(false);
+    const [profileEntries, setProfileEntries] = useState<ProfileHighlightEntry[]>([]);
     const avatarUrl = typeof user?.avatarUrl === 'string' ? user.avatarUrl.trim() : '';
 
     const tabParam = searchParams.get('tab');
@@ -64,6 +82,65 @@ export default function ProfileClient() {
     useEffect(() => {
         setAvatarFailed(false);
     }, [avatarUrl]);
+
+    useEffect(() => {
+        if (!isAuthenticated || !user?.id) {
+            setProfileEntries([]);
+            return;
+        }
+
+        const controller = new AbortController();
+        let mounted = true;
+
+        void (async () => {
+            try {
+                const response = await apiFetch(`/entries?limit=${PROFILE_HIGHLIGHT_LIMIT}`, {
+                    signal: controller.signal,
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json().catch(() => null) as {
+                    entries?: Array<Record<string, unknown>>;
+                } | null;
+
+                if (!mounted || !Array.isArray(data?.entries)) {
+                    return;
+                }
+
+                const nextEntries = data.entries
+                    .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === 'object')
+                    .map((entry) => ({
+                        id: typeof entry.id === 'string' ? entry.id : '',
+                        title: typeof entry.title === 'string' ? entry.title : null,
+                        content: typeof entry.content === 'string' ? entry.content : '',
+                        reflection: typeof entry.reflection === 'string' ? entry.reflection : null,
+                        createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : '',
+                        coverImage: typeof entry.coverImage === 'string' ? entry.coverImage : null,
+                    }))
+                    .filter((entry) => entry.id && entry.createdAt && entry.content);
+
+                if (mounted) {
+                    setProfileEntries(nextEntries);
+                }
+            } catch (error) {
+                if (!controller.signal.aborted) {
+                    console.error('Failed to load profile highlights:', error);
+                }
+            }
+        })();
+
+        return () => {
+            mounted = false;
+            controller.abort();
+        };
+    }, [apiFetch, isAuthenticated, user?.id]);
+    const profileHighlights = useMemo(
+        () => buildProfileHighlights(profileEntries),
+        [profileEntries]
+    );
 
     const handleLogout = async () => {
         setIsLoggingOut(true);
@@ -98,7 +175,6 @@ export default function ProfileClient() {
     const avatarInitial = safeUser.name?.charAt(0).toUpperCase() || safeUser.email.charAt(0).toUpperCase();
     const hasAvatar = avatarUrl.length > 0;
     const showAvatarImage = hasAvatar && !avatarFailed;
-    const xpProgress = stats ? ((stats.xp - getXPForLevel(stats.level)) / (getXPForLevel(stats.level + 1) - getXPForLevel(stats.level))) * 100 : 0;
     const highlights = [
         safeUser.profile?.primaryGoal,
         safeUser.profile?.focusArea,
@@ -107,13 +183,68 @@ export default function ProfileClient() {
     ].filter(Boolean) as string[];
     const support = getPinnedSupportSummary(safeUser.profile?.personalizationSignals);
     const isAdminUser = safeUser.role === 'ADMIN' || safeUser.role === 'SUPERADMIN';
+    const favoriteLine = profileHighlights.favoriteLine?.text ?? 'Your favorite line shows up here once a note gives this profile some texture.';
+    const favoriteLineHref = profileHighlights.favoriteLine
+        ? `/entry/view?id=${profileHighlights.favoriteLine.entryId}`
+        : '/entry/new';
+    const favoriteLineCta = profileHighlights.favoriteLine ? 'Open the note' : 'Write your first note';
+    const reflectedMonths = profileHighlights.monthsReflected;
+    const reflectedMonthsLabel = reflectedMonths > 0
+        ? `${reflectedMonths} month${reflectedMonths === 1 ? '' : 's'} reflected`
+        : 'Your first month starts with one note';
+    const latestEntry = profileEntries[0] ?? null;
+    const memberSinceLabel = formatMonthLabel(safeUser.createdAt);
 
     return (
         <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
             <div className="mx-auto max-w-3xl space-y-6">
-                {/* Header: avatar + name + stats */}
-                <section className="workspace-panel rounded-[2rem] p-6 md:p-8">
-                    <div className="flex items-center gap-5">
+                <section className="workspace-panel rounded-[2rem] p-4 md:p-5">
+                    <div className="relative overflow-hidden rounded-[1.6rem] border border-white/12">
+                        {profileHighlights.coverImage ? (
+                            <Image
+                                src={profileHighlights.coverImage}
+                                loader={passthroughImageLoader}
+                                unoptimized
+                                alt="Notebook cover"
+                                fill
+                                sizes="(max-width: 768px) 100vw, 768px"
+                                className="object-cover"
+                            />
+                        ) : (
+                            <div
+                                className="absolute inset-0"
+                                style={{
+                                    background: 'radial-gradient(circle at top left, rgba(234,216,189,0.72), transparent 44%), linear-gradient(135deg, rgba(107,143,113,0.92), rgba(38,34,30,0.94))',
+                                }}
+                            />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-br from-[rgba(38,34,30,0.28)] via-[rgba(38,34,30,0.56)] to-[rgba(38,34,30,0.82)]" />
+                        <div className="relative px-5 py-6 md:px-6 md:py-7">
+                            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-white/70">
+                                Notebook atmosphere
+                            </p>
+                            <p className="mt-3 max-w-2xl text-xl font-serif italic leading-8 text-white md:text-2xl md:leading-9">
+                                "{favoriteLine}"
+                            </p>
+                            <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                                <span className="rounded-full border border-white/40 bg-white/20 px-3 py-1.5 font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.18)] backdrop-blur-sm">
+                                    {reflectedMonthsLabel}
+                                </span>
+                                {stats && (
+                                    <span className="rounded-full border border-white/40 bg-white/20 px-3 py-1.5 font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.18)] backdrop-blur-sm">
+                                        {stats.totalEntries || 0} saved
+                                    </span>
+                                )}
+                                {latestEntry && (
+                                    <span className="rounded-full border border-white/40 bg-white/20 px-3 py-1.5 font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.18)] backdrop-blur-sm">
+                                        Last note {new Date(latestEntry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-5 flex items-center gap-5">
                         <div className="h-20 w-20 rounded-[1.5rem] bg-gradient-to-br from-primary via-accent to-secondary p-1 shrink-0">
                             <div
                                 className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[1.3rem] text-2xl font-serif"
@@ -140,7 +271,6 @@ export default function ProfileClient() {
                                 <div className="mt-2 flex items-center gap-4 text-sm text-ink-secondary">
                                     <span>{stats.totalEntries || 0} entries</span>
                                     <span>{stats.currentStreak || 0} day streak</span>
-                                    <span>Lv {stats.level}</span>
                                 </div>
                             )}
                         </div>
@@ -153,20 +283,6 @@ export default function ProfileClient() {
                         </Link>
                     </div>
 
-                    {/* XP bar */}
-                    {stats && (
-                        <div className="mt-4">
-                            <div className="flex items-end justify-between text-xs text-ink-muted">
-                                <span>XP</span>
-                                <span>{stats.xp} / {getXPForLevel(stats.level + 1)}</span>
-                            </div>
-                            <div className="mt-1 h-1.5 overflow-hidden rounded-full" style={{ background: 'rgba(var(--paper-border), 0.72)' }}>
-                                <div className="h-full rounded-full bg-gradient-to-r from-primary via-accent to-secondary" style={{ width: `${Math.min(xpProgress, 100)}%` }} />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Tabs */}
                     <div className="workspace-actionbar mt-5 inline-flex gap-1 rounded-2xl p-1">
                         <Link
                             href="/profile"
@@ -185,6 +301,38 @@ export default function ProfileClient() {
 
                 {activeTab === 'about' ? (
                     <>
+                        <section className="grid gap-3 md:grid-cols-[1.15fr_0.85fr]">
+                            <div className="workspace-panel rounded-[2rem] p-6">
+                                <p className="type-overline text-muted">Favorite line you've written</p>
+                                <p className="mt-4 text-lg font-serif italic leading-8 text-strong">
+                                    "{favoriteLine}"
+                                </p>
+                                <Link
+                                    href={favoriteLineHref}
+                                    className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:opacity-80"
+                                >
+                                    {favoriteLineCta}
+                                </Link>
+                            </div>
+
+                            <div className="workspace-panel rounded-[2rem] p-6">
+                                <p className="type-overline text-muted">With Notive</p>
+                                <div className="mt-4 grid grid-cols-2 gap-3">
+                                    <div className="workspace-muted-panel rounded-2xl p-4">
+                                        <p className="text-2xl font-semibold text-strong">{reflectedMonths}</p>
+                                        <p className="mt-1 text-xs text-muted">months reflected</p>
+                                    </div>
+                                    <div className="workspace-muted-panel rounded-2xl p-4">
+                                        <p className="text-2xl font-semibold text-strong">{stats?.currentStreak || 0}d</p>
+                                        <p className="mt-1 text-xs text-muted">current streak</p>
+                                    </div>
+                                </div>
+                                <p className="mt-4 text-sm leading-6 text-ink-secondary">
+                                    Building a notebook since {memberSinceLabel}.
+                                </p>
+                            </div>
+                        </section>
+
                         <section className="workspace-panel rounded-[2rem] p-6">
                             <div className="flex items-center justify-between gap-3">
                                 <div>
@@ -237,7 +385,6 @@ export default function ProfileClient() {
                             </div>
                         </section>
 
-                        {/* Bio + basics */}
                         <section className="workspace-panel rounded-[2rem] p-6">
                             <p className="text-sm leading-7 text-ink-secondary">
                                 {safeUser.profile?.bio || 'No bio yet. Tell us a bit about yourself.'}
@@ -258,6 +405,11 @@ export default function ProfileClient() {
                                     ))}
                                 </div>
                             )}
+                            {latestEntry && (
+                                <p className="mt-4 text-xs uppercase tracking-[0.12em] text-ink-muted">
+                                    Latest note: {latestEntry.title || 'Untitled'} · {new Date(latestEntry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </p>
+                            )}
                             {!hasCompletedSetup && (
                                 <Link
                                     href="/onboarding?returnTo=%2Fprofile"
@@ -268,7 +420,6 @@ export default function ProfileClient() {
                             )}
                         </section>
 
-                        {/* My people */}
                         <section className="workspace-panel rounded-[2rem] p-6">
                             <div className="flex items-center justify-between">
                                 <h2 className="workspace-heading text-lg font-semibold">My people</h2>
@@ -295,7 +446,6 @@ export default function ProfileClient() {
                             )}
                         </section>
 
-                        {/* Goals */}
                         {(safeUser.profile?.lifeGoals?.length ?? 0) > 0 && (
                             <section className="workspace-panel rounded-[2rem] p-6">
                                 <h2 className="workspace-heading text-lg font-semibold">Goals</h2>
@@ -311,7 +461,6 @@ export default function ProfileClient() {
                     </>
                 ) : (
                     <>
-                        {/* Privacy & Data tab */}
                         <section className="workspace-panel rounded-[2rem] p-6 space-y-3">
                             <h2 className="workspace-heading text-lg font-semibold">Privacy & Data</h2>
                             <div className="grid gap-3">
@@ -349,7 +498,7 @@ export default function ProfileClient() {
                                     <p className="workspace-heading text-sm font-semibold">Push Notifications</p>
                                     <p className="mt-1 text-sm leading-6 text-ink-secondary">
                                         {isPermissionGranted
-                                            ? 'Enabled — you\'ll get reminders, shared-memory activity, and reflection prompts.'
+                                            ? 'Enabled - you\'ll get reminders, shared-memory activity, and reflection prompts.'
                                             : permissionState === 'denied'
                                                 ? 'Notifications are turned off in your device settings. Tap below to re-enable them.'
                                                 : 'Get reminders, shared-memory activity, and reflection prompts on your device.'}
@@ -362,7 +511,7 @@ export default function ProfileClient() {
                                             className="notebook-secondary-cta mt-3 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors hover:opacity-80 disabled:opacity-60"
                                         >
                                             {isRequestingPush ? <Spinner size="sm" /> : null}
-                                            {isRequestingPush ? 'Requesting…' : 'Enable notifications'}
+                                            {isRequestingPush ? 'Requesting...' : 'Enable notifications'}
                                         </button>
                                     )}
                                     {!isPermissionGranted && pushSupported && permissionState === 'denied' && (
@@ -374,7 +523,7 @@ export default function ProfileClient() {
                                                 className="notebook-secondary-cta mt-3 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors hover:opacity-80 disabled:opacity-60"
                                             >
                                                 {isRequestingPush ? <Spinner size="sm" /> : null}
-                                                {isRequestingPush ? 'Opening…' : 'Open notification settings'}
+                                                {isRequestingPush ? 'Opening...' : 'Open notification settings'}
                                             </button>
                                             <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700">
                                                 Notifications disabled in Android Settings
@@ -425,7 +574,6 @@ export default function ProfileClient() {
                             </div>
                         </section>
 
-                        {/* Bring in old posts */}
                         <section className="workspace-panel rounded-[2rem] p-6">
                             <h2 className="workspace-heading text-lg font-semibold">Bring in old posts</h2>
                             <p className="mt-2 text-sm text-ink-secondary">
@@ -441,7 +589,6 @@ export default function ProfileClient() {
                     </>
                 )}
 
-                {/* Feedback & sign out — always visible */}
                 <section className="workspace-panel rounded-[2rem] p-6">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 text-sm text-ink-secondary">

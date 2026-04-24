@@ -19,6 +19,7 @@ import RouteHeader from "@/components/layout/RouteHeader";
 import PageTransition from "@/components/layout/PageTransition";
 import OfflineBanner from "@/components/layout/OfflineBanner";
 import OnboardingGuard from "@/components/onboarding/OnboardingGuard";
+import GlobalSearchOverlay from "@/components/search/GlobalSearchOverlay";
 import { NOTIVE_VOICE } from "@/content/notive-voice";
 import { getCredentialSsoClientId } from "@/utils/sso";
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -188,6 +189,7 @@ body:has(.app-shell) #notive-cold-shell{opacity:0}
                                                 </div>
                                                 <BackgroundSyncCoordinator />
                                                 <OfflineBanner />
+                                                <GlobalSearchOverlay />
                                                 <ToastContainer />
                                                 <PushNotificationPermissionPrompt />
                                             </SmartProvider>
