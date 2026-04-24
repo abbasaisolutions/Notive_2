@@ -18,6 +18,7 @@ import {
     registerDeviceToken,
     getDeviceTokens,
     unregisterDeviceToken,
+    pushDiagnostic,
 } from '../controllers/push-notification.controller';
 import {
     appSessionSchema,
@@ -51,5 +52,6 @@ router.post('/spotify/sync', triggerSpotifySync);
 router.post('/tokens', validate(registerDeviceTokenSchema), registerDeviceToken);
 router.get('/tokens', getDeviceTokens);
 router.delete('/tokens/:tokenId', unregisterDeviceToken);
+router.post('/push-diagnostic', pushDiagnostic);
 
 export default router;

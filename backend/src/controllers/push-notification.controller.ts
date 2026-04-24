@@ -109,6 +109,121 @@ export async function getDeviceTokens(
 }
 
 /**
+ * Push diagnostic — runs the full pipeline for the caller and returns a
+ * structured report so the client can pinpoint where notifications are breaking.
+ *
+ * POST /api/v1/devices/push-diagnostic
+ */
+export async function pushDiagnostic(req: Request, res: Response): Promise<void> {
+    try {
+        const userId = req.userId;
+        if (!userId) {
+            res.status(401).json({ message: 'Unauthorized' });
+            return;
+        }
+
+        // 1. Environment
+        const hasServiceAccount = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT?.trim());
+        const hasCredentialFile = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim());
+
+        let serviceAccountParseable = false;
+        let serviceAccountProjectId: string | null = null;
+        if (hasServiceAccount) {
+            try {
+                const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT!);
+                serviceAccountParseable = true;
+                serviceAccountProjectId = parsed?.project_id ?? null;
+            } catch {
+                serviceAccountParseable = false;
+            }
+        }
+
+        // 2. Device tokens
+        const tokens = await pushService.getUserActiveTokens(userId);
+        const tokensByPlatform = tokens.reduce<Record<string, number>>((acc, t) => {
+            acc[t.platform] = (acc[t.platform] ?? 0) + 1;
+            return acc;
+        }, {});
+
+        // 3. Test send
+        let testSend: {
+            attempted: boolean;
+            sent: number;
+            failed: number;
+            failedTokenIds: string[];
+        } = { attempted: false, sent: 0, failed: 0, failedTokenIds: [] };
+
+        if (tokens.length > 0) {
+            const result = await pushService.sendPushNotification(userId, {
+                title: 'Notive diagnostic',
+                body: 'If you see this banner, push delivery is working end-to-end.',
+                data: { type: 'diagnostic', timestamp: String(Date.now()) },
+            });
+            testSend = {
+                attempted: true,
+                sent: result.sent,
+                failed: result.failed,
+                failedTokenIds: result.failedTokens,
+            };
+        }
+
+        // 4. Build verdict
+        const fcmConfigured = (hasServiceAccount && serviceAccountParseable) || hasCredentialFile;
+        let verdict: string;
+        let nextStep: string;
+        if (!fcmConfigured) {
+            verdict = 'FCM_NOT_CONFIGURED';
+            nextStep = 'Set FIREBASE_SERVICE_ACCOUNT env var (valid JSON) or GOOGLE_APPLICATION_CREDENTIALS path in Railway.';
+        } else if (tokens.length === 0) {
+            verdict = 'NO_DEVICE_TOKENS';
+            nextStep = 'The app has not registered an FCM token for this user. Check frontend push registration flow and POST /devices/tokens calls.';
+        } else if (testSend.failed > 0 && testSend.sent === 0) {
+            verdict = 'FCM_SEND_FAILING';
+            nextStep = 'FCM rejected all tokens. Check Railway logs for push.send_failed entries with errorCode — invalid project, expired tokens, or wrong service account.';
+        } else if (testSend.sent > 0) {
+            verdict = 'SEND_SUCCEEDED_CHECK_DEVICE';
+            nextStep = 'Backend successfully delivered to FCM. If no banner appeared, the issue is device-side: notification channel missing/muted, battery optimisation, Do Not Disturb, or app in foreground with notifications disabled.';
+        } else {
+            verdict = 'UNKNOWN';
+            nextStep = 'Inspect Railway logs for push.* events.';
+        }
+
+        res.status(200).json({
+            success: true,
+            verdict,
+            nextStep,
+            env: {
+                hasServiceAccount,
+                hasCredentialFile,
+                serviceAccountParseable,
+                serviceAccountProjectId,
+            },
+            tokens: {
+                count: tokens.length,
+                byPlatform: tokensByPlatform,
+                devices: tokens.map((t) => ({
+                    id: t.id,
+                    platform: t.platform,
+                    deviceName: t.deviceName,
+                    appVersion: t.appVersion,
+                    osVersion: t.osVersion,
+                    lastUsedAt: t.lastUsedAt?.toISOString() ?? null,
+                    tokenPreview: previewPushToken(t.token),
+                })),
+            },
+            testSend,
+        });
+    } catch (error) {
+        console.error('Push diagnostic error:', error);
+        serverLogger.error('push.diagnostic_failed', {
+            userId: req.userId || undefined,
+            message: error instanceof Error ? error.message : String(error),
+        });
+        res.status(500).json({ message: 'Diagnostic failed', error: error instanceof Error ? error.message : String(error) });
+    }
+}
+
+/**
  * Unregister a device token
  * DELETE /api/v1/devices/tokens/:tokenId
  */
