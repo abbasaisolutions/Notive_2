@@ -181,7 +181,7 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
                     <div className="min-w-0 flex-1">
                         <p className="type-overline" style={{ color: 'rgb(var(--paper-sage))' }}>Life-aware prompts</p>
                         <p className="mt-1 text-sm font-semibold leading-6" style={{ color: 'rgb(var(--paper-ink))', fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-                            Let Notive see what's coming up.
+                            Let Notive see what&rsquo;s coming up.
                         </p>
                     </div>
                 </div>
