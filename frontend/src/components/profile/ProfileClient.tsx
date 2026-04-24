@@ -224,7 +224,7 @@ export default function ProfileClient() {
                                 Notebook atmosphere
                             </p>
                             <p className="mt-3 max-w-2xl text-xl font-serif italic leading-8 text-white md:text-2xl md:leading-9">
-                                "{favoriteLine}"
+                                &ldquo;{favoriteLine}&rdquo;
                             </p>
                             <div className="mt-4 flex flex-wrap gap-2 text-xs">
                                 <span className="rounded-full border border-white/40 bg-white/20 px-3 py-1.5 font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.18)] backdrop-blur-sm">
@@ -303,9 +303,9 @@ export default function ProfileClient() {
                     <>
                         <section className="grid gap-3 md:grid-cols-[1.15fr_0.85fr]">
                             <div className="workspace-panel rounded-[2rem] p-6">
-                                <p className="type-overline text-muted">Favorite line you've written</p>
+                                <p className="type-overline text-muted">Favorite line you&rsquo;ve written</p>
                                 <p className="mt-4 text-lg font-serif italic leading-8 text-strong">
-                                    "{favoriteLine}"
+                                    &ldquo;{favoriteLine}&rdquo;
                                 </p>
                                 <Link
                                     href={favoriteLineHref}
@@ -498,7 +498,7 @@ export default function ProfileClient() {
                                     <p className="workspace-heading text-sm font-semibold">Push Notifications</p>
                                     <p className="mt-1 text-sm leading-6 text-ink-secondary">
                                         {isPermissionGranted
-                                            ? 'Enabled - you\'ll get reminders, shared-memory activity, and reflection prompts.'
+                                            ? 'Enabled - you will get reminders, shared-memory activity, and reflection prompts.'
                                             : permissionState === 'denied'
                                                 ? 'Notifications are turned off in your device settings. Tap below to re-enable them.'
                                                 : 'Get reminders, shared-memory activity, and reflection prompts on your device.'}

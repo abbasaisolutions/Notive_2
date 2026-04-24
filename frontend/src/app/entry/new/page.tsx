@@ -849,7 +849,7 @@ function NewEntryPageContent() {
         if (moodParam) {
             setMoodOverride(moodParam);
         }
-    }, [user, searchParams, loadDraft, clearDraft, gentleReflectionTags, setExtractedData, setAiInsights]);
+    }, [user, searchParams, entrySource, loadDraft, clearDraft, gentleReflectionTags, setExtractedData, setAiInsights]);
 
     useEffect(() => {
         if (!voiceJob) {
