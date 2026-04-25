@@ -36,9 +36,11 @@ interface CalendarOptInState {
 
 const PREF_KEY = 'notive_calendar_opt_in';
 
-// Days before re-surfacing the opt-in card after user declines in-app
-const SOFT_DECLINE_DAYS = 14; // 1st and 2nd decline
-const HARD_DECLINE_DAYS = 30; // 3rd+ decline
+// Days before re-surfacing the opt-in card after user declines in-app.
+// Calendar context dramatically improves prompt quality, so we re-prompt
+// fairly soon — but back off if the user keeps declining.
+const SOFT_DECLINE_DAYS = 5;  // 1st and 2nd decline
+const HARD_DECLINE_DAYS = 14; // 3rd+ decline
 const OS_DENIED_DAYS = 7;     // OS-level deny — suggest Settings
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

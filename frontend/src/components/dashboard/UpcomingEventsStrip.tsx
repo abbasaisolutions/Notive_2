@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getUpcomingEvents, checkCalendarPermission, type NativeCalendarEvent } from '@/services/calendar.service';
 import { hapticTap } from '@/services/haptics.service';
+import { useApi } from '@/hooks/use-api';
 
 // ── Formatting helpers ────────────────────────────────────────────────────────
 
@@ -77,6 +78,7 @@ interface Props {
 
 export default function UpcomingEventsStrip({ refreshTrigger }: Props) {
     const router = useRouter();
+    const { apiFetch } = useApi();
     const [events, setEvents] = useState<NativeCalendarEvent[]>([]);
     const [ready, setReady] = useState(false);
 
@@ -92,9 +94,29 @@ export default function UpcomingEventsStrip({ refreshTrigger }: Props) {
 
     if (!ready || events.length === 0) return null;
 
-    const handleTap = (event: NativeCalendarEvent) => {
+    const handleTap = async (event: NativeCalendarEvent) => {
         hapticTap();
-        const prompt = buildEventPrompt(event);
+
+        // Try AI-backed prompt first; fall back to deterministic if it fails.
+        let prompt = buildEventPrompt(event);
+        try {
+            const res = await apiFetch('/ai/event-prompt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: event.title,
+                    category: event.category,
+                    minutesUntil: minsUntil(event.startDate),
+                }),
+            });
+            if (res.ok) {
+                const data = await res.json() as { prompt?: string };
+                if (data.prompt?.trim()) prompt = data.prompt.trim();
+            }
+        } catch {
+            // keep deterministic fallback
+        }
+
         router.push(`/entry/new?eventPrompt=${encodeURIComponent(prompt)}`);
     };
 

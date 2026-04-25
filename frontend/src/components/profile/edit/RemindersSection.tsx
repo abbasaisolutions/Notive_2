@@ -5,6 +5,7 @@ import { FiAlertTriangle, FiBell, FiBellOff, FiCheck } from 'react-icons/fi';
 import { useApi } from '@/hooks/use-api';
 import { useToast } from '@/context/toast-context';
 import DeviceSoundToggle from '@/components/profile/edit/DeviceSoundToggle';
+import CalendarToggle from '@/components/profile/edit/CalendarToggle';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -212,6 +213,12 @@ export default function RemindersSection() {
                     </div>
                 </div>
             )}
+
+            {/* Calendar — life-aware prompts */}
+            <div className="pt-2">
+                <p className="type-overline text-muted mb-2">Calendar</p>
+                <CalendarToggle />
+            </div>
 
             {/* Device sounds — local, per-device preference */}
             <div className="pt-2">
