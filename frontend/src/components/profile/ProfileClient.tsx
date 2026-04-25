@@ -551,14 +551,12 @@ export default function ProfileClient() {
                                         >
                                             Notification schedule
                                         </Link>
-                                        {isAdminUser && (
-                                            <Link
-                                                href="/debug/push"
-                                                className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
-                                            >
-                                                Push debug
-                                            </Link>
-                                        )}
+                                        <Link
+                                            href="/debug/push"
+                                            className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+                                        >
+                                            Push debug
+                                        </Link>
                                     </div>
                                 </div>
                             </div>
