@@ -145,6 +145,49 @@ export async function pushDiagnostic(req: Request, res: Response): Promise<void>
             return acc;
         }, {});
 
+        // 2b. SUPERADMIN: also show system-wide token count for triage
+        let systemWide: {
+            totalActiveTokens: number;
+            usersWithTokens: number;
+            byPlatform: Record<string, number>;
+            recentRegistrations: Array<{ userEmail: string; platform: string; deviceName: string | null; lastUsedAt: string | null; appVersion: string | null }>;
+        } | undefined;
+
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+        if (user?.role === 'SUPERADMIN') {
+            const allActive = await prisma.deviceToken.findMany({
+                where: { isActive: true },
+                select: {
+                    userId: true,
+                    platform: true,
+                    deviceName: true,
+                    appVersion: true,
+                    lastUsedAt: true,
+                    user: { select: { email: true } },
+                },
+                orderBy: { lastUsedAt: 'desc' },
+                take: 20,
+            });
+            const totalCount = await prisma.deviceToken.count({ where: { isActive: true } });
+            const distinctUsers = new Set(allActive.map((t) => t.userId)).size;
+            const byPlatform = allActive.reduce<Record<string, number>>((acc, t) => {
+                acc[t.platform] = (acc[t.platform] ?? 0) + 1;
+                return acc;
+            }, {});
+            systemWide = {
+                totalActiveTokens: totalCount,
+                usersWithTokens: distinctUsers,
+                byPlatform,
+                recentRegistrations: allActive.slice(0, 10).map((t) => ({
+                    userEmail: t.user?.email ?? 'unknown',
+                    platform: t.platform,
+                    deviceName: t.deviceName,
+                    appVersion: t.appVersion,
+                    lastUsedAt: t.lastUsedAt?.toISOString() ?? null,
+                })),
+            };
+        }
+
         // 3. Test send
         let testSend: {
             attempted: boolean;
@@ -212,6 +255,7 @@ export async function pushDiagnostic(req: Request, res: Response): Promise<void>
                 })),
             },
             testSend,
+            ...(systemWide ? { systemWide } : {}),
         });
     } catch (error) {
         console.error('Push diagnostic error:', error);
