@@ -4,6 +4,7 @@ import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import useApi from '@/hooks/use-api';
+import { useZenMode } from '@/hooks/use-zen-mode';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { StructuredEntryData } from '@/services/structured-data.service';
 import useEntryDraft from '@/hooks/use-entry-draft';
@@ -277,6 +278,9 @@ function NewEntryPageContent() {
     const [contentHtml, setContentHtml] = useState('');
     const contentRef = useRef('');
     const [promptHint, setPromptHint] = useState<string | null>(null);
+
+    // Zen mode — fades `[data-zen-fade]` chrome (mobile nav) while actively typing
+    useZenMode(true, content.length);
 
     const [titleOverride, setTitleOverride] = useState('');
     const [moodOverride, setMoodOverride] = useState<string | null>(null);

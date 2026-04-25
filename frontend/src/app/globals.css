@@ -880,15 +880,55 @@
   }
 
   .notebook-card-warm {
+    position: relative;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(237, 228, 216, 0.86));
     border: 2px solid rgba(var(--paper-border), 0.92);
     box-shadow: 0 4px 12px rgba(92, 92, 92, 0.08);
+    isolation: isolate;
   }
 
   .notebook-card-soft {
+    position: relative;
     background: rgba(255, 255, 255, 0.78);
     border: 1.5px solid rgba(var(--paper-border), 0.22);
     box-shadow: 0 10px 24px rgba(92, 92, 92, 0.05);
+    isolation: isolate;
+  }
+
+  /* Paper grain — barely-perceptible SVG turbulence overlay.
+     Rendered behind content via negative z-index + isolation on parent. */
+  .notebook-card-soft::after,
+  .notebook-card-warm::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0.45;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.52 0 0 0 0 0.47 0 0 0 0 0.4 0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
+    background-size: 160px 160px;
+  }
+
+  /* Zen mode — activated while user is actively typing in the editor.
+     Non-essential chrome fades to low opacity so the page feels infinite. */
+  [data-zen-mode='true'] [data-zen-fade] {
+    opacity: 0.15;
+    transition: opacity 600ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    pointer-events: none;
+  }
+  [data-zen-mode='false'] [data-zen-fade],
+  :not([data-zen-mode]) [data-zen-fade] {
+    opacity: 1;
+    transition: opacity 300ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    pointer-events: auto;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-zen-mode='true'] [data-zen-fade],
+    [data-zen-mode='false'] [data-zen-fade] {
+      transition: none;
+    }
   }
 
   .notebook-kicker {

@@ -307,6 +307,7 @@ export default function MobileNav() {
 
             <nav
                 ref={navRef}
+                data-zen-fade
                 className="fixed left-3 right-3 z-50 lg:hidden"
                 style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
                 aria-label="Mobile navigation"
