@@ -62,6 +62,7 @@ export function usePushNotifications() {
         // Data
         deviceTokens: context.deviceTokens,
         notifications: context.notifications,
+        registrationDebug: context.registrationDebug,
 
         // Methods
         requestPushPermission,

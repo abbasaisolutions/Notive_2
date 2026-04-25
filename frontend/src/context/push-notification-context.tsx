@@ -32,6 +32,28 @@ export interface PushNotification {
     receivedAt: Date;
 }
 
+export interface PushRegistrationDebugSnapshot {
+    tokenPreview: string;
+    platform: DevicePlatform;
+    source: string;
+    queuedAt: string;
+    attempts: number;
+    lastAttemptAt?: string;
+    lastError?: string;
+}
+
+export interface PushRegistrationDebugState {
+    pending: PushRegistrationDebugSnapshot | null;
+    lastError: string | null;
+    lastStatusCode: number | null;
+    lastSuccessfulTokenPreview: string | null;
+    lastSuccessfulPlatform: DevicePlatform | null;
+    lastSuccessfulAt: string | null;
+    lastFetchCount: number | null;
+    lastFetchAt: string | null;
+    lastFetchError: string | null;
+}
+
 interface PushContextType {
     isSupported: boolean;
     isPermissionGranted: boolean;
@@ -39,6 +61,7 @@ interface PushContextType {
     isLoading: boolean;
     deviceTokens: DeviceToken[];
     notifications: PushNotification[];
+    registrationDebug: PushRegistrationDebugState;
     registerDevice: (token: string, platform: 'android' | 'ios' | 'web') => Promise<void>;
     unregisterDevice: (tokenId: string) => Promise<void>;
     requestPermission: () => Promise<boolean>;
@@ -187,6 +210,22 @@ function getPushTokenPreview(token: string): string {
     return `${trimmed.slice(0, 10)}...${trimmed.slice(-6)}`;
 }
 
+function createPushRegistrationDebugSnapshot(
+    pending: PendingPushRegistration | null,
+): PushRegistrationDebugSnapshot | null {
+    if (!pending) return null;
+
+    return {
+        tokenPreview: getPushTokenPreview(pending.token),
+        platform: pending.platform,
+        source: pending.source,
+        queuedAt: pending.queuedAt,
+        attempts: pending.attempts,
+        lastAttemptAt: pending.lastAttemptAt,
+        lastError: pending.lastError,
+    };
+}
+
 function getPushRegistrationRetryDelayMs(attempts: number): number {
     const exponent = Math.max(attempts - 1, 0);
     return Math.min(PUSH_REGISTRATION_BASE_DELAY_MS * (2 ** exponent), PUSH_REGISTRATION_MAX_DELAY_MS);
@@ -321,6 +360,21 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
     const [permissionState, setPermissionState] = useState<PermissionStatus>('prompt');
     const [deviceTokens, setDeviceTokens] = useState<DeviceToken[]>([]);
     const [notifications, setNotifications] = useState<PushNotification[]>([]);
+    const [registrationDebug, setRegistrationDebug] = useState<PushRegistrationDebugState>(() => {
+        const initialPending = readPendingPushRegistration();
+
+        return {
+            pending: createPushRegistrationDebugSnapshot(initialPending),
+            lastError: initialPending?.lastError ?? null,
+            lastStatusCode: null,
+            lastSuccessfulTokenPreview: null,
+            lastSuccessfulPlatform: null,
+            lastSuccessfulAt: null,
+            lastFetchCount: null,
+            lastFetchAt: null,
+            lastFetchError: null,
+        };
+    });
     const hasInitializedPushRef = useRef(false);
     const pendingPushRegistrationRef = useRef<PendingPushRegistration | null>(readPendingPushRegistration());
     const pushRegistrationInFlightRef = useRef(false);
@@ -381,6 +435,11 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
     const setPendingPushRegistration = useCallback((pending: PendingPushRegistration | null) => {
         pendingPushRegistrationRef.current = pending;
         writePendingPushRegistration(pending);
+        setRegistrationDebug((prev) => ({
+            ...prev,
+            pending: createPushRegistrationDebugSnapshot(pending),
+            lastError: pending?.lastError ?? prev.lastError,
+        }));
 
         if (!pending) {
             clearPushRegistrationRetryTimer();
@@ -399,14 +458,26 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
 
             const data = await response.json();
             setDeviceTokens(data.data || []);
+            setRegistrationDebug((prev) => ({
+                ...prev,
+                lastFetchCount: Array.isArray(data.data) ? data.data.length : 0,
+                lastFetchAt: new Date().toISOString(),
+                lastFetchError: null,
+            }));
         } catch (error) {
             logger.error('Failed to fetch device tokens:', error);
+            setRegistrationDebug((prev) => ({
+                ...prev,
+                lastFetchAt: new Date().toISOString(),
+                lastFetchError: getPushRegistrationErrorMessage(error),
+            }));
         }
     }, [apiFetch, user?.id]);
 
     const performDeviceRegistration = useCallback(async (token: string, platform: DevicePlatform) => {
         const response = await apiFetch(DEVICE_TOKENS_API_PATH, {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 token,
                 platform,
@@ -459,6 +530,14 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
 
         try {
             await performDeviceRegistration(attemptRecord.token, attemptRecord.platform);
+            setRegistrationDebug((prev) => ({
+                ...prev,
+                lastError: null,
+                lastStatusCode: null,
+                lastSuccessfulTokenPreview: getPushTokenPreview(attemptRecord.token),
+                lastSuccessfulPlatform: attemptRecord.platform,
+                lastSuccessfulAt: new Date().toISOString(),
+            }));
 
             const stillCurrent = pendingPushRegistrationRef.current?.token === attemptRecord.token
                 && pendingPushRegistrationRef.current?.platform === attemptRecord.platform;
@@ -488,6 +567,11 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
                 message,
                 willRetry: shouldRetry,
             });
+            setRegistrationDebug((prev) => ({
+                ...prev,
+                lastError: message,
+                lastStatusCode: getPushRegistrationStatusCode(error),
+            }));
 
             if (shouldRetry) {
                 const delayMs = getPushRegistrationRetryDelayMs(attemptRecord.attempts);
@@ -910,6 +994,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         isLoading,
         deviceTokens,
         notifications,
+        registrationDebug,
         registerDevice,
         unregisterDevice,
         requestPermission,
@@ -922,6 +1007,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         isSupported,
         notifications,
         permissionState,
+        registrationDebug,
         registerDevice,
         requestPermission,
         unregisterDevice,

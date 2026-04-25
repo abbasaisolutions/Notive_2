@@ -334,9 +334,7 @@ function EntryDetailContent() {
 
     return (
         <div className="min-h-screen p-3 md:p-6">
-            <div className="fixed top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[150px] pointer-events-none" />
-
-            <div className="max-w-2xl mx-auto relative z-10">
+            <div className="max-w-2xl mx-auto">
                 <header className="mb-5 flex items-center justify-between gap-3">
                     <button
                         type="button"
@@ -348,21 +346,20 @@ function EntryDetailContent() {
                     </button>
 
                     <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setShowShareSheet(true)}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(107,143,113,0.28)] bg-[rgb(107,143,113)] px-3.5 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_10px_24px_rgba(107,143,113,0.22)] transition-all hover:-translate-y-[1px] hover:bg-[rgb(96,131,102)]"
-                            aria-label="Share this memory"
-                        >
-                            <FiShare2 size={14} aria-hidden="true" />
-                            <span className="whitespace-nowrap">Share Memory</span>
-                        </button>
                         <Link
                             href={withCurrentReturnTo(`/entry/edit?id=${id}`)}
-                            className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-primary hover:bg-primary/25 transition-all"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(107,143,113,0.28)] bg-[rgb(107,143,113)] px-3.5 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_10px_24px_rgba(107,143,113,0.22)] transition-all hover:-translate-y-[1px] hover:bg-[rgb(96,131,102)]"
                         >
                             Edit
                         </Link>
+                        <button
+                            type="button"
+                            onClick={() => setShowShareSheet(true)}
+                            className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-primary hover:bg-primary/25 transition-all"
+                            aria-label="Share this memory"
+                        >
+                            <FiShare2 size={14} aria-hidden="true" />
+                        </button>
                         <button
                             onClick={() => setShowDeleteConfirm(true)}
                             className="workspace-pill rounded-full px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-ink-muted transition-all hover:text-[rgb(var(--text-primary))]"
@@ -444,11 +441,6 @@ function EntryDetailContent() {
                 )}
 
                 <AppPanel className="mb-6 space-y-5">
-                    <div className="space-y-1">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Your memory</p>
-                        <p className="text-sm text-ink-secondary">Start with what you wrote, then use the summary below to see what this memory contains and what it may become.</p>
-                    </div>
-
                     {safeHtml ? (
                         <div
                             className="prose max-w-none prose-headings:text-[rgb(var(--text-primary))] prose-p:text-ink-secondary prose-strong:text-[rgb(var(--text-primary))] prose-li:text-ink-secondary prose-a:text-primary prose-blockquote:text-ink-secondary"
@@ -483,12 +475,20 @@ function EntryDetailContent() {
                             />
                         </div>
                     )}
+
+                    <div className="flex justify-end border-t border-[rgba(141,123,105,0.12)] pt-3">
+                        <Link
+                            href={withCurrentReturnTo(`/entry/edit?id=${id}`)}
+                            className="text-xs font-semibold uppercase tracking-[0.1em] text-primary/70 hover:text-primary transition-colors"
+                        >
+                            Edit this memory
+                        </Link>
+                    </div>
                 </AppPanel>
 
                 <MemoryInsightStrip
                     className="mb-6"
                     label="About this memory"
-                    description="Important context first, so you can see the lesson, signal, or story value inside this memory quickly."
                     analysisLine={entry.analysisLine}
                     takeawayLine={entry.takeawayLine}
                     notiveInsights={entry.notiveInsights}
@@ -503,7 +503,6 @@ function EntryDetailContent() {
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="space-y-1">
                                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Turn this into a story</p>
-                                <p className="text-sm text-ink-secondary">{storyMessage}</p>
                             </div>
 
                             <div className="flex flex-wrap gap-2">

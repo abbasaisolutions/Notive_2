@@ -1,15 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useApi } from '@/hooks/use-api';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { isNativePlatform, getNativePlatform } from '@/utils/platform';
 
 type LogLine = { time: string; level: 'info' | 'error' | 'warn'; text: string };
 
 export default function PushDebugPage() {
+    const { apiFetch } = useApi();
     const push = usePushNotifications();
     const [logs, setLogs] = useState<LogLine[]>([]);
     const [rawCheck, setRawCheck] = useState<string>('(not yet checked)');
+    const [serverTokens, setServerTokens] = useState<string>('(not yet checked)');
+    const [diagnosticReport, setDiagnosticReport] = useState<string>('(not yet run)');
+    const [lastRawToken, setLastRawToken] = useState('');
+    const [isRefreshingServerTokens, setIsRefreshingServerTokens] = useState(false);
+    const [isRunningDiagnostic, setIsRunningDiagnostic] = useState(false);
+    const [isSyncingLatestToken, setIsSyncingLatestToken] = useState(false);
 
     const log = (level: LogLine['level'], text: string) => {
         setLogs((prev) => [
@@ -23,6 +31,25 @@ export default function PushDebugPage() {
         log('info', `isSupported: ${push.isSupported} · isPermissionGranted: ${push.isPermissionGranted} · permissionState: ${push.permissionState}`);
         log('info', `deviceTokens.length: ${push.deviceTokens?.length ?? 0}`);
     }, [push.isSupported, push.isPermissionGranted, push.permissionState, push.deviceTokens?.length]);
+
+    useEffect(() => {
+        if (push.registrationDebug.lastError) {
+            log('error', `registrationDebug.lastError: ${push.registrationDebug.lastError}`);
+        }
+    }, [push.registrationDebug.lastError]);
+
+    useEffect(() => {
+        if (push.registrationDebug.lastSuccessfulAt && push.registrationDebug.lastSuccessfulTokenPreview) {
+            log(
+                'info',
+                `registrationDebug success: ${push.registrationDebug.lastSuccessfulPlatform ?? 'unknown'} ${push.registrationDebug.lastSuccessfulTokenPreview}`
+            );
+        }
+    }, [
+        push.registrationDebug.lastSuccessfulAt,
+        push.registrationDebug.lastSuccessfulPlatform,
+        push.registrationDebug.lastSuccessfulTokenPreview,
+    ]);
 
     const checkNativePermission = async () => {
         try {
@@ -43,7 +70,14 @@ export default function PushDebugPage() {
 
             // Listen for the registration event
             const regListener = await PushNotifications.addListener('registration', (token: any) => {
-                log('info', `✅ FCM token received: ${String(token?.value ?? '').slice(0, 30)}…`);
+                const tokenValue = String(token?.value ?? '').trim();
+                if (tokenValue) {
+                    setLastRawToken(tokenValue);
+                    log('info', `✅ FCM token received: ${tokenValue.slice(0, 30)}…`);
+                    return;
+                }
+
+                log('warn', 'registration listener fired without a token value');
             });
             const errListener = await PushNotifications.addListener('registrationError', (err: any) => {
                 log('error', `❌ registrationError: ${JSON.stringify(err)}`);
@@ -82,6 +116,75 @@ export default function PushDebugPage() {
         }
     };
 
+    const refreshServerDeviceTokens = async () => {
+        log('info', 'Fetching /device/tokens from backend');
+        setIsRefreshingServerTokens(true);
+
+        try {
+            const response = await apiFetch('/device/tokens');
+            const data = await response.json().catch(() => null);
+            setServerTokens(JSON.stringify(data, null, 2));
+
+            if (!response.ok) {
+                log('error', `GET /device/tokens failed: ${response.status}`);
+                return;
+            }
+
+            const count = Array.isArray(data?.data) ? data.data.length : 0;
+            log('info', `GET /device/tokens ok: count=${count}`);
+        } catch (e: any) {
+            setServerTokens(`ERROR: ${e?.message ?? String(e)}`);
+            log('error', `GET /device/tokens threw: ${e?.message ?? String(e)}`);
+        } finally {
+            setIsRefreshingServerTokens(false);
+        }
+    };
+
+    const runBackendDiagnostic = async () => {
+        log('info', 'POST /device/push-diagnostic called');
+        setIsRunningDiagnostic(true);
+
+        try {
+            const response = await apiFetch('/device/push-diagnostic', {
+                method: 'POST',
+            });
+            const data = await response.json().catch(() => null);
+            setDiagnosticReport(JSON.stringify(data, null, 2));
+
+            if (!response.ok) {
+                log('error', `push diagnostic failed: ${response.status}`);
+                return;
+            }
+
+            log('info', `push diagnostic verdict: ${String(data?.verdict ?? 'unknown')}`);
+        } catch (e: any) {
+            setDiagnosticReport(`ERROR: ${e?.message ?? String(e)}`);
+            log('error', `push diagnostic threw: ${e?.message ?? String(e)}`);
+        } finally {
+            setIsRunningDiagnostic(false);
+        }
+    };
+
+    const syncLatestTokenToBackend = async () => {
+        if (!lastRawToken) {
+            log('warn', 'No raw FCM token captured yet. Run Force register first.');
+            return;
+        }
+
+        setIsSyncingLatestToken(true);
+        log('info', 'registerPushToken(latest raw token) called');
+
+        try {
+            await push.registerPushToken(lastRawToken, getNativePlatform());
+            log('info', 'registerPushToken completed successfully');
+            await refreshServerDeviceTokens();
+        } catch (e: any) {
+            log('error', `registerPushToken failed: ${e?.message ?? String(e)}`);
+        } finally {
+            setIsSyncingLatestToken(false);
+        }
+    };
+
     return (
         <div style={{ padding: 20, fontFamily: 'monospace', fontSize: 12 }}>
             <h1 style={{ fontSize: 18, marginBottom: 16 }}>Push Debug</h1>
@@ -96,6 +199,8 @@ export default function PushDebugPage() {
     isPermissionGranted: push.isPermissionGranted,
     permissionState: push.permissionState,
     deviceTokenCount: push.deviceTokens?.length ?? 0,
+    registrationDebug: push.registrationDebug,
+    lastRawTokenPreview: lastRawToken ? `${lastRawToken.slice(0, 30)}…` : null,
 }, null, 2)}
                 </pre>
             </section>
@@ -119,11 +224,42 @@ export default function PushDebugPage() {
                 >
                     3. Force register (raw)
                 </button>
+                <button
+                    onClick={syncLatestTokenToBackend}
+                    disabled={isSyncingLatestToken}
+                    style={{ padding: '10px 14px', background: '#5b6c8f', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, opacity: isSyncingLatestToken ? 0.7 : 1 }}
+                >
+                    {isSyncingLatestToken ? '4. Syncing...' : '4. Sync latest token'}
+                </button>
+                <button
+                    onClick={refreshServerDeviceTokens}
+                    disabled={isRefreshingServerTokens}
+                    style={{ padding: '10px 14px', background: '#3b6f68', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, opacity: isRefreshingServerTokens ? 0.7 : 1 }}
+                >
+                    {isRefreshingServerTokens ? '5. Refreshing...' : '5. Refresh server tokens'}
+                </button>
+                <button
+                    onClick={runBackendDiagnostic}
+                    disabled={isRunningDiagnostic}
+                    style={{ padding: '10px 14px', background: '#7b4f94', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, opacity: isRunningDiagnostic ? 0.7 : 1 }}
+                >
+                    {isRunningDiagnostic ? '6. Running...' : '6. Run backend diagnostic'}
+                </button>
             </section>
 
             <section style={{ marginBottom: 20 }}>
                 <h2 style={{ fontSize: 14, marginBottom: 8 }}>checkPermissions raw</h2>
                 <pre style={{ background: '#f5f0ea', padding: 12, borderRadius: 6, overflow: 'auto' }}>{rawCheck}</pre>
+            </section>
+
+            <section style={{ marginBottom: 20 }}>
+                <h2 style={{ fontSize: 14, marginBottom: 8 }}>Server /device/tokens</h2>
+                <pre style={{ background: '#f5f0ea', padding: 12, borderRadius: 6, overflow: 'auto' }}>{serverTokens}</pre>
+            </section>
+
+            <section style={{ marginBottom: 20 }}>
+                <h2 style={{ fontSize: 14, marginBottom: 8 }}>Backend diagnostic</h2>
+                <pre style={{ background: '#f5f0ea', padding: 12, borderRadius: 6, overflow: 'auto' }}>{diagnosticReport}</pre>
             </section>
 
             <section>

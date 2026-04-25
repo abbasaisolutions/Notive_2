@@ -1,11 +1,12 @@
 'use client';
 
 import { useEditor, EditorContent, Editor, Extension } from '@tiptap/react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
-import { FiBold, FiHash, FiItalic, FiList, FiMessageSquare, FiUnderline } from 'react-icons/fi';
+import { FiBold, FiHash, FiItalic, FiList, FiMessageSquare, FiMic, FiMicOff, FiUnderline } from 'react-icons/fi';
+import useSpeechRecognition from '@/hooks/use-speech-recognition';
 
 function countWords(text: string): number {
     return text.trim().split(/\s+/).filter(Boolean).length;
@@ -43,9 +44,15 @@ interface TiptapEditorProps {
 const MenuBar = ({
     editor,
     variant = 'glass',
+    isVoiceSupported,
+    isVoiceListening,
+    onToggleVoice,
 }: {
     editor: Editor | null;
     variant?: 'glass' | 'paper';
+    isVoiceSupported: boolean;
+    isVoiceListening: boolean;
+    onToggleVoice: () => void;
 }) => {
     if (!editor) return null;
     const isPaper = variant === 'paper';
@@ -57,8 +64,8 @@ const MenuBar = ({
         : 'bg-primary text-white';
     const separatorClass = isPaper ? 'bg-[rgba(var(--paper-border),0.78)]' : 'bg-white/10';
     const menuClass = isPaper
-        ? 'flex flex-nowrap overflow-x-auto gap-0.5 sm:gap-1 p-1 sm:p-1.5 border-b border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.56)] scrollbar-hide'
-        : 'flex flex-nowrap overflow-x-auto gap-0.5 sm:gap-1 p-1 sm:p-1.5 border-b border-white/10 bg-surface-2/45 scrollbar-hide';
+        ? 'flex flex-nowrap overflow-x-auto items-center gap-0.5 sm:gap-1 p-1 sm:p-1.5 border-b border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.56)] scrollbar-hide'
+        : 'flex flex-nowrap overflow-x-auto items-center gap-0.5 sm:gap-1 p-1 sm:p-1.5 border-b border-white/10 bg-surface-2/45 scrollbar-hide';
 
     return (
         <div className={menuClass}>
@@ -140,6 +147,28 @@ const MenuBar = ({
             >
                 <FiMessageSquare size={14} className="sm:w-4 sm:h-4" aria-hidden="true" />
             </button>
+
+            {isVoiceSupported && (
+                <>
+                    <div className={`w-px mx-0.5 sm:mx-1 ml-auto shrink-0 self-stretch ${separatorClass}`} />
+                    <button
+                        type="button"
+                        onClick={onToggleVoice}
+                        aria-pressed={isVoiceListening}
+                        title={isVoiceListening ? 'Stop dictation' : 'Dictate'}
+                        className={`p-2 sm:p-3 rounded-lg transition-all shrink-0 ${
+                            isVoiceListening
+                                ? `${activeButtonClass} animate-pulse`
+                                : baseButtonClass
+                        }`}
+                    >
+                        {isVoiceListening
+                            ? <FiMicOff size={14} className="sm:w-4 sm:h-4" aria-hidden="true" />
+                            : <FiMic size={14} className="sm:w-4 sm:h-4" aria-hidden="true" />
+                        }
+                    </button>
+                </>
+            )}
         </div>
     );
 };
@@ -160,7 +189,7 @@ export default function TiptapEditor({
     const isPaper = variant === 'paper';
     const editorClass = isPaper
         ? 'prose prose-sm sm:prose-base max-w-none focus:outline-none min-h-[280px] px-5 py-6 text-[rgb(var(--paper-ink-soft))]'
-        : 'prose prose-invert prose-sm sm:prose-base max-w-none focus:outline-none min-h-[220px] p-5 text-ink-secondary';
+        : 'prose prose-invert prose-sm sm:prose-base max-w-none focus:outline-none min-h-[400px] p-5 text-ink-secondary';
     const shellClass = isPaper
         ? 'entry-paper entry-paper-shell entry-paper-ruled rounded-[1.75rem] overflow-hidden'
         : 'workspace-panel rounded-2xl overflow-hidden';
@@ -192,7 +221,7 @@ export default function TiptapEditor({
             }
             if (onChange) {
                 const html = editor.getHTML();
-                contentRef.current = text;
+                contentRef.current = html;
                 onChange(text, html);
             }
         },
@@ -214,12 +243,46 @@ export default function TiptapEditor({
         };
     }, []);
 
+    const editorRef = useRef(editor);
+    editorRef.current = editor;
+
+    const handleVoiceTranscript = useCallback((text: string) => {
+        editorRef.current?.chain().focus().insertContent(text + ' ').run();
+    }, []);
+
+    const { isSupported: isVoiceSupported, isListening: isVoiceListening, interimText, start: startVoice, stop: stopVoice } = useSpeechRecognition({
+        continuous: true,
+        interimResults: true,
+        onFinal: handleVoiceTranscript,
+    });
+
+    const toggleVoice = useCallback(() => {
+        if (isVoiceListening) stopVoice(); else startVoice();
+    }, [isVoiceListening, startVoice, stopVoice]);
+
     const atLimit = maxWords !== undefined && wordCount >= maxWords;
     const nearLimit = maxWords !== undefined && wordCount >= maxWords - 50 && !atLimit;
 
     return (
         <div className={shellClass}>
-            {showToolbar && <MenuBar editor={editor} variant={variant} />}
+            {showToolbar && (
+                <MenuBar
+                    editor={editor}
+                    variant={variant}
+                    isVoiceSupported={isVoiceSupported}
+                    isVoiceListening={isVoiceListening}
+                    onToggleVoice={toggleVoice}
+                />
+            )}
+            {isVoiceListening && (
+                <div className={`px-4 py-2 text-sm italic border-b ${
+                    isPaper
+                        ? 'text-[rgba(var(--paper-ink),0.45)] border-[rgba(var(--paper-border),0.5)]'
+                        : 'text-ink-muted/55 border-white/10'
+                }`}>
+                    {interimText ? `${interimText}…` : 'Listening…'}
+                </div>
+            )}
             <div className="relative">
                 <EditorContent editor={editor} />
                 {maxWords !== undefined && (

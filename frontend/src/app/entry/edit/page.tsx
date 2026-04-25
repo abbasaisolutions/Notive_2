@@ -12,7 +12,6 @@ import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useApi from '@/hooks/use-api';
 import useContextNavigation from '@/hooks/use-context-navigation';
 import useEntryEdit from '@/hooks/use-entry-edit';
-import MemoryInsightStrip from '@/components/entry/MemoryInsightStrip';
 import { EntryCategory, LIFE_AREA_OPTIONS, normalizeLifeArea } from '@/constants/life-areas';
 import { ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR } from '@/utils/image-upload';
 import { passthroughImageLoader } from '@/lib/image-loader';
@@ -72,13 +71,6 @@ function EditEntryContent() {
         setTagInput,
         coverImage,
         setCoverImage,
-        analysisLine,
-        takeawayLine,
-        notiveInsights,
-        topEmotions,
-        depthLabel,
-        growthRatio,
-        storySignal,
         isUploading,
         isSaving,
         isLoading,
@@ -170,29 +162,13 @@ function EditEntryContent() {
 
                 {/* ── Editor ── */}
                 <TiptapEditor
-                    content={contentHtml}
+                    initialContent={contentHtml}
                     onChange={handleEditorChange}
                     placeholder="What's on your mind today?"
                 />
 
-                <MemoryInsightStrip
-                    className="mt-5"
-                    label="What stands out"
-                    description="Based on the saved version of this memory. It refreshes after autosave."
-                    analysisLine={analysisLine}
-                    takeawayLine={takeawayLine}
-                    notiveInsights={notiveInsights}
-                    topEmotions={topEmotions}
-                    depthLabel={depthLabel}
-                    growthRatio={growthRatio}
-                    storySignal={storySignal}
-                />
-
                 <AppPanel className="mt-5 space-y-5" tone="soft">
-                    <div className="space-y-1">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Organize this memory</p>
-                        <p className="text-sm text-ink-secondary">Keep the note first, then use these controls to sort and polish the rest.</p>
-                    </div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Organize</p>
 
                     <div className="flex flex-wrap items-center gap-2">
                         {(['PERSONAL', 'PROFESSIONAL'] as EntryCategory[]).map((option) => (
