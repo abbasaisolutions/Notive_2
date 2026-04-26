@@ -67,7 +67,7 @@ export default function ChaptersPage() {
 
     const fetchChapters = useCallback(async (signal?: AbortSignal) => {
         try {
-            const response = await apiFetch(`${API_URL}/chapters`, { signal });
+            const response = await apiFetch(`/chapters`, { signal });
             if (response.ok) {
                 const data = await response.json();
                 setChapters(data.chapters);
@@ -91,7 +91,7 @@ export default function ChaptersPage() {
         if (!formData.name.trim()) return;
 
         try {
-            const url = editingChapter ? `${API_URL}/chapters/${editingChapter.id}` : `${API_URL}/chapters`;
+            const url = editingChapter ? `/chapters/${editingChapter.id}` : `/chapters`;
             const method = editingChapter ? 'PUT' : 'POST';
 
             const response = await apiFetch(url, {

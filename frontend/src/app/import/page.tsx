@@ -82,7 +82,7 @@ export default function ImportPage() {
             try {
                 const [statusResponse, overviewResponse] = await Promise.all([
                     apiFetch('/import/status'),
-                    apiFetch(`${API_URL}/ai/opportunity/overview`),
+                    apiFetch(`/ai/opportunity/overview`),
                 ]);
 
                 const statusData = await statusResponse.json().catch(() => null);

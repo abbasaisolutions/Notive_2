@@ -20,7 +20,7 @@ export function refreshNotificationBadge(): void {
 }
 
 const notificationCountStore = createSharedCountStore({
-    endpoint: `${API_URL}/notifications?unreadOnly=true&limit=1`,
+    endpoint: `/notifications?unreadOnly=true&limit=1`,
     getCount: (data) => data.unreadCount ?? data.total ?? 0,
     refreshEventName: NOTIFICATION_BADGE_REFRESH_EVENT,
 });

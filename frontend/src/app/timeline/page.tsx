@@ -464,7 +464,7 @@ function SharedWithMeList({ bundles, loading, onRefresh, allowEmptyState = true 
     const respondToRequest = useCallback(async (senderId: string, decision: 'ACCEPT' | 'DECLINE') => {
         setActiveSenderId(senderId);
         try {
-            const response = await apiFetch(`${API_URL}/memory-share/requests/${senderId}/respond`, {
+            const response = await apiFetch(`/memory-share/requests/${senderId}/respond`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ decision }),
@@ -754,7 +754,7 @@ function FriendRequestsList({ requests, loading, onRefresh }: {
     const handleDecision = useCallback(async (requestId: string, decision: 'accept' | 'decline') => {
         setActiveRequestId(requestId);
         try {
-            const response = await apiFetch(`${API_URL}/friendships/${requestId}/${decision}`, {
+            const response = await apiFetch(`/friendships/${requestId}/${decision}`, {
                 method: 'PATCH',
             });
 
@@ -900,7 +900,7 @@ function SharedActivityList({ notifications, loading, onRefresh }: {
         if (!notification.readAt) {
             setActiveNotificationId(notification.id);
             try {
-                const response = await apiFetch(`${API_URL}/notifications/${notification.id}/read`, {
+                const response = await apiFetch(`/notifications/${notification.id}/read`, {
                     method: 'PATCH',
                 });
 
@@ -1204,7 +1204,7 @@ function TimelinePageContent() {
         const params = buildTimelineFilterParams();
         const queryString = params.toString();
         const response = await apiFetch(
-            `${API_URL}/analytics/timeline-summary${queryString ? `?${queryString}` : ''}`,
+            `/analytics/timeline-summary${queryString ? `?${queryString}` : ''}`,
             { signal }
         );
         if (!response.ok) {
@@ -1217,7 +1217,7 @@ function TimelinePageContent() {
 
     const fetchEntryShareStats = useCallback(async () => {
         try {
-            const r = await apiFetch(`${API_URL}/memory-share/entry-share-stats`);
+            const r = await apiFetch(`/memory-share/entry-share-stats`);
             if (r.ok) {
                 const data = await r.json();
                 setEntryShareStats(data.stats ?? {});
@@ -1238,7 +1238,7 @@ function TimelinePageContent() {
         params.set('page', String(page));
         params.set('limit', String(TIMELINE_PAGE_SIZE));
 
-        const response = await apiFetch(`${API_URL}/entries?${params.toString()}`, {
+        const response = await apiFetch(`/entries?${params.toString()}`, {
             signal,
         });
         if (!response.ok) {
@@ -1935,7 +1935,7 @@ function TimelinePageContent() {
     const fetchSharedBundles = useCallback(async () => {
         setSharedLoading(true);
         try {
-            const response = await apiFetch(`${API_URL}/memory-share/received?limit=20`);
+            const response = await apiFetch(`/memory-share/received?limit=20`);
             if (!response.ok) return;
 
             const data = await response.json();
@@ -1949,7 +1949,7 @@ function TimelinePageContent() {
 
     const refreshSharedUnreadCount = useCallback(async () => {
         try {
-            const response = await apiFetch(`${API_URL}/memory-share/received?limit=1`);
+            const response = await apiFetch(`/memory-share/received?limit=1`);
             if (!response.ok) return;
             const data = await response.json();
             setSharedUnreadCount(typeof data.unreadCount === 'number' ? data.unreadCount : 0);
@@ -1961,7 +1961,7 @@ function TimelinePageContent() {
     const fetchSentBundles = useCallback(async () => {
         setSentBundlesLoading(true);
         try {
-            const r = await apiFetch(`${API_URL}/memory-share/sent?limit=20`);
+            const r = await apiFetch(`/memory-share/sent?limit=20`);
             if (r.ok) {
                 const data = await r.json();
                 setSentBundles(Array.isArray(data.bundles) ? data.bundles : []);
@@ -1975,7 +1975,7 @@ function TimelinePageContent() {
     const fetchIncomingFriendRequests = useCallback(async () => {
         setFriendRequestsLoading(true);
         try {
-            const response = await apiFetch(`${API_URL}/friendships?status=PENDING`);
+            const response = await apiFetch(`/friendships?status=PENDING`);
             if (!response.ok) return;
             const data = await response.json();
             setIncomingFriendRequests(Array.isArray(data.friendships) ? data.friendships : []);
@@ -1990,7 +1990,7 @@ function TimelinePageContent() {
     const fetchSharedActivityNotifications = useCallback(async () => {
         setSharedActivityLoading(true);
         try {
-            const response = await apiFetch(`${API_URL}/notifications?limit=20`);
+            const response = await apiFetch(`/notifications?limit=20`);
             if (!response.ok) return;
             const data = await response.json();
             const notifications: unknown[] = Array.isArray(data.notifications) ? data.notifications : [];
@@ -2022,7 +2022,7 @@ function TimelinePageContent() {
 
     const markSharedSurfaceNotificationsRead = useCallback(async () => {
         try {
-            const response = await apiFetch(`${API_URL}/memory-share/notifications/read`, {
+            const response = await apiFetch(`/memory-share/notifications/read`, {
                 method: 'PATCH',
             });
 

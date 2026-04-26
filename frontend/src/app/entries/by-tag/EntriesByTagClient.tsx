@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
-import { API_URL } from '@/constants/config';
 import { Spinner, ErrorState } from '@/components/ui';
+import { EmptyState } from '@/components/ui/empty-state';
 import { getMoodEmoji } from '@/constants/moods';
 import { FiArrowLeft, FiTag } from 'react-icons/fi';
 
@@ -39,10 +39,12 @@ export default function EntriesByTagClient() {
         }
 
         let cancelled = false;
+        setEntries(null);
+        setError(null);
         (async () => {
             try {
                 const search = new URLSearchParams({ tag, limit: '50' });
-                const res = await apiFetch(`${API_URL}/entries?${search.toString()}`);
+                const res = await apiFetch(`/entries?${search.toString()}`);
                 if (!res.ok) throw new Error('Failed to load entries');
                 const data = await res.json();
                 const list: EntrySummary[] = Array.isArray(data?.entries) ? data.entries : [];
@@ -89,12 +91,12 @@ export default function EntriesByTagClient() {
             </header>
 
             {!formattedTitle ? (
-                <div className="workspace-panel rounded-2xl p-10 text-center">
-                    <h2 className="workspace-heading mb-2 text-lg font-semibold">Pick a tag to browse</h2>
-                    <p className="text-sm text-ink-secondary">
-                        Open this page from the tag cloud to see entries for a specific label.
-                    </p>
-                </div>
+                <EmptyState
+                    icon={<FiTag aria-hidden="true" />}
+                    title="Pick a tag to browse"
+                    subtitle="Open this page from the tag cloud to see entries for a specific label."
+                    action={{ label: 'Browse tags', href: '/tags' }}
+                />
             ) : error ? (
                 <ErrorState
                     title="Couldn’t load entries"
@@ -106,12 +108,12 @@ export default function EntriesByTagClient() {
                     <Spinner size="md" />
                 </div>
             ) : entries.length === 0 ? (
-                <div className="workspace-panel rounded-2xl p-10 text-center">
-                    <h2 className="workspace-heading mb-2 text-lg font-semibold">No entries with this tag yet</h2>
-                    <p className="text-sm text-ink-secondary">
-                        Try a different tag or write a new entry.
-                    </p>
-                </div>
+                <EmptyState
+                    icon={<FiTag aria-hidden="true" />}
+                    title="No entries with this tag yet"
+                    subtitle="Try a different tag or write a new entry."
+                    action={{ label: 'Browse tags', href: '/tags' }}
+                />
             ) : (
                 <div className="space-y-3">
                     {entries.map((entry) => (

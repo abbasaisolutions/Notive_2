@@ -200,7 +200,7 @@ export function useAnalytics(period: 'week' | 'month' | 'year' = 'week') {
     const [error, setError] = useState<string | null>(null);
 
     const fetchSummary = useCallback(async () => {
-        const response = await apiFetch(`${API_URL}/analytics/summary?period=${period}`);
+        const response = await apiFetch(`/analytics/summary?period=${period}`);
         if (!response.ok) {
             throw new Error('Couldn\u2019t load your analytics.');
         }

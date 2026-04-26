@@ -121,7 +121,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
     const goBack = () => { setDirection(-1); setStep((current) => current - 1); };
 
     useEffect(() => {
-        apiFetch(`${API_URL}/memory-share/users/recent?limit=5`)
+        apiFetch(`/memory-share/users/recent?limit=5`)
             .then(async (response) => {
                 if (!response.ok) return;
                 const data = await response.json();
@@ -154,7 +154,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
         setSearchError(false);
         searchTimeout.current = setTimeout(async () => {
             try {
-                const response = await apiFetch(`${API_URL}/memory-share/users/search?q=${encodeURIComponent(searchQuery)}&limit=8`);
+                const response = await apiFetch(`/memory-share/users/search?q=${encodeURIComponent(searchQuery)}&limit=8`);
                 if (response.ok) {
                     const data = await response.json();
                     setSearchResults(data.users ?? []);
@@ -216,7 +216,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
     const handleSend = useCallback(async () => {
         setSending(true);
         try {
-            const response = await apiFetch(`${API_URL}/memory-share/bundles`, {
+            const response = await apiFetch(`/memory-share/bundles`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

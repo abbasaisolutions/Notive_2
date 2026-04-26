@@ -51,7 +51,7 @@ export default function DailyGentleReflectionCard({
         setTrustPending(true);
 
         try {
-            await apiFetch(`${API_URL}/ai/surface-feedback`, {
+            await apiFetch(`/ai/surface-feedback`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

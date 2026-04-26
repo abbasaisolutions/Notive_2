@@ -1,11 +1,12 @@
 import { Suspense } from 'react';
+import { Spinner } from '@/components/ui';
 import EntriesByTagClient from './EntriesByTagClient';
 
 function EntriesByTagFallback() {
     return (
         <div className="mx-auto max-w-3xl px-4 py-8">
             <div className="flex items-center justify-center py-16">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+                <Spinner size="lg" />
             </div>
         </div>
     );

@@ -38,8 +38,8 @@ export default function TagCloud({ onSelectTag, selectedTag = null }: TagCloudPr
         (async () => {
             // Fire both requests concurrently but handle failures independently
             // so a mood-patterns failure doesn't suppress the themes data.
-            const themesPromise = apiFetch(`${API_URL}/analytics/tag-themes`);
-            const moodPromise = apiFetch(`${API_URL}/analytics/tag-mood-patterns`);
+            const themesPromise = apiFetch(`/analytics/tag-themes`);
+            const moodPromise = apiFetch(`/analytics/tag-mood-patterns`);
 
             try {
                 const themesRaw = await themesPromise;

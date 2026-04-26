@@ -8,7 +8,7 @@ import { createSharedCountStore } from '@/hooks/create-shared-count-store';
 import { NOTIFICATION_BADGE_REFRESH_EVENT } from '@/hooks/use-notification-count';
 
 const sharedUnreadCountStore = createSharedCountStore({
-    endpoint: `${API_URL}/memory-share/received?limit=1`,
+    endpoint: `/memory-share/received?limit=1`,
     getCount: (data) => typeof data.unreadCount === 'number' ? data.unreadCount : 0,
     refreshEventName: NOTIFICATION_BADGE_REFRESH_EVENT,
 });

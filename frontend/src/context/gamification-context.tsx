@@ -133,7 +133,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
 
         try {
             setIsLoading(true);
-            const response = await apiFetch(`${API_URL}/analytics/stats`);
+            const response = await apiFetch(`/analytics/stats`);
             if (response.ok) {
                 const data = await response.json();
                 setStats(prev => {

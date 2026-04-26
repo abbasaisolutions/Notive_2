@@ -362,7 +362,7 @@ export default function PatternDiscoveryFeed({
             }));
 
             try {
-                await apiFetch(`${API_URL}/ai/surface-feedback`, {
+                await apiFetch(`/ai/surface-feedback`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ surfaceType, entityKey, reaction }),

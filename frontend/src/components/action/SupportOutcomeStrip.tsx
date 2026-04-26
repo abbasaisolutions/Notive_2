@@ -85,7 +85,7 @@ export default function SupportOutcomeStrip({
         setPendingOutcome(outcome);
 
         try {
-            const response = await apiFetch(`${API_URL}/ai/contact-outcome`, {
+            const response = await apiFetch(`/ai/contact-outcome`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

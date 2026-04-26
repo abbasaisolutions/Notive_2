@@ -12,6 +12,7 @@ import { useToast } from '@/context/toast-context';
 import { refreshNotificationBadge } from '@/hooks/use-notification-count';
 import { API_URL } from '@/constants/config';
 import { passthroughImageLoader } from '@/lib/image-loader';
+import { Spinner } from '@/components/ui';
 
 /* ─── Types ────────────────────────────────────────────── */
 
@@ -86,7 +87,7 @@ function SharedBundleViewContent() {
         if (!bundleId) { setError('No bundle ID'); setLoading(false); return; }
         (async () => {
             try {
-                const r = await apiFetch(`${API_URL}/memory-share/bundles/${bundleId}`);
+                const r = await apiFetch(`/memory-share/bundles/${bundleId}`);
                 if (r.status === 410) { setError('This shared memory has been revoked.'); setLoading(false); return; }
                 if (!r.ok) {
                     const data = await r.json().catch(() => ({}));
@@ -110,7 +111,7 @@ function SharedBundleViewContent() {
         setReactSending(true);
         const newReaction = reaction === value ? null : value;
         try {
-            const r = await apiFetch(`${API_URL}/memory-share/bundles/${bundleId}/react`, {
+            const r = await apiFetch(`/memory-share/bundles/${bundleId}/react`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ reaction: newReaction }),
@@ -128,7 +129,7 @@ function SharedBundleViewContent() {
     if (authLoading || !isAuthenticated || loading) {
         return (
             <div className="flex min-h-[50vh] items-center justify-center">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[rgba(107,143,113,0.3)] border-t-[rgb(107,143,113)]" />
+                <Spinner size="md" variant="accent" />
             </div>
         );
     }
@@ -343,7 +344,7 @@ export default function SharedBundleViewPage() {
         <Suspense
             fallback={
                 <div className="flex min-h-[50vh] items-center justify-center">
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-[rgba(107,143,113,0.3)] border-t-[rgb(107,143,113)]" />
+                    <Spinner size="md" variant="accent" />
                 </div>
             }
         >

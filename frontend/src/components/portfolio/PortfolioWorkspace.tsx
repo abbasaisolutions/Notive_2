@@ -467,7 +467,7 @@ export default function PortfolioWorkspace() {
         setError('');
 
         try {
-            const response = await apiFetch(`${API_URL}/ai/opportunity/overview`);
+            const response = await apiFetch(`/ai/opportunity/overview`);
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Couldn\u2019t load your portfolio.');
             setOverview(data.overview as Overview);
@@ -482,7 +482,7 @@ export default function PortfolioWorkspace() {
         if (!isAuthenticated) return;
 
         try {
-            const response = await apiFetch(`${API_URL}/ai/opportunity/trends?period=${period}&window=6`);
+            const response = await apiFetch(`/ai/opportunity/trends?period=${period}&window=6`);
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Couldn\u2019t load your trends.');
             setTrends(data.trends as Trends);
@@ -502,7 +502,7 @@ export default function PortfolioWorkspace() {
     }, [fetchTrends, isAuthenticated, trendPeriod]);
 
     const buildExportUrl = useCallback((type: DocumentExportType, format: ExportDownloadFormat) => (
-        `${API_URL}/ai/opportunity/export?type=${type}&format=${format}&variant=${statementVariant}`
+        `/ai/opportunity/export?type=${type}&format=${format}&variant=${statementVariant}`
     ), [statementVariant]);
 
     const syncViewInUrl = useCallback((view: PortfolioView, historyMode: 'push' | 'replace' = 'push') => {
@@ -1174,7 +1174,7 @@ export default function PortfolioWorkspace() {
         setError('');
 
         try {
-            const response = await apiFetch(`${API_URL}/ai/opportunity/entry/${entryId}`, {
+            const response = await apiFetch(`/ai/opportunity/entry/${entryId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1204,7 +1204,7 @@ export default function PortfolioWorkspace() {
         setError('');
 
         try {
-            const response = await apiFetch(`${API_URL}/ai/opportunity/entry/${experience.entryId}`, {
+            const response = await apiFetch(`/ai/opportunity/entry/${experience.entryId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ verified: !experience.verified }),

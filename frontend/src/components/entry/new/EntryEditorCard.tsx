@@ -4,6 +4,7 @@ import React, { RefObject, useState, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { FiImage, FiMic, FiSquare } from 'react-icons/fi';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
+import { Spinner } from '@/components/ui';
 import { ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR } from '@/utils/image-upload';
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
@@ -262,7 +263,7 @@ export default function EntryEditorCard({
                                 title="Add image"
                             >
                                 {isUploading ? (
-                                    <div className="w-4 h-4 border-2 border-ink-muted/50 border-t-transparent rounded-full animate-spin" />
+                                    <Spinner size="sm" className="text-ink-muted/50" />
                                 ) : (
                                     <FiImage size={16} aria-hidden="true" />
                                 )}
@@ -299,7 +300,7 @@ export default function EntryEditorCard({
                         </>
                     ) : isVoiceProcessing ? (
                         <>
-                            <div className="w-4 h-4 border-2 border-ink-muted/50 border-t-transparent rounded-full animate-spin" />
+                            <Spinner size="sm" className="text-ink-muted/50" />
                             <span className="type-label-sm">Processing</span>
                         </>
                     ) : (

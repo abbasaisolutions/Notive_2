@@ -100,7 +100,7 @@ export default function ChatPage() {
 
         const fetchCoachStatus = async () => {
             try {
-                const response = await apiFetch(`${API_URL}/ai/status`);
+                const response = await apiFetch(`/ai/status`);
                 const data = await response.json().catch(() => null);
                 if (!mounted || !data) return;
                 setCoachStatus(data);
@@ -151,7 +151,7 @@ export default function ChatPage() {
         setIsLoading(true);
 
         try {
-            const response = await apiFetch(`${API_URL}/ai/chat`, {
+            const response = await apiFetch(`/ai/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

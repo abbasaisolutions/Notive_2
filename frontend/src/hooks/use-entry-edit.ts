@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { API_URL } from '@/constants/config';
 import { useAutoSave } from '@/hooks/use-auto-save';
 import { getErrorMessage } from '@/utils/http';
 import { prepareImageForUpload } from '@/utils/image-upload';
@@ -151,7 +150,7 @@ export function useEntryEdit({
 
         const fetchEntry = async () => {
             try {
-                const response = await apiFetch(`${API_URL}/entries/${id}`, { signal: controller.signal });
+                const response = await apiFetch(`/entries/${id}`, { signal: controller.signal });
                 if (!response.ok) {
                     throw new Error(await getErrorMessage(response, 'Couldn\u2019t load this memory.'));
                 }
@@ -184,7 +183,7 @@ export function useEntryEdit({
 
         const fetchCollections = async () => {
             try {
-                const response = await apiFetch(`${API_URL}/chapters`, { signal: controller.signal });
+                const response = await apiFetch(`/chapters`, { signal: controller.signal });
                 if (!response.ok) return;
                 const data = await response.json();
                 if (!mounted) return;
@@ -245,7 +244,7 @@ export function useEntryEdit({
             const formData = new FormData();
             formData.append('file', prepared.file, prepared.file.name);
 
-            const response = await apiFetch(`${API_URL}/files/upload`, {
+            const response = await apiFetch(`/files/upload`, {
                 method: 'POST',
                 body: formData,
             });
@@ -277,7 +276,7 @@ export function useEntryEdit({
 
         if (!id || (normalizedContent.length < MIN_CHARACTERS_FOR_ENTRY_SAVE && !canSaveShortExistingContent && !isShortEntryAllowed)) return;
 
-        const response = await apiFetch(`${API_URL}/entries/${id}`, {
+        const response = await apiFetch(`/entries/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),

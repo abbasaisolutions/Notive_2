@@ -6,26 +6,18 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
-import { API_URL, DEBOUNCE_DELAY } from '@/constants/config';
+import { DEBOUNCE_DELAY } from '@/constants/config';
 import { getMoodEmoji } from '@/constants/moods';
 import { LIFE_AREA_OPTIONS } from '@/constants/life-areas';
+import { MOOD_OPTIONS } from '@/constants/moods';
 import useApi from '@/hooks/use-api';
 import { useToast } from '@/context/toast-context';
 import { FiAlertTriangle, FiFilter, FiSearch, FiX, FiXCircle } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
 
-const MOOD_FILTER_OPTIONS = [
-    { value: 'happy', label: 'Happy' },
-    { value: 'calm', label: 'Calm' },
-    { value: 'tired', label: 'Tired' },
-    { value: 'anxious', label: 'Anxious' },
-    { value: 'sad', label: 'Sad' },
-    { value: 'grateful', label: 'Grateful' },
-    { value: 'frustrated', label: 'Frustrated' },
-    { value: 'thoughtful', label: 'Thoughtful' },
-    { value: 'excited', label: 'Excited' },
-    { value: 'hopeful', label: 'Hopeful' },
-];
+// Reuse the canonical Core-10 mood list — no icons needed for filter pills,
+// emojis already render via getMoodEmoji.
+const MOOD_FILTER_OPTIONS = MOOD_OPTIONS.map(({ value, label }) => ({ value, label }));
 
 interface SearchResult {
     id: string;
@@ -74,11 +66,25 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
         return serialized ? `&${serialized}` : '';
     }, [moodFilters, lifeAreaFilters, dateFromFilter, dateToFilter]);
 
+    const viewAllHref = useMemo(() => {
+        const params = new URLSearchParams();
+        const normalizedQuery = query.trim();
+        if (normalizedQuery) params.set('q', normalizedQuery);
+        if (moodFilters[0]) params.set('mood', moodFilters[0]);
+        if (lifeAreaFilters[0]) params.set('lifeArea', lifeAreaFilters[0]);
+        if (dateFromFilter) params.set('startDate', dateFromFilter);
+        if (dateToFilter) params.set('endDate', dateToFilter);
+        const serialized = params.toString();
+        return serialized ? `/timeline?${serialized}` : '/timeline';
+    }, [dateFromFilter, dateToFilter, lifeAreaFilters, moodFilters, query]);
+
     const toggleMoodFilter = useCallback((value: string) => {
-        setMoodFilters((prev) => prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]);
+        // Keep search filters aligned with Timeline's single-select mood control.
+        setMoodFilters((prev) => prev.includes(value) ? [] : [value]);
     }, []);
     const toggleLifeAreaFilter = useCallback((value: string) => {
-        setLifeAreaFilters((prev) => prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]);
+        // Keep search filters aligned with Timeline's single-select life-area control.
+        setLifeAreaFilters((prev) => prev.includes(value) ? [] : [value]);
     }, []);
     const clearAllFilters = useCallback(() => {
         setMoodFilters([]);
@@ -93,7 +99,7 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
         setIsSearching(true);
         setSearchError(false);
         try {
-            const response = await apiFetch(`${API_URL}/entries/search?q=${encodeURIComponent(searchQuery)}${filterQueryString}`);
+            const response = await apiFetch(`/entries/search?q=${encodeURIComponent(searchQuery)}${filterQueryString}`);
 
             if (response.ok) {
                 const data = await response.json();
@@ -403,7 +409,7 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
                     {results.length >= 20 && (
                         <div className="mt-4 pt-4 border-t border-white/10">
                             <Link
-                                href={`/timeline?q=${encodeURIComponent(query)}`}
+                                href={viewAllHref}
                                 className="block text-center text-primary hover:text-primary/80 transition-colors text-sm font-medium"
                                 onClick={() => { setShowResults(false); onResultClick?.(); }}
                             >

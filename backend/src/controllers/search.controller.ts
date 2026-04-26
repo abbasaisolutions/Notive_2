@@ -305,7 +305,7 @@ export class SearchController {
             }
 
             const limitRaw = parseInt(req.query.limit as string, 10) || 10;
-            const limit = Math.min(Math.max(limitRaw, 1), 25);
+            const limit = Math.min(Math.max(limitRaw, 1), 100);
 
             let topTags = await prisma.$queryRaw<Array<{ tag: string; count: bigint }>>`
                 SELECT

@@ -1721,7 +1721,7 @@ export function ProfileSettingsEditor() {
                                             className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50"
                                         >
                                             {isSavingTab === activeEditableTab && (
-                                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                                <Spinner size="sm" variant="white" />
                                             )}
                                             <span>Replace With Mine</span>
                                         </button>
@@ -1742,7 +1742,7 @@ export function ProfileSettingsEditor() {
                                             className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50"
                                         >
                                             {isSavingTab === activeEditableTab && (
-                                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                                <Spinner size="sm" variant="white" />
                                             )}
                                             <span>Save</span>
                                         </button>

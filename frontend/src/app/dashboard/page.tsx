@@ -12,7 +12,6 @@ import { FiBell, FiBookOpen, FiClock, FiEdit3, FiGrid, FiMic } from 'react-icons
 import useApi from '@/hooks/use-api';
 import { useNotificationCount } from '@/hooks/use-notification-count';
 import { getSavedDraftWordCount } from '@/hooks/use-entry-draft';
-import { API_URL } from '@/constants/config';
 import { getMoodEmoji } from '@/constants/moods';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import {
@@ -502,6 +501,7 @@ export default function DashboardPage() {
     const { stats: gamificationStats, isLoading: gamificationLoading, refreshStats: refreshGamificationStats } = useGamification();
     const { unreadCount: unreadNotificationCount } = useNotificationCount();
     const [entries, setEntries] = useState<Entry[]>([]);
+    const [lifeAreaCounts, setLifeAreaCounts] = useState<Record<string, number>>({});
     const [resurfacedMoments, setResurfacedMoments] = useState<ResurfacedMoment[]>([]);
     const [onThisDayEntries, setOnThisDayEntries] = useState<Array<{
         id: string;
@@ -594,17 +594,19 @@ export default function DashboardPage() {
                 let fetchedEntriesCount = 0;
                 const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
                 const [entriesResponse, resurfacedResponse, onThisDayResponse, clustersResponse, actionResponse] = await Promise.all([
-                    apiFetch(`${API_URL}/entries`, { signal: controller.signal }),
-                    apiFetch(`${API_URL}/entries/resurfaced?limit=3`, { signal: controller.signal }).catch(() => null),
-                    apiFetch(`${API_URL}/entries/resurfaced/on-this-day?timezone=${encodeURIComponent(tz)}`, { signal: controller.signal }).catch(() => null),
-                    apiFetch(`${API_URL}/entries/theme-clusters?limit=4`, { signal: controller.signal }).catch(() => null),
-                    apiFetch(`${API_URL}/ai/action/today`, { signal: controller.signal }).catch(() => null),
+                    apiFetch(`/entries`, { signal: controller.signal }),
+                    apiFetch(`/entries/resurfaced?limit=3`, { signal: controller.signal }).catch(() => null),
+                    apiFetch(`/entries/resurfaced/on-this-day?timezone=${encodeURIComponent(tz)}`, { signal: controller.signal }).catch(() => null),
+                    apiFetch(`/entries/theme-clusters?limit=4`, { signal: controller.signal }).catch(() => null),
+                    apiFetch(`/ai/action/today`, { signal: controller.signal }).catch(() => null),
                 ]);
 
                 if (mounted && entriesResponse.ok) {
                     const data = await entriesResponse.json();
                     setEntries(data.entries);
                     fetchedEntriesCount = Array.isArray(data?.entries) ? data.entries.length : 0;
+                    const counts = (data?.facets?.lifeAreaCounts as Record<string, number> | undefined) || {};
+                    setLifeAreaCounts(counts);
                 }
 
                 if (mounted && resurfacedResponse?.ok) {
@@ -645,7 +647,7 @@ export default function DashboardPage() {
                     setDashboardInsightsLoaded(false);
                     setJournalIntelLoaded(false);
                     scheduleDeferred(120, () => {
-                        apiFetch(`${API_URL}/analytics/insights-bundle`, { signal: controller.signal })
+                        apiFetch(`/analytics/insights-bundle`, { signal: controller.signal })
                             .then(async (r) => {
                                 if (!mounted || !r.ok) return;
                                 const data = await r.json().catch(() => null);
@@ -670,7 +672,7 @@ export default function DashboardPage() {
                 if (entryCount >= 5) {
                     scheduleDeferred(280, () => {
                         setHeroInsightLoading(true);
-                        apiFetch(`${API_URL}/ai/dashboard-insight`, { signal: controller.signal })
+                        apiFetch(`/ai/dashboard-insight`, { signal: controller.signal })
                             .then(async (r) => {
                                 if (!mounted || !r.ok) return;
                                 const data = await r.json().catch(() => null);
@@ -685,7 +687,7 @@ export default function DashboardPage() {
 
                 if (entryCount >= 1) {
                     scheduleDeferred(260, () => {
-                        apiFetch(`${API_URL}/ai/opportunity/overview`, { signal: controller.signal })
+                        apiFetch(`/ai/opportunity/overview`, { signal: controller.signal })
                             .then(async (r) => {
                                 if (!mounted || !r.ok) return;
                                 const data = await r.json().catch(() => null);
@@ -701,7 +703,7 @@ export default function DashboardPage() {
                 // Journal intelligence is already populated by the insights-bundle call above.
                 if (entryCount >= 3) {
                     scheduleDeferred(360, () => {
-                        apiFetch(`${API_URL}/ai/weekly-digest`, { signal: controller.signal })
+                        apiFetch(`/ai/weekly-digest`, { signal: controller.signal })
                             .then(async (r) => {
                                 if (!mounted || !r.ok) return;
                                 const data = await r.json().catch(() => null);
@@ -711,7 +713,7 @@ export default function DashboardPage() {
                     });
 
                     scheduleDeferred(460, () => {
-                        apiFetch(`${API_URL}/ai/support-map?period=month`, { signal: controller.signal })
+                        apiFetch(`/ai/support-map?period=month`, { signal: controller.signal })
                             .then(async (r) => {
                                 if (!mounted || !r.ok) return;
                                 const data = await r.json().catch(() => null);
@@ -728,7 +730,7 @@ export default function DashboardPage() {
                 // Fetch latest device signals (non-blocking)
                 setDeviceSignalsLoaded(false);
                 scheduleDeferred(80, () => {
-                    apiFetch(`${API_URL}/device/latest`, { signal: controller.signal })
+                    apiFetch(`/device/latest`, { signal: controller.signal })
                         .then(async (r) => {
                             if (!mounted || !r.ok) return;
                             const data = await r.json().catch(() => null);
@@ -820,7 +822,7 @@ export default function DashboardPage() {
 
     const handleDailyCheckIn = useCallback(async (mood: string, note: string) => {
         const content = note || `Feeling ${mood} today.`;
-        const res = await apiFetch(`${API_URL}/entries`, {
+        const res = await apiFetch(`/entries`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content, mood, title: 'Quick check-in', tags: ['check-in'], entryMode: 'quick' }),
@@ -1111,7 +1113,7 @@ export default function DashboardPage() {
                     insightTier={insightTier}
                 />
                 <div className="mx-auto max-w-3xl px-4">
-                    <LifeAreaBreakdown />
+                    <LifeAreaBreakdown counts={lifeAreaCounts} />
                 </div>
             </>
         );
@@ -1119,7 +1121,7 @@ export default function DashboardPage() {
 
     const handleWellnessSubmit = (data: WellnessData) => {
         setWellnessSubmitted(true);
-        void apiFetch(`${API_URL}/device/wellness-checkin`, {
+        void apiFetch(`/device/wellness-checkin`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
@@ -1215,7 +1217,7 @@ export default function DashboardPage() {
                         openEntryHref={openDashboardEntryHref}
                         onFeedback={async (reaction) => {
                             if (!heroInsight?.id) return;
-                            await apiFetch(`${API_URL}/ai/insight-feedback`, {
+                            await apiFetch(`/ai/insight-feedback`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ insightId: heroInsight.id, reaction }),

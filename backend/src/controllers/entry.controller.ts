@@ -806,7 +806,8 @@ export const getEntries = async (req: Request, res: Response) => {
 
         // When temporal filters are active (weekday/dayPart), we can't push the
         // filter into SQL without reproducing the full complex WHERE in raw SQL.
-        // Two-step approach: first fetch only lightweight rows (id/createdAt/tags)
+        // Two-step approach: first fetch only lightweight rows
+        // (id/createdAt/tags/lifeArea)
         // matching the complex WHERE, filter by weekday/dayPart in JS, then fetch
         // full entry data for just the paginated IDs. This avoids the previous
         // unbounded fetch of full entry rows (incl. analysis JSONB) for every row
@@ -817,22 +818,14 @@ export const getEntries = async (req: Request, res: Response) => {
         let total: number;
         let filteredTagSource: Array<{ tags: string[] }>;
         let lifeAreas: string[];
+        const lifeAreaCounts: Record<string, number> = {};
 
         if (hasTemporalFilters) {
-            const [lightRows, rawLifeAreaRows] = await Promise.all([
-                prisma.entry.findMany({
-                    where,
-                    orderBy: { createdAt: 'desc' },
-                    select: { id: true, createdAt: true, tags: true },
-                }),
-                prisma.entry.findMany({
-                    where: {
-                        ...facetWhere,
-                        lifeArea: { not: null },
-                    },
-                    select: { lifeArea: true, createdAt: true },
-                }),
-            ]);
+            const lightRows = await prisma.entry.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                select: { id: true, createdAt: true, tags: true, lifeArea: true },
+            });
 
             const filteredLight = filterEntriesByTemporalContext(lightRows, temporalContext);
             total = filteredLight.length;
@@ -850,13 +843,17 @@ export const getEntries = async (req: Request, res: Response) => {
                 .map((id) => byId.get(id))
                 .filter((e): e is Prisma.EntryGetPayload<{ select: typeof entrySelect }> => Boolean(e));
 
-            lifeAreas = [...new Set(
-                filterEntriesByTemporalContext(rawLifeAreaRows, temporalContext)
-                    .map((entry) => entry.lifeArea)
-                    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-            )].sort((a, b) => a.localeCompare(b));
+            for (const row of filteredLight) {
+                const key = (row.lifeArea || '').trim();
+                if (!key) continue;
+                lifeAreaCounts[key] = (lifeAreaCounts[key] || 0) + 1;
+            }
+            lifeAreas = Object.keys(lifeAreaCounts).sort((a, b) => a.localeCompare(b));
         } else {
-            const [rawEntries, rawTotal, rawLifeAreaRows] = await Promise.all([
+            // groupBy yields both the distinct lifeArea values AND their counts in
+            // one round-trip; previously we issued a separate distinct findMany
+            // for the values and another groupBy for the counts.
+            const [rawEntries, rawTotal, lifeAreaCountRows] = await Promise.all([
                 prisma.entry.findMany({
                     where,
                     orderBy: { createdAt: 'desc' },
@@ -865,13 +862,13 @@ export const getEntries = async (req: Request, res: Response) => {
                     select: entrySelect,
                 }),
                 prisma.entry.count({ where }),
-                prisma.entry.findMany({
+                prisma.entry.groupBy({
+                    by: ['lifeArea'],
                     where: {
                         ...facetWhere,
                         lifeArea: { not: null },
                     },
-                    select: { lifeArea: true, createdAt: true },
-                    distinct: ['lifeArea'],
+                    _count: { _all: true },
                 }),
             ]);
 
@@ -879,11 +876,12 @@ export const getEntries = async (req: Request, res: Response) => {
             total = rawTotal;
             filteredTagSource = rawEntries;
 
-            lifeAreas = [...new Set(
-                rawLifeAreaRows
-                    .map((entry) => entry.lifeArea)
-                    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-            )].sort((a, b) => a.localeCompare(b));
+            for (const row of lifeAreaCountRows) {
+                const key = (row.lifeArea || '').trim();
+                if (!key) continue;
+                lifeAreaCounts[key] = row._count._all;
+            }
+            lifeAreas = Object.keys(lifeAreaCounts).sort((a, b) => a.localeCompare(b));
         }
 
         const tagCounts: Record<string, number> = {};
@@ -891,24 +889,6 @@ export const getEntries = async (req: Request, res: Response) => {
             for (const tag of entry.tags) {
                 tagCounts[tag] = (tagCounts[tag] || 0) + 1;
             }
-        }
-
-        // Aggregate per-lifeArea entry counts so the dashboard can render a
-        // "By life area" card that doubles as a navigation axis. We run this
-        // as a separate aggregation to avoid hauling the full row payload.
-        const lifeAreaCountRows = await prisma.entry.groupBy({
-            by: ['lifeArea'],
-            where: {
-                ...facetWhere,
-                lifeArea: { not: null },
-            },
-            _count: { _all: true },
-        });
-        const lifeAreaCounts: Record<string, number> = {};
-        for (const row of lifeAreaCountRows) {
-            const key = (row.lifeArea || '').trim();
-            if (!key) continue;
-            lifeAreaCounts[key] = row._count._all;
         }
 
         return res.status(200).json({

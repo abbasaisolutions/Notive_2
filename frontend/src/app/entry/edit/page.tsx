@@ -16,34 +16,18 @@ import MemoryInsightStrip from '@/components/entry/MemoryInsightStrip';
 import { EntryCategory, LIFE_AREA_OPTIONS, normalizeLifeArea } from '@/constants/life-areas';
 import { ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR } from '@/utils/image-upload';
 import { passthroughImageLoader } from '@/lib/image-loader';
-import type { IconType } from 'react-icons';
-import {
-    FiAlertCircle,
-    FiArrowLeft,
-    FiFrown,
-    FiHelpCircle,
-    FiMoon,
-    FiSmile,
-    FiSun,
-    FiTrendingUp,
-    FiXCircle,
-} from 'react-icons/fi';
+import { FiArrowLeft } from 'react-icons/fi';
+import { EDIT_PAGE_MOOD_OPTIONS } from '@/constants/mood-picker';
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
     ssr: false,
     loading: () => <div className="workspace-soft-panel rounded-2xl h-[400px] animate-pulse" />,
 });
 
-const MOODS = [
-    { icon: FiSmile, label: 'Happy', value: 'happy' },
-    { icon: FiSun, label: 'Calm', value: 'calm' },
-    { icon: FiFrown, label: 'Sad', value: 'sad' },
-    { icon: FiAlertCircle, label: 'Anxious', value: 'anxious' },
-    { icon: FiXCircle, label: 'Frustrated', value: 'frustrated' },
-    { icon: FiHelpCircle, label: 'Thoughtful', value: 'thoughtful' },
-    { icon: FiTrendingUp, label: 'Motivated', value: 'motivated' },
-    { icon: FiMoon, label: 'Tired', value: 'tired' },
-] satisfies Array<{ icon: IconType; label: string; value: string }>;
+// Edit page surfaces a smaller subset than the new-entry picker. The icon
+// assignments live in constants/mood-picker.tsx so both pages stay in sync
+// when mood→icon mappings change.
+const MOODS = EDIT_PAGE_MOOD_OPTIONS;
 
 function EditEntryContent() {
     const searchParams = useSearchParams();

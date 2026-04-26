@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
-import useApi from '@/hooks/use-api';
-import { API_URL } from '@/constants/config';
 
 type LifeAreaCounts = Record<string, number>;
 
@@ -22,39 +20,26 @@ const LIFE_AREA_EMOJI: Record<string, string> = {
     'networking': '🤝',
 };
 
+type LifeAreaBreakdownProps = {
+    /** lifeAreaCounts as returned by GET /entries facets — keyed by canonical area name. */
+    counts: LifeAreaCounts;
+};
+
 /**
  * Surfaces the user's lifeArea entry-count distribution so the dashboard
  * exposes that signal directly (it's persisted at save time but, prior to
- * this card, the user had no way to navigate by it).
+ * this card, the user had no way to navigate by it). Controlled component:
+ * the dashboard already loads /entries on mount, so we receive counts via
+ * props instead of issuing a duplicate request.
  */
-export default function LifeAreaBreakdown() {
-    const { apiFetch } = useApi();
-    const [counts, setCounts] = useState<LifeAreaCounts | null>(null);
-
-    useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            try {
-                const res = await apiFetch(`${API_URL}/entries?limit=1`);
-                if (!res.ok) return;
-                const data = await res.json();
-                const facetCounts = (data?.facets?.lifeAreaCounts as LifeAreaCounts | undefined) || null;
-                if (!cancelled) setCounts(facetCounts);
-            } catch {
-                // silent — non-critical card
-            }
-        })();
-        return () => { cancelled = true; };
-    }, [apiFetch]);
-
+export default function LifeAreaBreakdown({ counts }: LifeAreaBreakdownProps) {
     const ordered = useMemo(() => {
-        if (!counts) return null;
         const entries = Object.entries(counts).filter(([, count]) => count > 0);
         entries.sort((a, b) => b[1] - a[1]);
         return entries;
     }, [counts]);
 
-    if (!ordered || ordered.length === 0) return null;
+    if (ordered.length === 0) return null;
 
     const max = ordered[0]?.[1] || 1;
 

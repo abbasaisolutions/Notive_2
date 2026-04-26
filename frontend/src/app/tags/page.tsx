@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
-import { API_URL } from '@/constants/config';
 import { Spinner, ErrorState } from '@/components/ui';
+import { EmptyState } from '@/components/ui/empty-state';
 import { FiTag } from 'react-icons/fi';
 
 type TagFrequency = { tag: string; count: number };
@@ -23,7 +23,7 @@ export default function TagsIndexPage() {
         let cancelled = false;
         (async () => {
             try {
-                const res = await apiFetch(`${API_URL}/entries/search/suggestions?limit=80`);
+                const res = await apiFetch(`/entries/search/suggestions?limit=80`);
                 if (!res.ok) throw new Error('Failed to load tags');
                 const data = await res.json();
                 const list: TagFrequency[] = Array.isArray(data?.suggestions?.tagFrequencies)
@@ -69,15 +69,11 @@ export default function TagsIndexPage() {
                     <Spinner size="md" />
                 </div>
             ) : sortedFrequencies.length === 0 ? (
-                <div className="workspace-panel rounded-2xl p-10 text-center">
-                    <div className="mx-auto mb-3 inline-flex items-center justify-center rounded-full bg-[rgba(var(--paper-ink),0.06)] p-3 text-ink-muted">
-                        <FiTag size={24} aria-hidden="true" />
-                    </div>
-                    <h2 className="workspace-heading mb-2 text-lg font-semibold">No tags yet</h2>
-                    <p className="text-sm text-ink-secondary">
-                        Tags appear automatically as you write. Add a few entries and check back.
-                    </p>
-                </div>
+                <EmptyState
+                    icon={<FiTag aria-hidden="true" />}
+                    title="No tags yet"
+                    subtitle="Tags appear automatically as you write. Add a few entries and check back."
+                />
             ) : (
                 <div className="workspace-panel rounded-2xl p-6">
                     <div className="flex flex-wrap gap-2">

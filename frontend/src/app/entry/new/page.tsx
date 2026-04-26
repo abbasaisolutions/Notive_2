@@ -13,7 +13,6 @@ import useSpeechRecognition from '@/hooks/use-speech-recognition';
 import useUploadQueue from '@/hooks/use-upload-queue';
 import useTelemetry from '@/hooks/use-telemetry';
 import { MIN_CHARACTERS_FOR_ENTRY_SAVE } from '@/constants/entry-requirements';
-import { API_URL } from '@/constants/config';
 import { DEFAULT_VOICE_LANGUAGE_MODE, VOICE_ALLOW_BROWSER_FALLBACK, VOICE_BACKEND_TRANSCRIPTION_ENABLED } from '@/constants/voice';
 import { useGamification } from '@/context/gamification-context';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -77,41 +76,18 @@ import {
 } from '@/services/device-permissions.service';
 import { captureEntryLocation, type EntryLocation } from '@/services/location-context.service';
 import { captureDeviceSnapshot, type DeviceSnapshot } from '@/services/device-context.service';
-import { hapticSuccess, hapticError, hapticTap, hapticWarning } from '@/services/haptics.service';
+import { hapticSuccess, hapticError, hapticTap } from '@/services/haptics.service';
 import { audioFeedback } from '@/services/audio-feedback.service';
 import { consumePendingSharedImages } from '@/services/shared-content.service';
 import { isNativeCapacitorPlatform } from '@/utils/sso';
 import { getNativeBackHandler, setNativeBackHandler } from '@/utils/native-navigation';
-import type { IconType } from 'react-icons';
-import {
-    FiAlertCircle,
-    FiAlertTriangle,
-    FiFrown,
-    FiHeart,
-    FiHelpCircle,
-    FiMoon,
-    FiSmile,
-    FiStar,
-    FiSun,
-    FiWind,
-    FiZap,
-} from 'react-icons/fi';
+import { FiAlertTriangle, FiZap } from 'react-icons/fi';
+import { MOOD_PICKER_OPTIONS } from '@/constants/mood-picker';
 
 // Core-10 check-in emotions — spans Russell's valence × arousal circumplex
-// and Ekman/Plutchik basic-emotion coverage. Ordered by real-world frequency so
-// the most common picks sit at the start of the horizontal scroll row.
-const MOODS = [
-    { icon: FiSmile, label: 'Happy', value: 'happy' },
-    { icon: FiSun, label: 'Calm', value: 'calm' },
-    { icon: FiMoon, label: 'Tired', value: 'tired' },
-    { icon: FiAlertCircle, label: 'Anxious', value: 'anxious' },
-    { icon: FiFrown, label: 'Sad', value: 'sad' },
-    { icon: FiHeart, label: 'Grateful', value: 'grateful' },
-    { icon: FiWind, label: 'Frustrated', value: 'frustrated' },
-    { icon: FiHelpCircle, label: 'Thoughtful', value: 'thoughtful' },
-    { icon: FiZap, label: 'Excited', value: 'excited' },
-    { icon: FiStar, label: 'Hopeful', value: 'hopeful' },
-] satisfies Array<{ icon: IconType; label: string; value: string }>;
+// and Ekman/Plutchik basic-emotion coverage. Sourced from constants/moods.ts
+// (CHECKIN_MOODS order) and decorated with icons in constants/mood-picker.tsx.
+const MOODS = MOOD_PICKER_OPTIONS;
 
 type DraftConflict = {
     seededText: string;
@@ -404,7 +380,7 @@ function NewEntryPageContent() {
 
             if (offline) {
                 await enqueueUpload({
-                    endpoint: `${API_URL}/files/upload`,
+                    endpoint: `/files/upload`,
                     fieldName: 'file',
                     file,
                     fileName: file.name,
@@ -416,7 +392,7 @@ function NewEntryPageContent() {
             const formData = new FormData();
             formData.append('file', file, file.name);
 
-            const response = await apiFetch(`${API_URL}/files/upload`, {
+            const response = await apiFetch(`/files/upload`, {
                 method: 'POST',
                 body: formData,
             });
@@ -431,7 +407,7 @@ function NewEntryPageContent() {
         } catch (error: any) {
             if (preparedFile && typeof navigator !== 'undefined' && !navigator.onLine) {
                 await enqueueUpload({
-                    endpoint: `${API_URL}/files/upload`,
+                    endpoint: `/files/upload`,
                     fieldName: 'file',
                     file: preparedFile,
                     fileName: preparedFile.name,
@@ -496,7 +472,7 @@ function NewEntryPageContent() {
 
         void (async () => {
             try {
-                const response = await apiFetch(`${API_URL}/notifications/${reminderNotificationId}/read`, {
+                const response = await apiFetch(`/notifications/${reminderNotificationId}/read`, {
                     method: 'PATCH',
                 });
 
@@ -671,7 +647,7 @@ function NewEntryPageContent() {
 
         const fetchCollections = async () => {
             try {
-                const response = await apiFetch(`${API_URL}/chapters`, { signal: controller.signal });
+                const response = await apiFetch(`/chapters`, { signal: controller.signal });
                 if (!response.ok) return;
                 const data = await response.json();
                 if (!mounted) return;
@@ -722,7 +698,7 @@ function NewEntryPageContent() {
             setDuplicateError('');
 
             try {
-                const response = await apiFetch(`${API_URL}/entries/duplicate-check`, {
+                const response = await apiFetch(`/entries/duplicate-check`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -833,10 +809,11 @@ function NewEntryPageContent() {
             const promptText = (eventPromptText || searchParams.get('prompt') || '').trim();
             const sharedText = entrySource === 'share' ? searchParams.get('text') : null;
             const sharedTitle = entrySource === 'share' ? (searchParams.get('title') || '').trim() : '';
+            const moodParam = normalizeMood(searchParams.get('mood'));
             // Widget hand-off: home-screen widget passes ?mood=happy with source=widget.
             // We honor it across all branches (including resumed drafts) because the
             // explicit tap reflects the user's current intent.
-            const widgetMoodParam = entrySource === 'widget' ? normalizeMood(searchParams.get('mood')) : null;
+            const widgetMoodParam = entrySource === 'widget' ? moodParam : null;
             const seededSharedImages = entrySource === 'share' ? await consumePendingSharedImages() : [];
             const audioParam = stagedVoiceCapture?.audioUrl || searchParams.get('audioUrl');
             const seededVoiceCapture = stagedTranscript
@@ -889,6 +866,12 @@ function NewEntryPageContent() {
                     : null);
 
             pendingVoicePreviewRef.current = stagedVoiceCapture?.previewText?.trim() || '';
+            const applySeededMood = (fallbackMood?: string | null) => {
+                const nextMood = widgetMoodParam || fallbackMood || null;
+                if (nextMood) {
+                    setMoodOverride(nextMood);
+                }
+            };
 
             if (hasSeededEntryState) {
                 if (savedDraft?.content?.trim()) {
@@ -896,7 +879,7 @@ function NewEntryPageContent() {
                     setContentHtml(savedDraft.contentHtml || '');
                     setTitleOverride(savedDraft.title || '');
                     setPromptHint(null);
-                    setMoodOverride(widgetMoodParam || savedDraft.mood || null);
+                    applySeededMood(savedDraft.mood);
                     setTagsOverride(savedDraft.tags || []);
                     setAudioUrl(savedDraft.audioUrl || null);
                     const draftCategory = normalizeCategory(savedDraft.category);
@@ -931,9 +914,7 @@ function NewEntryPageContent() {
                 setTagsOverride(gentleReflectionTags);
                 setVoiceCapture(seededVoiceCapture);
                 setVoiceJob(pendingVoiceJob || restoredVoiceJob);
-                if (widgetMoodParam) {
-                    setMoodOverride(widgetMoodParam);
-                }
+                applySeededMood();
                 if (audioParam) {
                     setAudioUrl(audioParam);
                 }
@@ -950,7 +931,7 @@ function NewEntryPageContent() {
                 setContentHtml(savedDraft.contentHtml || '');
                 setTitleOverride(savedDraft.title || '');
                 setPromptHint(null);
-                setMoodOverride(widgetMoodParam || savedDraft.mood || null);
+                applySeededMood(savedDraft.mood);
                 setTagsOverride(savedDraft.tags || []);
                 setAudioUrl(savedDraft.audioUrl || null);
                 const draftCategory = normalizeCategory(savedDraft.category);
@@ -980,7 +961,6 @@ function NewEntryPageContent() {
                 }
             }
 
-            const moodParam = normalizeMood(searchParams.get('mood'));
             if (moodParam) {
                 setMoodOverride(moodParam);
             }
@@ -1597,14 +1577,10 @@ function NewEntryPageContent() {
 
         const saveCharacterCount = normalizedContent.length;
         if (!isQuickMode && saveCharacterCount < MIN_CHARACTERS_FOR_ENTRY_SAVE) {
+            // Save buttons disable below this threshold (see meetsMinChars), so
+            // a manual save can only land here on auto-save. Persist the draft
+            // snapshot silently and bail.
             persistDraftSnapshot(true);
-            if (!isAutoSave) {
-                hapticWarning();
-                toast.info(
-                    'Write a little more before saving',
-                    `Memories need at least ${MIN_CHARACTERS_FOR_ENTRY_SAVE} characters to save (${saveCharacterCount}/${MIN_CHARACTERS_FOR_ENTRY_SAVE}).`,
-                );
-            }
             return;
         }
 
@@ -1627,7 +1603,7 @@ function NewEntryPageContent() {
 
         try {
             const method = entryId ? 'PUT' : 'POST';
-            const url = entryId ? `${API_URL}/entries/${entryId}` : `${API_URL}/entries`;
+            const url = entryId ? `/entries/${entryId}` : `/entries`;
 
             const response = await apiFetch(url, {
                 method,

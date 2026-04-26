@@ -11,6 +11,7 @@ import {
     CropArea,
 } from '@/utils/image-upload';
 import { passthroughImageLoader } from '@/lib/image-loader';
+import { Spinner } from '@/components/ui';
 import CropModal from './CropModal';
 
 type AvatarUploadProps = {
@@ -149,7 +150,7 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
                         aria-label="Upload profile photo"
                     >
                         {isUploading ? (
-                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            <Spinner size="sm" variant="white" />
                         ) : (
                             <FiCamera size={14} />
                         )}

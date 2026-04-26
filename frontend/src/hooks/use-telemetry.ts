@@ -21,7 +21,7 @@ export function useTelemetry() {
     const trackEvent = useCallback(async (input: TrackTelemetryInput) => {
         try {
             const deviceInfo = captureDeviceSnapshotLite();
-            await apiFetch(`${API_URL}/analytics/events`, {
+            await apiFetch(`/analytics/events`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -86,6 +86,8 @@ const notificationsNavItem: NavItem = { href: '/notifications', label: 'Notifica
 const guideNavItem: NavItem = { href: '/chat', label: NOTIVE_VOICE.surfaces.reflectionCoach, shortLabel: 'Ask', icon: icons.guide, matchPrefixes: ['/chat'] };
 const groupsNavItem: NavItem = { href: '/chapters', label: 'Groups', shortLabel: 'Groups', icon: icons.chapters, matchPrefixes: ['/chapters'] };
 const importsNavItem: NavItem = { href: '/import', label: NOTIVE_VOICE.surfaces.memoryInbox, shortLabel: 'Bring In', icon: icons.imports, matchPrefixes: ['/import'] };
+// Naming alias note: the user-facing "Stories" surface lives at /portfolio and
+// is labeled from NOTIVE_VOICE.surfaces.outcomeStudio.
 const storiesNavItem: NavItem = { href: '/portfolio', label: NOTIVE_VOICE.surfaces.outcomeStudio, shortLabel: 'Stories', icon: icons.stories, matchPrefixes: ['/portfolio'] };
 const profileNavItem: NavItem = { href: '/profile', label: NOTIVE_VOICE.surfaces.profileStudio, shortLabel: 'Me', icon: icons.profile, matchPrefixes: ['/profile'] };
 const adminNavItem: NavItem = { href: '/admin', label: 'Admin', shortLabel: 'Admin', icon: icons.admin, matchPrefixes: ['/admin'], allowedRoles: ['ADMIN', 'SUPERADMIN'] };

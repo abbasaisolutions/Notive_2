@@ -76,7 +76,7 @@ function ChapterDetailContent() {
 
         const fetchChapterEntries = async () => {
             try {
-                const response = await apiFetch(`${API_URL}/chapters/${id}/entries`, {
+                const response = await apiFetch(`/chapters/${id}/entries`, {
                     signal: controller.signal,
                 });
 

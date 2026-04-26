@@ -93,7 +93,7 @@ export default function useEntryAnalysis({
         setAiError('');
 
         try {
-            const url = entryId ? `${API_URL}/ai/analyze/${entryId}` : `${API_URL}/ai/analyze`;
+            const url = entryId ? `/ai/analyze/${entryId}` : `/ai/analyze`;
             const response = await apiFetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

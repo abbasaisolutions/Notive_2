@@ -86,6 +86,10 @@ const PENDING_PUSH_REGISTRATION_KEY = 'notive_pending_push_registration_v1';
 const PUSH_REGISTRATION_BASE_DELAY_MS = 5_000;
 const PUSH_REGISTRATION_MAX_DELAY_MS = 5 * 60_000;
 const PUSH_REGISTRATION_MAX_RETRIES = 6;
+// Keep this in sync with `frontend/capacitor.config.ts`.
+// Android already shows a native foreground alert when
+// `PushNotifications.presentationOptions` includes `alert`.
+const ANDROID_USES_NATIVE_FOREGROUND_ALERT = true;
 const SOCIAL_TOAST_TYPES = new Set([
     'social',
     'shared_memory',
@@ -264,11 +268,19 @@ function hasForegroundNotificationContent(notification: any): boolean {
 }
 
 function shouldUseNativeForegroundAlert(notification: any): boolean {
-    return getNativePlatform() === 'ios' && hasForegroundNotificationContent(notification);
+    if (!hasForegroundNotificationContent(notification)) {
+        return false;
+    }
+
+    const platform = getNativePlatform();
+    return platform === 'ios'
+        || (platform === 'android' && ANDROID_USES_NATIVE_FOREGROUND_ALERT);
 }
 
 function shouldShowAndroidForegroundBanner(notification: any): boolean {
-    return getNativePlatform() === 'android' && hasForegroundNotificationContent(notification);
+    return getNativePlatform() === 'android'
+        && hasForegroundNotificationContent(notification)
+        && !shouldUseNativeForegroundAlert(notification);
 }
 
 function shouldResetAndroidChannelSound(existingChannel: { sound?: unknown } | undefined): boolean {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { FiAlertTriangle, FiBell, FiBellOff, FiCheck } from 'react-icons/fi';
 import { useApi } from '@/hooks/use-api';
 import { useToast } from '@/context/toast-context';
+import { Spinner } from '@/components/ui';
 import DeviceSoundToggle from '@/components/profile/edit/DeviceSoundToggle';
 import CalendarToggle from '@/components/profile/edit/CalendarToggle';
 
@@ -108,7 +109,7 @@ export default function RemindersSection() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-16">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <Spinner size="md" />
             </div>
         );
     }
@@ -230,7 +231,7 @@ export default function RemindersSection() {
             <div className="flex items-center gap-2 min-h-[20px]">
                 {isSaving && (
                     <span className="text-xs text-muted flex items-center gap-1.5">
-                        <span className="h-3.5 w-3.5 animate-spin rounded-full border border-muted border-t-transparent" />
+                        <Spinner size="sm" className="text-muted" />
                         Saving…
                     </span>
                 )}

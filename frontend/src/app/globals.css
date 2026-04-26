@@ -562,7 +562,8 @@
     line-height: 1.45;
   }
 
-  .workspace-button-primary {
+  .workspace-button-primary,
+  .primary-cta {
     background: linear-gradient(135deg, rgb(var(--brand)), rgb(var(--brand-strong)));
     border: 1px solid rgba(var(--paper-border), 0.84);
     color: rgb(var(--text-on-accent));
@@ -696,14 +697,9 @@
     padding: 0.45rem 0.85rem;
   }
 
-  .primary-cta {
-    background: linear-gradient(135deg, rgb(var(--brand)), rgb(var(--brand-strong)));
-    color: rgb(var(--text-on-accent));
-    border: 1px solid rgba(var(--paper-border), 0.84);
-    box-shadow: 0 12px 28px rgba(138, 154, 111, 0.22);
-  }
-
-  .primary-cta:hover {
+  /* .primary-cta is aliased above on the same selector list as .workspace-button-primary */
+  .primary-cta:hover,
+  .workspace-button-primary:hover {
     filter: brightness(1.04);
   }
 

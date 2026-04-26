@@ -113,10 +113,10 @@ function EntryDetailContent() {
                     setEntryError(null);
                 }
                 const [entryResponse, relatedResponse] = await Promise.all([
-                    apiFetch(`${API_URL}/entries/${id}`, {
+                    apiFetch(`/entries/${id}`, {
                         signal: controller.signal,
                     }),
-                    apiFetch(`${API_URL}/entries/${id}/related?limit=4`, {
+                    apiFetch(`/entries/${id}/related?limit=4`, {
                         signal: controller.signal,
                     }).catch(() => null),
                 ]);
@@ -164,7 +164,7 @@ function EntryDetailContent() {
 
         const fetchEntryAction = async () => {
             try {
-                const response = await apiFetch(`${API_URL}/ai/action/preview`, {
+                const response = await apiFetch(`/ai/action/preview`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -196,7 +196,7 @@ function EntryDetailContent() {
         setActionError(null);
         setIsSharing(true);
         try {
-            const response = await apiFetch(`${API_URL}/share/entry/${id}`, {
+            const response = await apiFetch(`/share/entry/${id}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -226,7 +226,7 @@ function EntryDetailContent() {
         setIsDeleting(true);
 
         try {
-            const response = await apiFetch(`${API_URL}/entries/${id}`, {
+            const response = await apiFetch(`/entries/${id}`, {
                 method: 'DELETE',
             });
 
