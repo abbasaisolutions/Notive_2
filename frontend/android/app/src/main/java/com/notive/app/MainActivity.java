@@ -15,6 +15,7 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(NotificationSettingsPlugin.class);
+        registerPlugin(SharedContentPlugin.class);
         rewriteShareIntent(getIntent());
         super.onCreate(savedInstanceState);
     }
@@ -44,6 +45,8 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
                 .scheme("com.notive.app")
                 .authority("quick-entry")
                 .appendQueryParameter("source", "share");
+
+        PendingSharedContentStore.stageFromIntent(this, intent);
 
         CharSequence sharedText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
         if (!TextUtils.isEmpty(sharedText)) {

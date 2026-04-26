@@ -120,10 +120,10 @@ export default function FloatingRecordBar({ audioLevel, elapsed, transcriptText,
                                 </p>
                             )}
                             {previewWords.length > 0 && (
-                                <p className="mt-1 type-body-sm italic leading-relaxed text-muted">
+                                <p className="mt-1 type-body-sm italic leading-relaxed text-default">
                                     {previewWords.map((word, i) => (
                                         <span
-                                            key={`${word}-${i}`}
+                                            key={i}
                                             className="word-appear-in mr-[0.25em]"
                                             style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
                                         >

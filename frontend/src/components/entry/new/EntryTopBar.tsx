@@ -24,6 +24,8 @@ type EntryTopBarProps = {
     isBackgroundRefining?: boolean;
     onFinishLater?: () => void;
     onOpenFullStudio?: () => void;
+    /** Optional inline hint surfaced when the user can't yet save (e.g. below 60-char minimum). */
+    saveHint?: string | null;
 };
 
 export default function EntryTopBar({
@@ -46,6 +48,7 @@ export default function EntryTopBar({
     isBackgroundRefining = false,
     onFinishLater,
     onOpenFullStudio,
+    saveHint = null,
 }: EntryTopBarProps) {
     const saveStatus = isSaving
         ? 'Saving'
@@ -155,10 +158,21 @@ export default function EntryTopBar({
                         <button
                             onClick={onSave}
                             disabled={!canSave}
+                            title={saveHint || undefined}
+                            aria-describedby={saveHint ? 'entry-top-bar-save-hint' : undefined}
                             className="px-3 py-1.5 rounded-full primary-cta text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
                             {isSaving ? '...' : 'Save'}
                         </button>
+                        {saveHint && (
+                            <span
+                                id="entry-top-bar-save-hint"
+                                aria-live="polite"
+                                className="ml-1 hidden text-[0.65rem] text-ink-muted md:inline"
+                            >
+                                {saveHint}
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>

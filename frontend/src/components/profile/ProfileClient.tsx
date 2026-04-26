@@ -382,15 +382,17 @@ export default function ProfileClient() {
                                         </p>
                                     </div>
                                 </Link>
-                                <Link href="/debug/push" className="workspace-muted-panel flex items-start gap-4 rounded-2xl p-4 transition-colors hover:opacity-90">
-                                    <FiBell size={18} className="text-ink-muted mt-0.5 shrink-0" aria-hidden="true" />
-                                    <div>
-                                        <p className="workspace-heading text-sm font-semibold">Push Debug</p>
-                                        <p className="mt-1 text-sm leading-6 text-ink-secondary">
-                                            Check permission state, token registration, and Android banner behavior.
-                                        </p>
-                                    </div>
-                                </Link>
+                                {isAdminUser && (
+                                    <Link href="/debug/push" className="workspace-muted-panel flex items-start gap-4 rounded-2xl p-4 transition-colors hover:opacity-90">
+                                        <FiBell size={18} className="text-ink-muted mt-0.5 shrink-0" aria-hidden="true" />
+                                        <div>
+                                            <p className="workspace-heading text-sm font-semibold">Push Debug</p>
+                                            <p className="mt-1 text-sm leading-6 text-ink-secondary">
+                                                Check permission state, token registration, and Android banner behavior.
+                                            </p>
+                                        </div>
+                                    </Link>
+                                )}
                             </div>
                         </section>
 
@@ -560,12 +562,14 @@ export default function ProfileClient() {
                                         >
                                             Notification schedule
                                         </Link>
-                                        <Link
-                                            href="/debug/push"
-                                            className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
-                                        >
-                                            Push debug
-                                        </Link>
+                                        {isAdminUser && (
+                                            <Link
+                                                href="/debug/push"
+                                                className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+                                            >
+                                                Push debug
+                                            </Link>
+                                        )}
                                     </div>
                                 </div>
                             </div>

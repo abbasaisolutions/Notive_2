@@ -231,9 +231,15 @@ export default function TiptapEditor({
     // Sync with external content changes (e.g., from voice input)
     useEffect(() => {
         if (editor && content && content !== contentRef.current) {
+            const wasFocused = editor.isFocused;
             isExternalUpdate.current = true;
             contentRef.current = content;
             editor.commands.setContent(content);
+            // setContent resets the ProseMirror selection; restore cursor to end
+            // so the user can keep typing immediately after voice text lands.
+            if (wasFocused) {
+                editor.commands.focus('end');
+            }
         }
     }, [editor, content]);
 

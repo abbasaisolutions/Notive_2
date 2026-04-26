@@ -24,7 +24,8 @@ allprojects {
         mavenCentral()
     }
     configurations.configureEach {
-        resolutionStrategy.force 'androidx.browser:browser:1.4.0'
+        // Keep Custom Tabs aligned with the social-login plugin instead of downgrading it.
+        resolutionStrategy.force "androidx.browser:browser:$androidxBrowserVersion"
     }
 }
 

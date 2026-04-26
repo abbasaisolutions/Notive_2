@@ -1,8 +1,8 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useCallback } from 'react';
 import Image from 'next/image';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/form-elements';
@@ -12,6 +12,7 @@ import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useApi from '@/hooks/use-api';
 import useContextNavigation from '@/hooks/use-context-navigation';
 import useEntryEdit from '@/hooks/use-entry-edit';
+import MemoryInsightStrip from '@/components/entry/MemoryInsightStrip';
 import { EntryCategory, LIFE_AREA_OPTIONS, normalizeLifeArea } from '@/constants/life-areas';
 import { ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR } from '@/utils/image-upload';
 import { passthroughImageLoader } from '@/lib/image-loader';
@@ -45,13 +46,13 @@ const MOODS = [
 ] satisfies Array<{ icon: IconType; label: string; value: string }>;
 
 function EditEntryContent() {
-    const router = useRouter();
     const searchParams = useSearchParams();
     const id = searchParams.get('id');
     const fallbackHref = id ? `/entry/view?id=${id}` : '/timeline';
     const { backHref, backLabel, navigateBack } = useContextNavigation(fallbackHref, id ? 'entry details' : 'timeline');
     const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { apiFetch } = useApi();
+    const stayOnEditAfterSave = useCallback(() => {}, []);
 
     const {
         title,
@@ -71,6 +72,13 @@ function EditEntryContent() {
         setTagInput,
         coverImage,
         setCoverImage,
+        analysisLine,
+        takeawayLine,
+        notiveInsights,
+        topEmotions,
+        depthLabel,
+        growthRatio,
+        storySignal,
         isUploading,
         isSaving,
         isLoading,
@@ -88,7 +96,7 @@ function EditEntryContent() {
         userReady: !!user,
         apiFetch,
         navigateToFallback: navigateBack,
-        navigateAfterSave: () => router.push(backHref),
+        navigateAfterSave: stayOnEditAfterSave,
     });
 
     if (authLoading || isLoading) {
@@ -137,8 +145,17 @@ function EditEntryContent() {
                     </button>
                     <div className="flex items-center gap-3">
                         <span className="text-xs text-ink-muted">
-                            {isAutoSaving ? 'Saving…' : hasUnsavedChanges ? 'Unsaved' : lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                            {isAutoSaving
+                                ? 'Saving...'
+                                : hasUnsavedChanges
+                                    ? 'Unsaved changes'
+                                    : lastSaved
+                                        ? `Saved ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                        : 'Ready to edit'}
                         </span>
+                        <Button variant="secondary" onClick={navigateBack}>
+                            Done
+                        </Button>
                         <Button onClick={handleSave} isLoading={isSaving}>
                             Save
                         </Button>
@@ -164,7 +181,20 @@ function EditEntryContent() {
                 <TiptapEditor
                     initialContent={contentHtml}
                     onChange={handleEditorChange}
-                    placeholder="What's on your mind today?"
+                    placeholder="Keep shaping this memory..."
+                />
+
+                <MemoryInsightStrip
+                    className="mt-5"
+                    label="Keep this memory pointed somewhere useful"
+                    description="These signals stay in view while you edit so you can strengthen the memory without losing what mattered."
+                    analysisLine={analysisLine}
+                    takeawayLine={takeawayLine}
+                    notiveInsights={notiveInsights}
+                    topEmotions={topEmotions}
+                    depthLabel={depthLabel}
+                    growthRatio={growthRatio}
+                    storySignal={storySignal}
                 />
 
                 <AppPanel className="mt-5 space-y-5" tone="soft">

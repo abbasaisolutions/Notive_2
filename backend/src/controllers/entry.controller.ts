@@ -29,6 +29,7 @@ import {
     normalizeEntryMood,
     normalizeEntrySearch,
     normalizeEntrySource,
+    normalizeEntryTag,
     normalizeEntryTheme,
     normalizeEntryWeekday,
     normalizeLifeArea,
@@ -750,6 +751,7 @@ export const getEntries = async (req: Request, res: Response) => {
         const source = normalizeEntrySource(req.query.source);
         const lifeArea = normalizeLifeArea(req.query.lifeArea);
         const theme = normalizeEntryTheme(req.query.theme);
+        const tag = normalizeEntryTag(req.query.tag);
         const mood = normalizeEntryMood(req.query.mood);
         const date = normalizeEntryDateKey(req.query.date);
         const { startDate, endDate } = normalizeEntryDateRange({
@@ -765,6 +767,7 @@ export const getEntries = async (req: Request, res: Response) => {
             source,
             lifeArea,
             theme,
+            tag,
             mood,
             date,
             startDate,
@@ -775,6 +778,7 @@ export const getEntries = async (req: Request, res: Response) => {
             search,
             source,
             theme,
+            tag,
             mood,
             date,
             startDate,
@@ -889,6 +893,24 @@ export const getEntries = async (req: Request, res: Response) => {
             }
         }
 
+        // Aggregate per-lifeArea entry counts so the dashboard can render a
+        // "By life area" card that doubles as a navigation axis. We run this
+        // as a separate aggregation to avoid hauling the full row payload.
+        const lifeAreaCountRows = await prisma.entry.groupBy({
+            by: ['lifeArea'],
+            where: {
+                ...facetWhere,
+                lifeArea: { not: null },
+            },
+            _count: { _all: true },
+        });
+        const lifeAreaCounts: Record<string, number> = {};
+        for (const row of lifeAreaCountRows) {
+            const key = (row.lifeArea || '').trim();
+            if (!key) continue;
+            lifeAreaCounts[key] = row._count._all;
+        }
+
         return res.status(200).json({
             entries: entries.map((entry) => attachEntryStorySignal(entry)),
             pagination: {
@@ -899,6 +921,7 @@ export const getEntries = async (req: Request, res: Response) => {
             },
             facets: {
                 lifeAreas,
+                lifeAreaCounts,
                 tagCounts,
             },
             filters: {
@@ -906,6 +929,7 @@ export const getEntries = async (req: Request, res: Response) => {
                 source,
                 lifeArea,
                 theme,
+                tag,
                 mood,
                 date,
                 startDate,

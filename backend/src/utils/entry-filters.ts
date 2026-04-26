@@ -95,6 +95,12 @@ export const normalizeEntryTheme = (value: unknown): string | null => {
     return normalized ? normalized.slice(0, 80) : null;
 };
 
+export const normalizeEntryTag = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = normalizeTag(value);
+    return normalized || null;
+};
+
 export const normalizeEntryMood = (value: unknown): string | null => {
     if (typeof value !== 'string') return null;
     const normalized = normalizeMood(value);
@@ -178,6 +184,7 @@ export const buildEntryListWhere = (input: {
     source?: 'NOTIVE' | 'INSTAGRAM' | 'FACEBOOK' | null;
     lifeArea?: string | null;
     theme?: string | null;
+    tag?: string | null;
     mood?: string | null;
     date?: string | null;
     startDate?: string | null;
@@ -189,6 +196,7 @@ export const buildEntryListWhere = (input: {
         source = null,
         lifeArea = null,
         theme = null,
+        tag = null,
         mood = null,
         date = null,
         startDate = null,
@@ -196,6 +204,7 @@ export const buildEntryListWhere = (input: {
     } = input;
     const normalizedSearch = normalizeEntrySearch(search);
     const normalizedTheme = normalizeEntryTheme(theme);
+    const normalizedTag = normalizeEntryTag(tag);
     const normalizedMood = normalizeEntryMood(mood);
     const normalizedDate = normalizeEntryDateKey(date);
     const normalizedDateRange = normalizeEntryDateRange({ startDate, endDate });
@@ -231,6 +240,14 @@ export const buildEntryListWhere = (input: {
                 { title: { contains: normalizedTheme, mode: 'insensitive' } },
                 { content: { contains: normalizedTheme, mode: 'insensitive' } },
             ],
+        });
+    }
+
+    if (normalizedTag) {
+        andFilters.push({
+            tags: {
+                has: normalizedTag,
+            },
         });
     }
 

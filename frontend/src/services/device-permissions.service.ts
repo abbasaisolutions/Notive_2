@@ -37,6 +37,38 @@ const getRuntimePermissionPromptKey = (
     userId: string | null | undefined,
 ) => `notive_runtime_permission_prompt_v${RUNTIME_PERMISSION_PROMPT_VERSION}_${kind}_${userId || 'anon'}`;
 
+function normalizeNativeNotificationPermissionState(
+    value: 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale',
+): PermissionStatus {
+    if (value === 'granted' || value === 'denied' || value === 'prompt-with-rationale') {
+        return value;
+    }
+
+    return 'prompt';
+}
+
+async function checkNativeNotificationDisplayPermission(): Promise<PermissionStatus> {
+    const [{ PushNotifications }, { LocalNotifications }] = await Promise.all([
+        import('@capacitor/push-notifications'),
+        import('@capacitor/local-notifications'),
+    ]);
+
+    const pushResult = await PushNotifications.checkPermissions();
+    const pushState = normalizeNativeNotificationPermissionState(pushResult.receive);
+    if (pushState !== 'granted') {
+        return pushState;
+    }
+
+    const localResult = await LocalNotifications.checkPermissions();
+    const localState = normalizeNativeNotificationPermissionState(localResult.display);
+    if (localState !== 'granted') {
+        return localState;
+    }
+
+    const enabledResult = await LocalNotifications.areEnabled();
+    return enabledResult.value ? 'granted' : 'denied';
+}
+
 /* ─── Notification ──────────────────────────────────── */
 
 async function checkNotificationPermission(): Promise<PermissionStatus> {
@@ -48,12 +80,7 @@ async function checkNotificationPermission(): Promise<PermissionStatus> {
         return 'prompt';
     }
     try {
-        const { PushNotifications } = await import('@capacitor/push-notifications');
-        const result = await PushNotifications.checkPermissions();
-        if (result.receive === 'granted') return 'granted';
-        if (result.receive === 'denied') return 'denied';
-        if (result.receive === 'prompt-with-rationale') return 'prompt-with-rationale';
-        return 'prompt';
+        return await checkNativeNotificationDisplayPermission();
     } catch {
         return 'unavailable';
     }
@@ -68,20 +95,40 @@ async function requestNotificationPermission(): Promise<PermissionStatus> {
         return 'prompt';
     }
     try {
-        const { PushNotifications } = await import('@capacitor/push-notifications');
+        const [{ PushNotifications }, { LocalNotifications }] = await Promise.all([
+            import('@capacitor/push-notifications'),
+            import('@capacitor/local-notifications'),
+        ]);
         // Fast-path: if OS already granted, skip the prompt entirely.
-        const check = await PushNotifications.checkPermissions();
-        if (check.receive === 'granted') {
+        const currentState = await checkNativeNotificationDisplayPermission();
+        if (currentState === 'granted') {
             await PushNotifications.register();
             return 'granted';
         }
-        const result = await PushNotifications.requestPermissions();
-        if (result.receive === 'granted') {
+
+        const pushResult = await PushNotifications.requestPermissions();
+        const pushState = normalizeNativeNotificationPermissionState(pushResult.receive);
+        if (pushState !== 'granted') {
+            return pushState;
+        }
+
+        const localResult = await LocalNotifications.requestPermissions();
+        const localState = normalizeNativeNotificationPermissionState(localResult.display);
+        if (localState !== 'granted') {
+            return localState;
+        }
+
+        const enabledResult = await LocalNotifications.areEnabled();
+        if (!enabledResult.value) {
+            return 'denied';
+        }
+
+        if (pushState === 'granted' && localState === 'granted') {
             await PushNotifications.register();
             return 'granted';
         }
-        if (result.receive === 'prompt-with-rationale') return 'prompt-with-rationale';
-        return 'denied';
+
+        return 'prompt';
     } catch {
         return 'unavailable';
     }

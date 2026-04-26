@@ -77,6 +77,7 @@ const DailyCheckIn = dynamic(() => import('@/components/dashboard/DailyCheckIn')
 const WellnessCheckin = dynamic(() => import('@/components/dashboard/WellnessCheckin'));
 import type { WellnessData } from '@/components/dashboard/WellnessCheckin';
 const JournalIntelligenceSection = dynamic(() => import('@/components/dashboard/JournalIntelligenceSection'));
+const LifeAreaBreakdown = dynamic(() => import('@/components/dashboard/LifeAreaBreakdown'), { ssr: false });
 const TagCloud = dynamic(() => import('@/components/insights/TagCloud'));
 import { Surface } from '@/components/ui/surface';
 const DashboardNotebookView = dynamic(() => import('@/components/dashboard/DashboardNotebookView'), {
@@ -1109,6 +1110,9 @@ export default function DashboardPage() {
                     heroInsightLoading={heroInsightLoading}
                     insightTier={insightTier}
                 />
+                <div className="mx-auto max-w-3xl px-4">
+                    <LifeAreaBreakdown />
+                </div>
             </>
         );
     }

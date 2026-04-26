@@ -105,7 +105,8 @@ export default function EntryEditorCard({
     const hasContent = content.trim().length > 0;
     const committedTranscript = transcriptText.trim();
     const interimWords = interimText.trim().split(/\s+/).filter(Boolean);
-    const showLiveTranscript = isRecording || isVoiceProcessing || Boolean(voiceStatusMessage) || interimWords.length > 0;
+    // Don't show inline panel during recording — FloatingRecordBar covers that.
+    const showLiveTranscript = isVoiceProcessing || Boolean(voiceStatusMessage) || (!isRecording && interimWords.length > 0);
     const utilityPanelClass = 'workspace-soft-panel';
     const mutedTextClass = 'text-muted';
     const bodyTextClass = 'text-default';
@@ -183,10 +184,10 @@ export default function EntryEditorCard({
                                     </p>
                                 )}
                                 {interimWords.length > 0 && (
-                                    <p className="mt-2 type-body-sm font-serif italic leading-relaxed text-muted">
+                                    <p className="mt-2 type-body-sm font-serif italic leading-relaxed text-default">
                                         {interimWords.map((word, i) => (
                                             <span
-                                                key={`${word}-${i}`}
+                                                key={i}
                                                 className="word-appear-in mr-[0.25em]"
                                                 style={{ animationDelay: `${Math.min(i * 40, 500)}ms` }}
                                             >

@@ -2,7 +2,6 @@
 
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { motion, AnimatePresence } from 'framer-motion';
 import useApi from '@/hooks/use-api';
 import { useZenMode } from '@/hooks/use-zen-mode';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
@@ -38,7 +37,7 @@ import { refreshNotificationBadge } from '@/hooks/use-notification-count';
 import { Spinner } from '@/components/ui';
 const FirstEntryHandoff = dynamic(() => import('@/components/entry/FirstEntryHandoff'), { ssr: false });
 const PostSaveSafetyDialog = dynamic(() => import('@/components/safety/PostSaveSafetyDialog'), { ssr: false });
-const CaptureSealOverlay = dynamic(() => import('@/components/entry/CaptureSealOverlay'), { ssr: false });
+import EntrySaveCompletionSheet from '@/components/entry/EntrySaveCompletionSheet';
 import { isSafetyAlertsEnabled } from '@/utils/safety-alerts';
 import { prepareImageForUpload } from '@/utils/image-upload';
 import {
@@ -80,6 +79,7 @@ import { captureEntryLocation, type EntryLocation } from '@/services/location-co
 import { captureDeviceSnapshot, type DeviceSnapshot } from '@/services/device-context.service';
 import { hapticSuccess, hapticError, hapticTap, hapticWarning } from '@/services/haptics.service';
 import { audioFeedback } from '@/services/audio-feedback.service';
+import { consumePendingSharedImages } from '@/services/shared-content.service';
 import { isNativeCapacitorPlatform } from '@/utils/sso';
 import { getNativeBackHandler, setNativeBackHandler } from '@/utils/native-navigation';
 import type { IconType } from 'react-icons';
@@ -115,9 +115,29 @@ const MOODS = [
 
 type DraftConflict = {
     seededText: string;
+    seededTitle: string;
+    seededPromptHint: string | null;
+    seededSharedImages: File[];
     seededAudioUrl: string | null;
     seededTags: string[];
     seededVoiceCapture: VoiceCaptureState | null;
+};
+
+type SaveCompletionSummary = {
+    people: string[];
+    topics: string[];
+    growthFlag: boolean;
+    phrase?: string;
+    lesson?: string;
+    strengths?: string[];
+    goals?: string[];
+};
+
+type SaveCompletionState = {
+    entryId: string;
+    title: string | null;
+    summary: SaveCompletionSummary | null;
+    isGentleReflection: boolean;
 };
 
 type CollectionOption = {
@@ -309,31 +329,21 @@ function NewEntryPageContent() {
     const [pendingSync, setPendingSync] = useState(false);
     const [polishNotice, setPolishNotice] = useState<string | null>(null);
     const [draftConflict, setDraftConflict] = useState<DraftConflict | null>(null);
+    const [saveCompletion, setSaveCompletion] = useState<SaveCompletionState | null>(null);
+    const [hasShownSaveCompletion, setHasShownSaveCompletion] = useState(false);
     const [entryLocation, setEntryLocation] = useState<EntryLocation | null>(null);
     const [deviceSnapshot, setDeviceSnapshot] = useState<DeviceSnapshot | null>(null);
     const [audioLevel, setAudioLevel] = useState(0);
     const [recordingElapsed, setRecordingElapsed] = useState(0);
     const [isBackgroundRefining, setIsBackgroundRefining] = useState(false);
-    const [mirrorData, setMirrorData] = useState<{
-        people: string[];
-        topics: string[];
-        growthFlag: boolean;
-        phrase?: string;
-        mood?: string;
-        lesson?: string;
-        strengths?: string[];
-        goals?: string[];
-    } | null>(null);
     const [safetyPrompt, setSafetyPrompt] = useState<{
         risk: import('@/components/action/types').StudentRisk;
         safetyCard: import('@/components/action/types').StudentSafetyCard | null;
         onContinue: () => void;
     } | null>(null);
     const [showFirstEntryHandoff, setShowFirstEntryHandoff] = useState(entrySource === 'onboarding');
-    const [showCaptureSeal, setShowCaptureSeal] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const mirrorTimerRef = useRef<NodeJS.Timeout>();
     const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
     const draftPersistTimeoutRef = useRef<NodeJS.Timeout>();
     const polishNoticeTimeoutRef = useRef<NodeJS.Timeout>();
@@ -382,6 +392,101 @@ function NewEntryPageContent() {
     useEffect(() => {
         contentRef.current = content;
     }, [content]);
+
+    const uploadEntryImageFile = useCallback(async (sourceFile: File): Promise<'uploaded' | 'queued'> => {
+        let preparedFile: File | null = null;
+
+        try {
+            const prepared = await prepareImageForUpload(sourceFile, 'entry');
+            const file = prepared.file;
+            preparedFile = file;
+            const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+            if (offline) {
+                await enqueueUpload({
+                    endpoint: `${API_URL}/files/upload`,
+                    fieldName: 'file',
+                    file,
+                    fileName: file.name,
+                    fileType: file.type,
+                });
+                return 'queued';
+            }
+
+            const formData = new FormData();
+            formData.append('file', file, file.name);
+
+            const response = await apiFetch(`${API_URL}/files/upload`, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'That image did not upload. Try again in a moment.');
+            }
+
+            setContent((prev) => `${prev}\n![Image](${data.url})\n`);
+            return 'uploaded';
+        } catch (error: any) {
+            if (preparedFile && typeof navigator !== 'undefined' && !navigator.onLine) {
+                await enqueueUpload({
+                    endpoint: `${API_URL}/files/upload`,
+                    fieldName: 'file',
+                    file: preparedFile,
+                    fileName: preparedFile.name,
+                    fileType: preparedFile.type,
+                });
+                return 'queued';
+            }
+
+            throw error;
+        }
+    }, [apiFetch, enqueueUpload]);
+
+    const importSharedImages = useCallback(async (files: File[]) => {
+        if (files.length === 0) {
+            return;
+        }
+
+        setError('');
+        setIsUploading(true);
+
+        let queuedCount = 0;
+        let failedCount = 0;
+        let lastError = '';
+
+        try {
+            for (const file of files) {
+                try {
+                    const result = await uploadEntryImageFile(file);
+                    if (result === 'queued') {
+                        queuedCount += 1;
+                    }
+                } catch (error: any) {
+                    failedCount += 1;
+                    lastError = error?.message || 'A shared image could not be imported.';
+                }
+            }
+        } finally {
+            setIsUploading(false);
+        }
+
+        if (failedCount > 0) {
+            setError(
+                failedCount === files.length
+                    ? (lastError || 'Shared images could not be imported.')
+                    : `${failedCount} shared image${failedCount === 1 ? '' : 's'} could not be imported.`,
+            );
+            return;
+        }
+
+        if (queuedCount > 0) {
+            setError(
+                `${queuedCount} shared image${queuedCount === 1 ? '' : 's'} queued and will upload when you are back online.`,
+            );
+        }
+    }, [uploadEntryImageFile]);
 
     useEffect(() => {
         if (authLoading || !isAuthenticated || !reminderNotificationId) return;
@@ -534,9 +639,6 @@ function NewEntryPageContent() {
         return () => {
             shouldProcessVoiceStopRef.current = false;
             cleanupVoiceCapture();
-            if (mirrorTimerRef.current) {
-                clearTimeout(mirrorTimerRef.current);
-            }
         };
     }, [cleanupVoiceCapture]);
 
@@ -723,60 +825,132 @@ function NewEntryPageContent() {
         if (!user || draftInitRef.current) return;
         draftInitRef.current = true;
 
-        const stagedVoiceCapture = searchParams.get('voiceSession') ? takePendingVoiceCapture() : null;
-        const stagedTranscript = stagedVoiceCapture?.transcript || null;
-        const voiceText = searchParams.get('voice');
-        const eventPromptText = searchParams.get('eventPrompt');
-        const promptText = eventPromptText || searchParams.get('prompt');
-        const sharedText = entrySource === 'share' ? searchParams.get('text') : null;
-        const audioParam = stagedVoiceCapture?.audioUrl || searchParams.get('audioUrl');
-        const seededVoiceCapture = stagedTranscript
-            ? toVoiceCaptureState(stagedTranscript)
-            : voiceText?.trim()
-                ? toVoiceCaptureState(buildBrowserFallbackTranscription(voiceText, DEFAULT_VOICE_LANGUAGE_MODE))
-                : null;
-        const seededText = stagedTranscript?.cleanTranscript || voiceText || sharedText || '';
-        const savedDraft = loadDraft();
-        const restoredVoiceCapture = parseStoredVoiceCapture(savedDraft?.analysis?.voice);
-        const restoredVoiceJob = parseStoredVoiceJob(savedDraft?.analysis?.voice, savedDraft?.audioUrl || audioParam || null);
-        const pendingVoiceJob = stagedVoiceCapture?.pendingJob
-            || (stagedVoiceCapture?.jobId && stagedVoiceCapture.audioUrl
-                ? {
-                    id: stagedVoiceCapture.jobId,
-                    entryId: null,
-                    audioUrl: stagedVoiceCapture.audioUrl,
-                    fileName: null,
-                    mimeType: 'audio/webm',
-                    languageMode: stagedVoiceCapture.languageMode || DEFAULT_VOICE_LANGUAGE_MODE,
-                    candidateLanguages: [],
-                    recordingDurationMs: null,
-                    hintText: null,
-                    entryContext: null,
-                    status: 'PENDING' as const,
-                    provider: null,
-                    model: null,
-                    detectedLanguage: null,
-                    attemptCount: 0,
-                    maxAttempts: 4,
-                    lastError: null,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                    startedAt: null,
-                    completedAt: null,
-                    canceledAt: null,
-                    captureMeta: stagedVoiceCapture.captureMeta || null,
-                    transcript: null,
+        void (async () => {
+            const stagedVoiceCapture = searchParams.get('voiceSession') ? takePendingVoiceCapture() : null;
+            const stagedTranscript = stagedVoiceCapture?.transcript || null;
+            const voiceText = searchParams.get('voice');
+            const eventPromptText = searchParams.get('eventPrompt');
+            const promptText = (eventPromptText || searchParams.get('prompt') || '').trim();
+            const sharedText = entrySource === 'share' ? searchParams.get('text') : null;
+            const sharedTitle = entrySource === 'share' ? (searchParams.get('title') || '').trim() : '';
+            // Widget hand-off: home-screen widget passes ?mood=happy with source=widget.
+            // We honor it across all branches (including resumed drafts) because the
+            // explicit tap reflects the user's current intent.
+            const widgetMoodParam = entrySource === 'widget' ? normalizeMood(searchParams.get('mood')) : null;
+            const seededSharedImages = entrySource === 'share' ? await consumePendingSharedImages() : [];
+            const audioParam = stagedVoiceCapture?.audioUrl || searchParams.get('audioUrl');
+            const seededVoiceCapture = stagedTranscript
+                ? toVoiceCaptureState(stagedTranscript)
+                : voiceText?.trim()
+                    ? toVoiceCaptureState(buildBrowserFallbackTranscription(voiceText, DEFAULT_VOICE_LANGUAGE_MODE))
+                    : null;
+            const seededText = stagedTranscript?.cleanTranscript || voiceText || sharedText || '';
+            const seededTitle = sharedTitle;
+            const hasSeededEntryState = Boolean(
+                seededText
+                || seededTitle
+                || promptText
+                || audioParam
+                || seededVoiceCapture
+                || seededSharedImages.length > 0
+                || gentleReflectionTags.length > 0
+            );
+            const savedDraft = loadDraft();
+            const restoredVoiceCapture = parseStoredVoiceCapture(savedDraft?.analysis?.voice);
+            const restoredVoiceJob = parseStoredVoiceJob(savedDraft?.analysis?.voice, savedDraft?.audioUrl || audioParam || null);
+            const pendingVoiceJob = stagedVoiceCapture?.pendingJob
+                || (stagedVoiceCapture?.jobId && stagedVoiceCapture.audioUrl
+                    ? {
+                        id: stagedVoiceCapture.jobId,
+                        entryId: null,
+                        audioUrl: stagedVoiceCapture.audioUrl,
+                        fileName: null,
+                        mimeType: 'audio/webm',
+                        languageMode: stagedVoiceCapture.languageMode || DEFAULT_VOICE_LANGUAGE_MODE,
+                        candidateLanguages: [],
+                        recordingDurationMs: null,
+                        hintText: null,
+                        entryContext: null,
+                        status: 'PENDING' as const,
+                        provider: null,
+                        model: null,
+                        detectedLanguage: null,
+                        attemptCount: 0,
+                        maxAttempts: 4,
+                        lastError: null,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        startedAt: null,
+                        completedAt: null,
+                        canceledAt: null,
+                        captureMeta: stagedVoiceCapture.captureMeta || null,
+                        transcript: null,
+                    }
+                    : null);
+
+            pendingVoicePreviewRef.current = stagedVoiceCapture?.previewText?.trim() || '';
+
+            if (hasSeededEntryState) {
+                if (savedDraft?.content?.trim()) {
+                    setContent(savedDraft.content);
+                    setContentHtml(savedDraft.contentHtml || '');
+                    setTitleOverride(savedDraft.title || '');
+                    setPromptHint(null);
+                    setMoodOverride(widgetMoodParam || savedDraft.mood || null);
+                    setTagsOverride(savedDraft.tags || []);
+                    setAudioUrl(savedDraft.audioUrl || null);
+                    const draftCategory = normalizeCategory(savedDraft.category);
+                    setCategory(draftCategory);
+                    setLifeArea(normalizeLifeArea(savedDraft.lifeArea, draftCategory));
+                    setCollectionId(savedDraft.chapterId || null);
+                    if (savedDraft.analysis?.deterministic) {
+                        setExtractedData(savedDraft.analysis.deterministic as StructuredEntryData);
+                    }
+                    if (savedDraft.analysis?.ai) {
+                        setAiInsights(savedDraft.analysis.ai);
+                    }
+                    setVoiceCapture(restoredVoiceCapture);
+                    setVoiceJob(pendingVoiceJob || restoredVoiceJob);
+                    setDraftRestored(true);
+                    setPendingSync(savedDraft.pendingSync);
+                    setDraftConflict({
+                        seededText,
+                        seededTitle,
+                        seededPromptHint: promptText || null,
+                        seededSharedImages,
+                        seededAudioUrl: audioParam || null,
+                        seededTags: gentleReflectionTags,
+                        seededVoiceCapture,
+                    });
+                    return;
                 }
-                : null);
 
-        pendingVoicePreviewRef.current = stagedVoiceCapture?.previewText?.trim() || '';
+                setContent(seededText);
+                setTitleOverride(seededTitle);
+                setPromptHint(seededText ? null : (promptText || null));
+                setTagsOverride(gentleReflectionTags);
+                setVoiceCapture(seededVoiceCapture);
+                setVoiceJob(pendingVoiceJob || restoredVoiceJob);
+                if (widgetMoodParam) {
+                    setMoodOverride(widgetMoodParam);
+                }
+                if (audioParam) {
+                    setAudioUrl(audioParam);
+                }
+                clearDraft();
 
-        if (seededText) {
-            if (savedDraft?.content?.trim()) {
+                if (seededSharedImages.length > 0) {
+                    void importSharedImages(seededSharedImages);
+                }
+                return;
+            }
+
+            if (savedDraft?.content) {
                 setContent(savedDraft.content);
                 setContentHtml(savedDraft.contentHtml || '');
                 setTitleOverride(savedDraft.title || '');
-                setMoodOverride(savedDraft.mood || null);
+                setPromptHint(null);
+                setMoodOverride(widgetMoodParam || savedDraft.mood || null);
                 setTagsOverride(savedDraft.tags || []);
                 setAudioUrl(savedDraft.audioUrl || null);
                 const draftCategory = normalizeCategory(savedDraft.category);
@@ -790,71 +964,28 @@ function NewEntryPageContent() {
                     setAiInsights(savedDraft.analysis.ai);
                 }
                 setVoiceCapture(restoredVoiceCapture);
-                setVoiceJob(pendingVoiceJob || restoredVoiceJob);
+                setVoiceJob(restoredVoiceJob || pendingVoiceJob);
                 setDraftRestored(true);
                 setPendingSync(savedDraft.pendingSync);
-                setDraftConflict({
-                    seededText,
-                    seededAudioUrl: audioParam || null,
-                    seededTags: gentleReflectionTags,
-                    seededVoiceCapture,
-                });
+                if (audioParam) {
+                    setAudioUrl(audioParam);
+                }
                 return;
             }
 
-            setContent(seededText);
-            if (promptText && !seededText) {
-                setPromptHint(promptText);
+            if (pendingVoiceJob) {
+                setVoiceJob(pendingVoiceJob);
+                if (audioParam) {
+                    setAudioUrl(audioParam);
+                }
             }
-            setTagsOverride(gentleReflectionTags);
-            setVoiceCapture(seededVoiceCapture);
-            setVoiceJob(pendingVoiceJob || restoredVoiceJob);
-            if (audioParam) {
-                setAudioUrl(audioParam);
-            }
-            clearDraft();
-            return;
-        }
 
-        if (savedDraft?.content) {
-            setContent(savedDraft.content);
-            setContentHtml(savedDraft.contentHtml || '');
-            setTitleOverride(savedDraft.title || '');
-            setMoodOverride(savedDraft.mood || null);
-            setTagsOverride(savedDraft.tags || []);
-            setAudioUrl(savedDraft.audioUrl || null);
-            const draftCategory = normalizeCategory(savedDraft.category);
-            setCategory(draftCategory);
-            setLifeArea(normalizeLifeArea(savedDraft.lifeArea, draftCategory));
-            setCollectionId(savedDraft.chapterId || null);
-            if (savedDraft.analysis?.deterministic) {
-                setExtractedData(savedDraft.analysis.deterministic as StructuredEntryData);
+            const moodParam = normalizeMood(searchParams.get('mood'));
+            if (moodParam) {
+                setMoodOverride(moodParam);
             }
-            if (savedDraft.analysis?.ai) {
-                setAiInsights(savedDraft.analysis.ai);
-            }
-            setVoiceCapture(restoredVoiceCapture);
-            setVoiceJob(restoredVoiceJob || pendingVoiceJob);
-            setDraftRestored(true);
-            setPendingSync(savedDraft.pendingSync);
-            if (audioParam) {
-                setAudioUrl(audioParam);
-            }
-            return;
-        }
-
-        if (pendingVoiceJob) {
-            setVoiceJob(pendingVoiceJob);
-            if (audioParam) {
-                setAudioUrl(audioParam);
-            }
-        }
-
-        const moodParam = normalizeMood(searchParams.get('mood'));
-        if (moodParam) {
-            setMoodOverride(moodParam);
-        }
-    }, [user, searchParams, entrySource, loadDraft, clearDraft, gentleReflectionTags, setExtractedData, setAiInsights]);
+        })();
+    }, [user, searchParams, entrySource, loadDraft, clearDraft, gentleReflectionTags, importSharedImages, setExtractedData, setAiInsights]);
 
     useEffect(() => {
         if (!voiceJob) {
@@ -954,7 +1085,8 @@ function NewEntryPageContent() {
         if (!draftConflict) return;
         setContent(draftConflict.seededText);
         setContentHtml('');
-        setTitleOverride('');
+        setTitleOverride(draftConflict.seededTitle);
+        setPromptHint(draftConflict.seededText ? null : draftConflict.seededPromptHint);
         setMoodOverride(null);
         setTagsOverride(draftConflict.seededTags);
         setAudioUrl(draftConflict.seededAudioUrl);
@@ -968,8 +1100,11 @@ function NewEntryPageContent() {
         setDraftRestored(false);
         setEntryId(null);
         clearDraft();
+        if (draftConflict.seededSharedImages.length > 0) {
+            void importSharedImages(draftConflict.seededSharedImages);
+        }
         setDraftConflict(null);
-    }, [draftConflict, clearDraft, setExtractedData, setAiInsights]);
+    }, [draftConflict, clearDraft, importSharedImages, setExtractedData, setAiInsights]);
 
     const handleEditorChange = useCallback((text: string, html: string) => {
         setContent(text);
@@ -997,6 +1132,52 @@ function NewEntryPageContent() {
         if (polishNoticeTimeoutRef.current) clearTimeout(polishNoticeTimeoutRef.current);
         polishNoticeTimeoutRef.current = setTimeout(() => setPolishNotice(null), 3500);
     }, [content, titleOverride]);
+
+    const buildSaveCompletionSummary = useCallback((): SaveCompletionSummary | null => {
+        const people = extractedData?.people?.map((person) => person.name).slice(0, 2) ?? [];
+        const topics = extractedData?.insights?.slice(0, 1).map((insight) => insight.content) ?? [];
+        const growthFlag = (extractedData?.growthPoints?.length ?? 0) > 0;
+        const phrase = extractedData?.keyPhrases?.[0];
+        const lesson = extractedData?.insights?.find((insight) => insight.type === 'lesson')?.content
+            ?? extractedData?.insights?.[0]?.content;
+        const strengths = extractedData?.growthPoints
+            ?.filter((point) => point.type === 'strength')
+            .slice(0, 2)
+            .map((point) => point.insight) ?? [];
+        const goals = extractedData?.goals?.slice(0, 2).map((goal) => goal.goal) ?? [];
+
+        if (
+            people.length === 0
+            && topics.length === 0
+            && !growthFlag
+            && !phrase
+            && !lesson
+            && strengths.length === 0
+            && goals.length === 0
+        ) {
+            return null;
+        }
+
+        return {
+            people,
+            topics,
+            growthFlag,
+            ...(phrase ? { phrase } : {}),
+            ...(lesson ? { lesson } : {}),
+            ...(strengths.length > 0 ? { strengths } : {}),
+            ...(goals.length > 0 ? { goals } : {}),
+        };
+    }, [extractedData]);
+
+    const openSaveCompletion = useCallback((savedEntryId: string, savedTitle: string | null, isGentleReflectionSave: boolean) => {
+        setHasShownSaveCompletion(true);
+        setSaveCompletion({
+            entryId: savedEntryId,
+            title: savedTitle?.trim() || null,
+            summary: buildSaveCompletionSummary(),
+            isGentleReflection: isGentleReflectionSave,
+        });
+    }, [buildSaveCompletionSummary]);
 
     const buildPersistedAnalysis = useCallback(() => {
         const baseAnalysis = buildAnalysisPayload();
@@ -1477,9 +1658,15 @@ function NewEntryPageContent() {
                 throw new Error(data.message || 'Could not save your note. Try again in a moment.');
             }
 
+            const createdNewEntry = !entryId;
             const savedEntryId = data.entry?.id || entryId || null;
+            const savedEntryTitle = typeof data.entry?.title === 'string'
+                ? data.entry.title
+                : finalTitle;
 
-            if (!entryId && data.entry?.id) setEntryId(data.entry.id);
+            if (!entryId && data.entry?.id) {
+                setEntryId(data.entry.id);
+            }
 
             if (voiceJob?.id && savedEntryId && voiceJob.entryId !== savedEntryId) {
                 try {
@@ -1540,7 +1727,7 @@ function NewEntryPageContent() {
                     }
                 }
                 localStorage.setItem('lastEntryTime', Date.now().toString());
-                if (!entryId) {
+                if (createdNewEntry) {
                     awardXP(50, 'Entry created');
                     refreshStats();
                     hapticSuccess();
@@ -1549,31 +1736,22 @@ function NewEntryPageContent() {
                 const safetyFromSave = data?.safety && data.safety.risk && data.safety.risk.level !== 'none'
                     ? data.safety
                     : null;
-                const shouldShowSafetyPrompt = !!safetyFromSave && !entryId && isSafetyAlertsEnabled();
+                const shouldShowSafetyPrompt = !!safetyFromSave && createdNewEntry && isSafetyAlertsEnabled();
 
-                if (!entryId && isGentleReflectionEntry && data.entry?.id) {
+                if (createdNewEntry && isGentleReflectionEntry && data.entry?.id) {
                     if (user?.id && gentleReflectionId) {
                         markGentleReflectionCompleted(user.id, gentleReflectionId);
                     }
-
-                    toast.success('Note saved');
-                    const reflectionTarget = appendReturnTo(`/entry/view?id=${data.entry.id}`, backHref);
-                    if (shouldShowSafetyPrompt) {
-                        setSafetyPrompt({
-                            risk: safetyFromSave.risk,
-                            safetyCard: safetyFromSave.safetyCard,
-                            onContinue: () => {
-                                setSafetyPrompt(null);
-                                router.push(reflectionTarget);
-                            },
-                        });
-                    } else {
-                        router.push(reflectionTarget);
-                    }
-                    return;
                 }
 
-                toast.success('Note saved');
+                const showPostSaveDestination = () => {
+                    if (savedEntryId && !hasShownSaveCompletion) {
+                        openSaveCompletion(savedEntryId, savedEntryTitle, isGentleReflectionEntry);
+                        return;
+                    }
+
+                    toast.success(createdNewEntry ? 'Memory saved' : 'Memory updated');
+                };
 
                 if (shouldShowSafetyPrompt) {
                     setSafetyPrompt({
@@ -1581,55 +1759,13 @@ function NewEntryPageContent() {
                         safetyCard: safetyFromSave.safetyCard,
                         onContinue: () => {
                             setSafetyPrompt(null);
-                            router.push(backHref);
+                            showPostSaveDestination();
                         },
                     });
                     return;
                 }
 
-                // ── Mirror: show extraction summary before navigating ──
-                const people = extractedData?.people?.map(p => p.name).slice(0, 2) ?? [];
-                const topics = extractedData?.insights?.slice(0, 1).map(i => i.content) ?? [];
-                const growthFlag = (extractedData?.growthPoints?.length ?? 0) > 0;
-                const phrase = extractedData?.keyPhrases?.[0];
-                const lesson = extractedData?.insights?.find(i => i.type === 'lesson')?.content
-                    ?? extractedData?.insights?.[0]?.content;
-                const strengths = extractedData?.growthPoints
-                    ?.filter((point) => point.type === 'strength')
-                    .slice(0, 2)
-                    .map((point) => point.insight) ?? [];
-                const goals = extractedData?.goals?.slice(0, 2).map(g => g.goal) ?? [];
-                const hasMirrorContent = people.length > 0
-                    || topics.length > 0
-                    || growthFlag
-                    || phrase
-                    || lesson
-                    || strengths.length > 0
-                    || goals.length > 0;
-
-                if (hasMirrorContent && !entryId) {
-                    setMirrorData({
-                        people,
-                        topics,
-                        growthFlag,
-                        phrase,
-                        mood: (moodOverride || extractedData?.primaryEmotion?.emotion) ?? undefined,
-                        lesson,
-                        strengths: strengths.length > 0 ? strengths : undefined,
-                        goals: goals.length > 0 ? goals : undefined,
-                    });
-                    mirrorTimerRef.current = setTimeout(() => {
-                        setMirrorData(null);
-                        router.push(backHref);
-                    }, 6000);
-                } else if (!entryId) {
-                    setShowCaptureSeal(true);
-                    setTimeout(() => {
-                        router.push(backHref);
-                    }, 650);
-                } else {
-                    router.push(backHref);
-                }
+                showPostSaveDestination();
             } else {
                 persistDraftSnapshot(false);
             }
@@ -1649,7 +1785,6 @@ function NewEntryPageContent() {
         applyCompletedVoiceTranscript,
         audioUrl,
         awardXP,
-        backHref,
         buildPersistedAnalysis,
         category,
         clearDraft,
@@ -1663,13 +1798,14 @@ function NewEntryPageContent() {
         extractedData,
         gentleReflectionId,
         gentleReflectionTags,
+        hasShownSaveCompletion,
         isGentleReflectionEntry,
         isQuickMode,
         lifeArea,
         moodOverride,
+        openSaveCompletion,
         persistDraftSnapshot,
         refreshStats,
-        router,
         tagsOverride,
         titleOverride,
         toast,
@@ -1765,57 +1901,92 @@ function NewEntryPageContent() {
         if (fileInputRef.current) fileInputRef.current.value = '';
 
         setError('');
-        let preparedFile: File | null = null;
         setIsUploading(true);
         try {
-            const prepared = await prepareImageForUpload(sourceFile, 'entry');
-            const file = prepared.file;
-            preparedFile = file;
-            const offline = typeof navigator !== 'undefined' && !navigator.onLine;
-
-            if (offline) {
-                await enqueueUpload({
-                    endpoint: `${API_URL}/files/upload`,
-                    fieldName: 'file',
-                    file,
-                    fileName: file.name,
-                    fileType: file.type,
-                });
+            const result = await uploadEntryImageFile(sourceFile);
+            if (result === 'queued') {
                 setError('You are offline. The image is queued and will upload when you are back online.');
-                return;
             }
-
-            const formData = new FormData();
-            formData.append('file', file, file.name);
-
-            const response = await apiFetch(`${API_URL}/files/upload`, {
-                method: 'POST',
-                body: formData,
-            });
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'That image did not upload. Try again in a moment.');
-            }
-
-            setContent(prev => `${prev}\n![Image](${data.url})\n`);
         } catch (err: any) {
-            if (preparedFile && typeof navigator !== 'undefined' && !navigator.onLine) {
-                await enqueueUpload({
-                    endpoint: `${API_URL}/files/upload`,
-                    fieldName: 'file',
-                    file: preparedFile,
-                    fileName: preparedFile.name,
-                    fileType: preparedFile.type,
-                });
-                setError('That image is queued and will upload when you are back online.');
-            } else {
-                setError(err.message || 'That image did not upload. Try again in a moment.');
-            }
+            setError(err.message || 'That image did not upload. Try again in a moment.');
         } finally {
             setIsUploading(false);
         }
-    }, [apiFetch, enqueueUpload]);
+    }, [uploadEntryImageFile]);
+
+    const handleViewSavedEntry = useCallback(() => {
+        if (!saveCompletion) return;
+        const target = appendReturnTo(`/entry/view?id=${saveCompletion.entryId}`, backHref);
+        setSaveCompletion(null);
+        router.push(target);
+    }, [backHref, router, saveCompletion]);
+
+    const handleKeepWritingSavedEntry = useCallback(() => {
+        setSaveCompletion(null);
+    }, []);
+
+    const handleLeaveAfterSave = useCallback(() => {
+        setSaveCompletion(null);
+        router.push(backHref);
+    }, [backHref, router]);
+
+    // R7 — first-save reminder nudge. We show a tiny prompt inside the completion
+    // sheet exactly once per user (tracked in localStorage). The CTA writes a
+    // sensible default reminder (8pm, every day, local timezone) via the
+    // existing /reminders endpoint; users tweak from profile later.
+    const reminderPromptKey = user?.id ? `notive:reminder-prompt-shown:${user.id}` : null;
+    const [reminderPromptVisible, setReminderPromptVisible] = useState(false);
+    useEffect(() => {
+        if (!saveCompletion || !reminderPromptKey || typeof window === 'undefined') {
+            setReminderPromptVisible(false);
+            return;
+        }
+        try {
+            if (window.localStorage.getItem(reminderPromptKey)) {
+                setReminderPromptVisible(false);
+                return;
+            }
+        } catch {
+            setReminderPromptVisible(false);
+            return;
+        }
+        setReminderPromptVisible(true);
+    }, [saveCompletion, reminderPromptKey]);
+
+    const markReminderPromptShown = useCallback(() => {
+        if (!reminderPromptKey || typeof window === 'undefined') return;
+        try {
+            window.localStorage.setItem(reminderPromptKey, '1');
+        } catch {
+            // ignore — worst case the user sees the prompt again
+        }
+    }, [reminderPromptKey]);
+
+    const handleEnableDailyReminder = useCallback(async (): Promise<boolean> => {
+        try {
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+            const res = await apiFetch('/reminders', {
+                method: 'PUT',
+                body: JSON.stringify({ time: '20:00', days: [], timezone, enabled: true }),
+                headers: { 'Content-Type': 'application/json' },
+            });
+            if (!res.ok) {
+                toast.error('Couldn’t set reminder. Try again from your profile.');
+                return false;
+            }
+            markReminderPromptShown();
+            toast.success('Daily reminder set for 8:00 PM');
+            return true;
+        } catch {
+            toast.error('Couldn’t set reminder. Try again from your profile.');
+            return false;
+        }
+    }, [apiFetch, markReminderPromptShown, toast]);
+
+    const handleDismissReminderPrompt = useCallback(() => {
+        markReminderPromptShown();
+        setReminderPromptVisible(false);
+    }, [markReminderPromptShown]);
 
     if (authLoading) {
         return (
@@ -1830,8 +2001,15 @@ function NewEntryPageContent() {
     const displayTitle = titleOverride || extractedData?.title || '';
     const displayMood = moodOverride || extractedData?.primaryEmotion?.emotion || null;
     const displayTags = tagsOverride.length > 0 ? tagsOverride : (extractedData?.suggestedTags || []);
-        const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+    const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
     const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
+    // R4c — surface the 60-character minimum live so users see the gate
+    // before tapping Save instead of getting a silent toast on submit.
+    const saveCharCount = content.replace(/\s+/g, ' ').trim().length;
+    const meetsMinChars = isQuickMode || saveCharCount >= MIN_CHARACTERS_FOR_ENTRY_SAVE;
+    const charsRemainingHint = !meetsMinChars
+        ? `${saveCharCount} / ${MIN_CHARACTERS_FOR_ENTRY_SAVE} characters to save`
+        : null;
     const availableLifeAreas = LIFE_AREA_OPTIONS.filter((item) => item.category === category);
     const starterPrompt = getStarterPrompt(new Date(), displayMood);
     const writingSuggestions = getWritingSuggestions(content);
@@ -1869,7 +2047,6 @@ function NewEntryPageContent() {
 
     return (
         <div className={`entry-studio min-h-screen selection:bg-primary/30 ${isWhisperMode ? 'bg-[rgb(var(--bg-canvas))] text-[rgb(var(--text-soft))]' : 'text-[rgb(var(--text-primary))]'}`}>
-            <CaptureSealOverlay show={showCaptureSeal} />
             {showFirstEntryHandoff && (
                 <FirstEntryHandoff onDismiss={() => setShowFirstEntryHandoff(false)} />
             )}
@@ -1897,8 +2074,9 @@ function NewEntryPageContent() {
                     backLabel={backLabel}
                     isSaving={isSaving}
                     lastSaved={lastSaved}
-                    canSave={!isSaving && !!content.trim()}
+                    canSave={!isSaving && !!content.trim() && meetsMinChars}
                     onSave={() => handleSave(false)}
+                    saveHint={charsRemainingHint}
                     error={error}
                     draftRestored={draftRestored}
                     pendingSync={pendingSync}
@@ -2118,6 +2296,11 @@ function NewEntryPageContent() {
 
             {!isRecording && (
             <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[rgba(var(--paper-border),0.92)] bg-[rgba(255,255,255,0.92)] p-3 backdrop-blur-xl md:hidden" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0.75rem)' }}>
+                {charsRemainingHint && (
+                    <p className="mb-2 text-center text-xs text-ink-muted" aria-live="polite">
+                        {charsRemainingHint}
+                    </p>
+                )}
                 <div className="flex gap-2">
                     {isQuickMode && (
                         <button
@@ -2129,7 +2312,8 @@ function NewEntryPageContent() {
                     )}
                     <button
                         onClick={() => handleSave(false)}
-                        disabled={isSaving || !content.trim()}
+                        disabled={isSaving || !content.trim() || !meetsMinChars}
+                        title={charsRemainingHint || undefined}
                         className="workspace-button-primary flex-[2] rounded-xl px-5 py-3 font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {isSaving ? 'Saving...' : 'Save'}
@@ -2138,75 +2322,29 @@ function NewEntryPageContent() {
             </div>
             )}
 
-            {/* ── The Mirror: post-save extraction card ── */}
-            <AnimatePresence>
-                {mirrorData && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 12 }}
-                        transition={{ duration: 0.4, ease: 'easeOut' }}
-                        className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-sm rounded-[1.25rem] border border-[rgba(138,154,111,0.25)] bg-[rgba(248,244,237,0.96)] px-4 py-3.5 shadow-[0_4px_20px_rgba(92,92,92,0.12)] backdrop-blur-sm"
-                    >
-                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(138,154,111)]">Notive found in this entry</p>
-                        <ul className="mt-1.5 space-y-0.5">
-                            {mirrorData.lesson && (
-                                <li className="text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))] italic" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-                                    Lesson: {mirrorData.lesson}
-                                </li>
-                            )}
-                            {mirrorData.strengths && mirrorData.strengths.length > 0 && (
-                                <li className="text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-                                    {mirrorData.strengths.length === 1
-                                        ? `Strength spotted: ${mirrorData.strengths[0]}`
-                                        : `Strengths: ${mirrorData.strengths.join(', ')}`}
-                                </li>
-                            )}
-                            {mirrorData.goals && mirrorData.goals.length > 0 && (
-                                <li className="text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-                                    {mirrorData.goals.length === 1
-                                        ? `Goal spotted: ${mirrorData.goals[0]}`
-                                        : `Goals: ${mirrorData.goals.join(', ')}`}
-                                </li>
-                            )}
-                            {mirrorData.people.length > 0 && (
-                                <li className="text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-                                    {mirrorData.people.length === 1
-                                        ? `${mirrorData.people[0]} mentioned`
-                                        : `${mirrorData.people.join(' and ')} mentioned`}
-                                </li>
-                            )}
-                            {mirrorData.topics.length > 0 && !mirrorData.lesson && (
-                                <li className="text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))] italic" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-                                    {mirrorData.topics[0]}
-                                </li>
-                            )}
-                            {mirrorData.growthFlag && (
-                                <li className="text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-                                    Growth language detected
-                                </li>
-                            )}
-                            {mirrorData.phrase && (
-                                <li className="text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))] italic" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-                                    You kept coming back to &ldquo;{mirrorData.phrase}&rdquo;
-                                </li>
-                            )}
-                        </ul>
-                        <p className="mt-1.5 text-[0.65rem] text-[rgb(107,107,107)]">Your record is growing.</p>
-                        <button
-                            onClick={() => {
-                                if (mirrorTimerRef.current) clearTimeout(mirrorTimerRef.current);
-                                setMirrorData(null);
-                                router.push(backHref);
-                            }}
-                            className="mt-1 text-[0.65rem] text-[rgb(107,107,107)] hover:text-[rgb(var(--paper-ink))]"
-                            aria-label="Dismiss"
-                        >
-                            Dismiss
-                        </button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <EntrySaveCompletionSheet
+                open={Boolean(saveCompletion)}
+                kicker={saveCompletion?.isGentleReflection ? 'Reflection saved' : 'Memory saved'}
+                description={
+                    saveCompletion?.isGentleReflection
+                        ? 'Your reflection is safe. Choose whether to open it, keep shaping it, or head back.'
+                        : 'Your memory is safe. Choose what you want to do next while it is still fresh.'
+                }
+                title={saveCompletion?.title}
+                summary={saveCompletion?.summary || null}
+                primaryLabel={saveCompletion?.isGentleReflection ? 'Open saved reflection' : 'View memory'}
+                secondaryLabel="Keep writing"
+                tertiaryLabel="Back for now"
+                onPrimary={handleViewSavedEntry}
+                onSecondary={handleKeepWritingSavedEntry}
+                onTertiary={handleLeaveAfterSave}
+                onClose={handleKeepWritingSavedEntry}
+                reminderPrompt={
+                    reminderPromptVisible
+                        ? { onEnable: handleEnableDailyReminder, onDismiss: handleDismissReminderPrompt }
+                        : null
+                }
+            />
 
             {draftConflict && (
                 <div
@@ -2224,7 +2362,7 @@ function NewEntryPageContent() {
                         <p className="text-xs uppercase tracking-[0.15em] text-ink-muted">Draft Detected</p>
                         <h2 id="draft-conflict-title" className="workspace-heading mt-2 text-xl font-semibold">Keep your existing draft or replace it?</h2>
                         <p className="mt-2 text-sm text-ink-secondary">
-                            A saved draft exists for this account. A prompt link was also opened. Choose how to proceed.
+                            A saved draft exists for this account. An incoming prompt or shared moment is also ready. Choose how to proceed.
                         </p>
 
                         <div className="mt-5 grid gap-2">
@@ -2238,7 +2376,7 @@ function NewEntryPageContent() {
                                 onClick={handleReplaceDraftWithPrompt}
                                 className="rounded-xl border border-primary/30 bg-primary/15 px-4 py-3 text-left text-sm text-primary hover:bg-primary/25"
                             >
-                                Replace draft with prompt
+                                Replace draft with incoming entry
                             </button>
                         </div>
                     </div>

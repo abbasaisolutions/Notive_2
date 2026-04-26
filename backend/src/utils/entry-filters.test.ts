@@ -28,4 +28,18 @@ describe('buildEntryListWhere', () => {
             { mood: { equals: 'motivated', mode: 'insensitive' } },
         ]));
     });
+
+    it('supports exact tag filtering without falling back to fuzzy theme matching', () => {
+        const where = buildEntryListWhere({
+            userId: 'user-123',
+            tag: '#Team Work',
+        });
+
+        expect(where).toMatchObject({
+            userId: 'user-123',
+            deletedAt: null,
+            tags: { has: 'team-work' },
+        });
+        expect(where).not.toHaveProperty('OR');
+    });
 });

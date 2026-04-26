@@ -10,7 +10,7 @@ import { sanitizeHtml } from '@/utils/sanitize-html';
 import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { getMoodEmoji, normalizeMood } from '@/constants/moods';
-import { AppPanel, TagPill } from '@/components/ui/surface';
+import { ActionBar, AppPanel, TagPill } from '@/components/ui/surface';
 import { ConfirmDialog, ErrorState, Spinner } from '@/components/ui';
 import { storyFieldLabel, type StorySignal } from '@/utils/story-engine';
 import { FiArrowLeft, FiArrowRight, FiBriefcase, FiMic, FiShare2 } from 'react-icons/fi';
@@ -86,6 +86,8 @@ function EntryDetailContent() {
     const [entryAction, setEntryAction] = useState<StudentActionResponse | null>(null);
     const [entryError, setEntryError] = useState<string | null>(null);
     const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const insightSectionRef = useRef<HTMLDivElement | null>(null);
+    const relatedSectionRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         return () => {
@@ -126,7 +128,7 @@ function EntryDetailContent() {
                     setEntry(data.entry);
                     setEntryError(null);
                 } else {
-                    setEntryError('Note not found. It may have been deleted.');
+                    setEntryError('Memory not found. It may have been deleted.');
                     setEntry(null);
                     return;
                 }
@@ -229,14 +231,14 @@ function EntryDetailContent() {
             });
 
             if (response.ok) {
-                toast.success('Note deleted');
+                toast.success('Memory deleted');
                 router.push(backHref);
                 return;
             }
-            toast.error('Couldn\u2019t delete this note. Please try again.');
+            toast.error('Couldn\u2019t delete this memory. Please try again.');
         } catch (error) {
             console.error('Failed to delete entry:', error);
-            toast.error('Couldn\u2019t delete this note. Please try again.');
+            toast.error('Couldn\u2019t delete this memory. Please try again.');
         } finally {
             setIsDeleting(false);
             setShowDeleteConfirm(false);
@@ -260,7 +262,7 @@ function EntryDetailContent() {
             <div className="min-h-screen p-4 md:p-8">
                 <div className="max-w-3xl mx-auto">
                     <ErrorState
-                        title="Note Not Found"
+                        title="Memory Not Found"
                         message={entryError}
                         variant="full-page"
                         action={{
@@ -285,7 +287,7 @@ function EntryDetailContent() {
         ? 'Instagram import'
         : entry.source === 'FACEBOOK'
             ? 'Facebook import'
-            : 'Notive entry';
+            : 'Notive memory';
     const storyPrimaryHref = storySignal
         ? storySignal.status === 'verified' || storySignal.status === 'ready_to_export'
             ? withCurrentReturnTo('/portfolio?view=export&pack=resume')
@@ -312,13 +314,22 @@ function EntryDetailContent() {
             : 'Open Story Check';
     const storyMessage = storySignal
         ? storySignal.status === 'verified'
-            ? 'This entry is already verified and can move directly into export or interview prep.'
+            ? 'This memory is already verified and can move directly into export or interview prep.'
             : storySignal.status === 'ready_to_export'
-                ? 'This entry has the structure to export cleanly. Use portfolio to tailor it for resumes, statements, or interviews.'
+                ? 'This memory has the structure to export cleanly. Use portfolio to tailor it for resumes, statements, or interviews.'
             : storySignal.status === 'ready_to_verify'
-                    ? 'This note has the main story parts. Check it once and move it into stronger story use.'
-                    : 'This note needs a little more structure before it becomes a story you can use.'
-        : 'Open Story Check to see how this note can become a stronger story.';
+                    ? 'This memory has the main story parts. Check it once and move it into stronger story use.'
+                    : 'This memory needs a little more structure before it becomes a story you can use.'
+        : 'Open Story Check to see how this memory can become a stronger story.';
+    const nextStepSummary = storySignal
+        ? storyMessage
+        : 'Keep this memory moving while the details are still fresh. You can refine it, revisit the insights, or compare it with nearby memories.';
+    const scrollToInsights = () => {
+        insightSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    const scrollToRelated = () => {
+        relatedSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
     const handleEntryBridgeCopy = (recipient: string) => {
         void trackEvent({
             eventType: 'student_bridge_copied',
@@ -396,7 +407,7 @@ function EntryDetailContent() {
                 {showDeleteConfirm && (
                     <ConfirmDialog
                         open={showDeleteConfirm}
-                        title="Delete this note?"
+                        title="Delete this memory?"
                         description="This action cannot be undone."
                         actionLabel="Delete"
                         isDangerous={true}
@@ -407,7 +418,7 @@ function EntryDetailContent() {
                 )}
 
                 <div className="mb-3">
-                    <h1 className="workspace-heading mb-1.5 text-lg font-semibold md:text-xl">{entry.title || 'Untitled Note'}</h1>
+                    <h1 className="workspace-heading mb-1.5 text-lg font-semibold md:text-xl">{entry.title || 'Untitled memory'}</h1>
                     <p className="text-xs text-ink-muted uppercase tracking-[0.1em]">
                         {createdAt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                         {' · '}{wordCount} words{' · '}{readingTime} min read
@@ -433,6 +444,47 @@ function EntryDetailContent() {
                         </span>
                     ))}
                 </div>
+
+                <AppPanel className="mb-5 space-y-3" tone="soft">
+                    <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Next step</p>
+                        <p className="text-sm leading-6 text-ink-secondary">{nextStepSummary}</p>
+                    </div>
+
+                    <ActionBar>
+                        <Link
+                            href={withCurrentReturnTo(`/entry/edit?id=${id}`)}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/12 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-primary transition-colors hover:bg-primary/20"
+                        >
+                            Edit memory
+                        </Link>
+                        {storySignal ? (
+                            <Link
+                                href={storyPrimaryHref}
+                                className="workspace-button-outline inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] transition-colors"
+                            >
+                                {storyPrimaryLabel}
+                            </Link>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={scrollToInsights}
+                                className="workspace-button-outline inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] transition-colors"
+                            >
+                                Review insights
+                            </button>
+                        )}
+                        {relatedEntries.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={scrollToRelated}
+                                className="workspace-button-outline inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] transition-colors"
+                            >
+                                Related memories
+                            </button>
+                        )}
+                    </ActionBar>
+                </AppPanel>
 
                 {entryAction && (
                     <div className="mb-4">
@@ -476,27 +528,22 @@ function EntryDetailContent() {
                         </div>
                     )}
 
-                    <div className="flex justify-end border-t border-[rgba(141,123,105,0.12)] pt-3">
-                        <Link
-                            href={withCurrentReturnTo(`/entry/edit?id=${id}`)}
-                            className="text-xs font-semibold uppercase tracking-[0.1em] text-primary/70 hover:text-primary transition-colors"
-                        >
-                            Edit this memory
-                        </Link>
-                    </div>
                 </AppPanel>
 
-                <MemoryInsightStrip
-                    className="mb-6"
-                    label="About this memory"
-                    analysisLine={entry.analysisLine}
-                    takeawayLine={entry.takeawayLine}
-                    notiveInsights={entry.notiveInsights}
-                    topEmotions={entry.topEmotions}
-                    depthLabel={entry.depthLabel}
-                    growthRatio={entry.growthRatio}
-                    storySignal={storySignal}
-                />
+                <div ref={insightSectionRef}>
+                    <MemoryInsightStrip
+                        className="mb-6"
+                        label="About this memory"
+                        description="Use these signals to decide whether this memory is ready to reuse, share, or develop further."
+                        analysisLine={entry.analysisLine}
+                        takeawayLine={entry.takeawayLine}
+                        notiveInsights={entry.notiveInsights}
+                        topEmotions={entry.topEmotions}
+                        depthLabel={entry.depthLabel}
+                        growthRatio={entry.growthRatio}
+                        storySignal={storySignal}
+                    />
+                </div>
 
                 {storySignal && (
                     <AppPanel className="mb-6 space-y-3" tone="soft">
@@ -579,9 +626,10 @@ function EntryDetailContent() {
                 )}
 
                 {(isLoadingRelated || relatedEntries.length > 0) && (
+                    <div ref={relatedSectionRef}>
                     <AppPanel className="mt-6 space-y-3">
                         <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Related Notes</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Related memories</p>
                             {isLoadingRelated && (
                                 <span className="text-xs uppercase tracking-[0.1em] text-ink-muted">Loading...</span>
                             )}
@@ -609,6 +657,7 @@ function EntryDetailContent() {
                             </div>
                         ) : !isLoadingRelated ? null : null}
                     </AppPanel>
+                    </div>
                 )}
             </div>
 

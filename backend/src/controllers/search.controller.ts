@@ -4,6 +4,7 @@ import semanticSearchService from '../services/semantic-search.service';
 import { executeHybridSearch } from '../services/hybrid-search.service';
 import retrievalInsightsService from '../services/retrieval-insights.service';
 import type { SearchIntent } from '../utils/search-intent';
+import { normalizeMood } from '../utils/mood';
 
 const VALID_SEARCH_INTENTS = new Set<SearchIntent>([
     'general',
@@ -14,6 +15,17 @@ const VALID_SEARCH_INTENTS = new Set<SearchIntent>([
     'memory',
     'action',
 ]);
+
+const splitCsv = (raw: unknown): string[] =>
+    typeof raw === 'string'
+        ? raw.split(',').map((value) => value.trim()).filter(Boolean)
+        : [];
+
+const parseDateParam = (raw: unknown): Date | null => {
+    if (typeof raw !== 'string' || !raw.trim()) return null;
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
 
 export class SearchController {
     async searchEntries(req: Request, res: Response) {
@@ -35,16 +47,72 @@ export class SearchController {
                 });
             }
 
+            // R3a — narrow the result set by metadata after hybrid scoring so
+            // mood, lifeArea, chapter, tag, and date selections can be combined
+            // freely without changing the underlying ranking.
+            const moodFilters = splitCsv(req.query.mood).map((value) => normalizeMood(value)).filter(Boolean) as string[];
+            // lifeArea is stored with the canonical casing from LIFE_AREA_OPTIONS (e.g., "Career"),
+            // so we don't lowercase here. Tags ARE stored normalized lowercase.
+            const lifeAreaFilters = splitCsv(req.query.lifeArea);
+            const chapterFilters = splitCsv(req.query.chapterId);
+            const tagFilters = splitCsv(req.query.tag).map((value) => value.toLowerCase());
+            const dateFrom = parseDateParam(req.query.dateFrom);
+            const dateTo = parseDateParam(req.query.dateTo);
+            const hasFilters = moodFilters.length > 0
+                || lifeAreaFilters.length > 0
+                || chapterFilters.length > 0
+                || tagFilters.length > 0
+                || dateFrom !== null
+                || dateTo !== null;
+
+            // When filters are present, fetch a wider candidate pool so we can
+            // afford to drop entries that don't match.
+            const searchLimit = hasFilters ? Math.min(limit * 3, 60) : limit;
+
             const result = await executeHybridSearch({
                 userId,
                 query: normalized,
-                limit,
+                limit: searchLimit,
                 intent: VALID_SEARCH_INTENTS.has(requestedIntent as SearchIntent)
                     ? (requestedIntent as SearchIntent)
                     : undefined,
             });
 
-            return res.json(result);
+            if (!hasFilters) {
+                return res.json(result);
+            }
+
+            const candidateIds = result.results.map((entry) => entry.id);
+            if (candidateIds.length === 0) {
+                return res.json({ ...result, results: [], count: 0 });
+            }
+
+            const allowedRows = await prisma.entry.findMany({
+                where: {
+                    userId,
+                    deletedAt: null,
+                    id: { in: candidateIds },
+                    ...(moodFilters.length > 0 ? { mood: { in: moodFilters } } : {}),
+                    ...(lifeAreaFilters.length > 0 ? { lifeArea: { in: lifeAreaFilters } } : {}),
+                    ...(chapterFilters.length > 0 ? { chapterId: { in: chapterFilters } } : {}),
+                    ...(tagFilters.length > 0 ? { tags: { hasSome: tagFilters } } : {}),
+                    ...(dateFrom || dateTo ? {
+                        createdAt: {
+                            ...(dateFrom ? { gte: dateFrom } : {}),
+                            ...(dateTo ? { lte: dateTo } : {}),
+                        },
+                    } : {}),
+                },
+                select: { id: true },
+            });
+            const allowedIds = new Set(allowedRows.map((row) => row.id));
+            const filtered = result.results.filter((entry) => allowedIds.has(entry.id)).slice(0, limit);
+
+            return res.json({
+                ...result,
+                results: filtered,
+                count: filtered.length,
+            });
         } catch (error: any) {
             console.error('Search error:', error);
             return res.status(500).json({
@@ -288,6 +356,11 @@ export class SearchController {
                 suggestions: {
                     tags: topTags.map((tagRow: { tag: string; count: bigint }) => tagRow.tag),
                     moods: topMoods.map((moodRow: { mood: string; count: bigint }) => moodRow.mood),
+                    // Frequency-weighted view powers the /tags browse cloud.
+                    tagFrequencies: topTags.map((tagRow: { tag: string; count: bigint }) => ({
+                        tag: tagRow.tag,
+                        count: Number(tagRow.count),
+                    })),
                 },
             });
         } catch (error: any) {

@@ -153,7 +153,7 @@ export function useEntryEdit({
             try {
                 const response = await apiFetch(`${API_URL}/entries/${id}`, { signal: controller.signal });
                 if (!response.ok) {
-                    throw new Error(await getErrorMessage(response, 'Couldn\u2019t load this note.'));
+                    throw new Error(await getErrorMessage(response, 'Couldn\u2019t load this memory.'));
                 }
 
                 const data = await response.json();
@@ -163,7 +163,7 @@ export function useEntryEdit({
                 applyEntryData(entry);
             } catch (err: any) {
                 if (controller.signal.aborted) return;
-                setError(err.message || 'Couldn\u2019t load this note.');
+                setError(err.message || 'Couldn\u2019t load this memory.');
             } finally {
                 if (mounted) setIsLoading(false);
             }
@@ -284,7 +284,7 @@ export function useEntryEdit({
         });
 
         if (!response.ok) {
-            throw new Error(await getErrorMessage(response, 'Couldn\u2019t save your note.'));
+            throw new Error(await getErrorMessage(response, 'Couldn\u2019t save this memory.'));
         }
 
         const responseData = await response.json().catch(() => null);
@@ -348,10 +348,10 @@ export function useEntryEdit({
                 lifeArea,
                 chapterId,
             });
-            showSuccessToast('Changes saved');
+            showSuccessToast('Memory updated');
             navigateAfterSave();
         } catch (err: any) {
-            const msg = err.message || 'Couldn\u2019t save your note.';
+            const msg = err.message || 'Couldn\u2019t save this memory.';
             setError(msg);
             showErrorToast(msg);
         } finally {

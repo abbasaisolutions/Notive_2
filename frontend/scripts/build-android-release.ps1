@@ -52,14 +52,14 @@ foreach ($candidate in ($candidateJavaHomes | Select-Object -Unique)) {
         continue
     }
 
-    if ($majorVersion -ge 17 -and $majorVersion -le 21) {
+    if ($majorVersion -eq 21) {
         $supportedJavaHome = $candidate
         break
     }
 }
 
 if (-not $supportedJavaHome) {
-    throw 'No supported Java runtime was found. Install Android Studio or point JAVA_HOME to JDK 17-21 before building the Android app.'
+    throw 'No supported Java runtime was found. Install Android Studio or point JAVA_HOME to JDK 21 before building the Android app.'
 }
 
 $hasKeyProperties = Test-Path $keyPropertiesPath

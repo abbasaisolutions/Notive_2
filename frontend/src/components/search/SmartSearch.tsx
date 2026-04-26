@@ -3,15 +3,29 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { API_URL, DEBOUNCE_DELAY } from '@/constants/config';
 import { getMoodEmoji } from '@/constants/moods';
+import { LIFE_AREA_OPTIONS } from '@/constants/life-areas';
 import useApi from '@/hooks/use-api';
 import { useToast } from '@/context/toast-context';
-import { FiAlertTriangle, FiSearch, FiX, FiXCircle } from 'react-icons/fi';
+import { FiAlertTriangle, FiFilter, FiSearch, FiX, FiXCircle } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
+
+const MOOD_FILTER_OPTIONS = [
+    { value: 'happy', label: 'Happy' },
+    { value: 'calm', label: 'Calm' },
+    { value: 'tired', label: 'Tired' },
+    { value: 'anxious', label: 'Anxious' },
+    { value: 'sad', label: 'Sad' },
+    { value: 'grateful', label: 'Grateful' },
+    { value: 'frustrated', label: 'Frustrated' },
+    { value: 'thoughtful', label: 'Thoughtful' },
+    { value: 'excited', label: 'Excited' },
+    { value: 'hopeful', label: 'Hopeful' },
+];
 
 interface SearchResult {
     id: string;
@@ -41,6 +55,37 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
     const [isSearching, setIsSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);
     const [searchError, setSearchError] = useState(false);
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [moodFilters, setMoodFilters] = useState<string[]>([]);
+    const [lifeAreaFilters, setLifeAreaFilters] = useState<string[]>([]);
+    const [dateFromFilter, setDateFromFilter] = useState<string>('');
+    const [dateToFilter, setDateToFilter] = useState<string>('');
+
+    const filterCount = moodFilters.length + lifeAreaFilters.length
+        + (dateFromFilter ? 1 : 0) + (dateToFilter ? 1 : 0);
+
+    const filterQueryString = useMemo(() => {
+        const params = new URLSearchParams();
+        if (moodFilters.length > 0) params.set('mood', moodFilters.join(','));
+        if (lifeAreaFilters.length > 0) params.set('lifeArea', lifeAreaFilters.join(','));
+        if (dateFromFilter) params.set('dateFrom', dateFromFilter);
+        if (dateToFilter) params.set('dateTo', dateToFilter);
+        const serialized = params.toString();
+        return serialized ? `&${serialized}` : '';
+    }, [moodFilters, lifeAreaFilters, dateFromFilter, dateToFilter]);
+
+    const toggleMoodFilter = useCallback((value: string) => {
+        setMoodFilters((prev) => prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]);
+    }, []);
+    const toggleLifeAreaFilter = useCallback((value: string) => {
+        setLifeAreaFilters((prev) => prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]);
+    }, []);
+    const clearAllFilters = useCallback(() => {
+        setMoodFilters([]);
+        setLifeAreaFilters([]);
+        setDateFromFilter('');
+        setDateToFilter('');
+    }, []);
 
     const performSearch = useCallback(async (searchQuery: string) => {
         if (!accessToken || !searchQuery.trim()) return;
@@ -48,7 +93,7 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
         setIsSearching(true);
         setSearchError(false);
         try {
-            const response = await apiFetch(`${API_URL}/entries/search?q=${encodeURIComponent(searchQuery)}`);
+            const response = await apiFetch(`${API_URL}/entries/search?q=${encodeURIComponent(searchQuery)}${filterQueryString}`);
 
             if (response.ok) {
                 const data = await response.json();
@@ -66,9 +111,10 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
         } finally {
             setIsSearching(false);
         }
-    }, [accessToken, apiFetch, toast]);
+    }, [accessToken, apiFetch, toast, filterQueryString]);
 
-    // Debounced search
+    // Debounced search — also re-runs when filters change so the user sees
+    // updated results immediately on toggle.
     useEffect(() => {
         if (!query.trim()) {
             setResults([]);
@@ -143,7 +189,7 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
                 />
 
                 {/* Loading / Clear */}
-                <div className="absolute right-5 top-1/2 -translate-y-1/2">
+                <div className="absolute right-5 top-1/2 -translate-y-1/2 flex items-center gap-2">
                     {isSearching ? (
                         <Spinner size="sm" />
                     ) : query ? (
@@ -158,8 +204,108 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
                             <FiXCircle size={20} aria-hidden="true" />
                         </button>
                     ) : null}
+                    <button
+                        type="button"
+                        onClick={() => setFiltersOpen((prev) => !prev)}
+                        aria-expanded={filtersOpen}
+                        aria-label={`${filtersOpen ? 'Hide' : 'Show'} filters${filterCount > 0 ? ` (${filterCount} active)` : ''}`}
+                        className={`relative flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                            filterCount > 0
+                                ? 'border-primary/40 bg-primary/10 text-primary'
+                                : 'border-white/10 text-ink-secondary hover:bg-white/5'
+                        }`}
+                    >
+                        <FiFilter size={13} aria-hidden="true" />
+                        {filterCount > 0 ? filterCount : 'Filter'}
+                    </button>
                 </div>
             </div>
+
+            {/* Filter panel */}
+            {filtersOpen && (
+                <div className="mt-2 rounded-2xl border border-[rgba(var(--paper-border),0.7)] bg-[rgba(255,255,255,0.5)] p-4 backdrop-blur">
+                    <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">Filters</p>
+                        {filterCount > 0 && (
+                            <button
+                                type="button"
+                                onClick={clearAllFilters}
+                                className="text-xs text-ink-secondary underline-offset-2 hover:underline"
+                            >
+                                Clear all
+                            </button>
+                        )}
+                    </div>
+                    <div className="space-y-3">
+                        <div>
+                            <p className="mb-1.5 text-[0.68rem] font-medium uppercase tracking-[0.1em] text-ink-muted">Mood</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {MOOD_FILTER_OPTIONS.map((option) => {
+                                    const active = moodFilters.includes(option.value);
+                                    return (
+                                        <button
+                                            key={option.value}
+                                            type="button"
+                                            onClick={() => toggleMoodFilter(option.value)}
+                                            aria-pressed={active}
+                                            className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
+                                                active
+                                                    ? 'bg-primary text-white'
+                                                    : 'bg-[rgba(var(--paper-ink),0.06)] text-soft hover:bg-[rgba(var(--paper-ink),0.12)]'
+                                            }`}
+                                        >
+                                            <span aria-hidden="true">{getMoodEmoji(option.value)}</span> {option.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div>
+                            <p className="mb-1.5 text-[0.68rem] font-medium uppercase tracking-[0.1em] text-ink-muted">Life area</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {LIFE_AREA_OPTIONS.map((option) => {
+                                    const active = lifeAreaFilters.includes(option.value);
+                                    return (
+                                        <button
+                                            key={option.value}
+                                            type="button"
+                                            onClick={() => toggleLifeAreaFilter(option.value)}
+                                            aria-pressed={active}
+                                            className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
+                                                active
+                                                    ? 'bg-primary text-white'
+                                                    : 'bg-[rgba(var(--paper-ink),0.06)] text-soft hover:bg-[rgba(var(--paper-ink),0.12)]'
+                                            }`}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <label className="block">
+                                <span className="block text-[0.68rem] font-medium uppercase tracking-[0.1em] text-ink-muted">From</span>
+                                <input
+                                    type="date"
+                                    value={dateFromFilter}
+                                    onChange={(e) => setDateFromFilter(e.target.value)}
+                                    className="workspace-input mt-1 h-9 w-full rounded-lg px-2 text-xs"
+                                />
+                            </label>
+                            <label className="block">
+                                <span className="block text-[0.68rem] font-medium uppercase tracking-[0.1em] text-ink-muted">To</span>
+                                <input
+                                    type="date"
+                                    value={dateToFilter}
+                                    onChange={(e) => setDateToFilter(e.target.value)}
+                                    className="workspace-input mt-1 h-9 w-full rounded-lg px-2 text-xs"
+                                />
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Search Results Dropdown */}
             {showResults && results.length > 0 && (

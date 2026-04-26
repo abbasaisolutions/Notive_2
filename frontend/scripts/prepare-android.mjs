@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -21,6 +21,8 @@ const requiredAndroidFiles = [
     'android/app/src/main/assets/public/manifest.webmanifest',
 ];
 
+const socialLoginManifestPath = 'node_modules/@capgo/capacitor-social-login/android/src/main/AndroidManifest.xml';
+
 const resolveProjectPath = (...segments) => path.resolve(projectRoot, ...segments);
 
 const removeIfPresent = (relativePath) => {
@@ -37,6 +39,24 @@ const removeIfPresent = (relativePath) => {
 const ensureExists = (relativePath) => {
     if (!existsSync(resolveProjectPath(relativePath))) {
         throw new Error(`Required file not found: ${relativePath}`);
+    }
+};
+
+const sanitizeSocialLoginManifest = () => {
+    const absolutePath = resolveProjectPath(socialLoginManifestPath);
+    if (!existsSync(absolutePath)) {
+        return;
+    }
+
+    const contents = readFileSync(absolutePath, 'utf8');
+    const sanitized = contents.replace(
+        /\n\s*<provider\s+android:name="com\.facebook\.internal\.FacebookInitProvider"[\s\S]*?tools:node="remove"\s*\/>\s*/m,
+        '\n',
+    );
+
+    if (sanitized !== contents) {
+        writeFileSync(absolutePath, sanitized, 'utf8');
+        console.log('- sanitized social-login Android manifest');
     }
 };
 
@@ -114,6 +134,8 @@ const verifyAndroidArtifacts = () => {
 const mode = (process.argv[2] || 'clean').trim().toLowerCase();
 
 try {
+    sanitizeSocialLoginManifest();
+
     switch (mode) {
         case 'clean':
             console.log('Cleaning generated Android build artifacts');

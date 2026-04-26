@@ -336,6 +336,17 @@ function resolveAndroidLocalNotificationId(notification: any, data: Record<strin
     return hashNotificationId(rawId);
 }
 
+async function getAndroidNotificationDisplayPermissionState(): Promise<PermissionStatus> {
+    const localPermission = await LocalNotifications.checkPermissions();
+    const displayState = normalizeLocalNotificationPermissionState(localPermission.display);
+    if (displayState !== 'granted') {
+        return displayState;
+    }
+
+    const enabledResult = await LocalNotifications.areEnabled();
+    return enabledResult.value ? 'granted' : 'denied';
+}
+
 async function readApiErrorMessage(response: Response): Promise<string> {
     try {
         const data = await response.json() as { message?: unknown };
@@ -747,6 +758,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
                         channelId: resolveAndroidNotificationChannelId(data.type),
                         group: resolveAndroidNotificationGroup(data.type, data),
                         smallIcon: ANDROID_LOCAL_NOTIFICATION_ICON,
+                        largeIcon: 'ic_launcher',
                         iconColor: ANDROID_LOCAL_NOTIFICATION_ICON_COLOR,
                         extra: data,
                         autoCancel: true,
@@ -771,7 +783,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         }
     }, [markNotificationRead, router]);
 
-    const ensureAndroidPushChannel = useCallback(async () => {
+    const ensureAndroidNotificationChannels = useCallback(async () => {
         if (getPlatform() !== 'android') {
             return;
         }
@@ -794,10 +806,35 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
                 }
 
                 await PushNotifications.createChannel(channel);
+                await LocalNotifications.createChannel(channel);
             }
         } catch (error) {
             logger.debug('Push channel creation error (may already exist):', error);
         }
+    }, [getPlatform]);
+
+    const resolveNativeNotificationPermissionState = useCallback(async (): Promise<PermissionStatus> => {
+        const check = await PushNotifications.checkPermissions();
+        const nextPermissionState = normalizePushPermissionState(check.receive);
+        if (getPlatform() !== 'android' || nextPermissionState !== 'granted') {
+            return nextPermissionState;
+        }
+
+        return getAndroidNotificationDisplayPermissionState();
+    }, [getPlatform]);
+
+    const requestAndroidNotificationDisplayPermission = useCallback(async (): Promise<PermissionStatus> => {
+        if (getPlatform() !== 'android') {
+            return 'granted';
+        }
+
+        const result = await LocalNotifications.requestPermissions();
+        const nextPermissionState = normalizeLocalNotificationPermissionState(result.display);
+        if (nextPermissionState !== 'granted') {
+            return nextPermissionState;
+        }
+
+        return getAndroidNotificationDisplayPermissionState();
     }, [getPlatform]);
 
     const checkPushSupport = useCallback(async (): Promise<boolean> => {
@@ -854,6 +891,10 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
                 void handleNotificationAction(notification);
             });
 
+            LocalNotifications.addListener('localNotificationReceived', (notification: any) => {
+                logger.debug('Local notification received:', notification);
+            });
+
             LocalNotifications.addListener('localNotificationActionPerformed', (notificationAction: any) => {
                 logger.debug('Local notification action performed:', notificationAction);
                 void handleNotificationAction(notificationAction);
@@ -877,10 +918,9 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             }
 
             await setupPushListeners();
-            await ensureAndroidPushChannel();
+            await ensureAndroidNotificationChannels();
 
-            const check = await PushNotifications.checkPermissions();
-            const nextPermissionState = normalizePushPermissionState(check.receive);
+            const nextPermissionState = await resolveNativeNotificationPermissionState();
             const alreadyGranted = applyResolvedPushPermission(
                 nextPermissionState,
                 setPermissionState,
@@ -895,7 +935,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         } finally {
             setIsLoading(false);
         }
-    }, [checkPushSupport, ensureAndroidPushChannel, setupPushListeners]);
+    }, [checkPushSupport, ensureAndroidNotificationChannels, resolveNativeNotificationPermissionState, setupPushListeners]);
 
     useEffect(() => {
         if (!isNativePlatform()) {
@@ -933,8 +973,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         void App.addListener('appStateChange', async ({ isActive }) => {
             if (!isActive) return;
             try {
-                const check = await PushNotifications.checkPermissions();
-                const nextState = normalizePushPermissionState(check.receive);
+                const nextState = await resolveNativeNotificationPermissionState();
                 const granted = applyResolvedPushPermission(
                     nextState,
                     setPermissionState,
@@ -942,7 +981,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
                 );
 
                 if (granted) {
-                    await ensureAndroidPushChannel();
+                    await ensureAndroidNotificationChannels();
                     await PushNotifications.register();
                 }
             } catch {
@@ -951,24 +990,33 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
         }).then((l) => { listener = l; });
 
         return () => { void listener?.remove(); };
-    }, [ensureAndroidPushChannel]);
+    }, [ensureAndroidNotificationChannels, resolveNativeNotificationPermissionState]);
 
     const requestPermission = useCallback(async (): Promise<boolean> => {
         try {
-            const check = await PushNotifications.checkPermissions();
-            const nextPermissionState = normalizePushPermissionState(check.receive);
+            const nextPermissionState = await resolveNativeNotificationPermissionState();
             if (applyResolvedPushPermission(
                 nextPermissionState,
                 setPermissionState,
                 setIsPermissionGranted,
             )) {
-                await ensureAndroidPushChannel();
+                await ensureAndroidNotificationChannels();
                 await PushNotifications.register();
                 return true;
             }
 
-            const result = await PushNotifications.requestPermissions();
-            const updatedPermissionState = normalizePushPermissionState(result.receive);
+            const pushPermission = await PushNotifications.requestPermissions();
+            const pushPermissionState = normalizePushPermissionState(pushPermission.receive);
+            if (pushPermissionState !== 'granted') {
+                applyResolvedPushPermission(
+                    pushPermissionState,
+                    setPermissionState,
+                    setIsPermissionGranted,
+                );
+                return false;
+            }
+
+            const updatedPermissionState = await requestAndroidNotificationDisplayPermission();
             const granted = applyResolvedPushPermission(
                 updatedPermissionState,
                 setPermissionState,
@@ -976,7 +1024,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             );
 
             if (granted) {
-                await ensureAndroidPushChannel();
+                await ensureAndroidNotificationChannels();
                 await PushNotifications.register();
             }
 
@@ -985,7 +1033,7 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
             logger.error('Failed to request push permissions:', error);
             return false;
         }
-    }, [ensureAndroidPushChannel]);
+    }, [ensureAndroidNotificationChannels, requestAndroidNotificationDisplayPermission, resolveNativeNotificationPermissionState]);
 
     const value = useMemo(() => ({
         isSupported,
@@ -1031,6 +1079,12 @@ export function usePushNotifications(): PushContextType {
 }
 
 function normalizePushPermissionState(
+    value: 'prompt' | 'prompt-with-rationale' | 'granted' | 'denied'
+): PermissionStatus {
+    return normalizeLocalNotificationPermissionState(value);
+}
+
+function normalizeLocalNotificationPermissionState(
     value: 'prompt' | 'prompt-with-rationale' | 'granted' | 'denied'
 ): PermissionStatus {
     if (value === 'granted' || value === 'denied' || value === 'prompt-with-rationale') {

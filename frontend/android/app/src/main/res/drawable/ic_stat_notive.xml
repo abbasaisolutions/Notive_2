@@ -1,14 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Small notification icon — must be monochrome (white + transparent).
-     Android tints this with the notification accent color automatically.
-     Shape: a simple pen-nib / journal icon representing Notive. -->
+<!-- Notive notification icon — feather/quill silhouette, monochrome white.
+     Android tints the white paths with the notification accent colour automatically.
+     Designed to match the Notive app-launcher feather mark at 24 dp / status-bar scale. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <!-- Pen / edit icon (Material Design "edit" path) -->
+
+    <!--
+      evenOdd fill rule lets the inner shaft path punch a transparent
+      slot through the outer vane, matching the two-tone look of the logo.
+      Requires API 24+ (Android 7.0) — covers 99%+ of active devices.
+
+      Outer path  : feather vane + nib, going bottom-left → top-right.
+      Inner path  : thin quill shaft, subtracted from the vane fill.
+    -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M3,17.25V21h3.75L17.81,9.94l-3.75,-3.75L3,17.25zM20.71,7.04c0.39,-0.39 0.39,-1.02 0,-1.41l-2.34,-2.34c-0.39,-0.39 -1.02,-0.39 -1.41,0l-1.83,1.83 3.75,3.75 1.83,-1.83z" />
+        android:fillType="evenOdd"
+        android:pathData="
+M 18.5,2
+C 15,1 9.5,4 7.5,9
+C 6,13 7,17 10,18.5
+L 8,22
+L 9.5,21.5
+L 11.5,18
+C 12.5,18.5 14,19 15.5,18.5
+C 19,17 22.5,13 22.5,8.5
+C 23,4.5 21,2.5 18.5,2
+Z
+M 17.5,4
+L 8.5,20
+L 9.8,20.5
+L 18.8,4.5
+Z" />
 </vector>
