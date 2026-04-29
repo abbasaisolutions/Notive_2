@@ -206,7 +206,14 @@ export default function ChaptersPage() {
                         </ActionBar>
                     </div>
 
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
+                    <div className="workspace-soft-panel rounded-2xl p-3 text-sm text-ink-secondary md:hidden">
+                        <span className="workspace-heading font-semibold text-[rgb(var(--text-primary))]">{chapters.length}</span>
+                        {' '}groups ·{' '}
+                        <span className="workspace-heading font-semibold text-[rgb(var(--text-primary))]">{totalEntries}</span>
+                        {' '}notes inside
+                    </div>
+
+                    <div className="hidden grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3 md:grid">
                         <StatTile label="Groups" value={chapters.length} hint="Groups you have created" />
                         <StatTile label="Notes Inside" value={totalEntries} hint="Notes placed into groups" tone="primary" />
                         <StatTile label="Empty Groups" value={emptyCollections} hint="Groups ready for new notes" />

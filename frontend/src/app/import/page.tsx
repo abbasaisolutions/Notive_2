@@ -234,20 +234,12 @@ export default function ImportPage() {
         <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
             <div className="mx-auto max-w-6xl space-y-6">
                 <AppPanel className="space-y-5">
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-                        <SectionHeader
-                            kicker={NOTIVE_VOICE.surfaces.memoryInbox}
-                            title={NOTIVE_VOICE.imports.title}
-                            description={NOTIVE_VOICE.imports.description}
-                            as="h1"
-                        />
-
-                        <div className="flex flex-wrap gap-2">
-                            <TagPill tone="primary">{connectedCount}/2 connected</TagPill>
-                            <TagPill>{(status?.instagram || 0) + (status?.facebook || 0)} imported entries</TagPill>
-                            <TagPill>{queueCounts.ready_to_export} ready to reuse</TagPill>
-                        </div>
-                    </div>
+                    <SectionHeader
+                        kicker={NOTIVE_VOICE.surfaces.memoryInbox}
+                        title={NOTIVE_VOICE.imports.title}
+                        description={NOTIVE_VOICE.imports.description}
+                        as="h1"
+                    />
 
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
                         <div className="workspace-panel rounded-2xl p-4">
@@ -268,9 +260,9 @@ export default function ImportPage() {
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Import snapshot</p>
                                 <p className="mt-2 text-sm leading-7 text-[rgb(var(--text-primary))]">{importSnapshot}</p>
                                 <div className="mt-3 flex flex-wrap gap-2">
-                                    <TagPill tone="primary">{connectedCount}/2 connected</TagPill>
-                                    <TagPill>{(status?.instagram || 0) + (status?.facebook || 0)} imported entries</TagPill>
-                                    <TagPill>{queueCounts.ready_to_export} ready to reuse</TagPill>
+                                    <TagPill tone="primary">
+                                        {connectedCount}/2 connected · {(status?.instagram || 0) + (status?.facebook || 0)} imported
+                                    </TagPill>
                                     {leadTopic && <TagPill tone="primary">{leadTopic}</TagPill>}
                                 </div>
                             </div>

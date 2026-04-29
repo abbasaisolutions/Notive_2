@@ -155,47 +155,51 @@ export default function EntryEditorCard({
 
             {/* Live transcription preview — word-by-word stagger with mic arcs */}
             {showLiveTranscript && (
-                <div aria-live="polite" aria-label="Live transcription" className={`mt-3 rounded-2xl border p-3 voice-interim-card ${utilityPanelClass}`}>
+                <div aria-live="polite" aria-label="Live transcription" className={`mt-4 rounded-2xl border p-4 voice-interim-card ${utilityPanelClass}`}>
                     <div className="flex items-start gap-3">
-                        <div className="recording-arc-container mt-0.5 flex-shrink-0">
+                        <div className="recording-arc-container mt-1 flex-shrink-0">
                             <span className="mic-arc-ring mic-arc-ring-1" />
                             <span className="mic-arc-ring mic-arc-ring-2" />
                             <span className="mic-arc-ring mic-arc-ring-3" />
                             <FiMic size={11} className="relative z-10 text-[rgb(var(--paper-sage))]" aria-hidden="true" />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <div className="mb-2">
-                                <p className="type-overline text-muted">
+                            <div className="mb-3">
+                                <p className="type-overline text-muted text-xs mb-1">
                                     {isVoiceProcessing ? 'Refining transcript' : isRecording ? 'Live transcript' : 'Transcript preview'}
                                 </p>
-                                <p className="type-micro text-muted">
-                                    {isVoiceProcessing
-                                        ? 'We are cleaning up the transcript while keeping your draft visible.'
-                                        : 'Final phrases land in your note as you speak.'}
-                                </p>
+                                {isVoiceProcessing || isRecording ? (
+                                    <p className="text-xs text-ink-secondary leading-snug">
+                                        {isVoiceProcessing
+                                            ? '✓ Cleaning up your words...'
+                                            : '🎤 Speaking...'}
+                                    </p>
+                                ) : null}
                             </div>
-                            <div className="max-h-32 overflow-y-auto pr-1">
+                            <div className="max-h-40 overflow-y-auto pr-2 rounded-lg bg-[rgba(255,255,255,0.4)] p-3">
                                 {committedTranscript ? (
-                                    <p className={`${bodyTextClass} type-body-sm font-serif leading-relaxed`}>
+                                    <p className="text-sm leading-relaxed text-[rgb(40,36,32)] font-medium">
                                         {committedTranscript}
                                     </p>
                                 ) : (
-                                    <p className="type-body-sm italic text-muted">
-                                        Listening for your first phrase...
+                                    <p className="text-sm text-ink-secondary">
+                                        Listening for your words...
                                     </p>
                                 )}
                                 {interimWords.length > 0 && (
-                                    <p className="mt-2 type-body-sm font-serif italic leading-relaxed text-default">
-                                        {interimWords.map((word, i) => (
-                                            <span
-                                                key={i}
-                                                className="word-appear-in mr-[0.25em]"
-                                                style={{ animationDelay: `${Math.min(i * 40, 500)}ms` }}
-                                            >
-                                                {word}
-                                            </span>
-                                        ))}
-                                    </p>
+                                    <div className="mt-2 pt-2 border-t border-[rgba(126,157,149,0.2)]">
+                                        <p className="text-sm leading-relaxed text-[rgb(60,55,48)]">
+                                            {interimWords.map((word, i) => (
+                                                <span
+                                                    key={i}
+                                                    className="word-appear-in mr-[0.25em]"
+                                                    style={{ animationDelay: `${Math.min(i * 40, 500)}ms` }}
+                                                >
+                                                    {word}
+                                                </span>
+                                            ))}
+                                        </p>
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -205,9 +209,17 @@ export default function EntryEditorCard({
 
             {/* Audio player */}
             {audioUrl && (
-                <div className={`mt-3 rounded-xl border p-3 ${utilityPanelClass}`}>
-                    <audio controls src={audioUrl} className="w-full h-9" />
-                </div>
+                <details className="group">
+                    <summary className="cursor-pointer select-none list-none">
+                        <div className={`mt-3 rounded-xl border p-3 ${utilityPanelClass}`}>
+                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Voice recording</p>
+                            <p className="mt-1 text-sm text-ink-secondary">Click to listen</p>
+                        </div>
+                    </summary>
+                    <div className={`mt-3 rounded-xl border p-3 ${utilityPanelClass}`}>
+                        <audio controls src={audioUrl} className="w-full h-9" />
+                    </div>
+                </details>
             )}
 
             {/* Upload queue */}

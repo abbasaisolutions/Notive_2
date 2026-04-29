@@ -77,13 +77,6 @@ const normalizeConnectionSummary = (value: unknown, provider: ProviderKey): Conn
     return { provider, connected: false };
 };
 
-const formatDate = (value: string | null | undefined): string | null => {
-    if (!value) return null;
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return null;
-    return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-};
-
 export function SocialImportPanel({ returnToPath, compact = false }: SocialImportPanelProps) {
     const { apiFetch } = useApi();
     const toast = useToast();
@@ -426,18 +419,15 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                         {isReadyForImport ? 'Connected' : isExpired ? 'Expired' : 'Not connected'}
                     </span>
                 </div>
-                <div className="space-y-1 text-xs text-ink-secondary">
-                    <p className="break-all">Account: {connection.accountId || 'Unknown'}</p>
-                    <p>Updated: {formatDate(connection.updatedAt) || 'Never'}</p>
-                    {isExpired ? (
-                        <p className="text-ink-secondary">Connection expired. Reconnect required.</p>
-                    ) : (
-                        <p>Expires: {formatDate(connection.expiresAt) || 'Not provided'}</p>
-                    )}
-                    {hasBlockingSetupIssue && (
-                        <p className="text-ink-secondary">{setupIssue}</p>
-                    )}
-                </div>
+                <p className="text-xs leading-6 text-ink-secondary">
+                    {hasBlockingSetupIssue
+                        ? setupIssue
+                        : isReadyForImport
+                            ? 'Ready to choose memories from this account.'
+                            : isExpired
+                                ? 'Connection expired. Reconnect to import again.'
+                                : 'Connect once, then choose the memories to bring in.'}
+                </p>
                 <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-2">
                     <button
                         onClick={() => (isReadyForImport ? openSelectionModal(provider) : startConnect(provider))}
@@ -463,7 +453,7 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                         <button
                             onClick={() => disconnectProvider(provider)}
                             disabled={isDisconnecting !== null || isConnecting !== null}
-                            className="workspace-button-outline col-[1/-1] rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.06em] disabled:opacity-50"
+                            className={`workspace-button-outline col-[1/-1] rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.06em] disabled:opacity-50 ${showAdvancedImportTools ? '' : 'hidden'}`}
                         >
                             {isDisconnecting === provider ? 'Disconnecting...' : 'Disconnect'}
                         </button>
@@ -516,23 +506,25 @@ export function SocialImportPanel({ returnToPath, compact = false }: SocialImpor
                     </div>
                 )}
 
-                <section className="workspace-soft-panel mb-5 rounded-2xl p-4">
-                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current snapshot</p>
-                    <p className="mt-2 text-sm leading-7 text-[rgb(var(--text-primary))]">{workflowSummary}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                        <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs text-primary">
-                            {connectedCount}/2 connected
-                        </span>
-                        <span className="workspace-pill-muted rounded-full px-3 py-1 text-xs text-[rgb(var(--text-primary))]">
-                            {status?.total || 0} total notes
-                        </span>
-                        {hasAnyConnected && (
-                            <Link href={timelineHref} className="workspace-button-outline rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em]">
-                                Open {NOTIVE_VOICE.surfaces.memoryAtlas}
-                            </Link>
-                        )}
-                    </div>
-                </section>
+                {!compact && (
+                    <section className="workspace-soft-panel mb-5 rounded-2xl p-4">
+                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current snapshot</p>
+                        <p className="mt-2 text-sm leading-7 text-[rgb(var(--text-primary))]">{workflowSummary}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs text-primary">
+                                {connectedCount}/2 connected
+                            </span>
+                            <span className="workspace-pill-muted rounded-full px-3 py-1 text-xs text-[rgb(var(--text-primary))]">
+                                {status?.total || 0} total notes
+                            </span>
+                            {hasAnyConnected && (
+                                <Link href={timelineHref} className="workspace-button-outline rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em]">
+                                    Open {NOTIVE_VOICE.surfaces.memoryAtlas}
+                                </Link>
+                            )}
+                        </div>
+                    </section>
+                )}
 
                 <section className="space-y-5">
                     <div>

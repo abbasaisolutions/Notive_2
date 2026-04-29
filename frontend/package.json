@@ -25,6 +25,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "smoke:test": "node scripts/production-smoke.mjs",
     "home-action:review": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/home-action-review.mts",
+    "api:audit": "node scripts/api-path-audit.js",
     "ui:audit": "node scripts/ui-audit.js",
     "ui:audit:strict": "set CI_UI_STRICT=1&& node scripts/ui-audit.js",
     "link:audit": "node scripts/link-audit.js",

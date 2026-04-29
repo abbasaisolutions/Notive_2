@@ -52,7 +52,7 @@ export default function MoodForecastCard() {
         let cancelled = false;
         (async () => {
             try {
-                const response = await apiFetch('/api/analytics/mood-forecast');
+                const response = await apiFetch('/analytics/mood-forecast');
                 if (!response.ok) return;
                 const data = (await response.json()) as MoodForecast;
                 if (!cancelled) setForecast(data);

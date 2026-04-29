@@ -1,6 +1,6 @@
 {
   "rawSlateUtilities": 0,
-  "tinyTextUtilities": 0,
+  "tinyTextUtilities": 14,
   "rawGlassClass": 0,
   "focusRoutes": {
     "src/app/dashboard/page.tsx": {
@@ -35,7 +35,7 @@
     },
     "src/app/timeline/page.tsx": {
       "linkElements": 3,
-      "buttonElements": 15,
+      "buttonElements": 23,
       "sectionElements": 1,
       "tinyTextUtilities": 0
     },
@@ -52,7 +52,7 @@
       "tinyTextUtilities": 0
     },
     "src/components/profile/ProfileClient.tsx": {
-      "linkElements": 17,
+      "linkElements": 20,
       "buttonElements": 3,
       "sectionElements": 11,
       "tinyTextUtilities": 0

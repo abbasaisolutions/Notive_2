@@ -7,7 +7,7 @@ import { API_URL } from '@/constants/config';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import useContextNavigation from '@/hooks/use-context-navigation';
 import { ActionBar, AppPanel, EmptyState, TagPill } from '@/components/ui/surface';
-import { FiArrowLeft, FiArrowRight, FiSend } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiChevronDown, FiSend } from 'react-icons/fi';
 import ActionBriefPanel from '@/components/action/ActionBriefPanel';
 import BridgeCard from '@/components/action/BridgeCard';
 import SafetyBanner from '@/components/safety/SafetyBanner';
@@ -73,6 +73,7 @@ export default function ChatPage() {
     const [selectedLens, setSelectedLens] = useState<GuidedLens>('stories');
     const [requestedLens, setRequestedLens] = useState<GuidedLens | null>(null);
     const [isStatusLoading, setIsStatusLoading] = useState(true);
+    const [showLensPicker, setShowLensPicker] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -230,6 +231,7 @@ export default function ChatPage() {
 
     const handleLensSelection = (lensId: GuidedLens) => {
         setSelectedLens(lensId);
+        setShowLensPicker(false);
         void trackEvent({
             eventType: 'guide_lens_selected',
             value: lensId,
@@ -374,18 +376,30 @@ export default function ChatPage() {
                 </AppPanel>
 
                 {coachMode === 'guided' && guidedLenses.length > 0 && (
-                    <AppPanel className="space-y-4">
+                    <AppPanel className="space-y-3">
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                            <div>
+                            <div className="min-w-0">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Reflection lens</p>
                                 <h2 className="workspace-heading mt-2 text-lg font-semibold">{selectedLensLabel}</h2>
                                 <p className="mt-1 text-sm leading-7 text-ink-secondary">
                                     {activeGuidedLens?.description || 'Choose the lens that best matches what you want to understand or reuse from your notes.'}
                                 </p>
                             </div>
-                            <TagPill tone="primary">Note understanding</TagPill>
+                            <button
+                                type="button"
+                                onClick={() => setShowLensPicker((current) => !current)}
+                                aria-expanded={showLensPicker}
+                                className="workspace-button-outline inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
+                            >
+                                Switch lens
+                                <FiChevronDown
+                                    size={14}
+                                    aria-hidden="true"
+                                    className={`transition-transform ${showLensPicker ? 'rotate-180' : ''}`}
+                                />
+                            </button>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className={`flex flex-wrap gap-2 ${showLensPicker ? '' : 'hidden'}`}>
                             {guidedLenses.map((lens) => {
                                 const active = selectedLens === lens.id;
                                 return (

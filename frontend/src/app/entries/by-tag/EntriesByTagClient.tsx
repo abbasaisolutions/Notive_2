@@ -111,7 +111,7 @@ export default function EntriesByTagClient() {
                 <EmptyState
                     icon={<FiTag aria-hidden="true" />}
                     title="No entries with this tag yet"
-                    subtitle="Try a different tag or write a new entry."
+                    subtitle="Try a different tag or write a new memory."
                     action={{ label: 'Browse tags', href: '/tags' }}
                 />
             ) : (

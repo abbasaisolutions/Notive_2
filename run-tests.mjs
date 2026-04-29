@@ -4,7 +4,7 @@
  * Unified test runner for Notive.
  *
  * Usage:
- *   node run-tests.mjs              # Run all offline tests (backend unit + smoke)
+ *   node run-tests.mjs              # Run all offline checks
  *   node run-tests.mjs --online     # Also run the production smoke that hits live URLs
  */
 
@@ -15,10 +15,17 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const online = process.argv.includes('--online');
 
-const run = (label, cwd, command) => {
+const run = (label, cwd, command, options = {}) => {
     console.log(`\n══════════ ${label} ══════════`);
     try {
-        execSync(command, { cwd: path.resolve(__dirname, cwd), stdio: 'inherit' });
+        execSync(command, {
+            cwd: path.resolve(__dirname, cwd),
+            stdio: 'inherit',
+            env: {
+                ...process.env,
+                ...(options.env || {}),
+            },
+        });
         console.log(`✔ ${label} passed`);
         return true;
     } catch {
@@ -29,7 +36,14 @@ const run = (label, cwd, command) => {
 
 let ok = true;
 
-ok = run('Backend unit + integration tests', 'backend', 'npx vitest run') && ok;
+ok = run('Frontend typecheck', 'frontend', 'npm run typecheck') && ok;
+ok = run('Frontend unit tests', 'frontend', 'npm test') && ok;
+ok = run('Frontend API path audit', 'frontend', 'npm run api:audit') && ok;
+ok = run('Frontend UI audit', 'frontend', 'node scripts/ui-audit.js', { env: { CI_UI_STRICT: '1' } }) && ok;
+ok = run('Frontend link audit', 'frontend', 'npm run link:audit') && ok;
+ok = run('Backend typecheck', 'backend', 'npm run typecheck') && ok;
+ok = run('Backend lint', 'backend', 'npm run lint') && ok;
+ok = run('Backend unit + integration tests', 'backend', 'npm test') && ok;
 ok = run('Android readiness audit', 'frontend', 'node scripts/android-readiness.mjs --launch') && ok;
 
 if (online) {

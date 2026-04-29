@@ -56,7 +56,7 @@ export default function FirstEntryHandoff({ onDismiss }: { onDismiss: () => void
                             Welcome to your notebook
                         </p>
                         <p className="text-xs text-ink-muted mb-4">
-                            This is your first entry. Here are a few pointers:
+                            This is your first memory. Here are a few pointers:
                         </p>
 
                         <div className="space-y-3">

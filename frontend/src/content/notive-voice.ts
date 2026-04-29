@@ -47,15 +47,15 @@ export const NOTIVE_VOICE = {
         admin: 'Manage',
     },
     home: {
-        heroTitle: 'Capture real moments. Keep what matters. Turn it into something useful.',
-        heroBody: 'Write, speak, or import a memory. Notive helps you keep it private, understand what it contains, and reuse it later.',
-        heroPrimaryCta: 'Start your diary',
+        heroTitle: 'Save the moment while it is fresh.',
+        heroBody: 'Write, speak, or import a note. Notive keeps it private and helps you find the lesson, pattern, or story later.',
+        heroPrimaryCta: 'Start writing',
         heroSecondaryCta: 'Sign in',
         showcaseEyebrow: 'Private diary',
-        showcaseTitle: 'Five ways Notive turns saved moments into something useful later.',
-        showcaseBody: 'Capture is only the start. Notive helps turn memories into lessons, skills, patterns, and reusable story material.',
-        closingTitle: 'Your memories can become more than a timeline.',
-        closingBody: 'Keep the moment now. Come back later for lessons, skills, patterns, and story pieces you can actually use.',
+        showcaseTitle: 'Capture, review, reuse.',
+        showcaseBody: 'One simple flow: save the moment, check what mattered, and come back when you need useful story material.',
+        closingTitle: 'Start with one real moment.',
+        closingBody: 'No system to learn first. Capture it, review it, and move on.',
     },
     auth: {
         trustPoints: [

@@ -12,6 +12,14 @@ function countWords(text: string): number {
     return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+function normalizeComparableText(text: string): string {
+    return text.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function looksLikeHtml(content: string): boolean {
+    return /<\/?[a-z][\s\S]*>/i.test(content);
+}
+
 function createWordLimitExtension(maxWords: number) {
     return Extension.create({
         name: 'wordLimit',
@@ -174,7 +182,7 @@ const MenuBar = ({
 };
 
 export default function TiptapEditor({
-    content = '',
+    content,
     initialContent = '',
     onChange,
     placeholder = 'Start writing...',
@@ -183,9 +191,9 @@ export default function TiptapEditor({
     variant = 'glass',
     maxWords,
 }: TiptapEditorProps) {
-    const contentRef = useRef(initialContent || content);
+    const contentRef = useRef(initialContent || content || '');
     const isExternalUpdate = useRef(false);
-    const [wordCount, setWordCount] = useState(() => countWords(initialContent || content));
+    const [wordCount, setWordCount] = useState(() => countWords(initialContent || content || ''));
     const isPaper = variant === 'paper';
     const editorClass = isPaper
         ? 'prose prose-sm sm:prose-base max-w-none focus:outline-none min-h-[280px] px-5 py-6 text-[rgb(var(--paper-ink-soft))]'
@@ -211,17 +219,17 @@ export default function TiptapEditor({
         autofocus: autoFocus ? 'end' : false,
         onUpdate: ({ editor }) => {
             const text = editor.getText();
+            const html = editor.getHTML();
             setWordCount(countWords(text));
+            contentRef.current = html;
             if (isExternalUpdate.current) {
                 isExternalUpdate.current = false;
                 if (onChange) {
-                    onChange(text, editor.getHTML());
+                    onChange(text, html);
                 }
                 return;
             }
             if (onChange) {
-                const html = editor.getHTML();
-                contentRef.current = html;
                 onChange(text, html);
             }
         },
@@ -230,16 +238,28 @@ export default function TiptapEditor({
 
     // Sync with external content changes (e.g., from voice input)
     useEffect(() => {
-        if (editor && content && content !== contentRef.current) {
-            const wasFocused = editor.isFocused;
-            isExternalUpdate.current = true;
-            contentRef.current = content;
-            editor.commands.setContent(content);
-            // setContent resets the ProseMirror selection; restore cursor to end
-            // so the user can keep typing immediately after voice text lands.
-            if (wasFocused) {
-                editor.commands.focus('end');
-            }
+        if (!editor || content === undefined) {
+            return;
+        }
+
+        const incomingContent = content;
+        const incomingIsHtml = looksLikeHtml(incomingContent);
+        const editorMatchesIncoming = incomingIsHtml
+            ? editor.getHTML() === incomingContent
+            : normalizeComparableText(editor.getText()) === normalizeComparableText(incomingContent);
+
+        if (editorMatchesIncoming) {
+            return;
+        }
+
+        const wasFocused = editor.isFocused;
+        isExternalUpdate.current = true;
+        contentRef.current = incomingContent;
+        editor.commands.setContent(incomingContent);
+        // setContent resets the ProseMirror selection; restore cursor to end
+        // so the user can keep typing immediately after voice text lands.
+        if (wasFocused) {
+            editor.commands.focus('end');
         }
     }, [editor, content]);
 
@@ -308,4 +328,3 @@ export default function TiptapEditor({
         </div>
     );
 }
-

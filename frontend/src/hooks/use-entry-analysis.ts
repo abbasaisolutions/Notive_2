@@ -20,6 +20,7 @@ type UseEntryAnalysisArgs = {
     lifeArea?: string;
     chapterId?: string | null;
     pendingSync: boolean;
+    isSaved?: boolean;
 };
 
 export default function useEntryAnalysis({
@@ -36,6 +37,7 @@ export default function useEntryAnalysis({
     lifeArea,
     chapterId,
     pendingSync,
+    isSaved = false,
 }: UseEntryAnalysisArgs) {
     const [extractedData, setExtractedData] = useState<StructuredEntryData | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -62,6 +64,10 @@ export default function useEntryAnalysis({
     }, []);
 
     useEffect(() => {
+        if (!isSaved) {
+            return;
+        }
+
         if (analysisTimeoutRef.current) {
             clearTimeout(analysisTimeoutRef.current);
         }
@@ -75,7 +81,7 @@ export default function useEntryAnalysis({
                 clearTimeout(analysisTimeoutRef.current);
             }
         };
-    }, [content, analyzeContent]);
+    }, [content, analyzeContent, isSaved]);
 
     const buildAnalysisPayload = useCallback(() => {
         // Only persist server-grade AI insights; deterministic extraction is local UI guidance.

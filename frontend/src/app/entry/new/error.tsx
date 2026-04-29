@@ -15,7 +15,7 @@ export default function EntryNewError({
             reset={reset}
             route="entry-new"
             title="The editor didn't open"
-            message="Any text you typed is saved as a draft on this device. Try reopening the entry."
+            message="Any text you typed is saved as a draft on this device. Try reopening your note."
         />
     );
 }

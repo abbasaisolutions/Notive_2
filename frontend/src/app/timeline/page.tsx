@@ -2326,6 +2326,14 @@ function TimelinePageContent() {
     const timelineSearchHint = timelineStats.hasActiveFilters
         ? activeFilterSummary
         : 'Start with search. Filters, map view, and jump shortcuts stay tucked away until you want them.';
+    const activeSurfaceLabel = surface === 'constellation'
+        ? 'Map'
+        : surface === 'shared'
+            ? 'Shared'
+            : 'Timeline';
+    const mobileControlLabel = timelineStats.hasActiveFilters
+        ? `${activeFilterChips.length} filter${activeFilterChips.length === 1 ? '' : 's'} active`
+        : `${activeSurfaceLabel} controls`;
     const quickJumpDescription = activeQuickJumpMode === 'chapters'
         ? 'Jump straight into the strongest group or season instead of scanning the full timeline.'
         : activeQuickJumpMode === 'recent'
@@ -2448,7 +2456,16 @@ function TimelinePageContent() {
                                     <FiSearch size={16} aria-hidden="true" className="text-ink-muted" />
                                 </button>
 
-                                <div className="flex flex-1 flex-wrap items-center gap-1.5 overflow-visible">
+                                <button
+                                    type="button"
+                                    onClick={() => openControlDeck({ source: 'tools' })}
+                                    className="workspace-pill flex min-w-0 flex-1 items-center justify-between gap-2 rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] md:hidden"
+                                >
+                                    <span className="truncate">{mobileControlLabel}</span>
+                                    <span className="text-primary">Switch</span>
+                                </button>
+
+                                <div className="hidden flex-1 flex-wrap items-center gap-1.5 overflow-visible md:flex">
                                     <button
                                         type="button"
                                         aria-pressed={surface === 'constellation'}
@@ -2596,6 +2613,31 @@ function TimelinePageContent() {
                                     >
                                         Done
                                     </button>
+                                </div>
+
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {([
+                                        ['timeline', 'List'],
+                                        ['constellation', 'Map'],
+                                        ['shared', 'Shared'],
+                                    ] as const).map(([nextSurface, label]) => (
+                                        <button
+                                            key={nextSurface}
+                                            type="button"
+                                            aria-pressed={surface === nextSurface}
+                                            onClick={() => switchSurface(nextSurface)}
+                                            className={`workspace-pill relative inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85 ${
+                                                surface === nextSurface ? 'bg-primary/15 text-primary border-primary/30' : ''
+                                            }`}
+                                        >
+                                            {label}
+                                            {nextSurface === 'shared' && sharedUnreadCount > 0 && surface !== 'shared' && (
+                                                <span className="absolute -top-1 -right-1 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-[rgb(107,143,113)] px-0.5 text-[0.5rem] font-bold text-white">
+                                                    {sharedUnreadCount}
+                                                </span>
+                                            )}
+                                        </button>
+                                    ))}
                                 </div>
 
                                 {/* Active filter chips */}

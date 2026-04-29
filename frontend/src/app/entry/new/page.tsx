@@ -297,6 +297,7 @@ function NewEntryPageContent() {
 
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
+    const [hasBeenSaved, setHasBeenSaved] = useState(false);
     const [error, setError] = useState('');
     const [showAdvancedTools, setShowAdvancedTools] = useState(modeParam === 'full');
     const [entryId, setEntryId] = useState<string | null>(null);
@@ -362,6 +363,7 @@ function NewEntryPageContent() {
         lifeArea,
         chapterId: collectionId,
         pendingSync,
+        isSaved: hasBeenSaved,
     });
     const duplicateCheckTitle = titleOverride || extractedData?.title || '';
 
@@ -1658,6 +1660,7 @@ function NewEntryPageContent() {
 
             setLastSaved(new Date());
             setPendingSync(false);
+            setHasBeenSaved(true);
 
             if (!isAutoSave) {
                 void trackEvent({
@@ -1721,6 +1724,15 @@ function NewEntryPageContent() {
                 }
 
                 const showPostSaveDestination = () => {
+                    if (
+                        savedEntryId
+                        && (isQuickMode || Boolean(voiceCapture) || Boolean(voiceJob?.id) || entrySource === 'dashboard_voice')
+                    ) {
+                        toast.success(createdNewEntry ? 'Memory saved' : 'Memory updated');
+                        router.push(appendReturnTo(`/entry/view?id=${savedEntryId}`, backHref));
+                        return;
+                    }
+
                     if (savedEntryId && !hasShownSaveCompletion) {
                         openSaveCompletion(savedEntryId, savedEntryTitle, isGentleReflectionEntry);
                         return;
@@ -1782,6 +1794,8 @@ function NewEntryPageContent() {
         openSaveCompletion,
         persistDraftSnapshot,
         refreshStats,
+        backHref,
+        router,
         tagsOverride,
         titleOverride,
         toast,
@@ -1990,6 +2004,9 @@ function NewEntryPageContent() {
     const starterPrompt = getStarterPrompt(new Date(), displayMood);
     const writingSuggestions = getWritingSuggestions(content);
     const showStudioPanels = !isWhisperMode && showAdvancedTools;
+    const saveActionLabel = isQuickMode || Boolean(voiceCapture) || Boolean(voiceJob)
+        ? 'Save & review'
+        : 'Save';
     const voiceStatusMessage = voiceJob
         ? voiceJob.status === 'PENDING'
             ? 'Uploading your voice note...'
@@ -2052,6 +2069,7 @@ function NewEntryPageContent() {
                     lastSaved={lastSaved}
                     canSave={!isSaving && !!content.trim() && meetsMinChars}
                     onSave={() => handleSave(false)}
+                    saveLabel={saveActionLabel}
                     saveHint={charsRemainingHint}
                     error={error}
                     draftRestored={draftRestored}
@@ -2116,30 +2134,49 @@ function NewEntryPageContent() {
 
                         <div className={`transition-all duration-300 ease-in-out ${showAdvancedTools ? 'max-h-[2400px] opacity-100 mt-4' : 'max-h-0 opacity-0 overflow-hidden'}`}>
                             <div className="space-y-4 border-t border-[rgba(var(--paper-border),0.92)] pt-4">
-                                <EntryInsightsPanel
-                                    embedded
-                                    isAnalyzing={isAnalyzing}
-                                    extractedData={extractedData}
-                                    displayMood={displayMood}
-                                    moods={MOODS}
-                                    content={content}
-                                    isAiLoading={isAiLoading}
-                                    onDeepInsight={handleDeepInsight}
-                                    aiError={aiError}
-                                    aiInsights={aiInsights}
-                                    aiEmotionEntries={aiEmotionEntries}
-                                    aiEmotionMax={aiEmotionMax}
-                                    displayTitle={displayTitle}
-                                    setTitleOverride={setTitleOverride}
-                                    moodOverride={moodOverride}
-                                    setMoodOverride={setMoodOverride}
-                                    displayTags={displayTags}
-                                    removeTag={removeTag}
-                                    addTag={addTag}
-                                    duplicateCandidates={duplicateCandidates}
-                                    isCheckingDuplicates={isCheckingDuplicates}
-                                    duplicateError={duplicateError}
-                                />
+                                {hasBeenSaved ? (
+                                    <details className="group">
+                                        <summary className="cursor-pointer select-none list-none">
+                                            <div className="workspace-soft-panel rounded-2xl p-4">
+                                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">What Notive noticed</p>
+                                                <p className="mt-1 text-sm text-ink-secondary">
+                                                    {isAnalyzing || isAiLoading ? 'Analyzing...' : 'Click to see mood, themes, and suggestions'}
+                                                </p>
+                                            </div>
+                                        </summary>
+                                        <div className="mt-4">
+                                            <EntryInsightsPanel
+                                                embedded
+                                                isAnalyzing={isAnalyzing}
+                                                extractedData={extractedData}
+                                                displayMood={displayMood}
+                                                moods={MOODS}
+                                                content={content}
+                                                isAiLoading={isAiLoading}
+                                                onDeepInsight={handleDeepInsight}
+                                                aiError={aiError}
+                                                aiInsights={aiInsights}
+                                                aiEmotionEntries={aiEmotionEntries}
+                                                aiEmotionMax={aiEmotionMax}
+                                                displayTitle={displayTitle}
+                                                setTitleOverride={setTitleOverride}
+                                                moodOverride={moodOverride}
+                                                setMoodOverride={setMoodOverride}
+                                                displayTags={displayTags}
+                                                removeTag={removeTag}
+                                                addTag={addTag}
+                                                duplicateCandidates={duplicateCandidates}
+                                                isCheckingDuplicates={isCheckingDuplicates}
+                                                duplicateError={duplicateError}
+                                            />
+                                        </div>
+                                    </details>
+                                ) : (
+                                    <div className="workspace-soft-panel rounded-2xl p-4">
+                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">What Notive noticed</p>
+                                        <p className="mt-1 text-sm text-ink-secondary">Save your note to see what Notive noticed</p>
+                                    </div>
+                                )}
 
                                 <div className="workspace-soft-panel rounded-2xl p-4">
                                     <div className="flex items-center justify-between gap-3">
@@ -2292,7 +2329,7 @@ function NewEntryPageContent() {
                         title={charsRemainingHint || undefined}
                         className="workspace-button-primary flex-[2] rounded-xl px-5 py-3 font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        {isSaving ? 'Saving...' : 'Save'}
+                        {isSaving ? 'Saving...' : saveActionLabel}
                     </button>
                 </div>
             </div>

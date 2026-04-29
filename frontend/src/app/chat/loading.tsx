@@ -1,6 +1,18 @@
+import NotiveLoadingScreen from '@/components/ui/NotiveLoadingScreen';
 import Skeleton from '@/components/ui/SkeletonLoader';
 
+const CHAT_PHRASES = [
+    'Loading your conversation...',
+    'Preparing Notive...',
+    'Getting ready to listen...',
+];
+
 export default function ChatLoading() {
+    return <NotiveLoadingScreen phrases={CHAT_PHRASES} phraseInterval={2800} />;
+}
+
+// Fallback skeleton for client-side needs
+function ChatSkeletonFallback() {
     return (
         <div className="min-h-screen pb-32 md:pb-20">
             <main className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-8">

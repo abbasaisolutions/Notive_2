@@ -2,16 +2,18 @@
 
 import React, { Suspense } from 'react';
 import { ProfileSettingsEditor } from '@/components/profile/edit/ProfileSettingsEditor';
-import { Spinner } from '@/components/ui';
+import NotiveLoadingScreen from '@/components/ui/NotiveLoadingScreen';
+
+const PROFILE_EDIT_PHRASES = [
+    'Loading your profile...',
+    'Preparing your settings...',
+    'Gathering your preferences...',
+];
 
 export default function ProfileEditPage() {
     return (
         <Suspense
-            fallback={(
-                <div className="min-h-screen flex items-center justify-center">
-                    <Spinner size="md" />
-                </div>
-            )}
+            fallback={<NotiveLoadingScreen phrases={PROFILE_EDIT_PHRASES} phraseInterval={2800} />}
         >
             <ProfileSettingsEditor />
         </Suspense>

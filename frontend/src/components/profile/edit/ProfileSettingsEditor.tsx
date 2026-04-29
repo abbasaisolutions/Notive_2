@@ -1524,7 +1524,22 @@ export function ProfileSettingsEditor() {
                             </div>
                         </div>
                     </div>
-                    <div className="mt-5 flex flex-wrap gap-2" role="tablist" aria-label="Settings sections">
+                    <label className="mt-5 block md:hidden">
+                        <span className="sr-only">Settings section</span>
+                        <select
+                            value={activeTab}
+                            onChange={(event) => handleTabChange(event.target.value as EditTab)}
+                            className="workspace-input w-full rounded-xl px-3 py-3 text-sm font-semibold"
+                            aria-label="Settings section"
+                        >
+                            {TAB_ITEMS.map((tab) => (
+                                <option key={tab.id} value={tab.id}>
+                                    {tab.label}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <div className="mt-5 hidden flex-wrap gap-2 md:flex" role="tablist" aria-label="Settings sections">
                         {TAB_ITEMS.map((tab) => {
                             const isActive = activeTab === tab.id;
                             const isDirty = tab.id in dirtyByTab ? dirtyByTab[tab.id as EditableTab] : false;

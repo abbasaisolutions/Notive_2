@@ -17,6 +17,7 @@ export default function TagsIndexPage() {
     const { apiFetch } = useApi();
     const [frequencies, setFrequencies] = useState<TagFrequency[] | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [showAllTags, setShowAllTags] = useState(false);
 
     useEffect(() => {
         if (!isAuthenticated) return;
@@ -45,6 +46,8 @@ export default function TagsIndexPage() {
     }, [frequencies]);
 
     const maxCount = sortedFrequencies[0]?.count || 1;
+    const visibleFrequencies = showAllTags ? sortedFrequencies : sortedFrequencies.slice(0, 24);
+    const hiddenTagCount = Math.max(0, sortedFrequencies.length - visibleFrequencies.length);
 
     if (!isAuthenticated) return null;
 
@@ -54,7 +57,7 @@ export default function TagsIndexPage() {
                 <p className="type-overline text-muted">Browse</p>
                 <h1 className="workspace-heading mt-2 text-3xl font-semibold">Your tags</h1>
                 <p className="mt-2 text-sm text-ink-secondary">
-                    Tap a tag to see every entry it labels. Tag size reflects how often it appears across your journal.
+                    Start with the tags you use most. Expand the full list when you need a smaller thread.
                 </p>
             </header>
 
@@ -77,7 +80,7 @@ export default function TagsIndexPage() {
             ) : (
                 <div className="workspace-panel rounded-2xl p-6">
                     <div className="flex flex-wrap gap-2">
-                        {sortedFrequencies.map(({ tag, count }) => {
+                        {visibleFrequencies.map(({ tag, count }) => {
                             const weight = count / maxCount;
                             const fontSize = 0.78 + weight * 0.6;
                             return (
@@ -93,6 +96,15 @@ export default function TagsIndexPage() {
                                 </Link>
                             );
                         })}
+                        {hiddenTagCount > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => setShowAllTags(true)}
+                                className="workspace-button-outline rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em]"
+                            >
+                                Show {hiddenTagCount} more
+                            </button>
+                        )}
                     </div>
                 </div>
             )}

@@ -36,7 +36,6 @@ function EditEntryContent() {
     const { backHref, backLabel, navigateBack } = useContextNavigation(fallbackHref, id ? 'entry details' : 'timeline');
     const { user, isLoading: authLoading, isAuthenticated } = useAuthRedirect();
     const { apiFetch } = useApi();
-    const stayOnEditAfterSave = useCallback(() => {}, []);
 
     const {
         title,
@@ -80,8 +79,15 @@ function EditEntryContent() {
         userReady: !!user,
         apiFetch,
         navigateToFallback: navigateBack,
-        navigateAfterSave: stayOnEditAfterSave,
+        navigateAfterSave: navigateBack,
     });
+    const handleDone = useCallback(() => {
+        if (hasUnsavedChanges) {
+            void handleSave();
+            return;
+        }
+        navigateBack();
+    }, [handleSave, hasUnsavedChanges, navigateBack]);
 
     if (authLoading || isLoading) {
         return (
@@ -112,6 +118,15 @@ function EditEntryContent() {
         setCategory(nextCategory);
         setLifeArea((current) => normalizeLifeArea(current, nextCategory));
     };
+    const hasMemorySignals = Boolean(
+        analysisLine?.trim()
+        || takeawayLine?.trim()
+        || (notiveInsights && notiveInsights.length > 0)
+        || topEmotions.length > 0
+        || depthLabel
+        || typeof growthRatio === 'number'
+        || storySignal
+    );
 
     return (
         <div className="min-h-screen p-4 md:p-6">
@@ -120,7 +135,7 @@ function EditEntryContent() {
                 <div className="flex items-center justify-between mb-5">
                     <button
                         type="button"
-                        onClick={navigateBack}
+                        onClick={hasUnsavedChanges ? handleDone : navigateBack}
                         aria-label={backLabel}
                         className="flex items-center gap-1.5 text-ink-muted hover:text-[rgb(var(--text-primary))] transition-colors"
                     >
@@ -137,11 +152,8 @@ function EditEntryContent() {
                                         ? `Saved ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                                         : 'Ready to edit'}
                         </span>
-                        <Button variant="secondary" onClick={navigateBack}>
-                            Done
-                        </Button>
-                        <Button onClick={handleSave} isLoading={isSaving}>
-                            Save
+                        <Button onClick={handleDone} isLoading={isSaving}>
+                            {hasUnsavedChanges ? 'Save & done' : 'Done'}
                         </Button>
                     </div>
                 </div>
@@ -168,21 +180,37 @@ function EditEntryContent() {
                     placeholder="Keep shaping this memory..."
                 />
 
-                <MemoryInsightStrip
-                    className="mt-5"
-                    label="Keep this memory pointed somewhere useful"
-                    description="These signals stay in view while you edit so you can strengthen the memory without losing what mattered."
-                    analysisLine={analysisLine}
-                    takeawayLine={takeawayLine}
-                    notiveInsights={notiveInsights}
-                    topEmotions={topEmotions}
-                    depthLabel={depthLabel}
-                    growthRatio={growthRatio}
-                    storySignal={storySignal}
-                />
+                {hasMemorySignals && (
+                    <details className="group mt-5 rounded-2xl border border-[rgba(141,123,105,0.18)] bg-[rgba(255,255,255,0.03)]">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink-secondary">
+                            <span>What Notive noticed</span>
+                            <span className="text-xs uppercase tracking-[0.12em] text-ink-muted group-open:hidden">Open</span>
+                            <span className="hidden text-xs uppercase tracking-[0.12em] text-ink-muted group-open:inline">Hide</span>
+                        </summary>
+                        <MemoryInsightStrip
+                            className="border-t border-[rgba(141,123,105,0.16)] rounded-none"
+                            label="Keep this memory pointed somewhere useful"
+                            description="Use these only if they help you strengthen the memory."
+                            analysisLine={analysisLine}
+                            takeawayLine={takeawayLine}
+                            notiveInsights={notiveInsights}
+                            topEmotions={topEmotions}
+                            depthLabel={depthLabel}
+                            growthRatio={growthRatio}
+                            storySignal={storySignal}
+                        />
+                    </details>
+                )}
 
-                <AppPanel className="mt-5 space-y-5" tone="soft">
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Organize</p>
+                <details className="group mt-5 rounded-2xl border border-[rgba(141,123,105,0.18)] bg-[rgba(255,255,255,0.03)]">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink-secondary">
+                        <span>Organize memory</span>
+                        <span className="text-xs uppercase tracking-[0.12em] text-ink-muted group-open:hidden">Optional</span>
+                        <span className="hidden text-xs uppercase tracking-[0.12em] text-ink-muted group-open:inline">Hide</span>
+                    </summary>
+
+                <AppPanel className="space-y-5 rounded-none border-t border-[rgba(141,123,105,0.16)]" tone="soft">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Optional details</p>
 
                     <div className="flex flex-wrap items-center gap-2">
                         {(['PERSONAL', 'PROFESSIONAL'] as EntryCategory[]).map((option) => (
@@ -300,6 +328,7 @@ function EditEntryContent() {
                         )}
                     </div>
                 </AppPanel>
+                </details>
             </div>
         </div>
     );

@@ -79,7 +79,7 @@ const JournalIntelligenceSection = dynamic(() => import('@/components/dashboard/
 const LifeAreaBreakdown = dynamic(() => import('@/components/dashboard/LifeAreaBreakdown'), { ssr: false });
 const TagCloud = dynamic(() => import('@/components/insights/TagCloud'));
 import { Surface } from '@/components/ui/surface';
-const DashboardNotebookView = dynamic(() => import('@/components/dashboard/DashboardNotebookView'), {
+const DashboardCalmerLayout = dynamic(() => import('@/components/dashboard/DashboardCalmerLayout'), {
     loading: () => <div className="flex min-h-[60vh] items-center justify-center"><Spinner /></div>,
 });
 import { Spinner } from '@/components/ui';
@@ -370,7 +370,7 @@ const buildValueFocus = (input: {
             `${resurfacedMoment.title || 'Untitled'} from ${new Date(resurfacedMoment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
             88
         )
-        : 'Older memories start resurfacing once you have a few notes here.';
+        : 'Older memories start resurfacing once you have a few memories here.';
     const storyPipeline = storyOverview
         ? readyToReuse > 0
             ? `${readyToReuse} stor${readyToReuse === 1 ? 'y is' : 'ies are'} ready to reuse.`
@@ -406,12 +406,12 @@ const buildValueFocus = (input: {
             },
         ],
         primaryAction: {
-            label: latestEntry ? 'Write something new' : 'Write your first note',
+            label: latestEntry ? 'Write something new' : 'Write your first memory',
             href: latestEntry ? recommendedHref : newEntryHref,
             onClick: latestEntry ? onPrimary : undefined,
         },
         secondaryAction: {
-            label: latestEntry ? 'Open Stories' : 'Browse notes',
+            label: latestEntry ? 'Open Stories' : 'Browse memories',
             href: latestEntry ? portfolioHref : timelineHref,
             tone: 'secondary',
         },
@@ -434,7 +434,7 @@ const buildGentleReflectionFocus = (input: {
         title: compactText(reflection.title, 76),
         body: firstSentence(reflection.body, 132),
         evidence: firstSentence(reflection.evidence, 116),
-        evidenceFallback: 'Based on your recent notes.',
+        evidenceFallback: 'Based on your recent memories.',
         panels: [
             {
                 label: 'Today’s prompt',
@@ -1054,6 +1054,8 @@ export default function DashboardPage() {
         || dashboardInsights.contradictions.length > 0
         || dashboardInsights.triggerMap.length > 0
     );
+    const hasSafetyFocus = !!(todayAction && (todayAction.risk.level === 'orange' || todayAction.risk.level === 'red'));
+    const showCalmerDashboard = !hasSafetyFocus && entries.length < 10;
 
     if (process.env.NEXT_PUBLIC_DASHBOARD_REFINED !== '0') {
         return (
@@ -1064,7 +1066,8 @@ export default function DashboardPage() {
                     isReady={pullToRefresh.isReady}
                     isRefreshing={pullToRefresh.isRefreshing}
                 />
-                <DashboardNotebookView
+                <DashboardCalmerLayout
+                    showCalmerLayout={showCalmerDashboard}
                     firstName={firstName}
                     avatarUrl={safeUser.avatarUrl}
                     todayLabel={todayLabel}
@@ -1085,7 +1088,7 @@ export default function DashboardPage() {
                     portfolioHref={portfolioHref}
                     guideHref={guideHref}
                     dashboardReturnTo={dashboardReturnTo}
-                    hasSafetyFocus={!!(todayAction && (todayAction.risk.level === 'orange' || todayAction.risk.level === 'red'))}
+                    hasSafetyFocus={hasSafetyFocus}
                     setGentleReflectionsEnabled={setGentleReflectionsEnabled}
                     setGentleReflection={setGentleReflection}
                     gentleReflectionsEnabled={gentleReflectionsEnabled}
@@ -1112,9 +1115,19 @@ export default function DashboardPage() {
                     heroInsightLoading={heroInsightLoading}
                     insightTier={insightTier}
                 />
-                <div className="mx-auto max-w-3xl px-4">
-                    <LifeAreaBreakdown counts={lifeAreaCounts} />
-                </div>
+                {!showCalmerDashboard && (
+                    <div className="mx-auto max-w-3xl px-4">
+                        <details className="mt-6 rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]">
+                            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink-secondary">
+                                <span>Browse by life area</span>
+                                <span className="text-xs uppercase tracking-[0.12em] text-ink-muted">Optional</span>
+                            </summary>
+                            <div className="border-t border-[rgba(141,123,105,0.14)] px-1 pb-1">
+                                <LifeAreaBreakdown counts={lifeAreaCounts} />
+                            </div>
+                        </details>
+                    </div>
+                )}
             </>
         );
     }

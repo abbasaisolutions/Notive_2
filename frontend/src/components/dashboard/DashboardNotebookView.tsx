@@ -5,6 +5,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import ActionBriefPanel from '@/components/action/ActionBriefPanel';
@@ -23,6 +24,7 @@ import {
     LIFE_BALANCE_RING_CIRCUMFERENCE,
 } from '@/components/dashboard/life-balance';
 import { getMoodEmoji, getMoodScore, normalizeMood } from '@/constants/moods';
+import DashboardTier1Simple from '@/components/dashboard/DashboardTier1Simple';
 
 type DashboardAction = {
     label: string;
@@ -154,7 +156,7 @@ type DashboardSupportMap = {
     }>;
 };
 
-type DashboardNotebookViewProps = {
+export type DashboardNotebookViewProps = {
     firstName: string;
     avatarUrl?: string | null;
     todayLabel: string;
@@ -234,6 +236,8 @@ type DashboardNotebookViewProps = {
     heroInsightLoading: boolean;
     insightTier: number;
     userBirthDate: string | null;
+    /** Show calm Tier 1 dashboard for <10 entries. Default: false (full dashboard) */
+    showCalmerLayout?: boolean;
 };
 
 type DashboardTab = 'overview' | 'growth' | 'patterns';
@@ -568,7 +572,32 @@ const getWritingEnergy = (entries: DashboardNotebookViewProps['entries']): {
     return { thisWeek, lastWeek, trend };
 };
 
-export default function DashboardNotebookView({
+export default function DashboardNotebookView(props: DashboardNotebookViewProps) {
+    const { showCalmerLayout = false, ...rest } = props;
+    
+    // If showCalmerLayout is true, render the calm Tier 1 dashboard instead
+    if (showCalmerLayout) {
+        return (
+            <DashboardTier1Simple
+                firstName={rest.firstName}
+                todayLabel={rest.todayLabel}
+                entries={rest.entries}
+                focusCard={rest.focusCard}
+                heroInsight={rest.heroInsight}
+                dashboardInsights={rest.dashboardInsights}
+                onViewFullDashboard={() => {
+                    // Reload to show full dashboard
+                    window.location.reload();
+                }}
+            />
+        );
+    }
+
+    // Render full dashboard
+    return <DashboardNotebookViewFull {...rest} />;
+}
+
+function DashboardNotebookViewFull({
     firstName,
     avatarUrl,
     todayLabel,
@@ -615,7 +644,7 @@ export default function DashboardNotebookView({
     locationLabel,
     userBirthDate,
     profileTags = [],
-}: DashboardNotebookViewProps) {
+}: Omit<DashboardNotebookViewProps, 'showCalmerLayout'>) {
     const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
     const [heatmapTap, setHeatmapTap] = useState<HeatmapCell | null>(null);
     const weekWords = useMemo(() => countWordsThisWeek(entries), [entries]);
@@ -686,15 +715,15 @@ export default function DashboardNotebookView({
         : typeof totalWords === 'number' && totalWords > 0
             ? `You already have ${totalWords} words in the notebook - enough for Notive to start finding a clearer pattern.`
             : entries.length > 0
-                ? `You already have ${entries.length} ${entries.length === 1 ? 'note' : 'notes'} here - enough for Notive to start finding a clearer pattern.`
-                : 'One honest note is enough for Notive to start finding a clearer pattern.';
+                ? `You already have ${entries.length} ${entries.length === 1 ? 'memory' : 'memories'} here - enough for Notive to start finding a clearer pattern.`
+                : 'One honest memory is enough for Notive to start finding a clearer pattern.';
     const rhythmSummary = dominantWritingWindow
-        ? `Most of your notes return in the ${dominantWritingWindow}. When that window opens, leave two honest lines before it passes.`
+        ? `Most of your memories return in the ${dominantWritingWindow}. When that window opens, leave two honest lines before it passes.`
         : entries.length >= 3
             ? 'Your rhythm is still forming. Keep catching the same kind of moment when it comes back.'
-            : 'A few more notes will make your writing rhythm easier to trust.';
+            : 'A few more memories will make your writing rhythm easier to trust.';
     const emotionalSummary = dashboardInsights?.emotionalFingerprint?.summary
-        || 'A few more notes will make the emotional pattern here easier to read.';
+        || 'A few more memories will make the emotional pattern here easier to read.';
     const noticingSummary = heroInsight?.body
         || dashboardInsights?.contradictions[0]?.description
         || (dashboardInsights?.correlations[0]
@@ -708,7 +737,7 @@ export default function DashboardNotebookView({
         ? `Your last check-in showed energy at ${deviceSignals.wellness.energyLevel}/10 and stress at ${deviceSignals.wellness.stressLevel}/10. Let that be context, not pressure.`
         : wellnessSubmitted
             ? 'Your last check-in is already part of the thread here. You do not need to explain the whole day again.'
-            : 'If today feels noisy, a quick check-in or short chat can give the next note more context.';
+            : 'If today feels noisy, a quick check-in or short chat can give the next memory more context.';
     const weeklyDigestSnippet = weeklyDigest?.spotlightLine
         ? `"${compactText(weeklyDigest.spotlightLine, 150)}"`
         : weeklyDigest?.editorial
@@ -733,7 +762,7 @@ export default function DashboardNotebookView({
             strength: 0,
             supportCount: person.count,
             tensionCount: 0,
-            whyItHelps: `${person.name} keeps showing up in your notes when something important is happening.`,
+            whyItHelps: `${person.name} keeps showing up in your memories when something important is happening.`,
             reconnectSuggestion: '',
             lastSeen: '',
         }));
@@ -749,18 +778,18 @@ export default function DashboardNotebookView({
         ? compactText(supportMap.summary, 152)
         : supportSummary;
     const growthSummary = showThenNow && oldestEntry
-        ? `Your notes have already moved from ${themeClusters[themeClusters.length - 1]?.label ?? 'finding your way'} toward ${themeClusters[0]?.label ?? 'clearer ground'}.`
+        ? `Your memories have already moved from ${themeClusters[themeClusters.length - 1]?.label ?? 'finding your way'} toward ${themeClusters[0]?.label ?? 'clearer ground'}.`
         : `${writerDNA.archetype.oneLiner}. The notebook is starting to hold a shape you can actually use.`;
     const growthEvidence = themeClusters[0]?.label
         ? `A theme that keeps returning lately: ${themeClusters[0].label}.`
-        : 'A few honest notes are already enough for Notive to hold onto what matters.';
+        : 'A few honest memories are already enough for Notive to hold onto what matters.';
     const patternsLead = dominantWritingWindow
         ? `Your deepest writing tends to happen in the ${dominantWritingWindow}.`
         : 'Your writing window is still forming, but Notive is already watching for it.';
     const writingRhythmLine = topDayWindowMoments.length >= 2
         ? `Your deepest reflections tend to come on ${topDayWindowMoments[0].label} and ${topDayWindowMoments[1].label}.`
         : topDayWindowMoments.length === 1
-            ? `Your notes often open up on ${topDayWindowMoments[0].label}.`
+            ? `Your memories often open up on ${topDayWindowMoments[0].label}.`
             : patternsLead;
     const writingRhythmPrompt = topDayWindowMoments[0]
         ? `Try capturing one quick thought next ${topDayWindowMoments[0].promptLabel}.`
@@ -769,7 +798,7 @@ export default function DashboardNotebookView({
         ? `You named ${String(strongestEmotion.emotion).toLowerCase()} most often this week - that's a recurring pattern worth keeping in view.`
         : emotionalSummary;
     const noticingLine = heroInsightLoading
-        ? 'Notive is still reading across your notes before it says this more clearly.'
+        ? 'Notive is still reading across your memories before it says this more clearly.'
         : compactText(noticingSummary, 150);
     const storyPipelineCounts = useMemo(() => {
         const experiences = storyOverview?.experiences || [];
@@ -805,7 +834,7 @@ export default function DashboardNotebookView({
             : `${formatNotebookLabel(journalIntel.lifeBalance.dominantArea)} has been most present in the notebook lately.`
         : null;
     const peopleLine = journalIntel?.peopleMap.people?.[0]
-        ? `${journalIntel.peopleMap.people[0].name} keeps showing up in ${journalIntel.peopleMap.people[0].count} ${journalIntel.peopleMap.people[0].count === 1 ? 'note' : 'notes'}.`
+        ? `${journalIntel.peopleMap.people[0].name} keeps showing up in ${journalIntel.peopleMap.people[0].count} ${journalIntel.peopleMap.people[0].count === 1 ? 'memory' : 'memories'}.`
         : null;
     const vocabularyLine = journalIntel?.vocabulary.recentNewWords?.length
         ? `New words lately: ${journalIntel.vocabulary.recentNewWords.slice(0, 3).join(', ')}.`
@@ -848,7 +877,7 @@ export default function DashboardNotebookView({
         ? `Best writing window lately: ${toTitleCase(dominantWritingWindow)}.`
         : returningThemes > 0
             ? `${returningThemes} ${returningThemes === 1 ? 'theme is' : 'themes are'} returning lately.`
-            : 'A few more notes will sharpen the pattern view.';
+            : 'A few more memories will sharpen the pattern view.';
     const lastMoodKey = latestEntry?.mood ? String(latestEntry.mood).toLowerCase() : null;
     const lastMoodEmoji = lastMoodKey ? moodEmojiFor(lastMoodKey) : null;
 
@@ -897,7 +926,7 @@ export default function DashboardNotebookView({
     ];
     const storyPipelineStages = storyPipelineCounts.notes > 0 ? [
         {
-            label: 'Notes',
+            label: 'Memories',
             value: storyPipelineCounts.notes,
             progress: toProgressPercent(Math.min(storyPipelineCounts.notes, 7), 7),
             accent: 'rgba(191,214,221,0.95)',
@@ -923,7 +952,7 @@ export default function DashboardNotebookView({
     ] : [];
     const noticedItems = [
         themeClusters[0]
-            ? `Your "${themeClusters[0].label}" thread has shown up in ${themeClusters[0].entryCount} recent ${themeClusters[0].entryCount === 1 ? 'note' : 'notes'}. ${todayBrief?.whatHelpedBefore?.summary ? compactText(todayBrief.whatHelpedBefore.summary, 92) : 'That is worth naming directly today.'}`
+            ? `Your "${themeClusters[0].label}" thread has shown up in ${themeClusters[0].entryCount} recent ${themeClusters[0].entryCount === 1 ? 'memory' : 'memories'}. ${todayBrief?.whatHelpedBefore?.summary ? compactText(todayBrief.whatHelpedBefore.summary, 92) : 'That is worth naming directly today.'}`
             : null,
         strongestEmotion
             ? `You named "${String(strongestEmotion.emotion).toLowerCase()}" ${strongestEmotion.entryCount} ${strongestEmotion.entryCount === 1 ? 'time' : 'times'} recently - that looks like the strongest emotional pattern right now.`
@@ -931,7 +960,7 @@ export default function DashboardNotebookView({
                 ? `You put down ${weekWords} ${weekWords === 1 ? 'word' : 'words'} this week - enough for Notive to start finding a clearer pattern.`
                 : null),
         resurfacedMoment
-            ? `One note from ${new Date(resurfacedMoment.matchedEntry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} is echoing again. It already shows ${sentenceCase(String(energyTrait?.label || 'self-awareness'))} in how you handled that moment.`
+            ? `One memory from ${new Date(resurfacedMoment.matchedEntry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} is echoing again. It already shows ${sentenceCase(String(energyTrait?.label || 'self-awareness'))} in how you handled that moment.`
             : heroInsight?.body
                 ? compactText(heroInsight.body, 132)
                 : null,
@@ -960,7 +989,7 @@ export default function DashboardNotebookView({
         resurfacedMoment
             ? {
                 title: 'Memory',
-                body: 'An older note is echoing again, which helps you see what is repeating sooner.',
+                body: 'An older memory is echoing again, which helps you see what is repeating sooner.',
             }
             : null,
         writerDNA.traits[0]
@@ -974,7 +1003,7 @@ export default function DashboardNotebookView({
         ? smallEvidenceItems
         : [{
             title: 'First thread',
-            body: 'A few more notes will give Notive enough evidence to sketch this page more clearly.',
+            body: 'A few more memories will give Notive enough evidence to sketch this page more clearly.',
         }];
 
     const renderFocusAction = (action: DashboardAction | null | undefined, tone: 'primary' | 'secondary') => {
@@ -1199,7 +1228,7 @@ export default function DashboardNotebookView({
                             : moodShift?.type === 'steady'
                                 ? `The mood has stayed at ${moodShift.mood} lately — that's worth noticing.`
                                 : notesThisWeek > 0
-                                    ? `${notesThisWeek} ${notesThisWeek === 1 ? 'note' : 'notes'} this week${returningThemes > 0 ? `, ${returningThemes} returning ${returningThemes === 1 ? 'theme' : 'themes'}` : ''}.`
+                                    ? `${notesThisWeek} ${notesThisWeek === 1 ? 'memory' : 'memories'} this week${returningThemes > 0 ? `, ${returningThemes} returning ${returningThemes === 1 ? 'theme' : 'themes'}` : ''}.`
                                     : `Hey ${firstName ?? 'there'} — your notebook is ready.`}
             </h2>
 
@@ -1228,7 +1257,7 @@ export default function DashboardNotebookView({
                                 </p>
                             )
                         ) : (
-                            <p className="mt-0.5 text-[0.65rem] leading-4 text-[rgb(107,107,107)]">Write two notes to see a shift.</p>
+                            <p className="mt-0.5 text-[0.65rem] leading-4 text-[rgb(107,107,107)]">Save two memories to see a shift.</p>
                         )}
                     </div>
                     <div className="rounded-[0.95rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.52)] px-2.5 py-2">
@@ -1372,7 +1401,7 @@ export default function DashboardNotebookView({
                             return (
                                 <>
                                     <div className="rounded-[0.85rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.55)] px-2 py-1.5">
-                                        <p className="text-[0.48rem] uppercase tracking-wider text-[rgb(150,150,150)]">Notes</p>
+                                        <p className="text-[0.48rem] uppercase tracking-wider text-[rgb(150,150,150)]">Memories</p>
                                         <p className="mt-0.5 text-[0.9rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">
                                             {periodDelta.currentEntries}
                                         </p>
@@ -1416,7 +1445,7 @@ export default function DashboardNotebookView({
                 <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2 pb-1.5">
                     <p className="section-label">Month-over-month</p>
                     <p className="mt-0.5 text-[0.6rem] leading-4 text-[rgb(150,150,150)]">
-                        Your first month-over-month comparison unlocks once last month has a few notes to compare against.
+                        Your first month-over-month comparison unlocks once last month has a few memories to compare against.
                     </p>
                 </div>
             ) : null}
@@ -1621,7 +1650,7 @@ export default function DashboardNotebookView({
                 <p className="section-label">Carry this forward</p>
                 <p className="mt-1 text-[0.68rem] leading-[1.35] text-[rgb(107,107,107)]">
                     {resurfacedMoment
-                        ? 'An older note is echoing this week. Growth often looks like noticing the same moment sooner.'
+                        ? 'An older memory is echoing this week. Growth often looks like noticing the same moment sooner.'
                         : 'Keep saving real moments. They become evidence for school, work, and your own story.'}
                 </p>
                 <div className="mt-1.5 flex items-center gap-3">
@@ -1636,10 +1665,10 @@ export default function DashboardNotebookView({
             <div className="app-paper-soft rounded-[1.1rem] px-3 pt-4 pb-3.5 text-center">
                 <p className="section-label">Patterns</p>
                 <p className="mt-2 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
-                    Your rhythms, moods and anchors will show up here once you have a few entries to compare.
+                    Your rhythms, moods and anchors will show up here once you have a few memories to compare.
                 </p>
                 <p className="mt-1 text-[0.62rem] leading-4 text-[rgb(150,150,150)]">
-                    {entries.length === 0 ? 'Start with a short note from today.' : `${3 - entries.length} more ${3 - entries.length === 1 ? 'entry' : 'entries'} to unlock patterns.`}
+                    {entries.length === 0 ? 'Start with a short memory from today.' : `${3 - entries.length} more ${3 - entries.length === 1 ? 'memory' : 'memories'} to unlock patterns.`}
                 </p>
             </div>
         </div>
@@ -1733,7 +1762,7 @@ export default function DashboardNotebookView({
                     <div className="flex items-baseline justify-between">
                         <p className="section-label">Writing rhythm</p>
                         <span className="text-[0.58rem] text-[rgb(140,140,140)] tabular-nums">
-                            {heatmapTotal} {heatmapTotal === 1 ? 'note' : 'notes'} · 6 months
+                            {heatmapTotal} {heatmapTotal === 1 ? 'memory' : 'memories'} · 6 months
                         </span>
                     </div>
                     <div className="mt-2 overflow-x-auto">
@@ -1741,7 +1770,7 @@ export default function DashboardNotebookView({
                             viewBox={`0 0 ${HEATMAP_WEEKS * 10 + 14} ${7 * 10 + 14}`}
                             className="w-full"
                             style={{ minWidth: '260px', maxHeight: '100px' }}
-                            aria-label={`Writing activity heatmap showing ${heatmapTotal} notes over the last ${HEATMAP_WEEKS} weeks`}
+                            aria-label={`Writing activity heatmap showing ${heatmapTotal} memories over the last ${HEATMAP_WEEKS} weeks`}
                         >
                             {['M', 'W', 'F'].map((label, i) => (
                                 <text
@@ -1783,7 +1812,7 @@ export default function DashboardNotebookView({
                                                     setHeatmapTap(isSelected ? null : cell);
                                                 }}
                                             >
-                                                <title>{cell.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}: {cell.count} {cell.count === 1 ? 'note' : 'notes'}</title>
+                                                <title>{cell.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}: {cell.count} {cell.count === 1 ? 'memory' : 'memories'}</title>
                                             </rect>
                                         );
                                     })}
@@ -1794,7 +1823,7 @@ export default function DashboardNotebookView({
                     <div className="mt-1.5 flex items-center justify-between">
                         <span className="text-[0.55rem] text-[rgb(150,150,150)]">
                             {heatmapTap
-                                ? `${heatmapTap.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${heatmapTap.count} ${heatmapTap.count === 1 ? 'note' : 'notes'}`
+                                ? `${heatmapTap.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${heatmapTap.count} ${heatmapTap.count === 1 ? 'memory' : 'memories'}`
                                 : currentStreak > 0 ? `${currentStreak}-day streak · tap a square` : 'Tap a square to see details'}
                         </span>
                         <div className="flex items-center gap-1 text-[0.55rem] text-[rgb(150,150,150)]">
@@ -2253,10 +2282,10 @@ export default function DashboardNotebookView({
                     {/* ── Sub-tab content ── */}
                     <section className="space-y-4 stagger-child">
 
-                        {/* ── OVERVIEW — RECENT NOTES ── */}
+                        {/* ── OVERVIEW — RECENT MEMORIES ── */}
                         {activeTab === 'overview' && entries.length > 0 && (
                             <Surface doodle="moon" doodleAccent="sky" className="app-paper">
-                                <p className="section-label">Recent notes</p>
+                                <p className="section-label">Recent memories</p>
                                 <div className="mt-3 space-y-3">
                                     {entries.slice(0, 3).map((entry) => (
                                         <Link
@@ -2288,7 +2317,7 @@ export default function DashboardNotebookView({
                                 {entries.length > 3 && (
                                     <div className="mt-3">
                                         <Link href={timelineHref} className="text-[0.75rem] text-[rgb(138,154,111)] hover:opacity-75">
-                                            See all {entries.length} notes →
+                                            See all {entries.length} memories →
                                         </Link>
                                     </div>
                                 )}

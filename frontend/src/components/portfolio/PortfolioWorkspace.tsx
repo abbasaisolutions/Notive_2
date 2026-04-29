@@ -197,7 +197,7 @@ const exportTypeIcons: Record<ExportType, IconType> = {
 
 const evidenceFilterLabels: Record<EvidenceFilter, string> = {
     all: 'All Stories',
-    needs_attention: 'Needs More Detail',
+    needs_attention: 'Needs Detail',
     ready_to_verify: 'Ready to Check',
     ready_to_export: 'Ready to Use',
     verified: 'Checked',
@@ -205,9 +205,9 @@ const evidenceFilterLabels: Record<EvidenceFilter, string> = {
 
 const portfolioViewLabels: Record<PortfolioView, string> = {
     export: 'Resume & Statement',
-    evidence: 'Evidence',
+    evidence: 'In Progress',
     interview: 'Interview',
-    growth: 'Progress',
+    growth: 'Growth',
 };
 
 const portfolioViewIcons: Record<PortfolioView, IconType> = {
@@ -920,9 +920,9 @@ export default function PortfolioWorkspace() {
 
         if (filterCounts.needs_attention > 0) {
             return {
-                title: 'Tighten weak evidence first',
-                description: `${filterCounts.needs_attention} experience${filterCounts.needs_attention === 1 ? '' : 's'} are missing core detail. Closing those gaps raises quality across every export format.`,
-                actionLabel: 'Review Evidence Queue',
+                title: 'Tighten one unfinished story',
+                description: `${filterCounts.needs_attention} stor${filterCounts.needs_attention === 1 ? 'y needs' : 'ies need'} one clearer block before export or practice will feel useful.`,
+                actionLabel: 'Open In Progress',
                 actionHref: null as string | null,
                 targetView: 'evidence' as PortfolioView,
                 targetExportType: null as DocumentExportType | null,
@@ -931,9 +931,9 @@ export default function PortfolioWorkspace() {
 
         if (filterCounts.ready_to_verify > 0) {
             return {
-                title: 'Verify the strongest stories',
-                description: `${filterCounts.ready_to_verify} experience${filterCounts.ready_to_verify === 1 ? '' : 's'} already have enough structure to verify and convert into stronger exports.`,
-                actionLabel: 'Verify Stories',
+                title: 'Check the strongest stories',
+                description: `${filterCounts.ready_to_verify} stor${filterCounts.ready_to_verify === 1 ? 'y has' : 'ies have'} enough structure to check and move forward.`,
+                actionLabel: 'Check Stories',
                 actionHref: null as string | null,
                 targetView: 'evidence' as PortfolioView,
                 targetExportType: null as DocumentExportType | null,
@@ -1026,7 +1026,7 @@ export default function PortfolioWorkspace() {
             case 'verified':
                 return 'Your safest proof is already waiting';
             default:
-                return 'Work the full evidence queue';
+                return 'Work the full story queue';
         }
     }, [recommendedEvidenceFilter]);
     const evidenceFocusDescription = useMemo(() => {
@@ -1045,7 +1045,7 @@ export default function PortfolioWorkspace() {
     }, [filterCounts, recommendedEvidenceFilter]);
     const currentEvidenceLaneDescription = useMemo(() => {
         if (evidenceFilter === 'all') {
-            return 'Showing every story from weakest evidence to strongest proof so the next fix is easy to spot.';
+            return 'Showing every story from least finished to strongest so the next fix is easy to spot.';
         }
 
         const count = filterCounts[evidenceFilter];
@@ -1092,6 +1092,25 @@ export default function PortfolioWorkspace() {
 
         return 'Review momentum, repeated strengths, and what still needs more proof.';
     }, [activeView, evidenceFilter, filterCounts, overview?.interviewStories.length, selectedExportType]);
+    const primaryStoryStatus = filterCounts.needs_attention > 0
+        ? {
+            label: `${filterCounts.needs_attention} need detail`,
+            tone: 'muted' as const,
+        }
+        : filterCounts.ready_to_export > 0
+            ? {
+                label: `${filterCounts.ready_to_export} ready to reuse`,
+                tone: 'primary' as const,
+            }
+            : (overview?.interviewStories.length || 0) > 0
+                ? {
+                    label: `${overview?.interviewStories.length || 0} ready to rehearse`,
+                    tone: 'default' as const,
+                }
+                : {
+                    label: `${evidenceSummary.total} in progress`,
+                    tone: 'default' as const,
+                };
     const recentWorkspaceSummary = recentViewLinks.length > 0
         ? recentViewLinks.map((view) => portfolioViewLabels[view]).join(' • ')
         : null;
@@ -1549,62 +1568,51 @@ export default function PortfolioWorkspace() {
 
     const renderEvidenceMode = () => (
         <div className="space-y-5">
-            <AppPanel className="space-y-5">
+            <AppPanel className="space-y-4">
                 <SectionHeader
-                    kicker="Evidence"
-                    title="Work one evidence lane at a time"
-                    description="Start with the clearest lane. The rest of the filters and shortcuts stay tucked away until you need them."
-                    actionLabel="Quick Capture"
+                    kicker="Stories in progress"
+                    title={evidenceSnapshotTitle}
+                    description={evidenceSnapshotDescription}
+                    actionLabel="Add memory"
                     actionHref={captureHref}
                 />
 
-                <div className="workspace-soft-panel rounded-[28px] p-4">
-                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Queue snapshot</p>
-                    <h3 className="workspace-heading mt-2 text-lg font-semibold">{evidenceSnapshotTitle}</h3>
-                    <p className="mt-2 max-w-3xl text-sm leading-7 text-ink-secondary">{evidenceSnapshotDescription}</p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                        <TagPill>{evidenceSummary.total} scored</TagPill>
-                                <TagPill tone={filterCounts.needs_attention > 0 ? 'muted' : 'default'}>
-                                    {filterCounts.needs_attention} need detail
-                                </TagPill>
-                        <TagPill>{filterCounts.ready_to_verify} close to verify</TagPill>
-                        <TagPill tone="primary">{filterCounts.verified} verified</TagPill>
-                        <TagPill>{evidenceSummary.avgScore}% average story quality</TagPill>
-                    </div>
-                </div>
-
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
-                    <div className="rounded-[28px] border border-primary/25 bg-primary/12 p-4">
+                <div className="rounded-2xl border border-primary/25 bg-primary/12 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex items-start gap-3">
-                            <div className="rounded-2xl border border-primary/30 bg-primary/15 p-3 text-primary">
-                                <FiFlag size={18} aria-hidden="true" />
-                            </div>
+                            <span className="rounded-xl border border-primary/30 bg-primary/15 p-2.5 text-primary">
+                                <FiFlag size={16} aria-hidden="true" />
+                            </span>
                             <div className="min-w-0">
-                                <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best lane now</p>
-                                <h3 className="workspace-heading mt-2 text-lg font-semibold">{evidenceFocusTitle}</h3>
-                                <p className="mt-2 text-sm leading-7 text-ink-secondary">{evidenceFocusDescription}</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Start here</p>
+                                <h3 className="workspace-heading mt-1 text-base font-semibold">{evidenceFocusTitle}</h3>
+                                <p className="mt-1 text-sm leading-6 text-ink-secondary">{evidenceFocusDescription}</p>
                             </div>
                         </div>
-                    </div>
-
-                    <div className="workspace-panel rounded-[28px] p-4">
-                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current lane</p>
-                        <h3 className="workspace-heading mt-2 text-lg font-semibold">{evidenceFilterLabels[evidenceFilter]}</h3>
-                        <p className="mt-2 text-sm leading-7 text-ink-secondary">{currentEvidenceLaneDescription}</p>
+                        {evidenceFilter !== recommendedEvidenceFilter && (
+                            <button
+                                type="button"
+                                onClick={() => setEvidenceFilter(recommendedEvidenceFilter)}
+                                className="workspace-button-primary inline-flex shrink-0 items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
+                            >
+                                Show this lane
+                            </button>
+                        )}
                     </div>
                 </div>
 
-                <div className="workspace-panel rounded-[24px] p-4">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Switch lane</p>
-                            <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                Pick the evidence slice you want without opening another control panel first.
-                            </p>
+                <details className="group rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+                        <div className="min-w-0">
+                            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current lane</p>
+                            <p className="workspace-heading mt-1 truncate text-sm font-semibold">{evidenceFilterLabels[evidenceFilter]}</p>
                         </div>
-                        <TagPill tone="primary">Recommended: {evidenceFilterLabels[recommendedEvidenceFilter]}</TagPill>
-                    </div>
-                    <ActionBar className="mt-4 gap-2 overflow-x-auto">
+                        <span className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-muted group-open:hidden">Change</span>
+                        <span className="hidden text-xs font-semibold uppercase tracking-[0.1em] text-ink-muted group-open:inline">Hide</span>
+                    </summary>
+                    <div className="border-t border-[rgba(141,123,105,0.14)] px-4 pb-4 pt-3">
+                        <p className="text-sm leading-6 text-ink-secondary">{currentEvidenceLaneDescription}</p>
+                        <ActionBar className="mt-3 gap-2 overflow-x-auto">
                         {evidenceFilters.map((filter) => (
                             <button
                                 key={filter}
@@ -1620,15 +1628,22 @@ export default function PortfolioWorkspace() {
                                 {evidenceFilterLabels[filter]} ({filterCounts[filter]})
                             </button>
                         ))}
-                    </ActionBar>
-                </div>
+                        </ActionBar>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            <TagPill>{evidenceSummary.total} total</TagPill>
+                            <TagPill tone={filterCounts.needs_attention > 0 ? 'muted' : 'default'}>{filterCounts.needs_attention} need detail</TagPill>
+                            <TagPill>{filterCounts.ready_to_verify} ready to check</TagPill>
+                            <TagPill tone="primary">{filterCounts.verified} checked</TagPill>
+                        </div>
+                    </div>
+                </details>
             </AppPanel>
 
             {filteredExperiences.length === 0 ? (
                 <EmptyState
                     title="No evidence in this lane yet"
-                    description="Switch filters or capture another quick entry to generate more stories for the queue."
-                    actionLabel="Start Quick Capture"
+                    description="Switch lanes or capture another memory to generate more stories for the queue."
+                    actionLabel="Add memory"
                     actionHref={captureHref}
                 />
             ) : (
@@ -1661,7 +1676,10 @@ export default function PortfolioWorkspace() {
                         })();
                         const primaryActionLabel = nextMissingField
                             ? `Refine ${EVIDENCE_FIELD_LABELS[nextMissingField]}`
-                            : 'Continue story';
+                            : !experience.verified
+                                ? 'Check story'
+                                : 'Polish story';
+                        const isPrimaryVerifyAction = !nextMissingField && !experience.verified;
 
                         return (
                             <article
@@ -1695,74 +1713,84 @@ export default function PortfolioWorkspace() {
                                     <div className="grid min-w-[15rem] gap-2 lg:w-[18rem]">
                                         <button
                                             type="button"
-                                            onClick={() => startEdit(experience)}
+                                            onClick={() => {
+                                                if (isPrimaryVerifyAction) {
+                                                    void toggleVerified(experience);
+                                                    return;
+                                                }
+                                                startEdit(experience);
+                                            }}
+                                            disabled={isPrimaryVerifyAction && updatingEntryId === experience.entryId}
                                             className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
                                         >
-                                            <FiEdit2 size={14} aria-hidden="true" />
-                                            {primaryActionLabel}
+                                            {isPrimaryVerifyAction ? <FiCheckCircle size={14} aria-hidden="true" /> : <FiEdit2 size={14} aria-hidden="true" />}
+                                            {isPrimaryVerifyAction && updatingEntryId === experience.entryId ? 'Checking...' : primaryActionLabel}
                                         </button>
 
-                                        <div className="workspace-panel rounded-2xl p-4">
-                                            <div className="flex flex-wrap items-start justify-between gap-2">
+                                        <details className="group rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]">
+                                            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">
+                                                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary">More</span>
+                                                <TagPill>{completeness.score}%</TagPill>
+                                            </summary>
+
+                                            <div className="space-y-3 border-t border-[rgba(141,123,105,0.14)] px-3 pb-3 pt-3">
                                                 <div>
                                                     <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Proof read</p>
-                                                    <p className="workspace-heading mt-2 text-sm font-semibold">
+                                                    <p className="workspace-heading mt-1 text-sm font-semibold">
                                                         {completeness.missingFields.length > 0
                                                             ? `${completeness.missingFields.length} block${completeness.missingFields.length === 1 ? '' : 's'} still open`
                                                             : experience.verified
-                                                                ? 'Verified and reusable'
+                                                                ? 'Checked and reusable'
                                                                 : 'Core blocks filled'}
                                                     </p>
-                                                </div>
-                                                <TagPill>{completeness.score}% complete</TagPill>
-                                            </div>
-
-                                            <div className="mt-3 flex flex-wrap gap-2">
-                                                <TagPill>{formatRatioPercent(experience.confidence || 0)} confidence</TagPill>
-                                                {experience.verified && <TagPill tone="primary">Verified story</TagPill>}
-                                                {completeness.missingFields.length === 0 && !experience.verified && (
-                                                    <TagPill tone="primary">Core blocks filled</TagPill>
-                                                )}
-                                            </div>
-
-                                            {completeness.missingFields.length > 0 && (
-                                                <div className="mt-3">
-                                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Still open</p>
                                                     <div className="mt-2 flex flex-wrap gap-2">
-                                                        {completeness.missingFields.map((field) => (
-                                                            <TagPill key={field} tone="muted">
-                                                                Missing {EVIDENCE_FIELD_LABELS[field]}
-                                                            </TagPill>
-                                                        ))}
+                                                        <TagPill>{formatRatioPercent(experience.confidence || 0)} confidence</TagPill>
+                                                        {experience.verified && <TagPill tone="primary">Checked story</TagPill>}
+                                                        {completeness.missingFields.length === 0 && !experience.verified && (
+                                                            <TagPill tone="primary">Core blocks filled</TagPill>
+                                                        )}
                                                     </div>
                                                 </div>
-                                            )}
 
-                                            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        void toggleVerified(experience);
-                                                    }}
-                                                    disabled={updatingEntryId === experience.entryId}
-                                                    className="workspace-button-outline inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] disabled:opacity-60"
-                                                >
-                                                    <FiCheckCircle size={14} aria-hidden="true" />
-                                                    {updatingEntryId === experience.entryId
-                                                        ? 'Updating...'
-                                                        : experience.verified
-                                                            ? 'Mark Unverified'
-                                                            : 'Verify Story'}
-                                                </button>
-                                                <Link
-                                                    href={sourceHref}
-                                                    className="workspace-button-outline inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
-                                                >
-                                                    <FiArrowRight size={14} aria-hidden="true" />
-                                                    Source Entry
-                                                </Link>
+                                                {completeness.missingFields.length > 0 && (
+                                                    <div>
+                                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Still open</p>
+                                                        <div className="mt-2 flex flex-wrap gap-2">
+                                                            {completeness.missingFields.map((field) => (
+                                                                <TagPill key={field} tone="muted">
+                                                                    Missing {EVIDENCE_FIELD_LABELS[field]}
+                                                                </TagPill>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <div className="grid gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            void toggleVerified(experience);
+                                                        }}
+                                                        disabled={updatingEntryId === experience.entryId}
+                                                        className="workspace-button-outline inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] disabled:opacity-60"
+                                                    >
+                                                        <FiCheckCircle size={14} aria-hidden="true" />
+                                                        {updatingEntryId === experience.entryId
+                                                            ? 'Updating...'
+                                                            : experience.verified
+                                                                ? 'Mark unchecked'
+                                                                : 'Check story'}
+                                                    </button>
+                                                    <Link
+                                                        href={sourceHref}
+                                                        className="workspace-button-outline inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
+                                                    >
+                                                        <FiArrowRight size={14} aria-hidden="true" />
+                                                        Open memory
+                                                    </Link>
+                                                </div>
                                             </div>
-                                        </div>
+                                        </details>
                                     </div>
                                 </div>
                             </article>
@@ -1778,8 +1806,8 @@ export default function PortfolioWorkspace() {
             return (
                 <EmptyState
                     title="No interview stories yet"
-                    description="Verify a few stronger experiences and the interview workspace will build a focused STAR story set."
-                    actionLabel="Open Evidence Queue"
+                    description="Check a few stronger stories and the interview workspace will build a focused STAR story set."
+                    actionLabel="Open In Progress"
                     actionHref={`${pathname}?view=evidence`}
                 />
             );
@@ -2595,15 +2623,16 @@ export default function PortfolioWorkspace() {
     const recommendedWorkspaceLabel = recommendedView === 'export'
         ? exportTypeLabels[recommendedExportType]
         : portfolioViewLabels[recommendedView];
-    const storySnapshotTitle = filterCounts.ready_to_export > 0
-        ? `${filterCounts.ready_to_export} stor${filterCounts.ready_to_export === 1 ? 'y is' : 'ies are'} ready to reuse`
-        : filterCounts.needs_attention > 0
-            ? `${filterCounts.needs_attention} stor${filterCounts.needs_attention === 1 ? 'y still needs' : 'ies still need'} shaping`
+    const nextActionButtonLabel = nextAction.targetView === 'evidence' ? 'Start' : nextAction.actionLabel;
+    const storySnapshotTitle = filterCounts.needs_attention > 0
+        ? `${filterCounts.needs_attention} stor${filterCounts.needs_attention === 1 ? 'y needs' : 'ies need'} one detail`
+        : filterCounts.ready_to_export > 0
+            ? `${filterCounts.ready_to_export} stor${filterCounts.ready_to_export === 1 ? 'y is' : 'ies are'} ready to reuse`
             : overview.interviewStories.length > 0
                 ? `${overview.interviewStories.length} stor${overview.interviewStories.length === 1 ? 'y is' : 'ies are'} ready to rehearse`
                 : 'Your saved moments are ready for the next pass';
     const storySnapshotDescription = filterCounts.needs_attention > 0
-        ? 'Start with the stories that still need one missing block or one clearer proof detail. The stronger stories can wait.'
+        ? 'Start with the missing block. The stronger stories can wait.'
         : filterCounts.ready_to_export > 0
             ? 'You already have reusable material here. Keep the focus on exporting or lightly polishing instead of reopening everything.'
             : overview.interviewStories.length > 0
@@ -2634,12 +2663,13 @@ export default function PortfolioWorkspace() {
         },
         {
             id: 'evidence',
-            label: 'Evidence',
-            detail: 'Refine and verify',
+            label: 'In Progress',
+            detail: 'Refine and check',
             icon: FiCheckCircle,
             active: activeView === 'evidence',
             recommended: recommendedView === 'evidence',
             onClick: () => {
+                setEvidenceFilter(recommendedEvidenceFilter);
                 switchView('evidence');
             },
         },
@@ -2669,7 +2699,7 @@ export default function PortfolioWorkspace() {
 
     return (
         <div className="space-y-4 px-1 pb-32 pt-2">
-            <AppPanel className="workspace-panel relative overflow-hidden space-y-3">
+            <AppPanel className="workspace-panel relative overflow-hidden space-y-3 p-4 sm:p-5">
                 <div
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-0 opacity-70"
@@ -2682,8 +2712,8 @@ export default function PortfolioWorkspace() {
                 <div className="relative space-y-2">
                     <div className="flex flex-wrap items-center gap-1.5">
                         <p className="type-overline text-muted">Stories</p>
-                        <span className="type-overline text-muted" aria-hidden="true">·</span>
-                        <span className="type-overline inline-flex items-center gap-1 text-primary">
+                        <span className="type-overline hidden text-muted sm:inline" aria-hidden="true">·</span>
+                        <span className="type-overline hidden items-center gap-1 text-primary sm:inline-flex">
                             <ActiveViewIcon size={11} aria-hidden="true" />
                             {currentWorkspaceLabel}
                         </span>
@@ -2691,32 +2721,33 @@ export default function PortfolioWorkspace() {
                             <button
                                 type="button"
                                 onClick={resumePreviousSession}
-                                className="type-micro ml-auto inline-flex items-center gap-1 rounded-full text-soft transition-colors hover:text-strong"
+                                className="type-micro ml-auto hidden items-center gap-1 rounded-full text-soft transition-colors hover:text-strong sm:inline-flex"
                             >
                                 <FiClock size={12} aria-hidden="true" />
                                 Resume
                             </button>
                         )}
                     </div>
-                    <h1 className="type-page-title text-strong">{storySnapshotTitle}</h1>
+                    <h1 className="workspace-heading text-2xl font-semibold leading-tight text-strong sm:text-4xl">{storySnapshotTitle}</h1>
                     <p className="type-body-sm max-w-2xl text-soft">{storySnapshotDescription}</p>
                     <div className="flex flex-wrap gap-1.5 pt-0.5">
-                        <TagPill tone="primary">{filterCounts.ready_to_export} ready to reuse</TagPill>
-                        <TagPill tone={filterCounts.needs_attention > 0 ? 'muted' : 'default'}>
+                        <TagPill tone={primaryStoryStatus.tone}>{primaryStoryStatus.label}</TagPill>
+                        <TagPill className="hidden sm:inline-flex" tone="primary">{filterCounts.ready_to_export} ready to reuse</TagPill>
+                        <TagPill className="hidden sm:inline-flex" tone={filterCounts.needs_attention > 0 ? 'muted' : 'default'}>
                             {filterCounts.needs_attention} need detail
                         </TagPill>
-                        <TagPill>{overview.interviewStories.length} ready to rehearse</TagPill>
+                        <TagPill className="hidden sm:inline-flex">{overview.interviewStories.length} ready to rehearse</TagPill>
                     </div>
                 </div>
 
                 {/* Primary action: Best next use — single compact row */}
-                <div className="relative flex flex-wrap items-center gap-2.5 rounded-xl border border-primary/25 bg-primary/10 p-2.5">
-                    <div className="shrink-0 rounded-lg border border-primary/30 bg-primary/15 p-1.5 text-primary">
+                <div className="relative rounded-xl border border-primary/25 bg-primary/10 p-2.5 sm:flex sm:items-center sm:gap-2.5">
+                    <div className="hidden shrink-0 rounded-lg border border-primary/30 bg-primary/15 p-1.5 text-primary sm:block">
                         <FiZap size={14} aria-hidden="true" />
                     </div>
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 sm:flex-1">
                         <p className="type-label-md font-semibold text-strong">{nextAction.title}</p>
-                        <p className="type-micro line-clamp-1 text-soft">{nextAction.description}</p>
+                        <p className="type-micro hidden line-clamp-1 text-soft sm:block">{nextAction.description}</p>
                     </div>
                     {nextAction.targetView ? (
                         <button
@@ -2728,26 +2759,66 @@ export default function PortfolioWorkspace() {
                                     void openStudio(nextAction.targetExportType);
                                     return;
                                 }
+                                if (targetView === 'evidence') {
+                                    setEvidenceFilter(recommendedEvidenceFilter);
+                                }
                                 switchView(targetView);
                             }}
-                            className="workspace-button-primary type-label-sm inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold"
+                            className="workspace-button-primary type-label-sm mt-2 inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 font-semibold sm:mt-0 sm:w-auto sm:py-1.5"
                         >
-                            {nextAction.actionLabel}
+                            {nextActionButtonLabel}
                             <FiArrowRight size={13} aria-hidden="true" />
                         </button>
                     ) : (
                         <Link
                             href={nextAction.actionHref || captureHref}
-                            className="workspace-button-primary type-label-sm inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold"
+                            className="workspace-button-primary type-label-sm mt-2 inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 font-semibold sm:mt-0 sm:w-auto sm:py-1.5"
                         >
-                            {nextAction.actionLabel}
+                            {nextActionButtonLabel}
                             <FiArrowRight size={13} aria-hidden="true" />
                         </Link>
                     )}
                 </div>
 
+                <details className="relative rounded-xl border border-[rgba(92,92,92,0.14)] bg-white/45 md:hidden">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">
+                        <span className="inline-flex min-w-0 items-center gap-2 text-sm font-semibold text-strong">
+                            <ActiveViewIcon size={14} aria-hidden="true" className="text-primary" />
+                            <span className="truncate">{currentWorkspaceLabel}</span>
+                        </span>
+                        <span className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-muted">Switch</span>
+                    </summary>
+                    <div className="grid gap-2 border-t border-[rgba(92,92,92,0.12)] p-2">
+                        {workspaceDestinations.map(({ id, label, detail, icon: Icon, active, recommended, onClick }) => (
+                            <button
+                                key={`mobile-${id}`}
+                                type="button"
+                                onClick={onClick}
+                                title={detail}
+                                className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${
+                                    active
+                                        ? 'border-primary/40 bg-primary/15 text-strong'
+                                        : recommended
+                                            ? 'border-primary/25 bg-primary/5 text-soft hover:text-strong'
+                                            : 'border-[rgba(92,92,92,0.14)] bg-white/55 text-soft hover:text-strong'
+                                }`}
+                            >
+                                <span className="inline-flex items-center gap-2 text-sm font-semibold">
+                                    <Icon size={14} aria-hidden="true" className={active ? 'text-primary' : ''} />
+                                    {label}
+                                </span>
+                                {recommended && !active && (
+                                    <span className="type-micro rounded-full bg-primary/15 px-1.5 py-0.5 font-semibold uppercase tracking-wide text-primary">
+                                        Next
+                                    </span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </details>
+
                 {/* Workspace switcher — horizontal chip row */}
-                <div ref={workspaceChipRowRef} className="chip-scroller relative -mx-1 px-1">
+                <div ref={workspaceChipRowRef} className="chip-scroller relative -mx-1 hidden px-1 md:block">
                     {workspaceDestinations.map(({ id, label, detail, icon: Icon, active, recommended, onClick }) => (
                         <button
                             key={id}

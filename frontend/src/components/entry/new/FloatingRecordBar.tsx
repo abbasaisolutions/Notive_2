@@ -104,33 +104,35 @@ export default function FloatingRecordBar({ audioLevel, elapsed, transcriptText,
                         </button>
                     </div>
 
-                    <div className="rounded-2xl border border-[rgba(138,154,111,0.15)] bg-[rgba(255,255,255,0.55)] px-3 py-2">
-                        <div className="mb-1 flex items-center gap-2">
-                            <FiMic size={12} className="flex-shrink-0 text-[rgb(var(--paper-sage))] opacity-70" aria-hidden="true" />
-                            <p className="type-overline text-muted">Live transcript</p>
+                    <div className="rounded-2xl border border-[rgba(138,154,111,0.2)] bg-white/75 backdrop-blur-sm px-4 py-3">
+                        <div className="mb-2 flex items-center gap-2">
+                            <FiMic size={13} className="flex-shrink-0 text-[rgb(var(--paper-sage))]" aria-hidden="true" />
+                            <p className="type-overline text-muted text-xs font-semibold">Live transcript</p>
                         </div>
-                        <div className="max-h-20 overflow-y-auto pr-1">
+                        <div className="max-h-24 overflow-y-auto pr-2 rounded-lg bg-[rgba(126,157,149,0.08)] p-2.5">
                             {committedTranscript ? (
-                                <p className="type-body-sm leading-relaxed text-default">
+                                <p className="text-sm leading-relaxed text-[rgb(40,36,32)] font-medium">
                                     {committedTranscript}
                                 </p>
                             ) : (
-                                <p className="type-body-sm italic text-muted">
+                                <p className="text-sm text-ink-secondary">
                                     Listening for your words...
                                 </p>
                             )}
                             {previewWords.length > 0 && (
-                                <p className="mt-1 type-body-sm italic leading-relaxed text-default">
-                                    {previewWords.map((word, i) => (
-                                        <span
-                                            key={i}
-                                            className="word-appear-in mr-[0.25em]"
-                                            style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
-                                        >
-                                            {word}
-                                        </span>
-                                    ))}
-                                </p>
+                                <div className="mt-2 pt-2 border-t border-[rgba(126,157,149,0.15)]">
+                                    <p className="text-sm leading-relaxed text-[rgb(60,55,48)]">
+                                        {previewWords.map((word, i) => (
+                                            <span
+                                                key={i}
+                                                className="word-appear-in mr-[0.25em]"
+                                                style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
+                                            >
+                                                {word}
+                                            </span>
+                                        ))}
+                                    </p>
+                                </div>
                             )}
                         </div>
                     </div>

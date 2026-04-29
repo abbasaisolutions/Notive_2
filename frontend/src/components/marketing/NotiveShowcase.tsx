@@ -42,31 +42,19 @@ export const storyCards: StoryCard[] = [
         src: '/images/hero-1.jpg',
         alt: 'Teen capturing a real moment in Notive on a phone so the memory is saved while it is still fresh.',
         caption: 'Capture Fast',
-        story: 'Save the real moment before it disappears, whether it starts as a quick note, a voice thought, or a photo-backed memory.',
+        story: 'Write or speak the moment before the details fade.',
     },
     {
         src: '/images/hero-2.jpg',
         alt: 'Teen reviewing a Notive story workspace that pulls lessons, skills, and evidence from saved notes.',
-        caption: 'Extract Meaning',
-        story: 'Notive pulls lessons, skills, and useful signals out of saved memories so the user does not have to decode every note alone.',
+        caption: 'Review Simply',
+        story: 'See the lesson, people, tags, and patterns without sorting every note yourself.',
     },
     {
         src: '/images/hero-3.jpg',
         alt: 'Teen revisiting an older diary entry in Notive after a new memory brings it back into focus.',
-        caption: 'Reconnect Memory',
-        story: 'An older note becomes useful again when Notive surfaces the related memory and shows what still connects between then and now.',
-    },
-    {
-        src: '/images/hero-4.jpg',
-        alt: 'Teen seeing a Notive dashboard that connects one recent note to patterns, lessons, and story status.',
-        caption: 'Notice Patterns',
-        story: 'After a few entries, repeating themes start to become visible so scattered moments turn into clearer patterns and direction.',
-    },
-    {
-        src: '/images/hero-5.jpg',
-        alt: 'Teen reviewing a Notive story output on a phone and turning diary material into something reusable later.',
         caption: 'Use It Later',
-        story: 'Saved moments can become resume bullets, interview stories, personal summaries, or proof of growth when the user actually needs them.',
+        story: 'Turn a saved memory into a story, summary, or proof of growth when it matters.',
     },
 ];
 
@@ -200,7 +188,7 @@ export function RealStudentsRealMoves() {
                 </p>
             </div>
 
-            <div className="mt-8 flex snap-x gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-2 md:overflow-visible lg:grid-cols-5">
+            <div className="mt-8 flex snap-x gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:overflow-visible">
                 {storyCards.map((card, index) => (
                     <QuietNotebookCard key={card.src} {...card} priority={index === 0} />
                 ))}
