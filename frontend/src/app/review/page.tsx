@@ -93,8 +93,20 @@ export default function ReviewPage() {
                             Almost there
                         </p>
                         <p className="notebook-copy mt-2 text-sm leading-relaxed" style={{ color: 'rgb(var(--paper-ink))' }}>
-                            A review needs a few more entries before it will feel meaningful. Keep writing, and your {subject} will come together here.
+                            A review needs {MIN_ENTRIES_FOR_REVIEW - analytics.totalEntries} more {MIN_ENTRIES_FOR_REVIEW - analytics.totalEntries === 1 ? 'entry' : 'entries'} before it will feel meaningful. Capture a moment, a lesson, or a small shift and your {subject} will come together here.
                         </p>
+                        <div className="mt-4 grid gap-2 text-left sm:grid-cols-3">
+                            {['What happened?', 'What changed?', 'What did I learn?'].map((prompt) => (
+                                <Link
+                                    key={prompt}
+                                    href={`/entry/new?prompt=${encodeURIComponent(prompt)}`}
+                                    className="rounded-xl border border-[rgba(0,0,0,0.08)] bg-[rgba(255,255,255,0.38)] px-3 py-3 text-sm font-medium transition-colors hover:bg-[rgba(255,255,255,0.58)]"
+                                    style={{ color: 'rgb(var(--paper-ink))' }}
+                                >
+                                    {prompt}
+                                </Link>
+                            ))}
+                        </div>
                         <Link
                             href="/entry/new"
                             className="mt-4 inline-flex items-center gap-2 rounded-full bg-[rgb(var(--brand-strong))] px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"

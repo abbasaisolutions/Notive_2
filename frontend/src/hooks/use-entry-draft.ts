@@ -29,8 +29,109 @@ export interface EntryDraft {
 }
 
 const DRAFT_VERSION = 1;
+const DRAFT_HISTORY_LIMIT = 6;
+const DRAFT_HISTORY_MERGE_WINDOW_MS = 2 * 60 * 1000;
+const DRAFT_HISTORY_MIN_WORD_DELTA = 25;
 
 const getDraftKey = (userId: string) => `notive_entry_draft_v${DRAFT_VERSION}_${userId}`;
+const getDraftHistoryKey = (userId: string) => `notive_entry_draft_history_v${DRAFT_VERSION}_${userId}`;
+
+export type DraftHistorySnapshot = EntryDraft & {
+    snapshotId: string;
+    savedAt: number;
+    wordCount: number;
+    preview: string;
+};
+
+const countDraftWords = (draft: Pick<EntryDraft, 'content'>): number => {
+    const text = draft.content?.trim() ?? '';
+    return text ? text.split(/\s+/).length : 0;
+};
+
+const buildDraftPreview = (draft: Pick<EntryDraft, 'content' | 'title' | 'audioUrl'>): string => {
+    const source = draft.content?.trim() || draft.title?.trim() || (draft.audioUrl ? 'Voice note draft' : '');
+    return source.replace(/\s+/g, ' ').slice(0, 140);
+};
+
+const isRecoverableDraft = (draft: EntryDraft): boolean =>
+    Boolean(draft.content?.trim() || draft.title?.trim() || draft.audioUrl);
+
+const hasSameDraftBody = (left: EntryDraft, right: EntryDraft): boolean =>
+    (left.content || '') === (right.content || '')
+    && (left.contentHtml || '') === (right.contentHtml || '')
+    && (left.title || '') === (right.title || '')
+    && (left.audioUrl || '') === (right.audioUrl || '');
+
+const createDraftHistorySnapshot = (draft: EntryDraft): DraftHistorySnapshot => {
+    const savedAt = typeof draft.updatedAt === 'number' ? draft.updatedAt : Date.now();
+    return {
+        ...draft,
+        snapshotId: `${savedAt}-${Math.random().toString(36).slice(2, 8)}`,
+        savedAt,
+        wordCount: countDraftWords(draft),
+        preview: buildDraftPreview(draft),
+    };
+};
+
+export const getDraftHistory = (userId: string | null | undefined): DraftHistorySnapshot[] => {
+    if (typeof window === 'undefined' || !userId) return [];
+
+    try {
+        const raw = localStorage.getItem(getDraftHistoryKey(userId));
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+            .filter((item): item is DraftHistorySnapshot =>
+                item
+                && typeof item === 'object'
+                && typeof item.snapshotId === 'string'
+                && typeof item.savedAt === 'number'
+                && typeof item.content === 'string'
+            )
+            .slice(0, DRAFT_HISTORY_LIMIT);
+    } catch {
+        return [];
+    }
+};
+
+const writeDraftHistory = (userId: string, history: DraftHistorySnapshot[]) => {
+    localStorage.setItem(getDraftHistoryKey(userId), JSON.stringify(history.slice(0, DRAFT_HISTORY_LIMIT)));
+};
+
+const rememberDraftSnapshot = (userId: string, draft: EntryDraft) => {
+    if (!isRecoverableDraft(draft)) return;
+
+    const history = getDraftHistory(userId);
+    const latest = history[0];
+
+    if (latest && hasSameDraftBody(latest, draft)) {
+        return;
+    }
+
+    const nextSnapshot = createDraftHistorySnapshot(draft);
+    const shouldMergeWithLatest = latest
+        && latest.entryId === draft.entryId
+        && Math.abs(nextSnapshot.savedAt - latest.savedAt) < DRAFT_HISTORY_MERGE_WINDOW_MS
+        && Math.abs(nextSnapshot.wordCount - latest.wordCount) < DRAFT_HISTORY_MIN_WORD_DELTA;
+
+    const nextHistory = shouldMergeWithLatest
+        ? [nextSnapshot, ...history.slice(1)]
+        : [nextSnapshot, ...history];
+
+    writeDraftHistory(userId, nextHistory);
+};
+
+export const deleteDraftHistorySnapshot = (
+    userId: string | null | undefined,
+    snapshotId: string
+): DraftHistorySnapshot[] => {
+    if (typeof window === 'undefined' || !userId) return [];
+
+    const nextHistory = getDraftHistory(userId).filter((snapshot) => snapshot.snapshotId !== snapshotId);
+    writeDraftHistory(userId, nextHistory);
+    return nextHistory;
+};
 
 export type SavedDraftSummary = {
     hasAudio: boolean;
@@ -38,6 +139,7 @@ export type SavedDraftSummary = {
     title: string | null;
     updatedAt: number | null;
     wordCount: number;
+    historyCount: number;
 };
 
 export const getSavedDraft = (userId: string | null | undefined): EntryDraft | null => {
@@ -78,11 +180,12 @@ export function useEntryDraft(userId: string | null | undefined) {
     }, [userId]);
 
     const saveDraft = useCallback((next: EntryDraft) => {
-        if (!draftKey) return;
+        if (!draftKey || !userId) return;
         localStorage.setItem(draftKey, JSON.stringify(next));
+        rememberDraftSnapshot(userId, next);
         setDraft(next);
         emitSyncStatusChanged();
-    }, [draftKey]);
+    }, [draftKey, userId]);
 
     const clearDraft = useCallback(() => {
         if (!draftKey) return;
@@ -123,6 +226,7 @@ export function getSavedDraftSummary(userId: string | null | undefined): SavedDr
         title: draft.title?.trim() || null,
         updatedAt: typeof draft.updatedAt === 'number' ? draft.updatedAt : null,
         wordCount: content ? content.split(/\s+/).length : 0,
+        historyCount: getDraftHistory(userId).length,
     };
 }
 

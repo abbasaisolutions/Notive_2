@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '@/context/auth-context';
 import { SmartSearch } from '@/components/search/SmartSearch';
 import { setNativeBackHandler } from '@/utils/native-navigation';
+import { GLOBAL_SEARCH_OPEN_EVENT } from '@/utils/global-search';
 
 const isMac = () => typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
 
@@ -17,6 +18,7 @@ export default function GlobalSearchOverlay() {
     useEffect(() => {
         if (!user) return;
 
+        const openHandler = () => setIsOpen(true);
         const handler = (event: KeyboardEvent) => {
             const mod = isMac() ? event.metaKey : event.ctrlKey;
             if (mod && event.key.toLowerCase() === 'k') {
@@ -30,8 +32,12 @@ export default function GlobalSearchOverlay() {
             }
         };
 
+        window.addEventListener(GLOBAL_SEARCH_OPEN_EVENT, openHandler);
         window.addEventListener('keydown', handler);
-        return () => window.removeEventListener('keydown', handler);
+        return () => {
+            window.removeEventListener(GLOBAL_SEARCH_OPEN_EVENT, openHandler);
+            window.removeEventListener('keydown', handler);
+        };
     }, [isOpen, user]);
 
     useEffect(() => {

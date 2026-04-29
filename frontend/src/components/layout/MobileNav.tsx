@@ -9,8 +9,9 @@ import { useGamification } from '@/context/gamification-context';
 import { useTheme } from '@/context/theme-context';
 import { useNotificationCount } from '@/hooks/use-notification-count';
 import { useSharedUnreadCount } from '@/hooks/use-shared-unread-count';
-import { FiEdit3, FiMic, FiMoreHorizontal } from 'react-icons/fi';
+import { FiEdit3, FiMic, FiMoreHorizontal, FiSearch } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
+import { openGlobalSearch } from '@/utils/global-search';
 import useHasMounted from '@/hooks/use-has-mounted';
 import UserAvatar from '@/components/ui/UserAvatar';
 import {
@@ -334,6 +335,21 @@ export default function MobileNav() {
                     />
                 )}
             </AnimatePresence>
+
+            {!isMoreOpen && !isCaptureOpen && (
+                <button
+                    type="button"
+                    onClick={() => {
+                        hapticTap();
+                        openGlobalSearch();
+                    }}
+                    aria-label="Search memories"
+                    className="fixed left-5 z-50 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl border border-white/12 bg-[rgba(255,255,255,0.78)] text-ink-secondary shadow-lg backdrop-blur-xl transition-colors hover:text-strong lg:hidden"
+                    style={{ bottom: 'calc(var(--app-bottom-clearance, 88px) + 0.75rem)' }}
+                >
+                    <FiSearch size={20} aria-hidden="true" />
+                </button>
+            )}
 
             <nav
                 ref={navRef}

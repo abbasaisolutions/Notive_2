@@ -7,6 +7,11 @@ import { useZenMode } from '@/hooks/use-zen-mode';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { StructuredEntryData } from '@/services/structured-data.service';
 import useEntryDraft from '@/hooks/use-entry-draft';
+import {
+    deleteDraftHistorySnapshot,
+    getDraftHistory,
+    type DraftHistorySnapshot,
+} from '@/hooks/use-entry-draft';
 import useEntryAnalysis from '@/hooks/use-entry-analysis';
 import useContextNavigation from '@/hooks/use-context-navigation';
 import useSpeechRecognition from '@/hooks/use-speech-recognition';
@@ -18,6 +23,7 @@ import { useGamification } from '@/context/gamification-context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import EntryTopBar from '@/components/entry/new/EntryTopBar';
 import EntryEditorCard from '@/components/entry/new/EntryEditorCard';
+import DraftRecoveryPanel from '@/components/entry/new/DraftRecoveryPanel';
 import FloatingRecordBar from '@/components/entry/new/FloatingRecordBar';
 const EntryInsightsPanel = dynamic(() => import('@/components/entry/new/EntryInsightsPanel'), { ssr: false });
 import {
@@ -306,6 +312,7 @@ function NewEntryPageContent() {
     const [pendingSync, setPendingSync] = useState(false);
     const [polishNotice, setPolishNotice] = useState<string | null>(null);
     const [draftConflict, setDraftConflict] = useState<DraftConflict | null>(null);
+    const [draftHistory, setDraftHistory] = useState<DraftHistorySnapshot[]>([]);
     const [saveCompletion, setSaveCompletion] = useState<SaveCompletionState | null>(null);
     const [hasShownSaveCompletion, setHasShownSaveCompletion] = useState(false);
     const [entryLocation, setEntryLocation] = useState<EntryLocation | null>(null);
@@ -835,6 +842,7 @@ function NewEntryPageContent() {
                 || gentleReflectionTags.length > 0
             );
             const savedDraft = loadDraft();
+            setDraftHistory(getDraftHistory(user.id));
             const restoredVoiceCapture = parseStoredVoiceCapture(savedDraft?.analysis?.voice);
             const restoredVoiceJob = parseStoredVoiceJob(savedDraft?.analysis?.voice, savedDraft?.audioUrl || audioParam || null);
             const pendingVoiceJob = stagedVoiceCapture?.pendingJob
@@ -1088,6 +1096,60 @@ function NewEntryPageContent() {
         setDraftConflict(null);
     }, [draftConflict, clearDraft, importSharedImages, setExtractedData, setAiInsights]);
 
+    const handleRestoreDraftSnapshot = useCallback((snapshot: DraftHistorySnapshot) => {
+        const restoredCategory = normalizeCategory(snapshot.category);
+        const restoredVoiceCapture = parseStoredVoiceCapture(snapshot.analysis?.voice);
+        const restoredVoiceJob = parseStoredVoiceJob(snapshot.analysis?.voice, snapshot.audioUrl || null);
+        const restoredDraft = {
+            ...snapshot,
+            updatedAt: Date.now(),
+            pendingSync: true,
+        };
+
+        setContent(snapshot.content);
+        setContentHtml(snapshot.contentHtml || '');
+        setTitleOverride(snapshot.title || '');
+        setPromptHint(null);
+        setMoodOverride(snapshot.mood || null);
+        setTagsOverride(snapshot.tags || []);
+        setAudioUrl(snapshot.audioUrl || null);
+        setVoiceCapture(restoredVoiceCapture);
+        setVoiceJob(restoredVoiceJob);
+        setCategory(restoredCategory);
+        setLifeArea(normalizeLifeArea(snapshot.lifeArea, restoredCategory));
+        setCollectionId(snapshot.chapterId || null);
+        setEntryLocation(snapshot.location || null);
+        setDeviceSnapshot((snapshot.deviceContext || null) as DeviceSnapshot | null);
+        setEntryId(snapshot.entryId || null);
+        setPendingSync(true);
+        setDraftRestored(true);
+        setHasBeenSaved(Boolean(snapshot.entryId));
+        setLastSaved(null);
+        setDraftConflict(null);
+        setError('');
+
+        if (snapshot.analysis?.deterministic) {
+            setExtractedData(snapshot.analysis.deterministic as StructuredEntryData);
+        } else {
+            setExtractedData(null);
+        }
+        if (snapshot.analysis?.ai) {
+            setAiInsights(snapshot.analysis.ai);
+        } else {
+            setAiInsights(null);
+        }
+
+        saveDraft(restoredDraft);
+        if (user?.id) {
+            setDraftHistory(getDraftHistory(user.id));
+        }
+        toast.success('Earlier draft restored');
+    }, [saveDraft, setAiInsights, setExtractedData, toast, user?.id]);
+
+    const handleDeleteDraftSnapshot = useCallback((snapshotId: string) => {
+        setDraftHistory(deleteDraftHistorySnapshot(user?.id, snapshotId));
+    }, [user?.id]);
+
     const handleEditorChange = useCallback((text: string, html: string) => {
         setContent(text);
         setContentHtml(html);
@@ -1211,6 +1273,9 @@ function NewEntryPageContent() {
             updatedAt: Date.now(),
             pendingSync: pendingSyncOverride,
         });
+        if (user?.id) {
+            setDraftHistory(getDraftHistory(user.id));
+        }
     }, [
         audioUrl,
         buildPersistedAnalysis,
@@ -1227,6 +1292,7 @@ function NewEntryPageContent() {
         saveDraft,
         tagsOverride,
         titleOverride,
+        user?.id,
     ]);
 
     const processVoiceCapture = useCallback(async (
@@ -1915,6 +1981,18 @@ function NewEntryPageContent() {
         setSaveCompletion(null);
     }, []);
 
+    const handleTurnSavedEntryIntoStory = useCallback(() => {
+        if (!saveCompletion) return;
+        setSaveCompletion(null);
+        router.push(appendReturnTo('/portfolio?view=evidence', `/entry/view?id=${saveCompletion.entryId}`));
+    }, [router, saveCompletion]);
+
+    const handleAskAboutSavedEntry = useCallback(() => {
+        if (!saveCompletion) return;
+        setSaveCompletion(null);
+        router.push(appendReturnTo('/chat?lens=stories', `/entry/view?id=${saveCompletion.entryId}`));
+    }, [router, saveCompletion]);
+
     const handleLeaveAfterSave = useCallback(() => {
         setSaveCompletion(null);
         router.push(backHref);
@@ -2084,6 +2162,12 @@ function NewEntryPageContent() {
                     isBackgroundRefining={isBackgroundRefining}
                     onFinishLater={handleFinishLater}
                     onOpenFullStudio={handleOpenFullStudio}
+                />
+
+                <DraftRecoveryPanel
+                    snapshots={draftHistory}
+                    onRestore={handleRestoreDraftSnapshot}
+                    onDelete={handleDeleteDraftSnapshot}
                 />
 
                 <EntryEditorCard
@@ -2352,6 +2436,22 @@ function NewEntryPageContent() {
                 onSecondary={handleKeepWritingSavedEntry}
                 onTertiary={handleLeaveAfterSave}
                 onClose={handleKeepWritingSavedEntry}
+                nextActions={
+                    saveCompletion
+                        ? [
+                            {
+                                label: 'Turn into story',
+                                description: 'Open Stories and shape this memory into reusable evidence.',
+                                onSelect: handleTurnSavedEntryIntoStory,
+                            },
+                            {
+                                label: 'Ask about it',
+                                description: 'Use AskNotive to pull lessons, patterns, or next steps from this save.',
+                                onSelect: handleAskAboutSavedEntry,
+                            },
+                        ]
+                        : []
+                }
                 reminderPrompt={
                     reminderPromptVisible
                         ? { onEnable: handleEnableDailyReminder, onDismiss: handleDismissReminderPrompt }

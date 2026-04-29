@@ -1651,9 +1651,13 @@ export default function PortfolioWorkspace() {
 
             {filteredExperiences.length === 0 ? (
                 <EmptyState
-                    title="No evidence in this lane yet"
-                    description="Switch lanes or capture another memory to generate more stories for the queue."
-                    actionLabel="Add memory"
+                    doodle="ladder"
+                    doodleAccent="apricot"
+                    title={hasPortfolioMaterial ? 'No evidence in this lane yet' : 'Your first proof point starts with one memory'}
+                    description={hasPortfolioMaterial
+                        ? 'Switch lanes or capture another memory to generate more stories for the queue.'
+                        : 'Save a moment with a situation, action, lesson, or outcome. The story queue will build from there.'}
+                    actionLabel={hasPortfolioMaterial ? 'Add memory' : 'Start Quick Capture'}
                     actionHref={captureHref}
                 />
             ) : (
@@ -2634,14 +2638,19 @@ export default function PortfolioWorkspace() {
         ? exportTypeLabels[recommendedExportType]
         : portfolioViewLabels[recommendedView];
     const nextActionButtonLabel = nextAction.targetView === 'evidence' ? 'Start' : nextAction.actionLabel;
-    const storySnapshotTitle = filterCounts.needs_attention > 0
+    const hasPortfolioMaterial = overview.experiences.length > 0;
+    const storySnapshotTitle = !hasPortfolioMaterial
+        ? 'Capture your first reusable story'
+        : filterCounts.needs_attention > 0
         ? `${filterCounts.needs_attention} stor${filterCounts.needs_attention === 1 ? 'y needs' : 'ies need'} one detail`
         : filterCounts.ready_to_export > 0
             ? `${filterCounts.ready_to_export} stor${filterCounts.ready_to_export === 1 ? 'y is' : 'ies are'} ready to reuse`
             : overview.interviewStories.length > 0
                 ? `${overview.interviewStories.length} stor${overview.interviewStories.length === 1 ? 'y is' : 'ies are'} ready to rehearse`
                 : 'Your saved moments are ready for the next pass';
-    const storySnapshotDescription = filterCounts.needs_attention > 0
+    const storySnapshotDescription = !hasPortfolioMaterial
+        ? 'Write one concrete moment with what happened, what you did, and what changed. Notive will turn it into story material here.'
+        : filterCounts.needs_attention > 0
         ? 'Start with the missing block. The stronger stories can wait.'
         : filterCounts.ready_to_export > 0
             ? 'You already have reusable material here. Keep the focus on exporting or lightly polishing instead of reopening everything.'

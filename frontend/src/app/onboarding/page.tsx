@@ -243,6 +243,14 @@ function OnboardingPageContent() {
         (step === 2 && !!track) ||
         (step === 3 && selectedPrompt !== null);
     const maxReachableStep = firstIncompleteStep ?? 3;
+    const hasPartialOnboarding = !isCompletedProfile && Boolean(goal || track || selectedPrompt !== null);
+    const setupResumeLabel = firstIncompleteStep === null
+        ? 'Finish setup'
+        : firstIncompleteStep === 2
+        ? 'Add your focus area'
+        : firstIncompleteStep === 3
+            ? 'Choose your first prompt'
+            : 'Choose your goal';
 
     const buildStepPayload = (currentStep: number): Record<string, unknown> => {
         const payload: Record<string, unknown> = {};
@@ -475,6 +483,30 @@ function OnboardingPageContent() {
                 {savedNotice && (
                     <div className="type-body-sm mb-4 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-accent">
                         {savedNotice}
+                    </div>
+                )}
+
+                {hasPartialOnboarding && (
+                    <div className="workspace-soft-panel mb-4 rounded-2xl border border-primary/20 px-4 py-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="type-overline text-muted">Resume setup</p>
+                                <h2 className="type-card-title mt-1 text-strong">{setupResumeLabel}</h2>
+                                <p className="type-body-sm mt-1 text-default">
+                                    Finishing setup gives Notive better prompts, cleaner story extraction, and reminder timing that fits how you write.
+                                </p>
+                            </div>
+                            {firstIncompleteStep && (
+                                <button
+                                    type="button"
+                                    onClick={() => jumpToStep(firstIncompleteStep)}
+                                    disabled={isSubmitting || isProgressSaving}
+                                    className="workspace-button-primary type-label-sm rounded-xl px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Continue setup
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )}
 

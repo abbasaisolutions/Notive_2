@@ -20,6 +20,12 @@ export type ReminderPromptOptions = {
     onDismiss: () => void;
 };
 
+export type SaveCompletionNextAction = {
+    label: string;
+    description: string;
+    onSelect: () => void | Promise<void>;
+};
+
 type EntrySaveCompletionSheetProps = {
     open: boolean;
     kicker: string;
@@ -34,6 +40,7 @@ type EntrySaveCompletionSheetProps = {
     onTertiary: () => void;
     onClose: () => void;
     reminderPrompt?: ReminderPromptOptions | null;
+    nextActions?: SaveCompletionNextAction[];
 };
 
 type Highlight = {
@@ -63,6 +70,7 @@ export default function EntrySaveCompletionSheet({
     onTertiary,
     onClose,
     reminderPrompt,
+    nextActions = [],
 }: EntrySaveCompletionSheetProps) {
     const dialogRef = useRef<HTMLDivElement>(null);
     const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -235,6 +243,33 @@ export default function EntrySaveCompletionSheet({
                                             {highlight.value}
                                         </p>
                                     </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {nextActions.length > 0 && (
+                        <div className="mt-5 rounded-xl border border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.18)] p-4">
+                            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                                Useful next steps
+                            </p>
+                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                {nextActions.slice(0, 2).map((action) => (
+                                    <button
+                                        key={action.label}
+                                        type="button"
+                                        onClick={() => {
+                                            void action.onSelect();
+                                        }}
+                                        className="rounded-xl border border-primary/20 bg-primary/8 px-3.5 py-3 text-left transition-colors hover:bg-primary/14"
+                                    >
+                                        <span className="block text-sm font-semibold text-[rgb(var(--text-primary))]">
+                                            {action.label}
+                                        </span>
+                                        <span className="mt-1 block text-xs leading-5 text-ink-secondary">
+                                            {action.description}
+                                        </span>
+                                    </button>
                                 ))}
                             </div>
                         </div>

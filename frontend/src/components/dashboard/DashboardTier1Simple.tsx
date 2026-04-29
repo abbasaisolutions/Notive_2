@@ -113,6 +113,34 @@ export default function DashboardTier1Simple({
       ? topPattern.topic
       : topPattern.entity
     : null;
+  const advancedSignals = useMemo(() => {
+    const moodCount = entries.filter((entry) => Boolean(entry.mood)).length;
+    const writingDays = new Set(entries.map((entry) => new Date(entry.createdAt).toISOString().slice(0, 10))).size;
+    const patternCount = (dashboardInsights?.correlations?.length || 0) + (dashboardInsights?.triggerMap?.length || 0);
+
+    return [
+      {
+        label: 'Memories',
+        value: String(entries.length),
+        note: entries.length < 3 ? 'Still warming up' : 'Enough to compare',
+      },
+      {
+        label: 'Writing days',
+        value: String(writingDays),
+        note: writingDays <= 1 ? 'One day logged' : 'Across your week',
+      },
+      {
+        label: 'Mood signals',
+        value: String(moodCount),
+        note: moodCount === 0 ? 'Add moods to sharpen this' : 'Ready for patterns',
+      },
+      {
+        label: 'Patterns',
+        value: String(patternCount),
+        note: patternCount === 0 ? 'Still listening' : 'Worth opening',
+      },
+    ];
+  }, [dashboardInsights?.correlations?.length, dashboardInsights?.triggerMap?.length, entries]);
 
   return (
     <div className="min-h-screen pb-32 md:pb-20">
@@ -247,6 +275,38 @@ export default function DashboardTier1Simple({
             </details>
           </section>
         )}
+
+        {/* ── Advanced Insights Drawer ───────────────────────────── */}
+        <section>
+          <details className="group rounded-2xl border border-[rgba(var(--brand),0.18)] bg-[rgba(255,255,255,0.34)] p-4 transition-colors hover:border-[rgba(var(--brand),0.34)]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+              <span>
+                <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-[rgb(var(--brand))]">
+                  Advanced insights
+                </span>
+                <span className="notebook-muted mt-1 block text-sm">
+                  Stats and pattern signals stay here until you want the deeper read.
+                </span>
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-[0.1em] notebook-muted group-open:hidden">
+                Open
+              </span>
+              <span className="hidden text-xs font-semibold uppercase tracking-[0.1em] notebook-muted group-open:inline">
+                Hide
+              </span>
+            </summary>
+
+            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[rgba(var(--brand),0.14)] pt-4">
+              {advancedSignals.map((signal) => (
+                <div key={signal.label} className="rounded-xl border border-[rgba(var(--brand),0.12)] bg-[rgba(248,244,237,0.72)] p-3">
+                  <p className="text-xs uppercase tracking-[0.1em] notebook-muted">{signal.label}</p>
+                  <p className="mt-1 text-lg font-semibold text-[rgb(var(--paper-ink))]">{signal.value}</p>
+                  <p className="notebook-muted mt-1 text-xs">{signal.note}</p>
+                </div>
+              ))}
+            </div>
+          </details>
+        </section>
 
         {/* ── View Full Dashboard Link ────────────────────────────── */}
         <div className="pt-4 border-t border-[rgba(var(--brand),0.15)]">

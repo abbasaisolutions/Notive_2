@@ -9,7 +9,8 @@ import { useGamification } from '@/context/gamification-context';
 import { useTheme } from '@/context/theme-context';
 import { useNotificationCount } from '@/hooks/use-notification-count';
 import { useSharedUnreadCount } from '@/hooks/use-shared-unread-count';
-import { FiLogOut } from 'react-icons/fi';
+import { FiLogOut, FiSearch } from 'react-icons/fi';
+import { openGlobalSearch } from '@/utils/global-search';
 import {
     filterNavSectionsByRole,
     getDesktopNavSections,
@@ -68,6 +69,16 @@ export default function Sidebar() {
                                 ? 'Growing Workspace'
                                 : 'Growth Workspace'}
                 </p>
+                <button
+                    type="button"
+                    onClick={openGlobalSearch}
+                    className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-left text-soft transition-colors hover:bg-white/[0.08] hover:text-strong"
+                    aria-label="Search memories"
+                >
+                    <FiSearch size={16} aria-hidden="true" />
+                    <span className="type-label-sm flex-1">Search memories</span>
+                    <span className="type-micro rounded border border-white/10 px-1.5 py-0.5 text-muted">Ctrl K</span>
+                </button>
             </div>
 
             <nav className="flex-1 px-5 space-y-5 overflow-y-auto pb-4" aria-label="Primary navigation">

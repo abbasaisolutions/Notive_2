@@ -436,10 +436,14 @@ export default function ChatPage() {
                         {messages.length === 0 ? (
                             <div className="space-y-4 py-6">
                                 <EmptyState
+                                    doodle="compass"
+                                    doodleAccent="sky"
                                     title="Ask anything about your notes"
                                     description={coachAvailable
-                                        ? 'Pick a starter or type your own question.'
+                                        ? 'Start with a question, or write one fresh memory first so Notive has more to work with.'
                                         : 'Come back when the guide is available.'}
+                                    actionLabel={coachAvailable ? 'Write memory' : undefined}
+                                    actionHref={coachAvailable ? '/entry/new?mode=quick' : undefined}
                                     className="py-8"
                                 />
 
