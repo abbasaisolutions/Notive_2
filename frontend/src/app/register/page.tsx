@@ -113,7 +113,7 @@ export default function RegisterPage() {
                                     alt="Teen writing a first Notive note on a phone while starting a private diary account."
                                     fill
                                     priority
-                                    sizes="100vw"
+                                    sizes="(max-width: 1023px) calc(100vw - 1.5rem), 0px"
                                     className="object-cover object-center"
                                 />
                                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.52))]" />

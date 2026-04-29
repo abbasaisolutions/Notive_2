@@ -105,15 +105,19 @@ export default function NotiveLogo({ size = 'md', variant = 'full', href, classN
     const { width, height } = SIZE_MAPS[variant][size];
 
     const img = (
-        <Image
-            src={VARIANT_SRCS[variant]}
-            alt={VARIANT_ALTS[variant]}
-            width={width}
-            height={height}
-            style={{ width: 'auto', height: 'auto' }}
-            className={`${VARIANT_ROUNDED[variant]} ${VARIANT_FIT[variant]} ${className}`.trim()}
-            priority
-        />
+        <span
+            className={`relative inline-flex shrink-0 overflow-hidden ${VARIANT_ROUNDED[variant]} ${className}`.trim()}
+            style={{ width, height }}
+        >
+            <Image
+                src={VARIANT_SRCS[variant]}
+                alt={VARIANT_ALTS[variant]}
+                fill
+                sizes={`${width}px`}
+                className={VARIANT_FIT[variant]}
+                priority
+            />
+        </span>
     );
 
     if (href) {

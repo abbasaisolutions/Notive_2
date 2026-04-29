@@ -179,7 +179,7 @@ export default function LoginPage() {
                                     alt="Phone mockup of the Notive sign-in screen with welcome-back form fields, showing the notebook-inspired interface people return to on mobile."
                                     fill
                                     priority
-                                    sizes="100vw"
+                                    sizes="(max-width: 1023px) calc(100vw - 1.5rem), 0px"
                                     className="object-cover object-center"
                                 />
                                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.5))]" />

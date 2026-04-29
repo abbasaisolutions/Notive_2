@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
+import { useGoogleOAuth } from '@react-oauth/google';
 import { getCredentialSsoAvailability } from '@/utils/sso';
 import { ensureNativeGoogleSsoInitialized, signInWithNativeGoogleCredential } from '@/utils/native-google-auth';
 import { resolveFriendlyMessage } from '@/utils/friendly-errors';
@@ -56,6 +56,122 @@ const ALIGNMENT = {
 } as const;
 
 const getErrorMessage = (error: unknown, fallback: string) => resolveFriendlyMessage(error, fallback);
+
+type GoogleCredentialResponse = {
+    credential?: string;
+    select_by?: string;
+};
+
+type GoogleIdentityRuntime = {
+    initializedClientId: string | null;
+    onSuccess: ((response: GoogleCredentialResponse) => void) | null;
+    onError: (() => void) | null;
+};
+
+type GoogleIdentityWindow = Window & {
+    google?: {
+        accounts?: {
+            id?: {
+                initialize: (config: {
+                    client_id: string;
+                    callback: (response: GoogleCredentialResponse) => void;
+                }) => void;
+                renderButton: (
+                    parent: HTMLElement,
+                    options: {
+                        theme: 'outline';
+                        size: 'large';
+                        shape: 'pill';
+                        text: 'signin_with' | 'signup_with' | 'continue_with';
+                        width: string;
+                    },
+                ) => void;
+            };
+        };
+    };
+    __notiveGoogleIdentityRuntime?: GoogleIdentityRuntime;
+};
+
+const getGoogleIdentityRuntime = (): GoogleIdentityRuntime => {
+    const runtimeWindow = window as GoogleIdentityWindow;
+    if (!runtimeWindow.__notiveGoogleIdentityRuntime) {
+        runtimeWindow.__notiveGoogleIdentityRuntime = {
+            initializedClientId: null,
+            onSuccess: null,
+            onError: null,
+        };
+    }
+
+    return runtimeWindow.__notiveGoogleIdentityRuntime;
+};
+
+function GoogleCredentialButton({
+    text,
+    onSuccess,
+    onError,
+}: {
+    text: 'signin_with' | 'signup_with' | 'continue_with';
+    onSuccess: (credentialResponse: { credential?: string }) => void | Promise<void>;
+    onError: () => void;
+}) {
+    const { clientId, scriptLoadedSuccessfully } = useGoogleOAuth();
+    const buttonRef = React.useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        const runtime = getGoogleIdentityRuntime();
+        runtime.onSuccess = onSuccess;
+        runtime.onError = onError;
+
+        return () => {
+            if (runtime.onSuccess === onSuccess) {
+                runtime.onSuccess = null;
+            }
+            if (runtime.onError === onError) {
+                runtime.onError = null;
+            }
+        };
+    }, [onError, onSuccess]);
+
+    useEffect(() => {
+        if (!scriptLoadedSuccessfully || !buttonRef.current) return;
+
+        const runtimeWindow = window as GoogleIdentityWindow;
+        const identity = runtimeWindow.google?.accounts?.id;
+        if (!identity) return;
+
+        const runtime = getGoogleIdentityRuntime();
+        if (runtime.initializedClientId !== clientId) {
+            identity.initialize({
+                client_id: clientId,
+                callback: (response) => {
+                    if (!response?.credential) {
+                        runtime.onError?.();
+                        return;
+                    }
+                    runtime.onSuccess?.(response);
+                },
+            });
+            runtime.initializedClientId = clientId;
+        }
+
+        buttonRef.current.innerHTML = '';
+        identity.renderButton(buttonRef.current, {
+            theme: 'outline',
+            size: 'large',
+            shape: 'pill',
+            text,
+            width: '320',
+        });
+    }, [clientId, scriptLoadedSuccessfully, text]);
+
+    return (
+        <div
+            ref={buttonRef}
+            className="min-h-10 w-full max-w-[320px]"
+            aria-label="Google sign-in button"
+        />
+    );
+}
 
 function GoogleSsoPanelComponent({
     mode,
@@ -165,14 +281,10 @@ function GoogleSsoPanelComponent({
                             </button>
                         ) : (
                             <div className={`max-w-full ${isInteractionDisabled ? 'pointer-events-none opacity-60' : ''}`}>
-                                <GoogleLogin
+                                <GoogleCredentialButton
                                     onSuccess={onSuccess}
                                     onError={onError}
-                                    theme="outline"
-                                    size="large"
-                                    shape="pill"
                                     text={copy.buttonText}
-                                    width="320"
                                 />
                             </div>
                         )}

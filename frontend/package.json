@@ -21,6 +21,7 @@
     "android:build:debug": "npm run android:prepare && powershell -ExecutionPolicy Bypass -File .\\scripts\\build-android-debug.ps1",
     "android:build:release": "npm run android:ready && npm run android:prepare && powershell -ExecutionPolicy Bypass -File .\\scripts\\build-android-release.ps1",
     "android:open": "npx cap open android",
+    "sso:doctor": "node scripts/google-sso-doctor.mjs",
     "lint": "next lint",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "smoke:test": "node scripts/production-smoke.mjs",

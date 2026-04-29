@@ -479,15 +479,15 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                 ) : (
                     <button
                         onClick={startRecording}
-                        className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full overflow-hidden shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200"
+                        className="relative h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full overflow-hidden shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200"
                         aria-label="Start voice recording"
                     >
                         <Image
                             src="/images/Submark  Icon-Only.jpg"
                             alt=""
                             aria-hidden="true"
-                            width={64}
-                            height={88}
+                            fill
+                            sizes="(max-width: 640px) 48px, (max-width: 768px) 56px, 64px"
                             className="w-full h-full object-cover"
                         />
                     </button>
