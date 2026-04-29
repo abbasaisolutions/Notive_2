@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FadeIn, SlideUp } from '@/components/ui/animated-wrappers';
 import { ConfirmDialog, Spinner } from '@/components/ui';
+import NotiveLoadingScreen from '@/components/ui/NotiveLoadingScreen';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { useAuth } from '@/context/auth-context';
@@ -83,6 +84,12 @@ const resolveKnownProfileUpdatedAt = (source: SnapshotUser | null | undefined): 
 type PendingLeaveAction =
     | { kind: 'back' }
     | { kind: 'href'; href: string };
+
+const SETTINGS_LOADING_PHRASES = [
+    'Loading your settings...',
+    'Gathering your preferences...',
+    'Opening clear sections...',
+];
 
 export function ProfileSettingsEditor() {
     const router = useRouter();
@@ -442,14 +449,14 @@ export function ProfileSettingsEditor() {
     const activeEditableTab = EDITABLE_TABS.find((tab) => tab === activeTab) || null;
     const activeTabItem = TAB_ITEMS.find((tab) => tab.id === activeTab) || TAB_ITEMS[0];
     const activeTabDescription = activeTab === 'profile'
-        ? 'Update your name, photo, bio, and the details that describe you.'
+        ? 'Update your photo, name, bio, and the basic details that identify this notebook.'
         : activeTab === 'preferences'
-            ? 'Tune goals, prompts, and writing guidance so Notive helps in a way that fits you.'
+            ? 'Tune goals, prompts, and guidance so Notive helps in a way that fits.'
             : activeTab === 'security'
-                ? 'Handle sign-in email, password, and account protection in one guarded place.'
+                ? 'Handle sign-in email, password, and protected account actions in one place.'
                 : activeTab === 'reminders'
-                    ? 'Set a daily nudge to reflect. Delivered as a push notification on your device.'
-                    : 'Manage saved signals, support anchors, exports, and the privacy controls behind them.';
+                    ? 'Set reflection nudges, calendar context, and device behavior without digging through privacy settings.'
+                    : 'Manage saved signals, support anchors, data exports, and permission-related controls.';
     const dirtyByTab: Record<EditableTab, boolean> = {
         profile: profileDirty,
         preferences: preferencesDirty,
@@ -1459,11 +1466,7 @@ export function ProfileSettingsEditor() {
     };
 
     if (authLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Spinner size="md" />
-            </div>
-        );
+        return <NotiveLoadingScreen phrases={SETTINGS_LOADING_PHRASES} phraseInterval={2800} />;
     }
 
     if (!isAuthenticated) {
@@ -1471,11 +1474,7 @@ export function ProfileSettingsEditor() {
     }
 
     if (!hydratedUserId) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Spinner size="md" />
-            </div>
-        );
+        return <NotiveLoadingScreen phrases={SETTINGS_LOADING_PHRASES} phraseInterval={2800} />;
     }
 
     return (
@@ -1493,7 +1492,7 @@ export function ProfileSettingsEditor() {
                             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Settings</p>
                             <h1 className="workspace-heading text-2xl md:text-4xl font-serif tracking-tight">Settings</h1>
                             <p className="max-w-3xl text-sm md:text-base text-ink-secondary">
-                                Keep profile details, coaching preferences, sign-in changes, reminders, and data controls in clear sections.
+                                Identity, goals, reminders, permissions, privacy, and account controls stay in separate sections.
                             </p>
                         </div>
                     </div>

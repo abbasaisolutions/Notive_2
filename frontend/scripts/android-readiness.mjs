@@ -39,6 +39,10 @@ const parseEnv = (content) => {
 };
 
 const env = parseEnv(fs.readFileSync(envFilePath, 'utf8'));
+const backendEnvFilePath = path.resolve(projectRoot, '..', 'backend', '.env');
+const backendEnv = fs.existsSync(backendEnvFilePath)
+    ? parseEnv(fs.readFileSync(backendEnvFilePath, 'utf8'))
+    : {};
 const gradleProperties = fs.existsSync(gradlePropertiesPath)
     ? parseEnv(fs.readFileSync(gradlePropertiesPath, 'utf8'))
     : {};
@@ -56,12 +60,29 @@ const isMissing = (value) =>
     !value
     || value === 'your-google-client-id'
     || value === 'your_google_client_id_here.apps.googleusercontent.com'
+    || value === 'your_google_web_client_id_here.apps.googleusercontent.com'
     || value === 'your-google-client-id-here'
     || value === 'your-google-client-id-here.apps.googleusercontent.com'
     || value === 'replace_with_store_password'
     || value === 'replace_with_key_password';
 
 const isGoogleClientId = (value) => /\.apps\.googleusercontent\.com$/i.test(value || '');
+
+const resolveBackendGoogleClientIds = () => Array.from(
+    new Set(
+        [
+            ...(process.env.GOOGLE_CLIENT_IDS || '').split(','),
+            process.env.GOOGLE_CLIENT_ID || '',
+            process.env.GOOGLE_WEB_CLIENT_ID || '',
+            backendEnv.GOOGLE_CLIENT_IDS || '',
+            backendEnv.GOOGLE_CLIENT_ID || '',
+            backendEnv.GOOGLE_WEB_CLIENT_ID || '',
+        ]
+            .flatMap((value) => `${value || ''}`.split(','))
+            .map((value) => value.trim().replace(/^"|"$/g, ''))
+            .filter((value) => !isMissing(value) && isGoogleClientId(value))
+    )
+);
 
 const isLikelyLocalApiUrl = (value) =>
     /localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.|10\.\d+|172\.(1[6-9]|2\d|3[01])\./i.test(value || '');
@@ -106,6 +127,15 @@ if (isMissing(googleClientId) || !isGoogleClientId(googleClientId)) {
     blockers.push('Set a real `NEXT_PUBLIC_GOOGLE_CLIENT_ID` or `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` in `frontend/.env` or CI environment variables for web and Android Google sign-in.');
 } else {
     pushStatus('Google credential sign-in', 'configured');
+
+    const backendGoogleClientIds = resolveBackendGoogleClientIds();
+    if (backendGoogleClientIds.length === 0) {
+        warnings.push('Backend Google SSO audience is not configured locally. Set backend `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_IDS` to the same active web OAuth client ID used by the frontend.');
+    } else if (!backendGoogleClientIds.includes(googleClientId)) {
+        warnings.push('Backend Google SSO audience does not include the frontend Google web client ID. Google sign-in can open but fail verification until backend `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_IDS` is updated.');
+    } else {
+        pushStatus('Backend Google SSO audience', 'matches frontend client');
+    }
 }
 
 const nativeApiUrl = resolveEnvValue('NEXT_PUBLIC_NATIVE_API_URL')

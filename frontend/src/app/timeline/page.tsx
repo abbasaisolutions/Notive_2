@@ -514,6 +514,7 @@ function SharedWithMeList({ bundles, loading, onRefresh, allowEmptyState = true 
                 doodleAccent="sage"
                 title={emptySharedCopy.title}
                 subtitle={emptySharedCopy.subtitle}
+                action={{ label: 'Write a memory', href: '/entry/new?mode=quick' }}
             />
         );
     }
@@ -1887,10 +1888,6 @@ function TimelinePageContent() {
     const openFilterStudio = useCallback(() => {
         openControlDeck({ source: 'tools', panel: 'filters' });
     }, [openControlDeck]);
-    const openQuickJumpDeck = useCallback(() => {
-        openControlDeck({ source: 'jump', panel: 'jump' });
-    }, [openControlDeck]);
-
     const applyRecentPreset = (preset: TimelineFilterPreset) => {
         applyTimelineFilters({
             query: preset.query,
@@ -2333,7 +2330,7 @@ function TimelinePageContent() {
             : 'Timeline';
     const mobileControlLabel = timelineStats.hasActiveFilters
         ? `${activeFilterChips.length} filter${activeFilterChips.length === 1 ? '' : 's'} active`
-        : `${activeSurfaceLabel} controls`;
+        : `Refine ${activeSurfaceLabel}`;
     const quickJumpDescription = activeQuickJumpMode === 'chapters'
         ? 'Jump straight into the strongest group or season instead of scanning the full timeline.'
         : activeQuickJumpMode === 'recent'
@@ -2462,77 +2459,60 @@ function TimelinePageContent() {
                                     className="workspace-pill flex min-w-0 flex-1 items-center justify-between gap-2 rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] md:hidden"
                                 >
                                     <span className="truncate">{mobileControlLabel}</span>
-                                    <span className="text-primary">Switch</span>
+                                    <span className="text-primary">Refine</span>
                                 </button>
 
-                                <div className="hidden flex-1 flex-wrap items-center gap-1.5 overflow-visible md:flex">
-                                    <button
-                                        type="button"
-                                        aria-pressed={surface === 'constellation'}
-                                        onClick={() => switchSurface('constellation')}
-                                        className={`workspace-pill inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85 ${
-                                            surface === 'constellation' ? 'bg-primary/15 text-primary border-primary/30' : ''
-                                        }`}
-                                    >
-                                        Map
-                                    </button>
-                                    <button
-                                        type="button"
-                                        aria-pressed={surface === 'shared'}
-                                        onClick={() => switchSurface('shared')}
-                                        className={`workspace-pill relative inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85 ${
-                                            surface === 'shared' ? 'bg-primary/15 text-primary border-primary/30' : ''
-                                        }`}
-                                    >
-                                        Shared
-                                        {sharedUnreadCount > 0 && surface !== 'shared' && (
-                                            <span className="absolute -top-1 -right-1 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-[rgb(107,143,113)] px-0.5 text-[0.5rem] font-bold text-white">
-                                                {sharedUnreadCount}
-                                            </span>
+                                <div className="hidden flex-1 items-center justify-between gap-2 md:flex">
+                                    <div className="workspace-actionbar inline-flex gap-1 rounded-full p-1" role="tablist" aria-label="Memory view">
+                                        {([
+                                            ['timeline', 'List'],
+                                            ['constellation', 'Map'],
+                                            ['shared', 'Shared'],
+                                        ] as const).map(([nextSurface, label]) => (
+                                            <button
+                                                key={nextSurface}
+                                                type="button"
+                                                role="tab"
+                                                aria-selected={surface === nextSurface}
+                                                onClick={() => switchSurface(nextSurface)}
+                                                className={`relative rounded-full px-3 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.08em] transition hover:opacity-85 ${
+                                                    surface === nextSurface ? 'bg-primary/15 text-primary' : 'text-ink-secondary'
+                                                }`}
+                                            >
+                                                {label}
+                                                {nextSurface === 'shared' && sharedUnreadCount > 0 && surface !== 'shared' && (
+                                                    <span className="absolute -top-1 -right-1 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-[rgb(107,143,113)] px-0.5 text-[0.5rem] font-bold text-white">
+                                                        {sharedUnreadCount}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-1.5">
+                                        <button
+                                            type="button"
+                                            aria-pressed={activeFilterChips.length > 0}
+                                            onClick={() => openControlDeck({ source: 'tools', panel: 'filters' })}
+                                            className="workspace-pill inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.08em] transition hover:opacity-85"
+                                        >
+                                            <FiSliders size={12} aria-hidden="true" />
+                                            Refine
+                                            {activeFilterChips.length > 0 && (
+                                                <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[0.6rem] text-primary">
+                                                    {activeFilterChips.length}
+                                                </span>
+                                            )}
+                                        </button>
+                                        {timelineStats.hasActiveFilters && (
+                                            <button
+                                                type="button"
+                                                onClick={clearAllFilters}
+                                                className="workspace-pill rounded-full px-2.5 py-1.5 text-[0.65rem] uppercase tracking-[0.08em] text-ink-secondary transition hover:text-[rgb(var(--text-primary))]"
+                                            >
+                                                Reset
+                                            </button>
                                         )}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        aria-pressed={activeFilterChips.length > 0}
-                                        onClick={openFilterStudio}
-                                        className="workspace-pill inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85"
-                                    >
-                                        <FiSliders size={12} aria-hidden="true" />
-                                        More filters
-                                        {activeFilterChips.length > 0 && (
-                                            <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[0.6rem] text-primary">
-                                                {activeFilterChips.length}
-                                            </span>
-                                        )}
-                                    </button>
-                                    {activeQuickJumpMode && (
-                                        <button
-                                            type="button"
-                                            onClick={openQuickJumpDeck}
-                                            className="workspace-pill inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85"
-                                        >
-                                            <FiMapPin size={12} aria-hidden="true" />
-                                            Jump to
-                                        </button>
-                                    )}
-                                    {surface !== 'timeline' && (
-                                        <button
-                                            type="button"
-                                            onClick={() => switchSurface('timeline')}
-                                            className="workspace-pill inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition hover:opacity-85"
-                                        >
-                                            Back to list
-                                        </button>
-                                    )}
-                                    {timelineStats.hasActiveFilters && (
-                                        <button
-                                            type="button"
-                                            onClick={clearAllFilters}
-                                            className="workspace-pill rounded-full px-2 py-1.5 text-[0.65rem] uppercase tracking-[0.08em] text-ink-secondary transition hover:text-[rgb(var(--text-primary))]"
-                                        >
-                                            Reset
-                                        </button>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
                         ) : (

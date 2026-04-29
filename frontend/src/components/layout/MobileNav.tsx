@@ -9,10 +9,9 @@ import { useGamification } from '@/context/gamification-context';
 import { useTheme } from '@/context/theme-context';
 import { useNotificationCount } from '@/hooks/use-notification-count';
 import { useSharedUnreadCount } from '@/hooks/use-shared-unread-count';
-import { FiMoreHorizontal } from 'react-icons/fi';
+import { FiEdit3, FiMic, FiMoreHorizontal } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import useHasMounted from '@/hooks/use-has-mounted';
-import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import UserAvatar from '@/components/ui/UserAvatar';
 import {
     filterNavItemsByRole,
@@ -39,8 +38,8 @@ export default function MobileNav() {
     const hasMounted = useHasMounted();
     const navRef = useRef<HTMLElement | null>(null);
     const [isMoreOpen, setIsMoreOpen] = useState(false);
+    const [isCaptureOpen, setIsCaptureOpen] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const [capturePhase, setCapturePhase] = useState(0); // 0=plus, 1=mic, 2=plus, 3=pen
     const reducedMotionPreference = useReducedMotion();
     const prefersReducedMotion = hasMounted && !!reducedMotionPreference;
     const isPaper = theme === 'paper';
@@ -71,38 +70,13 @@ export default function MobileNav() {
 
     useEffect(() => {
         setIsMoreOpen(false);
+        setIsCaptureOpen(false);
     }, [pathname]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
         setSearch(window.location.search);
     }, [pathname]);
-
-    // Alternate icon on the capture FAB: + → mic → + → pen.
-    // Pause when the tab is hidden (saves battery) and honor reduced-motion.
-    useEffect(() => {
-        if (!hasMounted || prefersReducedMotion) return;
-        let interval: ReturnType<typeof setInterval> | null = null;
-        const start = () => {
-            if (interval) return;
-            interval = setInterval(() => setCapturePhase(p => (p + 1) % 4), 1600);
-        };
-        const stop = () => {
-            if (!interval) return;
-            clearInterval(interval);
-            interval = null;
-        };
-        const handleVisibility = () => {
-            if (document.visibilityState === 'visible') start();
-            else stop();
-        };
-        handleVisibility();
-        document.addEventListener('visibilitychange', handleVisibility);
-        return () => {
-            document.removeEventListener('visibilitychange', handleVisibility);
-            stop();
-        };
-    }, [hasMounted, prefersReducedMotion]);
 
     // Prefetch entry route so navigation is near-instant
     useEffect(() => {
@@ -212,12 +186,19 @@ export default function MobileNav() {
         hapticTap();
         audioFeedback.rustle();
         setIsMoreOpen(false);
-        // Mic phase → voice mode; all other phases → text mode
-        if (capturePhase === 1) {
-            router.push(voiceEntryHref);
-        } else {
-            router.push(writeEntryHref);
-        }
+        setIsCaptureOpen((open) => !open);
+    };
+
+    const handleStartTextCapture = () => {
+        hapticTap();
+        setIsCaptureOpen(false);
+        router.push(writeEntryHref);
+    };
+
+    const handleStartVoiceCapture = () => {
+        hapticTap();
+        setIsCaptureOpen(false);
+        router.push(voiceEntryHref);
     };
 
     if (shouldHideGlobalNav(pathname)) {
@@ -226,6 +207,52 @@ export default function MobileNav() {
 
     return (
         <>
+            {/* Capture Drawer */}
+            <AnimatePresence>
+                {isCaptureOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 16 }}
+                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                        id="mobile-capture-drawer"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Choose capture method"
+                        className="fixed inset-x-4 bottom-28 z-[90] mx-auto max-w-sm rounded-2xl glass-nav p-3 shadow-xl lg:hidden"
+                    >
+                        <div className="grid gap-2">
+                            <button
+                                type="button"
+                                onClick={handleStartTextCapture}
+                                className="type-label-md flex items-center gap-3 rounded-xl border border-primary/25 bg-primary/12 p-3 text-left text-strong transition-colors hover:bg-primary/18"
+                            >
+                                <span className="workspace-icon-badge rounded-xl p-2 text-primary">
+                                    <FiEdit3 size={17} aria-hidden="true" />
+                                </span>
+                                <span className="min-w-0">
+                                    <span className="block font-semibold">Write a memory</span>
+                                    <span className="type-micro block text-soft">Quick text capture</span>
+                                </span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleStartVoiceCapture}
+                                className="type-label-md flex items-center gap-3 rounded-xl border border-white/12 bg-white/[0.04] p-3 text-left text-soft transition-colors hover:bg-white/[0.08] hover:text-strong"
+                            >
+                                <span className="workspace-icon-badge rounded-xl p-2 text-ink-secondary">
+                                    <FiMic size={17} aria-hidden="true" />
+                                </span>
+                                <span className="min-w-0">
+                                    <span className="block font-semibold">Record voice</span>
+                                    <span className="type-micro block text-soft">Save & review transcript</span>
+                                </span>
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* More Drawer */}
             <AnimatePresence>
                 {isMoreOpen && (
@@ -294,12 +321,15 @@ export default function MobileNav() {
             </AnimatePresence>
 
             <AnimatePresence>
-                {isMoreOpen && (
+                {(isMoreOpen || isCaptureOpen) && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        onClick={() => setIsMoreOpen(false)}
+                        onClick={() => {
+                            setIsMoreOpen(false);
+                            setIsCaptureOpen(false);
+                        }}
                         className={`fixed inset-0 z-[80] lg:hidden backdrop-blur-sm ${isPaper ? 'bg-[rgba(41,32,22,0.34)]' : 'bg-black/50'}`}
                     />
                 )}
@@ -325,7 +355,9 @@ export default function MobileNav() {
                                         type="button"
                                         onClick={handleCaptureTap}
                                         whileTap={{ scale: 0.92 }}
-                                        aria-label="Quick Capture"
+                                        aria-expanded={isCaptureOpen}
+                                        aria-controls="mobile-capture-drawer"
+                                        aria-label="Open capture options"
                                         className="capture-fab relative flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-[1.7rem]"
                                     >
                                         {/* Multi-layer background for depth */}
@@ -343,45 +375,21 @@ export default function MobileNav() {
                                             />
                                         )}
 
-                                        <div className="relative z-10 flex h-8 w-8 items-center justify-center">
-                                            <AnimatePresence mode="wait">
-                                                {(capturePhase === 0 || capturePhase === 2) ? (
-                                                    <motion.div
-                                                        key="plus"
-                                                        initial={{ opacity: 0, scale: 0.6 }}
-                                                        animate={{ opacity: 1, scale: 1 }}
-                                                        exit={{ opacity: 0, scale: 0.6 }}
-                                                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                                                        className="absolute inset-0 flex items-center justify-center drop-shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
-                                                    >
-                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" color="#FFFFFF" className="drop-shadow-sm">
-                                                            <path d="M12 5v14M5 12h14" />
-                                                        </svg>
-                                                    </motion.div>
-                                                ) : capturePhase === 1 ? (
-                                                    <motion.div
-                                                        key="mic"
-                                                        initial={{ opacity: 0, scale: 0.6 }}
-                                                        animate={{ opacity: 1, scale: 1 }}
-                                                        exit={{ opacity: 0, scale: 0.6 }}
-                                                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                                                        className="absolute inset-0 flex items-center justify-center drop-shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
-                                                    >
-                                                        <NotebookDoodle name="mic" accent="sage" size={22} color="#FFFFFF" />
-                                                    </motion.div>
-                                                ) : (
-                                                    <motion.div
-                                                        key="pen"
-                                                        initial={{ opacity: 0, scale: 0.6 }}
-                                                        animate={{ opacity: 1, scale: 1 }}
-                                                        exit={{ opacity: 0, scale: 0.6 }}
-                                                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                                                        className="absolute inset-0 flex items-center justify-center drop-shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
-                                                    >
-                                                        <NotebookDoodle name="pen" accent="sage" size={22} color="#FFFFFF" />
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
+                                        <div className="relative z-10 flex h-8 w-8 items-center justify-center drop-shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
+                                            <motion.svg
+                                                width="24"
+                                                height="24"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2.5"
+                                                color="#FFFFFF"
+                                                className="drop-shadow-sm"
+                                                animate={{ rotate: isCaptureOpen ? 45 : 0 }}
+                                                transition={{ duration: 0.18, ease: 'easeOut' }}
+                                            >
+                                                <path d="M12 5v14M5 12h14" />
+                                            </motion.svg>
                                         </div>
                                     </motion.button>
                                 </div>

@@ -26,8 +26,15 @@ import {
     FiUser,
 } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
+import NotiveLoadingScreen from '@/components/ui/NotiveLoadingScreen';
 import { SUPPORT_EMAIL } from '@/config/legal';
 import { passthroughImageLoader } from '@/lib/image-loader';
+
+const PROFILE_LOADING_PHRASES = [
+    'Loading your profile...',
+    'Gathering your settings...',
+    'Opening your notebook identity...',
+];
 
 function getPinnedSupportSummary(signals: Record<string, unknown> | null | undefined) {
     const supportPreferences = signals?.supportPreferences;
@@ -161,11 +168,7 @@ export default function ProfileClient() {
     };
 
     if (authLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Spinner size="md" />
-            </div>
-        );
+        return <NotiveLoadingScreen phrases={PROFILE_LOADING_PHRASES} phraseInterval={2800} />;
     }
 
     if (!isAuthenticated) return null;
@@ -349,27 +352,18 @@ export default function ProfileClient() {
                                 <Link href="/profile/edit?tab=profile" className="workspace-muted-panel flex items-start gap-4 rounded-2xl p-4 transition-colors hover:opacity-90">
                                     <FiUser size={18} className="text-ink-muted mt-0.5 shrink-0" aria-hidden="true" />
                                     <div>
-                                        <p className="workspace-heading text-sm font-semibold">Profile</p>
+                                        <p className="workspace-heading text-sm font-semibold">Identity</p>
                                         <p className="mt-1 text-sm leading-6 text-ink-secondary">
-                                            Photo, name, bio, and personal details.
+                                            Photo, name, bio, and basic details.
                                         </p>
                                     </div>
                                 </Link>
                                 <Link href="/profile/edit?tab=preferences" className="workspace-muted-panel flex items-start gap-4 rounded-2xl p-4 transition-colors hover:opacity-90">
                                     <FiTarget size={18} className="text-ink-muted mt-0.5 shrink-0" aria-hidden="true" />
                                     <div>
-                                        <p className="workspace-heading text-sm font-semibold">Goals & Coach</p>
+                                        <p className="workspace-heading text-sm font-semibold">Goals</p>
                                         <p className="mt-1 text-sm leading-6 text-ink-secondary">
-                                            Goals, writing style, and how Notive guides you.
-                                        </p>
-                                    </div>
-                                </Link>
-                                <Link href="/profile/edit?tab=security" className="workspace-muted-panel flex items-start gap-4 rounded-2xl p-4 transition-colors hover:opacity-90">
-                                    <FiShield size={18} className="text-ink-muted mt-0.5 shrink-0" aria-hidden="true" />
-                                    <div>
-                                        <p className="workspace-heading text-sm font-semibold">Sign-in & Security</p>
-                                        <p className="mt-1 text-sm leading-6 text-ink-secondary">
-                                            Sign-in email, password, and account protection.
+                                            Goals, writing style, and guidance.
                                         </p>
                                     </div>
                                 </Link>
@@ -378,7 +372,16 @@ export default function ProfileClient() {
                                     <div>
                                         <p className="workspace-heading text-sm font-semibold">Reminders</p>
                                         <p className="mt-1 text-sm leading-6 text-ink-secondary">
-                                            Daily reflection timing and notification nudges.
+                                            Daily nudges, calendar context, and device sounds.
+                                        </p>
+                                    </div>
+                                </Link>
+                                <Link href="/profile?tab=privacy" className="workspace-muted-panel flex items-start gap-4 rounded-2xl p-4 transition-colors hover:opacity-90">
+                                    <FiShield size={18} className="text-ink-muted mt-0.5 shrink-0" aria-hidden="true" />
+                                    <div>
+                                        <p className="workspace-heading text-sm font-semibold">Privacy & Permissions</p>
+                                        <p className="mt-1 text-sm leading-6 text-ink-secondary">
+                                            Notifications, data export, and privacy controls.
                                         </p>
                                     </div>
                                 </Link>
@@ -473,7 +476,7 @@ export default function ProfileClient() {
                 ) : (
                     <>
                         <section className="workspace-panel rounded-[2rem] p-6 space-y-3">
-                            <h2 className="workspace-heading text-lg font-semibold">Privacy & Data</h2>
+                            <h2 className="workspace-heading text-lg font-semibold">Privacy & Permissions</h2>
                             <div className="grid gap-3">
                                 <Link
                                     href="/profile/edit?tab=privacy"
@@ -502,7 +505,7 @@ export default function ProfileClient() {
                         </section>
 
                         <section className="workspace-panel rounded-[2rem] p-6 space-y-3">
-                            <h2 className="workspace-heading text-lg font-semibold">Notifications</h2>
+                            <h2 className="workspace-heading text-lg font-semibold">Device Permissions</h2>
                             <div className="workspace-muted-panel flex items-start gap-4 rounded-2xl p-4">
                                 <FiBell size={18} className="text-ink-muted mt-0.5 shrink-0" aria-hidden="true" />
                                 <div className="flex-1 min-w-0">

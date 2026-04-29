@@ -1209,15 +1209,6 @@ function DashboardNotebookViewFull({
     ) : null;
     const topPreviewContent = activeTab === 'overview' ? (
         <>
-            {glanceStrip}
-
-
-            <DailyCheckIn
-                hasCheckedInToday={hasCheckedInToday}
-                todayMood={todayCheckInMood}
-                onSubmit={onDailyCheckIn}
-            />
-
             <h2 className="notive-logo italic text-lg font-semibold leading-snug md:text-2xl">
                 {daysSinceLastEntry !== null && daysSinceLastEntry >= 5
                     ? `You've been away ${daysSinceLastEntry} days. No pressure — one sentence is enough.`
@@ -1236,9 +1227,33 @@ function DashboardNotebookViewFull({
 
             {heroContent}
 
-            {/* ── Intelligence strip ── */}
-            <div className="border-t border-[rgba(92,92,92,0.14)] pt-3 space-y-2">
-                <p className="section-label">What Notive sees right now</p>
+            <details className="group rounded-[1.25rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.42)]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3">
+                    <span>
+                        <span className="section-label block">More insights</span>
+                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                            Check-in, stats, and pattern details stay tucked away until you need them.
+                        </span>
+                    </span>
+                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:hidden">
+                        Open
+                    </span>
+                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:inline">
+                        Hide
+                    </span>
+                </summary>
+                <div className="space-y-3 border-t border-[rgba(92,92,92,0.12)] px-3 pb-3 pt-3">
+                    {glanceStrip}
+
+                    <DailyCheckIn
+                        hasCheckedInToday={hasCheckedInToday}
+                        todayMood={todayCheckInMood}
+                        onSubmit={onDailyCheckIn}
+                    />
+
+                    {/* ── Intelligence strip ── */}
+                    <div className="border-t border-[rgba(92,92,92,0.14)] pt-3 space-y-2">
+                        <p className="section-label">What Notive sees right now</p>
 
                 {/* Row 1 — Mood Micro-Shift + Writing Energy */}
                 <div className="grid grid-cols-2 gap-2">
@@ -1322,7 +1337,9 @@ function DashboardNotebookViewFull({
                         </p>
                     </Link>
                 )}
+                    </div>
             </div>
+            </details>
         </>
     ) : activeTab === 'growth' ? (
         <div className="space-y-2.5" data-snapshot-root>

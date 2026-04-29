@@ -717,7 +717,7 @@ function OnboardingPageContent() {
                                     so your diary becomes more useful over time.
                                 </p>
                                 <p className="text-xs opacity-60">
-                                    Android permissions like notifications, mic, and location will be requested by the system when they matter, not during setup.
+                                    Android may ask for notifications when you first open Notive. Mic, location, and calendar access are requested only when a feature needs them.
                                 </p>
                             </div>
                         </motion.div>

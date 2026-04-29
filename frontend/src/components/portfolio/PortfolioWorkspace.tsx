@@ -1274,51 +1274,61 @@ export default function PortfolioWorkspace() {
                     <SectionHeader
                         kicker="Documents"
                         title={selectedExportType === 'resume' ? 'Choose your resume pack' : 'Choose your statement pack'}
-                        description="Pick the pack you want first. Preview and export controls stay on the right when you are ready."
+                        description="Start with the selected pack. Alternate packs stay tucked away until you need to switch."
                     />
 
-                    <div
-                        role="tablist"
-                        aria-label="Choose which story document to open"
-                        className="grid gap-3 sm:grid-cols-2"
-                    >
-                        {pathwayCards.map(({ type, Icon, title, description, readiness, secondary, isRecommended }) => {
-                            const isActive = selectedExportType === type;
+                    <details className="group rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+                            <span>
+                                <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">Pack options</span>
+                                <span className="workspace-heading mt-1 block text-sm font-semibold">Change pack</span>
+                            </span>
+                            <span className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-muted group-open:hidden">Open</span>
+                            <span className="hidden text-xs font-semibold uppercase tracking-[0.1em] text-ink-muted group-open:inline">Hide</span>
+                        </summary>
+                        <div
+                            role="tablist"
+                            aria-label="Choose which story document to open"
+                            className="grid gap-3 border-t border-[rgba(141,123,105,0.14)] p-4 sm:grid-cols-2"
+                        >
+                            {pathwayCards.map(({ type, Icon, title, description, readiness, secondary, isRecommended }) => {
+                                const isActive = selectedExportType === type;
 
-                            return (
-                                <button
-                                    key={type}
-                                    id={`portfolio-export-tab-${type}`}
-                                    type="button"
-                                    role="tab"
-                                    aria-selected={isActive}
-                                    aria-controls="portfolio-export-preview-panel"
-                                    tabIndex={isActive ? 0 : -1}
-                                    onClick={() => {
-                                        void loadExportPreview(type);
-                                    }}
-                                    className={`rounded-[26px] border p-4 text-left transition-colors ${
-                                        isActive
-                                            ? 'border-primary/35 bg-primary/12'
-                                            : 'workspace-soft-panel'
-                                    }`}
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className={`rounded-2xl border p-3 ${isActive || isRecommended ? 'border-primary/30 bg-primary/10 text-primary' : 'workspace-icon-badge'}`}>
-                                            <Icon size={18} aria-hidden="true" />
+                                return (
+                                    <button
+                                        key={type}
+                                        id={`portfolio-export-tab-${type}`}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={isActive}
+                                        aria-controls="portfolio-export-preview-panel"
+                                        tabIndex={isActive ? 0 : -1}
+                                        onClick={() => {
+                                            void loadExportPreview(type);
+                                        }}
+                                        className={`rounded-[26px] border p-4 text-left transition-colors ${
+                                            isActive
+                                                ? 'border-primary/35 bg-primary/12'
+                                                : 'workspace-soft-panel'
+                                        }`}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className={`rounded-2xl border p-3 ${isActive || isRecommended ? 'border-primary/30 bg-primary/10 text-primary' : 'workspace-icon-badge'}`}>
+                                                <Icon size={18} aria-hidden="true" />
+                                            </div>
+                                            {isRecommended && <TagPill tone="primary">Recommended</TagPill>}
                                         </div>
-                                        {isRecommended && <TagPill tone="primary">Recommended</TagPill>}
-                                    </div>
-                                    <h3 className="workspace-heading mt-4 text-lg font-semibold">{title}</h3>
-                                    <p className="mt-2 text-sm leading-6 text-ink-secondary">{description}</p>
-                                    <div className="mt-4 space-y-1">
-                                        <p className="text-sm text-[rgb(var(--text-primary))]">{readiness}</p>
-                                        <p className="text-xs text-ink-muted">{secondary}</p>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
+                                        <h3 className="workspace-heading mt-4 text-lg font-semibold">{title}</h3>
+                                        <p className="mt-2 text-sm leading-6 text-ink-secondary">{description}</p>
+                                        <div className="mt-4 space-y-1">
+                                            <p className="text-sm text-[rgb(var(--text-primary))]">{readiness}</p>
+                                            <p className="text-xs text-ink-muted">{secondary}</p>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </details>
 
                     {selectedPathwayCard && (
                         <div className="workspace-panel rounded-[30px] p-5">

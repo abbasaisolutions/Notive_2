@@ -66,10 +66,10 @@ export type EditTab = 'profile' | 'preferences' | 'security' | 'privacy' | 'remi
 export type EditableTab = Exclude<EditTab, 'security' | 'reminders'>;
 
 export const TAB_ITEMS: Array<{ id: EditTab; label: string; Icon: IconType }> = [
-    { id: 'profile', label: 'Profile', Icon: FiUser },
-    { id: 'preferences', label: 'Goals & Coach', Icon: FiTarget },
-    { id: 'security', label: 'Sign-in & Security', Icon: FiShield },
-    { id: 'privacy', label: 'Privacy & Data', Icon: FiBox },
+    { id: 'profile', label: 'Identity', Icon: FiUser },
+    { id: 'preferences', label: 'Goals', Icon: FiTarget },
+    { id: 'security', label: 'Account', Icon: FiShield },
+    { id: 'privacy', label: 'Privacy & Permissions', Icon: FiBox },
     { id: 'reminders', label: 'Reminders', Icon: FiBell },
 ];
 

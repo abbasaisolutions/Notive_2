@@ -76,6 +76,7 @@ export default function TagsIndexPage() {
                     icon={<FiTag aria-hidden="true" />}
                     title="No tags yet"
                     subtitle="Tags appear automatically as you write. Add a few entries and check back."
+                    action={{ label: 'Write an entry', href: '/entry/new?mode=quick' }}
                 />
             ) : (
                 <div className="workspace-panel rounded-2xl p-6">

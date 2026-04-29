@@ -46,6 +46,13 @@ const resolveGoogleAuthError = (error: unknown) => {
         };
     }
 
+    if (/deleted_client|invalid_client|oauth client/i.test(rawMessage)) {
+        return {
+            status: 503,
+            message: 'Google sign-in is temporarily unavailable because this environment needs an active Google OAuth client.',
+        };
+    }
+
     if (rawMessage === 'Email not provided by Google') {
         return {
             status: 400,

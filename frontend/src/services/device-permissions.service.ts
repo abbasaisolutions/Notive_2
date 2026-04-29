@@ -30,12 +30,45 @@ export interface AllPermissions {
 }
 
 const PERMISSIONS_STORAGE_KEY = 'notive_permissions_onboarding_done';
-const RUNTIME_PERMISSION_PROMPT_VERSION = 1;
+const RUNTIME_PERMISSION_PROMPT_VERSION = 2;
+const DEFAULT_RUNTIME_PERMISSION_PROMPT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+type RuntimePermissionPromptRecord = {
+    lastRequestedAt: number;
+    lastStatus?: PermissionStatus;
+};
 
 const getRuntimePermissionPromptKey = (
     kind: PermissionKind,
     userId: string | null | undefined,
 ) => `notive_runtime_permission_prompt_v${RUNTIME_PERMISSION_PROMPT_VERSION}_${kind}_${userId || 'anon'}`;
+
+function readRuntimePermissionPromptRecord(
+    kind: PermissionKind,
+    userId: string | null | undefined,
+): RuntimePermissionPromptRecord | null {
+    if (typeof window === 'undefined') return null;
+
+    const key = getRuntimePermissionPromptKey(kind, userId);
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+
+    try {
+        const parsed = JSON.parse(raw) as Partial<RuntimePermissionPromptRecord>;
+        if (typeof parsed.lastRequestedAt !== 'number') {
+            localStorage.removeItem(key);
+            return null;
+        }
+
+        return {
+            lastRequestedAt: parsed.lastRequestedAt,
+            lastStatus: parsed.lastStatus,
+        };
+    } catch {
+        localStorage.removeItem(key);
+        return null;
+    }
+}
 
 function normalizeNativeNotificationPermissionState(
     value: 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale',
@@ -271,17 +304,25 @@ export function markPermissionsOnboardingDone(): void {
 export function hasSeenRuntimePermissionPrompt(
     kind: PermissionKind,
     userId: string | null | undefined,
+    cooldownMs = DEFAULT_RUNTIME_PERMISSION_PROMPT_COOLDOWN_MS,
 ): boolean {
     if (typeof window === 'undefined') return false;
-    return localStorage.getItem(getRuntimePermissionPromptKey(kind, userId)) === 'true';
+    const record = readRuntimePermissionPromptRecord(kind, userId);
+    if (!record) return false;
+    return Date.now() - record.lastRequestedAt < cooldownMs;
 }
 
 export function markRuntimePermissionPromptSeen(
     kind: PermissionKind,
     userId: string | null | undefined,
+    status?: PermissionStatus,
 ): void {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(getRuntimePermissionPromptKey(kind, userId), 'true');
+    const record: RuntimePermissionPromptRecord = {
+        lastRequestedAt: Date.now(),
+        lastStatus: status,
+    };
+    localStorage.setItem(getRuntimePermissionPromptKey(kind, userId), JSON.stringify(record));
 }
 
 export function clearRuntimePermissionPromptSeen(

@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
-import { useAuth } from '@/context/auth-context';
 import {
     checkPermission,
     hasSeenRuntimePermissionPrompt,
@@ -13,15 +12,13 @@ import { isNativePlatform } from '@/utils/platform';
 import logger from '@/utils/logger';
 
 const AUTO_PROMPT_BLOCKLIST = [
-    '/onboarding',
-    '/login',
-    '/register',
     '/forgot-password',
     '/reset-password',
     '/entry/new',
     '/share',
     '/shared',
 ];
+const NOTIFICATION_AUTO_PROMPT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Triggers the native Android/iOS notification permission sheet directly at
@@ -35,10 +32,8 @@ export function PushNotificationPermissionPrompt() {
         isLoading,
         requestPushPermission,
     } = usePushNotifications();
-    const { user } = useAuth();
     const pathname = usePathname();
-    const userId = user?.id ?? null;
-    const hasCompletedOnboarding = Boolean(user?.profile?.onboardingCompletedAt);
+    const permissionScopeUserId = null;
     const shouldSuppressPrompt = AUTO_PROMPT_BLOCKLIST.some((prefix) => pathname?.startsWith(prefix));
 
     useEffect(() => {
@@ -46,7 +41,7 @@ export function PushNotificationPermissionPrompt() {
             return;
         }
 
-        if (!userId || !hasCompletedOnboarding || shouldSuppressPrompt) {
+        if (shouldSuppressPrompt) {
             return;
         }
 
@@ -54,14 +49,14 @@ export function PushNotificationPermissionPrompt() {
             return;
         }
 
-        // Only auto-prompt on the first untouched state. If Android returns
-        // prompt-with-rationale or denied, future changes should come from the
-        // user's explicit action in Settings.
-        if (permissionState !== 'prompt') {
+        // Prompt on first install/open, then allow a later retry when Android
+        // says a rationale is appropriate. Denied states stay user-initiated
+        // from Settings or from feature-specific actions.
+        if (permissionState !== 'prompt' && permissionState !== 'prompt-with-rationale') {
             return;
         }
 
-        if (hasSeenRuntimePermissionPrompt('notifications', userId)) {
+        if (hasSeenRuntimePermissionPrompt('notifications', permissionScopeUserId, NOTIFICATION_AUTO_PROMPT_COOLDOWN_MS)) {
             return;
         }
 
@@ -74,20 +69,13 @@ export function PushNotificationPermissionPrompt() {
             void requestPushPermission()
                 .then(async (granted) => {
                     if (granted) {
-                        markRuntimePermissionPromptSeen('notifications', userId);
+                        markRuntimePermissionPromptSeen('notifications', permissionScopeUserId, 'granted');
                         logger.debug('Native notification permission granted from runtime prompt');
                         return;
                     }
 
-                    // Only mark the prompt "seen" when the user made an explicit
-                    // choice (granted or denied). A lingering `prompt` state means
-                    // the system dialog never resolved (app backgrounded, race,
-                    // transient error) — let us retry on the next session instead
-                    // of silently giving up. Same for `unavailable`.
                     const { status } = await checkPermission('notifications');
-                    if (status === 'denied' || status === 'granted') {
-                        markRuntimePermissionPromptSeen('notifications', userId);
-                    }
+                    markRuntimePermissionPromptSeen('notifications', permissionScopeUserId, status);
                     logger.debug(
                         `Native notification permission flow resolved with status=${status}`,
                     );
@@ -102,14 +90,13 @@ export function PushNotificationPermissionPrompt() {
             window.clearTimeout(timer);
         };
     }, [
-        hasCompletedOnboarding,
         isLoading,
         isPermissionGranted,
         isSupported,
+        permissionScopeUserId,
         permissionState,
         requestPushPermission,
         shouldSuppressPrompt,
-        userId,
     ]);
 
     return null;

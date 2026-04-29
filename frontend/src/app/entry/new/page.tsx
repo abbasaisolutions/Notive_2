@@ -590,9 +590,9 @@ function NewEntryPageContent() {
             }
 
             timer = window.setTimeout(() => {
-                markRuntimePermissionPromptSeen('location', user.id);
                 void requestPermission('location')
                     .then(async (result) => {
+                        markRuntimePermissionPromptSeen('location', user.id, result.status);
                         if (cancelled || result.status !== 'granted') {
                             return;
                         }
