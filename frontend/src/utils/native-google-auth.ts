@@ -6,8 +6,11 @@ let googleInitPromise: Promise<void> | null = null;
 
 const NATIVE_GOOGLE_CANCELED_FALLBACK =
     'Google sign-in did not finish on this device. Choose the account again and try once more.';
+const NATIVE_GOOGLE_ANDROID_BUILD_FALLBACK =
+    "Google sign-in is temporarily unavailable on this Android build because the app's Google connection needs to be refreshed. Use email and password for now.";
 const NATIVE_GOOGLE_REAUTH_FALLBACK =
     'Google sign-in still needs the Google account on this device to be active. Open Android Settings, confirm the Google account is signed in, then try again.';
+type NativeGoogleLoginStyle = 'bottom' | 'standard';
 
 const buildNativeGoogleConfig = () => {
     const availability = getCredentialSsoAvailability('google');
@@ -112,10 +115,14 @@ export const normalizeNativeGoogleSsoError = (error: unknown): Error => {
     const message = toErrorMessage(error);
     const code = toErrorCode(error);
 
+    if (/account reauth failed|unable to get sync account/i.test(message)) {
+        return new Error(NATIVE_GOOGLE_ANDROID_BUILD_FALLBACK);
+    }
+
     if (
         code === 16
         || /\bcancel(?:led|ed)?\b|dismiss(?:ed|al)|interrupted/i.test(message)
-        || /account reauth failed|getcredentialcancellationexception|activity is cancelled by the user|unable to get sync account/i.test(message)
+        || /getcredentialcancellationexception|activity is cancelled by the user/i.test(message)
         || /\b12501\b/.test(message)
     ) {
         return new Error(NATIVE_GOOGLE_CANCELED_FALLBACK);
@@ -141,22 +148,60 @@ const clearNativeGoogleCredentialState = async (reason: string): Promise<void> =
     }
 };
 
+const isAndroidCredentialRetryableError = (error: unknown): boolean => {
+    const message = toErrorMessage(error);
+    const code = toErrorCode(error);
+
+    if (/activity is cancelled by the user|dismiss(?:ed|al)|\bcancel(?:led|ed)?\b/i.test(message)
+        && !/account reauth failed|interrupted|\b16\b/i.test(message)) {
+        return false;
+    }
+
+    return (
+        code === 16
+        || /account reauth failed|unable to get sync account|interrupted|\b16\b/i.test(message)
+    );
+};
+
+const buildNativeGoogleLoginOptions = (style: NativeGoogleLoginStyle) => ({
+    style,
+    filterByAuthorizedAccounts: false,
+    autoSelectEnabled: false,
+});
+
+const loginWithNativeGoogle = async () => {
+    const platform = getNativeCapacitorPlatform();
+    const styles: NativeGoogleLoginStyle[] = platform === 'android'
+        ? ['bottom', 'standard']
+        : ['standard'];
+    let lastError: unknown;
+
+    for (const style of styles) {
+        try {
+            return await SocialLogin.login({
+                provider: 'google',
+                options: buildNativeGoogleLoginOptions(style),
+            });
+        } catch (error) {
+            lastError = error;
+
+            if (platform === 'android' && style === 'bottom' && isAndroidCredentialRetryableError(error)) {
+                logger.warn('Native Google bottom-sheet sign-in failed; retrying standard flow', serializeNativeGoogleError(error));
+                continue;
+            }
+
+            throw error;
+        }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error('Google sign-in failed. Please try again.');
+};
+
 export const signInWithNativeGoogleCredential = async (): Promise<string> => {
     await ensureNativeGoogleSsoInitialized();
 
-    if (getNativeCapacitorPlatform() === 'android') {
-        await clearNativeGoogleCredentialState('before sign-in');
-    }
-
     try {
-        const response = await SocialLogin.login({
-            provider: 'google',
-            options: {
-                style: 'standard',
-                filterByAuthorizedAccounts: false,
-                autoSelectEnabled: false,
-            },
-        });
+        const response = await loginWithNativeGoogle();
 
         if (response.result.responseType !== 'online' || !response.result.idToken) {
             throw new Error('Google sign-in did not return a usable identity token.');

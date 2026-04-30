@@ -53,11 +53,14 @@ Set these in `frontend/.env`:
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_web_client_id.apps.googleusercontent.com
 NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_web_client_id.apps.googleusercontent.com
 NEXT_PUBLIC_NATIVE_API_URL=https://your-api-host/api/v1
+PLAY_APP_SIGNING_SHA1=your_play_app_signing_sha1_for_audit_only
 ```
 
 Notes:
 
 - The Android native Google flow uses the web client ID.
+- Play Store and internal-testing installs are signed by the Play App Signing certificate, not just your upload key. Add the Play App Signing SHA-1 from Play Console > App integrity to the Android OAuth client/Firebase app for `com.notive.app`, then download a fresh `google-services.json`.
+- `PLAY_APP_SIGNING_SHA1` is optional and only lets `npm run android:ready:launch` verify the Play-signed Google OAuth setup locally.
 - Keep `NEXT_PUBLIC_NATIVE_API_URL` on a public HTTPS API for production builds.
 
 ### 2. Firebase Android config for push

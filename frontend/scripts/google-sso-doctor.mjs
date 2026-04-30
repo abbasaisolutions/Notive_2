@@ -52,6 +52,8 @@ const backendEnv = {
 
 const isGoogleClientId = (value) => /\.apps\.googleusercontent\.com$/i.test(value || '');
 const isMissing = (value) => !value || PLACEHOLDER_VALUES.has(`${value}`.trim().toLowerCase());
+const normalizeSha1Fingerprint = (value) => `${value || ''}`.replace(/[^0-9a-f]/gi, '').toLowerCase();
+const isSha1Fingerprint = (value) => /^[0-9a-f]{40}$/i.test(normalizeSha1Fingerprint(value));
 const maskClientId = (value) => {
     if (!value) return 'missing';
     if (value.length <= 28) return 'set-but-short';
@@ -66,6 +68,12 @@ const getFrontendClientId = () => (
 
 const getAndroidNativeServerClientId = () => (
     frontendEnv.NEXT_PUBLIC_GOOGLE_ANDROID_SERVER_CLIENT_ID || ''
+).trim();
+
+const getPlayAppSigningSha1 = () => (
+    frontendEnv.PLAY_APP_SIGNING_SHA1
+    || backendEnv.PLAY_APP_SIGNING_SHA1
+    || ''
 ).trim();
 
 const getBackendClientIds = () => Array.from(
@@ -117,6 +125,11 @@ const getGoogleServicesOauthStatus = () => {
         return {
             status: 'ready',
             message: `Android OAuth clients: ${androidOauthClients.length}`,
+            androidCertificateHashes: Array.from(new Set(
+                androidOauthClients
+                    .map((client) => normalizeSha1Fingerprint(client?.android_info?.certificate_hash))
+                    .filter(Boolean)
+            )),
         };
     } catch (error) {
         return {
@@ -160,6 +173,7 @@ const ready = [];
 
 const frontendClientId = getFrontendClientId();
 const androidNativeServerClientId = getAndroidNativeServerClientId();
+const playAppSigningSha1 = getPlayAppSigningSha1();
 const backendClientIds = getBackendClientIds();
 
 console.log('Google SSO doctor');
@@ -192,6 +206,16 @@ if (androidNativeServerClientId) {
 const googleServicesOauthStatus = getGoogleServicesOauthStatus();
 if (googleServicesOauthStatus.status === 'ready') {
     ready.push(googleServicesOauthStatus.message);
+
+    if (!playAppSigningSha1) {
+        warnings.push('Set optional `PLAY_APP_SIGNING_SHA1` from Play Console > App integrity to verify Android Google sign-in for Play/internal-testing installs.');
+    } else if (!isSha1Fingerprint(playAppSigningSha1)) {
+        blockers.push('`PLAY_APP_SIGNING_SHA1` is set but is not a valid SHA-1 fingerprint.');
+    } else if (!googleServicesOauthStatus.androidCertificateHashes.includes(normalizeSha1Fingerprint(playAppSigningSha1))) {
+        blockers.push('`google-services.json` is missing an Android OAuth client for the Play App Signing SHA-1. Add it in Firebase/Google Cloud for package `com.notive.app`, download the updated file, and rebuild.');
+    } else {
+        ready.push('Play App Signing SHA-1: present in google-services.json');
+    }
 } else if (
     googleServicesOauthStatus.status === 'missing_file'
     || googleServicesOauthStatus.status === 'missing_android_oauth_client'

@@ -67,6 +67,8 @@ const isMissing = (value) =>
     || value === 'replace_with_key_password';
 
 const isGoogleClientId = (value) => /\.apps\.googleusercontent\.com$/i.test(value || '');
+const normalizeSha1Fingerprint = (value) => `${value || ''}`.replace(/[^0-9a-f]/gi, '').toLowerCase();
+const isSha1Fingerprint = (value) => /^[0-9a-f]{40}$/i.test(normalizeSha1Fingerprint(value));
 
 const getGoogleServicesOauthSummary = (googleServices) => {
     const appClients = (googleServices.client || [])
@@ -74,12 +76,18 @@ const getGoogleServicesOauthSummary = (googleServices) => {
     const directOauthClients = appClients.flatMap((client) => client?.oauth_client || []);
     const otherPlatformOauthClients = appClients
         .flatMap((client) => client?.services?.appinvite_service?.other_platform_oauth_client || []);
+    const androidOauthClients = directOauthClients.filter((client) =>
+        Number(client?.client_type) === 1
+        && client?.android_info?.package_name === APP_ID
+    );
 
     return {
-        androidClientCount: directOauthClients.filter((client) =>
-            Number(client?.client_type) === 1
-            && client?.android_info?.package_name === APP_ID
-        ).length,
+        androidClientCount: androidOauthClients.length,
+        androidCertificateHashes: Array.from(new Set(
+            androidOauthClients
+                .map((client) => normalizeSha1Fingerprint(client?.android_info?.certificate_hash))
+                .filter(Boolean)
+        )),
         webClientCount: [
             ...directOauthClients,
             ...otherPlatformOauthClients,
@@ -225,6 +233,21 @@ if (!fs.existsSync(googleServicesPath)) {
                 warnings.push('`google-services.json` has no Android OAuth client for `com.notive.app`. Android Google sign-in can throw account reauth errors until the app package plus debug/release SHA-1/SHA-256 fingerprints are added in Firebase or Google Cloud and this file is downloaded again.');
             } else {
                 pushStatus('Android Google OAuth client', `${oauthSummary.androidClientCount} configured`);
+            }
+
+            if (mode === 'launch') {
+                const playAppSigningSha1 = resolveEnvValue('PLAY_APP_SIGNING_SHA1');
+                const normalizedPlayAppSigningSha1 = normalizeSha1Fingerprint(playAppSigningSha1);
+
+                if (!playAppSigningSha1) {
+                    warnings.push('Set optional `PLAY_APP_SIGNING_SHA1` from Play Console > App integrity so this audit can verify Google sign-in for Play-signed installs. Missing the Play App Signing SHA-1 can cause Android `[16] Account reauth failed` errors even when local debug/release builds work.');
+                } else if (!isSha1Fingerprint(playAppSigningSha1)) {
+                    launchBlockers.push('`PLAY_APP_SIGNING_SHA1` is set but is not a valid SHA-1 fingerprint.');
+                } else if (!oauthSummary.androidCertificateHashes.includes(normalizedPlayAppSigningSha1)) {
+                    launchBlockers.push('`google-services.json` is missing an Android OAuth client for the Play App Signing SHA-1. Add that SHA-1 to Firebase/Google Cloud for package `com.notive.app`, download the updated `google-services.json`, and rebuild.');
+                } else {
+                    pushStatus('Play App Signing Google OAuth', 'matches google-services.json');
+                }
             }
 
             if (oauthSummary.webClientCount === 0) {

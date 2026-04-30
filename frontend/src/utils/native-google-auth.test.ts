@@ -8,16 +8,16 @@ describe('normalizeNativeGoogleSsoError', () => {
         ).toBe('Google sign-in did not finish on this device. Choose the account again and try once more.');
     });
 
-    it('treats Android account reauth failed messages as a fresh retry problem', () => {
+    it('treats Android account reauth failed messages as an Android build configuration problem', () => {
         expect(
             normalizeNativeGoogleSsoError(new Error('GetCredentialCancellationException: [16] Account reauth failed')).message
-        ).toBe('Google sign-in did not finish on this device. Choose the account again and try once more.');
+        ).toBe("Google sign-in is temporarily unavailable on this Android build because the app's Google connection needs to be refreshed. Use email and password for now.");
     });
 
-    it('treats sync-account failures as a fresh retry problem', () => {
+    it('treats sync-account failures as an Android build configuration problem', () => {
         expect(
             normalizeNativeGoogleSsoError(new Error('Unable to get sync account')).message
-        ).toBe('Google sign-in did not finish on this device. Choose the account again and try once more.');
+        ).toBe("Google sign-in is temporarily unavailable on this Android build because the app's Google connection needs to be refreshed. Use email and password for now.");
     });
 
     it('keeps explicit recoverable-auth messaging as device-account guidance', () => {
