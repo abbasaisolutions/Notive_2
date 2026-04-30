@@ -15,6 +15,10 @@ const env = {
 
 if (isExportBuild) {
     env.NEXT_OUTPUT_MODE = 'export';
+    if (process.platform === 'win32') {
+        const requireShim = path.resolve(import.meta.dirname, './next-server-chunk-require-shim.cjs');
+        env.NODE_OPTIONS = [env.NODE_OPTIONS, `--require=${requireShim}`].filter(Boolean).join(' ');
+    }
 } else {
     delete env.NEXT_OUTPUT_MODE;
 }

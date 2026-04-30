@@ -3,6 +3,8 @@ import { getCredentialSsoAvailability, getGoogleIosClientId, getNativeCapacitorP
 
 let googleInitPromise: Promise<void> | null = null;
 
+const NATIVE_GOOGLE_CANCELED_FALLBACK =
+    'Google sign-in did not finish on this device. Choose the account again and try once more.';
 const NATIVE_GOOGLE_REAUTH_FALLBACK =
     'Google needs you to re-check that account on this device. Update Google Play services or remove and re-add the Google account in Android settings, then try again.';
 
@@ -63,10 +65,38 @@ const toErrorMessage = (error: unknown): string => {
     return '';
 };
 
+const toErrorCode = (error: unknown): number | null => {
+    if (!error || typeof error !== 'object') {
+        return null;
+    }
+
+    const record = error as Record<string, unknown>;
+    for (const key of ['code', 'status', 'statusCode', 'errorCode']) {
+        const value = record[key];
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return value;
+        }
+        if (typeof value === 'string' && /^\s*-?\d+\s*$/.test(value)) {
+            return Number.parseInt(value, 10);
+        }
+    }
+
+    return null;
+};
+
 export const normalizeNativeGoogleSsoError = (error: unknown): Error => {
     const message = toErrorMessage(error);
+    const code = toErrorCode(error);
 
-    if (/\b16\b|account reauth|reauth failed|needs reauthentication/i.test(message)) {
+    if (
+        code === 16
+        || /\bcancel(?:led|ed)?\b|dismiss(?:ed|al)|interrupted/i.test(message)
+        || /\b12501\b/.test(message)
+    ) {
+        return new Error(NATIVE_GOOGLE_CANCELED_FALLBACK);
+    }
+
+    if (/account reauth|reauth failed|needs reauthentication|recoverable auth/i.test(message)) {
         return new Error(NATIVE_GOOGLE_REAUTH_FALLBACK);
     }
 
