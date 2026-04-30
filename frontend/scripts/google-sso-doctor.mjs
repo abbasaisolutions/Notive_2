@@ -59,6 +59,7 @@ const maskClientId = (value) => {
     if (value.length <= 28) return 'set-but-short';
     return `${value.slice(0, 12)}...${value.slice(-18)}`;
 };
+const formatMaskedClientIds = (clientIds) => clientIds.map(maskClientId).join(', ');
 
 const getFrontendClientId = () => (
     frontendEnv.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID
@@ -125,6 +126,11 @@ const getGoogleServicesOauthStatus = () => {
         return {
             status: 'ready',
             message: `Android OAuth clients: ${androidOauthClients.length}`,
+            androidClientIds: Array.from(new Set(
+                androidOauthClients
+                    .map((client) => client?.client_id)
+                    .filter((clientId) => isGoogleClientId(clientId))
+            )),
             androidCertificateHashes: Array.from(new Set(
                 androidOauthClients
                     .map((client) => normalizeSha1Fingerprint(client?.android_info?.certificate_hash))
@@ -206,6 +212,16 @@ if (androidNativeServerClientId) {
 const googleServicesOauthStatus = getGoogleServicesOauthStatus();
 if (googleServicesOauthStatus.status === 'ready') {
     ready.push(googleServicesOauthStatus.message);
+
+    const missingBackendAndroidClientIds = googleServicesOauthStatus.androidClientIds
+        .filter((clientId) => !backendClientIds.includes(clientId));
+    if (backendClientIds.length === 0) {
+        blockers.push('Backend Google SSO audience is missing. Add the web and Android OAuth client IDs from `google-services.json` to backend `GOOGLE_CLIENT_IDS`.');
+    } else if (missingBackendAndroidClientIds.length > 0) {
+        blockers.push(`Backend Google SSO audience does not include Android OAuth client IDs from \`google-services.json\`: ${formatMaskedClientIds(missingBackendAndroidClientIds)}. Android Google sign-in can complete on-device but fail backend verification until Railway/backend \`GOOGLE_CLIENT_IDS\` includes them.`);
+    } else {
+        ready.push('Backend Android OAuth audiences: match google-services.json');
+    }
 
     if (!playAppSigningSha1) {
         warnings.push('Set optional `PLAY_APP_SIGNING_SHA1` from Play Console > App integrity to verify Android Google sign-in for Play/internal-testing installs.');

@@ -26,6 +26,8 @@ API_URL=https://api.abbasaisolutions.com/api/v1
 TRUST_PROXY=1
 AUTH_COOKIE_DOMAIN=.abbasaisolutions.com
 AUTH_COOKIE_SAME_SITE=lax
+GOOGLE_CLIENT_ID=31045434784-9edn8kgnoqg9l1pusikjt1barih1c4ah.apps.googleusercontent.com
+GOOGLE_CLIENT_IDS=31045434784-9edn8kgnoqg9l1pusikjt1barih1c4ah.apps.googleusercontent.com,31045434784-8tidt04va61s6ob03kiv1b6rnnqj7upg.apps.googleusercontent.com,31045434784-lcg01j0rr92eq04309nkh5mesp4lk6q5.apps.googleusercontent.com,31045434784-ogkekvjs44kcp4r4upcl8notfp87h6ff.apps.googleusercontent.com,31045434784-tq0o3fgj0k8t7i8e1sn0b78704hs0roc.apps.googleusercontent.com
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 AWS_BUCKET_NAME=...
@@ -35,6 +37,8 @@ PUBLIC_SUPPORT_EMAIL=support@your-domain.com
 SENTRY_DSN=... # recommended
 REDIS_URL=...  # optional but recommended
 ```
+
+For Google SSO, `GOOGLE_CLIENT_IDS` must include the web OAuth client plus every Android OAuth client listed in `frontend/android/app/google-services.json`. If a Play-signed Android build can choose a Google account but then says the credential could not be verified for this app, Railway is usually missing the Play App Signing Android client ID in this variable.
 
 ## S3 uploads
 

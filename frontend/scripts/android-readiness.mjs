@@ -69,6 +69,12 @@ const isMissing = (value) =>
 const isGoogleClientId = (value) => /\.apps\.googleusercontent\.com$/i.test(value || '');
 const normalizeSha1Fingerprint = (value) => `${value || ''}`.replace(/[^0-9a-f]/gi, '').toLowerCase();
 const isSha1Fingerprint = (value) => /^[0-9a-f]{40}$/i.test(normalizeSha1Fingerprint(value));
+const maskClientId = (value) => {
+    if (!value) return 'missing';
+    if (value.length <= 28) return 'set-but-short';
+    return `${value.slice(0, 12)}...${value.slice(-18)}`;
+};
+const formatMaskedClientIds = (clientIds) => clientIds.map(maskClientId).join(', ');
 
 const getGoogleServicesOauthSummary = (googleServices) => {
     const appClients = (googleServices.client || [])
@@ -83,6 +89,11 @@ const getGoogleServicesOauthSummary = (googleServices) => {
 
     return {
         androidClientCount: androidOauthClients.length,
+        androidClientIds: Array.from(new Set(
+            androidOauthClients
+                .map((client) => client?.client_id)
+                .filter((clientId) => isGoogleClientId(clientId))
+        )),
         androidCertificateHashes: Array.from(new Set(
             androidOauthClients
                 .map((client) => normalizeSha1Fingerprint(client?.android_info?.certificate_hash))
@@ -233,6 +244,22 @@ if (!fs.existsSync(googleServicesPath)) {
                 warnings.push('`google-services.json` has no Android OAuth client for `com.notive.app`. Android Google sign-in can throw account reauth errors until the app package plus debug/release SHA-1/SHA-256 fingerprints are added in Firebase or Google Cloud and this file is downloaded again.');
             } else {
                 pushStatus('Android Google OAuth client', `${oauthSummary.androidClientCount} configured`);
+            }
+
+            const backendGoogleClientIds = resolveBackendGoogleClientIds();
+            const missingBackendAndroidClientIds = oauthSummary.androidClientIds
+                .filter((clientId) => !backendGoogleClientIds.includes(clientId));
+            if (backendGoogleClientIds.length === 0) {
+                warnings.push('Backend Google SSO audience is not configured locally. Add the web and Android OAuth client IDs from `google-services.json` to backend `GOOGLE_CLIENT_IDS` so Android credentials verify.');
+            } else if (missingBackendAndroidClientIds.length > 0) {
+                const message = `Backend Google SSO audience does not include Android OAuth client IDs from \`google-services.json\`: ${formatMaskedClientIds(missingBackendAndroidClientIds)}. Android Google sign-in can complete on-device but fail backend verification until Railway/backend \`GOOGLE_CLIENT_IDS\` includes them.`;
+                if (mode === 'launch') {
+                    launchBlockers.push(message);
+                } else {
+                    warnings.push(message);
+                }
+            } else {
+                pushStatus('Backend Android OAuth audiences', 'match google-services.json');
             }
 
             if (mode === 'launch') {
