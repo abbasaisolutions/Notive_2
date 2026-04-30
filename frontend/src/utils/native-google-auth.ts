@@ -1,12 +1,13 @@
 import { SocialLogin } from '@capgo/capacitor-social-login';
 import { getCredentialSsoAvailability, getGoogleIosClientId, getNativeCapacitorPlatform } from '@/utils/sso';
+import logger from '@/utils/logger';
 
 let googleInitPromise: Promise<void> | null = null;
 
 const NATIVE_GOOGLE_CANCELED_FALLBACK =
     'Google sign-in did not finish on this device. Choose the account again and try once more.';
 const NATIVE_GOOGLE_REAUTH_FALLBACK =
-    'Google needs you to re-check that account on this device. Update Google Play services or remove and re-add the Google account in Android settings, then try again.';
+    'Google sign-in still needs the Google account on this device to be active. Open Android Settings, confirm the Google account is signed in, then try again.';
 
 const buildNativeGoogleConfig = () => {
     const availability = getCredentialSsoAvailability('google');
@@ -84,6 +85,29 @@ const toErrorCode = (error: unknown): number | null => {
     return null;
 };
 
+const serializeNativeGoogleError = (error: unknown) => {
+    const message = toErrorMessage(error);
+    const code = toErrorCode(error);
+
+    if (!error || typeof error !== 'object') {
+        return {
+            code,
+            message,
+            raw: error,
+        };
+    }
+
+    const record = error as Record<string, unknown>;
+    return {
+        code,
+        message,
+        name: typeof record.name === 'string' ? record.name : undefined,
+        type: typeof record.type === 'string' ? record.type : undefined,
+        error: typeof record.error === 'string' ? record.error : undefined,
+        localizedMessage: typeof record.localizedMessage === 'string' ? record.localizedMessage : undefined,
+    };
+};
+
 export const normalizeNativeGoogleSsoError = (error: unknown): Error => {
     const message = toErrorMessage(error);
     const code = toErrorCode(error);
@@ -91,20 +115,38 @@ export const normalizeNativeGoogleSsoError = (error: unknown): Error => {
     if (
         code === 16
         || /\bcancel(?:led|ed)?\b|dismiss(?:ed|al)|interrupted/i.test(message)
+        || /account reauth failed|getcredentialcancellationexception|activity is cancelled by the user|unable to get sync account/i.test(message)
         || /\b12501\b/.test(message)
     ) {
         return new Error(NATIVE_GOOGLE_CANCELED_FALLBACK);
     }
 
-    if (/account reauth|reauth failed|needs reauthentication|recoverable auth/i.test(message)) {
+    if (/needs reauthentication|recoverable auth/i.test(message)) {
         return new Error(NATIVE_GOOGLE_REAUTH_FALLBACK);
     }
 
     return error instanceof Error ? error : new Error(message || 'Google sign-in failed. Please try again.');
 };
 
+const clearNativeGoogleCredentialState = async (reason: string): Promise<void> => {
+    if (getNativeCapacitorPlatform() === 'web') {
+        return;
+    }
+
+    try {
+        await ensureNativeGoogleSsoInitialized();
+        await SocialLogin.logout({ provider: 'google' });
+    } catch (error) {
+        logger.warn(`Native Google credential state clear failed (${reason})`, serializeNativeGoogleError(error));
+    }
+};
+
 export const signInWithNativeGoogleCredential = async (): Promise<string> => {
     await ensureNativeGoogleSsoInitialized();
+
+    if (getNativeCapacitorPlatform() === 'android') {
+        await clearNativeGoogleCredentialState('before sign-in');
+    }
 
     try {
         const response = await SocialLogin.login({
@@ -122,19 +164,11 @@ export const signInWithNativeGoogleCredential = async (): Promise<string> => {
 
         return response.result.idToken;
     } catch (error) {
+        logger.warn('Native Google sign-in failed', serializeNativeGoogleError(error));
         throw normalizeNativeGoogleSsoError(error);
     }
 };
 
 export const logoutNativeGoogleSession = async (): Promise<void> => {
-    if (getNativeCapacitorPlatform() === 'web') {
-        return;
-    }
-
-    try {
-        await ensureNativeGoogleSsoInitialized();
-        await SocialLogin.logout({ provider: 'google' });
-    } catch {
-        // Native Google logout is best-effort; app session logout still clears Notive auth.
-    }
+    await clearNativeGoogleCredentialState('during logout');
 };

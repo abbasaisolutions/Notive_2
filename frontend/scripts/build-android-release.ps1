@@ -97,7 +97,7 @@ Write-Host "Using ANDROID_USER_HOME=$androidUserHome"
 Push-Location $androidRoot
 
 try {
-    & .\gradlew.bat bundleRelease
+    & .\gradlew.bat bundleRelease --no-daemon --console=plain
 } finally {
     Pop-Location
 }

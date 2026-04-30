@@ -8,11 +8,23 @@ describe('normalizeNativeGoogleSsoError', () => {
         ).toBe('Google sign-in did not finish on this device. Choose the account again and try once more.');
     });
 
-    it('maps explicit reauthentication errors to the device-account guidance', () => {
+    it('treats Android account reauth failed messages as a fresh retry problem', () => {
         expect(
-            normalizeNativeGoogleSsoError(new Error('Account reauth failed for selected Google account')).message
+            normalizeNativeGoogleSsoError(new Error('GetCredentialCancellationException: [16] Account reauth failed')).message
+        ).toBe('Google sign-in did not finish on this device. Choose the account again and try once more.');
+    });
+
+    it('treats sync-account failures as a fresh retry problem', () => {
+        expect(
+            normalizeNativeGoogleSsoError(new Error('Unable to get sync account')).message
+        ).toBe('Google sign-in did not finish on this device. Choose the account again and try once more.');
+    });
+
+    it('keeps explicit recoverable-auth messaging as device-account guidance', () => {
+        expect(
+            normalizeNativeGoogleSsoError(new Error('Recoverable auth required for selected Google account')).message
         ).toBe(
-            'Google needs you to re-check that account on this device. Update Google Play services or remove and re-add the Google account in Android settings, then try again.'
+            'Google sign-in still needs the Google account on this device to be active. Open Android Settings, confirm the Google account is signed in, then try again.'
         );
     });
 });

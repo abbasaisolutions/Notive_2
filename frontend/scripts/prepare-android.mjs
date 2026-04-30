@@ -22,6 +22,12 @@ const requiredAndroidFiles = [
 ];
 
 const socialLoginManifestPath = 'node_modules/@capgo/capacitor-social-login/android/src/main/AndroidManifest.xml';
+const legacyProguardGradlePaths = [
+    'node_modules/@aparajita/capacitor-secure-storage/android/build.gradle',
+    'node_modules/@capacitor/android/capacitor/build.gradle',
+    'node_modules/@capgo/capacitor-social-login/android/build.gradle',
+    'node_modules/@ebarooni/capacitor-calendar/android/build.gradle',
+];
 
 const resolveProjectPath = (...segments) => path.resolve(projectRoot, ...segments);
 
@@ -57,6 +63,26 @@ const sanitizeSocialLoginManifest = () => {
     if (sanitized !== contents) {
         writeFileSync(absolutePath, sanitized, 'utf8');
         console.log('- sanitized social-login Android manifest');
+    }
+};
+
+const sanitizeLegacyProguardFiles = () => {
+    for (const relativePath of legacyProguardGradlePaths) {
+        const absolutePath = resolveProjectPath(relativePath);
+        if (!existsSync(absolutePath)) {
+            continue;
+        }
+
+        const contents = readFileSync(absolutePath, 'utf8');
+        const sanitized = contents.replaceAll(
+            "getDefaultProguardFile('proguard-android.txt')",
+            "getDefaultProguardFile('proguard-android-optimize.txt')",
+        );
+
+        if (sanitized !== contents) {
+            writeFileSync(absolutePath, sanitized, 'utf8');
+            console.log(`- sanitized legacy ProGuard config in ${relativePath}`);
+        }
     }
 };
 
@@ -135,6 +161,7 @@ const mode = (process.argv[2] || 'clean').trim().toLowerCase();
 
 try {
     sanitizeSocialLoginManifest();
+    sanitizeLegacyProguardFiles();
 
     switch (mode) {
         case 'clean':
