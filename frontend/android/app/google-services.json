@@ -12,7 +12,28 @@
           "package_name": "com.notive.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "31045434784-8tidt04va61s6ob03kiv1b6rnnqj7upg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.notive.app",
+            "certificate_hash": "1f9dba093a0ac60b01a7c366ff7a5f80831378cc"
+          }
+        },
+        {
+          "client_id": "31045434784-ogkekvjs44kcp4r4upcl8notfp87h6ff.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.notive.app",
+            "certificate_hash": "14113e5a3cf8faa6bfaa0394b4b7fbd4e6bd4af4"
+          }
+        },
+        {
+          "client_id": "31045434784-9edn8kgnoqg9l1pusikjt1barih1c4ah.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBbdXPpgqzlaU19j43GN3KfCGzCvfbTci8"
@@ -20,7 +41,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "31045434784-9edn8kgnoqg9l1pusikjt1barih1c4ah.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

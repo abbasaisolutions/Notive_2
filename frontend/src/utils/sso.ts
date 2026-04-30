@@ -34,6 +34,11 @@ const getGoogleWebClientId = (): string | null => {
     return isValidGoogleClientId(clientId) ? clientId : null;
 };
 
+const getGoogleAndroidServerClientId = (): string | null => {
+    const clientId = (process.env.NEXT_PUBLIC_GOOGLE_ANDROID_SERVER_CLIENT_ID || '').trim();
+    return isValidGoogleClientId(clientId) ? clientId : null;
+};
+
 export const getGoogleIosClientId = (): string | null => {
     const clientId = (process.env.NEXT_PUBLIC_GOOGLE_IOS_CLIENT_ID || '').trim();
     return isValidGoogleClientId(clientId) ? clientId : null;
@@ -42,6 +47,9 @@ export const getGoogleIosClientId = (): string | null => {
 export const getCredentialSsoClientId = (provider: CredentialSsoProvider): string | null => {
     switch (provider) {
         case 'google': {
+            if (getNativeCapacitorPlatform() === 'android') {
+                return getGoogleAndroidServerClientId() || getGoogleWebClientId();
+            }
             return getGoogleWebClientId();
         }
         default:

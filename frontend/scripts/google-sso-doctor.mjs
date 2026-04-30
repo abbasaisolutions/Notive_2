@@ -5,6 +5,9 @@ import process from 'node:process';
 const projectRoot = path.resolve(import.meta.dirname, '..');
 const backendRoot = path.resolve(projectRoot, '..', 'backend');
 
+const APP_ID = 'com.notive.app';
+const googleServicesPath = path.join(projectRoot, 'android', 'app', 'google-services.json');
+
 const PLACEHOLDER_VALUES = new Set([
     'your-google-client-id',
     'your_google_client_id_here.apps.googleusercontent.com',
@@ -61,6 +64,10 @@ const getFrontendClientId = () => (
     || ''
 ).trim();
 
+const getAndroidNativeServerClientId = () => (
+    frontendEnv.NEXT_PUBLIC_GOOGLE_ANDROID_SERVER_CLIENT_ID || ''
+).trim();
+
 const getBackendClientIds = () => Array.from(
     new Set(
         [
@@ -75,6 +82,49 @@ const getBackendClientIds = () => Array.from(
             .filter((value) => !isMissing(value) && isGoogleClientId(value))
     )
 );
+
+const getGoogleServicesOauthStatus = () => {
+    if (!fs.existsSync(googleServicesPath)) {
+        return {
+            status: 'missing_file',
+            message: '`frontend/android/app/google-services.json` is missing, so Android OAuth setup cannot be audited locally.',
+        };
+    }
+
+    try {
+        const googleServices = JSON.parse(fs.readFileSync(googleServicesPath, 'utf8'));
+        const appClients = (googleServices.client || [])
+            .filter((client) => client?.client_info?.android_client_info?.package_name === APP_ID);
+
+        if (appClients.length === 0) {
+            return {
+                status: 'missing_package',
+                message: `\`google-services.json\` does not include Android package \`${APP_ID}\`.`,
+            };
+        }
+
+        const androidOauthClients = appClients
+            .flatMap((client) => client?.oauth_client || [])
+            .filter((client) => Number(client?.client_type) === 1 && client?.android_info?.package_name === APP_ID);
+
+        if (androidOauthClients.length === 0) {
+            return {
+                status: 'missing_android_oauth_client',
+                message: `\`google-services.json\` has no Android OAuth client for \`${APP_ID}\`. For Notive's current Capgo Google sign-in flow, this is a warning rather than a hard blocker if the SHA fingerprints and Google provider are already configured in Firebase or Google Cloud.`,
+            };
+        }
+
+        return {
+            status: 'ready',
+            message: `Android OAuth clients: ${androidOauthClients.length}`,
+        };
+    } catch (error) {
+        return {
+            status: 'parse_error',
+            message: `\`google-services.json\` could not be parsed: ${error instanceof Error ? error.message : 'unknown error'}`,
+        };
+    }
+};
 
 const classifyGoogleContent = (content) => {
     if (/deleted_client|OAuth client was deleted/i.test(content)) return 'deleted_client';
@@ -109,6 +159,7 @@ const warnings = [];
 const ready = [];
 
 const frontendClientId = getFrontendClientId();
+const androidNativeServerClientId = getAndroidNativeServerClientId();
 const backendClientIds = getBackendClientIds();
 
 console.log('Google SSO doctor');
@@ -126,6 +177,28 @@ if (backendClientIds.length === 0) {
     ready.push(`Backend audience count: ${backendClientIds.length}`);
 } else {
     ready.push('Backend audience: matches frontend client');
+}
+
+if (androidNativeServerClientId) {
+    if (!isGoogleClientId(androidNativeServerClientId)) {
+        blockers.push('`NEXT_PUBLIC_GOOGLE_ANDROID_SERVER_CLIENT_ID` is malformed.');
+    } else if (!backendClientIds.includes(androidNativeServerClientId)) {
+        blockers.push('Backend Google SSO audience does not include `NEXT_PUBLIC_GOOGLE_ANDROID_SERVER_CLIENT_ID`.');
+    } else {
+        ready.push(`Android native server client: ${maskClientId(androidNativeServerClientId)}`);
+    }
+}
+
+const googleServicesOauthStatus = getGoogleServicesOauthStatus();
+if (googleServicesOauthStatus.status === 'ready') {
+    ready.push(googleServicesOauthStatus.message);
+} else if (
+    googleServicesOauthStatus.status === 'missing_file'
+    || googleServicesOauthStatus.status === 'missing_android_oauth_client'
+) {
+    warnings.push(googleServicesOauthStatus.message);
+} else {
+    blockers.push(googleServicesOauthStatus.message);
 }
 
 if (!blockers.some((item) => item.startsWith('Frontend'))) {

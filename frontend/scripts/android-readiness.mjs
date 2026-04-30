@@ -68,6 +68,25 @@ const isMissing = (value) =>
 
 const isGoogleClientId = (value) => /\.apps\.googleusercontent\.com$/i.test(value || '');
 
+const getGoogleServicesOauthSummary = (googleServices) => {
+    const appClients = (googleServices.client || [])
+        .filter((client) => client?.client_info?.android_client_info?.package_name === APP_ID);
+    const directOauthClients = appClients.flatMap((client) => client?.oauth_client || []);
+    const otherPlatformOauthClients = appClients
+        .flatMap((client) => client?.services?.appinvite_service?.other_platform_oauth_client || []);
+
+    return {
+        androidClientCount: directOauthClients.filter((client) =>
+            Number(client?.client_type) === 1
+            && client?.android_info?.package_name === APP_ID
+        ).length,
+        webClientCount: [
+            ...directOauthClients,
+            ...otherPlatformOauthClients,
+        ].filter((client) => Number(client?.client_type) === 3 && isGoogleClientId(client?.client_id)).length,
+    };
+};
+
 const resolveBackendGoogleClientIds = () => Array.from(
     new Set(
         [
@@ -138,6 +157,23 @@ if (isMissing(googleClientId) || !isGoogleClientId(googleClientId)) {
     }
 }
 
+const androidServerClientId = resolveEnvValue('NEXT_PUBLIC_GOOGLE_ANDROID_SERVER_CLIENT_ID');
+if (androidServerClientId) {
+    if (!isGoogleClientId(androidServerClientId)) {
+        blockers.push('`NEXT_PUBLIC_GOOGLE_ANDROID_SERVER_CLIENT_ID` is set but malformed. It must be a valid Google OAuth client ID ending in `.apps.googleusercontent.com`.');
+    } else {
+        pushStatus('Android native Google server client', 'configured');
+        const backendGoogleClientIds = resolveBackendGoogleClientIds();
+        if (backendGoogleClientIds.length === 0) {
+            warnings.push('Backend Google SSO audience is not configured locally. Add the Android native Google server client ID to backend `GOOGLE_CLIENT_IDS` so native tokens verify correctly.');
+        } else if (!backendGoogleClientIds.includes(androidServerClientId)) {
+            warnings.push('Backend Google SSO audience does not include `NEXT_PUBLIC_GOOGLE_ANDROID_SERVER_CLIENT_ID`. Android Google sign-in can open but fail backend verification until backend `GOOGLE_CLIENT_IDS` includes it.');
+        } else {
+            pushStatus('Backend Android Google audience', 'matches Android native server client');
+        }
+    }
+}
+
 const nativeApiUrl = resolveEnvValue('NEXT_PUBLIC_NATIVE_API_URL')
     || resolveEnvValue('NEXT_PUBLIC_API_URL');
 if (!nativeApiUrl) {
@@ -183,6 +219,17 @@ if (!fs.existsSync(googleServicesPath)) {
             launchBlockers.push(`\`google-services.json\` does not contain the Android package name \`${APP_ID}\`.`);
         } else {
             pushStatus('Firebase app config', 'google-services.json present');
+
+            const oauthSummary = getGoogleServicesOauthSummary(googleServices);
+            if (oauthSummary.androidClientCount === 0) {
+                warnings.push('`google-services.json` has no Android OAuth client for `com.notive.app`. Android Google sign-in can throw account reauth errors until the app package plus debug/release SHA-1/SHA-256 fingerprints are added in Firebase or Google Cloud and this file is downloaded again.');
+            } else {
+                pushStatus('Android Google OAuth client', `${oauthSummary.androidClientCount} configured`);
+            }
+
+            if (oauthSummary.webClientCount === 0) {
+                warnings.push('`google-services.json` has no Web OAuth client listed. Native Google sign-in still uses `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`, but keeping the Firebase file stale makes Android SSO harder to audit.');
+            }
         }
     } catch {
         launchBlockers.push('`frontend/android/app/google-services.json` exists but could not be parsed.');
