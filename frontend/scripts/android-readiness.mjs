@@ -71,6 +71,11 @@ const normalizeSha1Fingerprint = (value) => `${value || ''}`.replace(/[^0-9a-f]/
 const isSha1Fingerprint = (value) => /^[0-9a-f]{40}$/i.test(normalizeSha1Fingerprint(value));
 const maskClientId = (value) => {
     if (!value) return 'missing';
+    const match = value.match(/^(\d+)-([^.]+)\.apps\.googleusercontent\.com$/i);
+    if (match) {
+        const [, projectNumber, clientSlug] = match;
+        return `${projectNumber}-${clientSlug.slice(0, 8)}...${clientSlug.slice(-6)}.apps.googleusercontent.com`;
+    }
     if (value.length <= 28) return 'set-but-short';
     return `${value.slice(0, 12)}...${value.slice(-18)}`;
 };
@@ -110,16 +115,53 @@ const resolveBackendGoogleClientIds = () => Array.from(
     new Set(
         [
             ...(process.env.GOOGLE_CLIENT_IDS || '').split(','),
+            ...(process.env.GOOGLE_ANDROID_CLIENT_IDS || '').split(','),
+            ...(process.env.GOOGLE_IOS_CLIENT_IDS || '').split(','),
             process.env.GOOGLE_CLIENT_ID || '',
             process.env.GOOGLE_WEB_CLIENT_ID || '',
+            process.env.GOOGLE_ANDROID_CLIENT_ID || '',
+            process.env.GOOGLE_IOS_CLIENT_ID || '',
             backendEnv.GOOGLE_CLIENT_IDS || '',
+            backendEnv.GOOGLE_ANDROID_CLIENT_IDS || '',
+            backendEnv.GOOGLE_IOS_CLIENT_IDS || '',
             backendEnv.GOOGLE_CLIENT_ID || '',
             backendEnv.GOOGLE_WEB_CLIENT_ID || '',
+            backendEnv.GOOGLE_ANDROID_CLIENT_ID || '',
+            backendEnv.GOOGLE_IOS_CLIENT_ID || '',
         ]
             .flatMap((value) => `${value || ''}`.split(','))
             .map((value) => value.trim().replace(/^"|"$/g, ''))
             .filter((value) => !isMissing(value) && isGoogleClientId(value))
     )
+);
+
+const resolveBundledBackendGoogleClientIds = () => {
+    const includeBundledValue = (
+        process.env.GOOGLE_INCLUDE_BUNDLED_CLIENT_IDS
+        || backendEnv.GOOGLE_INCLUDE_BUNDLED_CLIENT_IDS
+        || ''
+    ).trim().replace(/^"|"$/g, '').toLowerCase();
+    if (includeBundledValue === 'false') {
+        return [];
+    }
+
+    const bundledClientPath = path.resolve(projectRoot, '..', 'backend', 'src', 'config', 'google-oauth-clients.ts');
+    if (!fs.existsSync(bundledClientPath)) {
+        return [];
+    }
+
+    const content = fs.readFileSync(bundledClientPath, 'utf8');
+    return Array.from(
+        new Set(
+            Array.from(content.matchAll(/['"]([^'"]+\.apps\.googleusercontent\.com)['"]/gi))
+                .map((match) => match[1])
+                .filter((value) => !isMissing(value) && isGoogleClientId(value))
+        )
+    );
+};
+
+const resolveEffectiveBackendGoogleClientIds = () => Array.from(
+    new Set([...resolveBackendGoogleClientIds(), ...resolveBundledBackendGoogleClientIds()])
 );
 
 const isLikelyLocalApiUrl = (value) =>
@@ -167,10 +209,14 @@ if (isMissing(googleClientId) || !isGoogleClientId(googleClientId)) {
     pushStatus('Google credential sign-in', 'configured');
 
     const backendGoogleClientIds = resolveBackendGoogleClientIds();
-    if (backendGoogleClientIds.length === 0) {
+    const effectiveBackendGoogleClientIds = resolveEffectiveBackendGoogleClientIds();
+    if (effectiveBackendGoogleClientIds.length === 0) {
         warnings.push('Backend Google SSO audience is not configured locally. Set backend `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_IDS` to the same active web OAuth client ID used by the frontend.');
-    } else if (!backendGoogleClientIds.includes(googleClientId)) {
+    } else if (!effectiveBackendGoogleClientIds.includes(googleClientId)) {
         warnings.push('Backend Google SSO audience does not include the frontend Google web client ID. Google sign-in can open but fail verification until backend `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_IDS` is updated.');
+    } else if (!backendGoogleClientIds.includes(googleClientId)) {
+        pushStatus('Backend Google SSO audience', 'bundled fallback matches frontend client');
+        warnings.push('Backend GOOGLE_CLIENT_IDS does not list the frontend Google web client ID. The bundled fallback covers the current ID, but production env should stay explicit.');
     } else {
         pushStatus('Backend Google SSO audience', 'matches frontend client');
     }
@@ -183,10 +229,14 @@ if (androidServerClientId) {
     } else {
         pushStatus('Android native Google server client', 'configured');
         const backendGoogleClientIds = resolveBackendGoogleClientIds();
-        if (backendGoogleClientIds.length === 0) {
+        const effectiveBackendGoogleClientIds = resolveEffectiveBackendGoogleClientIds();
+        if (effectiveBackendGoogleClientIds.length === 0) {
             warnings.push('Backend Google SSO audience is not configured locally. Add the Android native Google server client ID to backend `GOOGLE_CLIENT_IDS` so native tokens verify correctly.');
-        } else if (!backendGoogleClientIds.includes(androidServerClientId)) {
+        } else if (!effectiveBackendGoogleClientIds.includes(androidServerClientId)) {
             warnings.push('Backend Google SSO audience does not include `NEXT_PUBLIC_GOOGLE_ANDROID_SERVER_CLIENT_ID`. Android Google sign-in can open but fail backend verification until backend `GOOGLE_CLIENT_IDS` includes it.');
+        } else if (!backendGoogleClientIds.includes(androidServerClientId)) {
+            pushStatus('Backend Android Google audience', 'bundled fallback matches Android native server client');
+            warnings.push('Backend GOOGLE_CLIENT_IDS does not list `NEXT_PUBLIC_GOOGLE_ANDROID_SERVER_CLIENT_ID`. The bundled fallback covers the current ID, but production env should stay explicit.');
         } else {
             pushStatus('Backend Android Google audience', 'matches Android native server client');
         }
@@ -247,9 +297,12 @@ if (!fs.existsSync(googleServicesPath)) {
             }
 
             const backendGoogleClientIds = resolveBackendGoogleClientIds();
+            const effectiveBackendGoogleClientIds = resolveEffectiveBackendGoogleClientIds();
             const missingBackendAndroidClientIds = oauthSummary.androidClientIds
+                .filter((clientId) => !effectiveBackendGoogleClientIds.includes(clientId));
+            const missingEnvAndroidClientIds = oauthSummary.androidClientIds
                 .filter((clientId) => !backendGoogleClientIds.includes(clientId));
-            if (backendGoogleClientIds.length === 0) {
+            if (effectiveBackendGoogleClientIds.length === 0) {
                 warnings.push('Backend Google SSO audience is not configured locally. Add the web and Android OAuth client IDs from `google-services.json` to backend `GOOGLE_CLIENT_IDS` so Android credentials verify.');
             } else if (missingBackendAndroidClientIds.length > 0) {
                 const message = `Backend Google SSO audience does not include Android OAuth client IDs from \`google-services.json\`: ${formatMaskedClientIds(missingBackendAndroidClientIds)}. Android Google sign-in can complete on-device but fail backend verification until Railway/backend \`GOOGLE_CLIENT_IDS\` includes them.`;
@@ -258,6 +311,9 @@ if (!fs.existsSync(googleServicesPath)) {
                 } else {
                     warnings.push(message);
                 }
+            } else if (missingEnvAndroidClientIds.length > 0) {
+                pushStatus('Backend Android OAuth audiences', 'bundled fallback matches google-services.json');
+                warnings.push(`Backend GOOGLE_CLIENT_IDS does not list Android OAuth client IDs from \`google-services.json\`: ${formatMaskedClientIds(missingEnvAndroidClientIds)}. The bundled fallback covers the current IDs, but production env should stay explicit.`);
             } else {
                 pushStatus('Backend Android OAuth audiences', 'match google-services.json');
             }

@@ -1,6 +1,6 @@
 # Railway Production Setup
 
-Last updated: April 6, 2026.
+Last updated: April 30, 2026.
 
 This is the shortest path to a launch-ready Railway backend for Notive.
 
@@ -39,6 +39,8 @@ REDIS_URL=...  # optional but recommended
 ```
 
 For Google SSO, `GOOGLE_CLIENT_IDS` must include the web OAuth client plus every Android OAuth client listed in `frontend/android/app/google-services.json`. If a Play-signed Android build can choose a Google account but then says the credential could not be verified for this app, Railway is usually missing the Play App Signing Android client ID in this variable.
+
+The backend also includes the current Notive web/Android OAuth client IDs as a safety fallback. Keep the Railway env var explicit anyway so rotated OAuth clients are visible in deployment config instead of only in source.
 
 ## S3 uploads
 
