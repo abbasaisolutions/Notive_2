@@ -18,6 +18,14 @@
           "client_type": 1,
           "android_info": {
             "package_name": "com.notive.app",
+            "certificate_hash": "245172ab04fc3b512cb83e80e1de49cd78f84f67"
+          }
+        },
+        {
+          "client_id": "31045434784-lcg01j0rr92eq04309nkh5mesp4lk6q5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.notive.app",
             "certificate_hash": "1f9dba093a0ac60b01a7c366ff7a5f80831378cc"
           }
         },
