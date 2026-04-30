@@ -38,6 +38,14 @@
           }
         },
         {
+          "client_id": "31045434784-tq0o3fgj0k8t7i8e1sn0b78704hs0roc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.notive.app",
+            "certificate_hash": "942733f33b3cb48ee7ef5794e993d754e3c8b4ee"
+          }
+        },
+        {
           "client_id": "31045434784-9edn8kgnoqg9l1pusikjt1barih1c4ah.apps.googleusercontent.com",
           "client_type": 3
         }
