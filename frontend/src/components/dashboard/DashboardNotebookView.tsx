@@ -10,12 +10,18 @@ import Image from 'next/image';
 import Link from 'next/link';
 import ActionBriefPanel from '@/components/action/ActionBriefPanel';
 import DailyCheckIn from '@/components/dashboard/DailyCheckIn';
+import DashboardTakeawayCard from '@/components/dashboard/DashboardTakeawayCard';
 import type { StudentActionBrief } from '@/components/action/types';
 import DailyGentleReflectionCard from '@/components/dashboard/DailyGentleReflectionCard';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import { Surface } from '@/components/ui/surface';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
+import {
+    buildDashboardHomeTakeaway,
+    DASHBOARD_QUICK_CHECKIN_ID,
+    type DashboardHomeTakeaway,
+} from '@/services/home-takeaway.service';
 import type { GentleReflectionDraft } from '@/services/gentle-reflection.service';
 import {
     getLifeBalanceRingFill,
@@ -574,6 +580,23 @@ const getWritingEnergy = (entries: DashboardNotebookViewProps['entries']): {
 
 export default function DashboardNotebookView(props: DashboardNotebookViewProps) {
     const { showCalmerLayout = false, ...rest } = props;
+    const homeTakeaway = buildDashboardHomeTakeaway({
+        entries: rest.entries,
+        themeClusters: rest.themeClusters,
+        storyOverview: rest.storyOverview,
+        dashboardInsights: rest.dashboardInsights,
+        journalIntel: rest.journalIntel,
+        heroInsight: rest.heroInsight,
+        hasSafetyFocus: rest.hasSafetyFocus,
+        hasCheckedInToday: rest.hasCheckedInToday,
+        todayCheckInMood: rest.todayCheckInMood,
+        profileTags: rest.profileTags,
+        focusCard: rest.focusCard,
+        recommendedHref: rest.recommendedHref,
+        portfolioHref: rest.portfolioHref,
+        timelineHref: rest.timelineHref,
+        guideHref: rest.guideHref,
+    });
     
     // If showCalmerLayout is true, render the calm Tier 1 dashboard instead
     if (showCalmerLayout) {
@@ -585,6 +608,10 @@ export default function DashboardNotebookView(props: DashboardNotebookViewProps)
                 focusCard={rest.focusCard}
                 heroInsight={rest.heroInsight}
                 dashboardInsights={rest.dashboardInsights}
+                hasCheckedInToday={rest.hasCheckedInToday}
+                todayCheckInMood={rest.todayCheckInMood}
+                onDailyCheckIn={rest.onDailyCheckIn}
+                homeTakeaway={homeTakeaway}
                 onViewFullDashboard={() => {
                     // Reload to show full dashboard
                     window.location.reload();
@@ -594,7 +621,7 @@ export default function DashboardNotebookView(props: DashboardNotebookViewProps)
     }
 
     // Render full dashboard
-    return <DashboardNotebookViewFull {...rest} />;
+    return <DashboardNotebookViewFull {...rest} homeTakeaway={homeTakeaway} />;
 }
 
 function DashboardNotebookViewFull({
@@ -644,7 +671,8 @@ function DashboardNotebookViewFull({
     locationLabel,
     userBirthDate,
     profileTags = [],
-}: Omit<DashboardNotebookViewProps, 'showCalmerLayout'>) {
+    homeTakeaway,
+}: Omit<DashboardNotebookViewProps, 'showCalmerLayout'> & { homeTakeaway: DashboardHomeTakeaway }) {
     const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
     const [heatmapTap, setHeatmapTap] = useState<HeatmapCell | null>(null);
     const weekWords = useMemo(() => countWordsThisWeek(entries), [entries]);
@@ -665,10 +693,6 @@ function DashboardNotebookViewFull({
     );
     const periodDelta = useMemo(() => buildPeriodDelta(entries), [entries]);
     const latestEntry = entries[0] || null;
-    const daysSinceLastEntry = useMemo(() => {
-        if (!latestEntry) return null;
-        return Math.floor((Date.now() - new Date(latestEntry.createdAt).getTime()) / 86400000);
-    }, [latestEntry]);
     const resurfacedMoment = resurfacedMoments[0] || null;
     const returningThemes = themeClusters.filter((cluster) => cluster.entryCount >= 2).length;
 
@@ -1209,21 +1233,17 @@ function DashboardNotebookViewFull({
     ) : null;
     const topPreviewContent = activeTab === 'overview' ? (
         <>
-            <h2 className="notive-logo italic text-lg font-semibold leading-snug md:text-2xl">
-                {daysSinceLastEntry !== null && daysSinceLastEntry >= 5
-                    ? `You've been away ${daysSinceLastEntry} days. No pressure — one sentence is enough.`
-                        : daysSinceLastEntry !== null && daysSinceLastEntry >= 2
-                            ? `It's been ${daysSinceLastEntry} days. A lot can happen — what's worth keeping?`
-                            : moodShift?.type === 'shift'
-                                ? `Your mood moved from ${moodShift.from} to ${moodShift.to} lately.`
-                            : moodShift?.type === 'steady'
-                                ? `The mood has stayed at ${moodShift.mood} lately — that's worth noticing.`
-                                : notesThisWeek > 0
-                                    ? `${notesThisWeek} ${notesThisWeek === 1 ? 'memory' : 'memories'} this week${returningThemes > 0 ? `, ${returningThemes} returning ${returningThemes === 1 ? 'theme' : 'themes'}` : ''}.`
-                                    : `Hey ${firstName ?? 'there'} — your notebook is ready.`}
-            </h2>
+            <DashboardTakeawayCard takeaway={homeTakeaway} />
 
             {welcomeNotebookBanner}
+
+            <div id={DASHBOARD_QUICK_CHECKIN_ID} className="scroll-mt-24">
+                <DailyCheckIn
+                    hasCheckedInToday={hasCheckedInToday}
+                    todayMood={todayCheckInMood}
+                    onSubmit={onDailyCheckIn}
+                />
+            </div>
 
             {heroContent}
 
@@ -1232,7 +1252,7 @@ function DashboardNotebookViewFull({
                     <span>
                         <span className="section-label block">Advanced insights</span>
                         <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
-                            Check-in, stats, and pattern details stay tucked away until you want a deeper read.
+                            Stats and pattern details stay tucked away until you want a deeper read.
                         </span>
                     </span>
                     <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:hidden">
@@ -1244,12 +1264,6 @@ function DashboardNotebookViewFull({
                 </summary>
                 <div className="space-y-3 border-t border-[rgba(92,92,92,0.12)] px-3 pb-3 pt-3">
                     {glanceStrip}
-
-                    <DailyCheckIn
-                        hasCheckedInToday={hasCheckedInToday}
-                        todayMood={todayCheckInMood}
-                        onSubmit={onDailyCheckIn}
-                    />
 
                     {/* ── Intelligence strip ── */}
                     <div className="border-t border-[rgba(92,92,92,0.14)] pt-3 space-y-2">

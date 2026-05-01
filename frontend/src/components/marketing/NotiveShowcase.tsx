@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { FiArrowRight, FiBookOpen, FiLock, FiSearch, FiStar } from 'react-icons/fi';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import NotiveLogo from '@/components/ui/NotiveLogo';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
@@ -11,6 +12,11 @@ type StoryCard = {
     alt: string;
     caption: string;
     story: string;
+};
+
+type QuietNotebookHeroProps = {
+    onPrimaryCtaClick?: () => void;
+    onSecondaryCtaClick?: () => void;
 };
 
 const fadeUp = {
@@ -41,20 +47,44 @@ export const storyCards: StoryCard[] = [
     {
         src: '/images/hero-1.jpg',
         alt: 'Teen capturing a real moment in Notive on a phone so the memory is saved while it is still fresh.',
-        caption: 'Capture Fast',
+        caption: 'Capture',
         story: 'Write or speak the moment before the details fade.',
     },
     {
         src: '/images/hero-2.jpg',
         alt: 'Teen reviewing a Notive story workspace that pulls lessons, skills, and evidence from saved notes.',
-        caption: 'Review Simply',
+        caption: 'Notice',
         story: 'See the lesson, people, tags, and patterns without sorting every note yourself.',
     },
     {
         src: '/images/hero-3.jpg',
         alt: 'Teen revisiting an older diary entry in Notive after a new memory brings it back into focus.',
-        caption: 'Use It Later',
+        caption: 'Use',
         story: 'Turn a saved memory into a story, summary, or proof of growth when it matters.',
+    },
+];
+
+const heroTrustPoints = [
+    { icon: FiLock, label: 'Private by default' },
+    { icon: FiBookOpen, label: 'No public feed' },
+    { icon: FiStar, label: 'Built for later use' },
+];
+
+const outcomeProofCards = [
+    {
+        eyebrow: 'From note',
+        title: 'A messy thought can become a clear lesson.',
+        body: 'Capture the real version first. Notive can help you pull out what changed, what mattered, and what you learned.',
+    },
+    {
+        eyebrow: 'From pattern',
+        title: 'Repeated moments can become useful signals.',
+        body: 'When similar moods, people, or topics return, Notive helps make the pattern easier to see.',
+    },
+    {
+        eyebrow: 'From memory',
+        title: 'Saved experience can become story material.',
+        body: 'Use your own evidence for applications, interviews, decisions, or the next honest conversation.',
     },
 ];
 
@@ -93,7 +123,10 @@ function QuietNotebookCard({
     );
 }
 
-export function QuietNotebookHero() {
+export function QuietNotebookHero({
+    onPrimaryCtaClick,
+    onSecondaryCtaClick,
+}: QuietNotebookHeroProps = {}) {
     return (
         <motion.section
             {...fadeUp}
@@ -102,7 +135,7 @@ export function QuietNotebookHero() {
                 boxShadow: '0 16px 32px rgba(92,92,92,0.1)',
             }}
         >
-            <div className="relative min-h-[74svh] md:min-h-[44rem]">
+            <div className="relative min-h-[72svh] md:min-h-[42rem]">
                 <Image
                     src={storyCards[0].src}
                     alt={storyCards[0].alt}
@@ -111,7 +144,7 @@ export function QuietNotebookHero() {
                     sizes="100vw"
                     className="object-cover object-center"
                 />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(58,58,58,0.14),rgba(58,58,58,0.56))]" />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(58,58,58,0.08),rgba(58,58,58,0.5))]" />
                 <div className="absolute inset-x-0 top-0 flex items-center justify-between px-5 py-5 md:px-8 md:py-7">
                     <div
                         className="rounded-[1.2rem] px-3 py-1.5"
@@ -126,7 +159,7 @@ export function QuietNotebookHero() {
                     <NotebookDoodle name="sprout" accent="sage" className="h-10 w-10 sprout-accent opacity-95 md:h-12 md:w-12" />
                 </div>
 
-                <div className="relative z-10 flex min-h-[74svh] items-end px-4 pb-4 pt-28 md:min-h-[44rem] md:px-8 md:pb-8 md:pt-32">
+                <div className="relative z-10 flex min-h-[72svh] items-end px-4 pb-4 pt-28 md:min-h-[42rem] md:px-8 md:pb-8 md:pt-32">
                     <div
                         className="w-full max-w-3xl rounded-[1.9rem] p-5 md:p-8"
                         style={{
@@ -141,9 +174,21 @@ export function QuietNotebookHero() {
                         <p className="mt-4 max-w-xl text-sm leading-7 text-[rgb(76,70,62)] md:text-base">
                             {NOTIVE_VOICE.home.heroBody}
                         </p>
+                        <div className="mt-5 flex flex-wrap gap-2">
+                            {heroTrustPoints.map(({ icon: Icon, label }) => (
+                                <span
+                                    key={label}
+                                    className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.54)] px-3 py-1.5 text-xs font-semibold text-[rgb(76,70,62)]"
+                                >
+                                    <Icon size={13} aria-hidden="true" />
+                                    {label}
+                                </span>
+                            ))}
+                        </div>
                         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                             <Link
                                 href="/register"
+                                onClick={onPrimaryCtaClick}
                                 className="inline-flex items-center justify-center rounded-[1.2rem] px-5 py-3 text-sm font-semibold text-[rgb(34,32,29)] transition-transform hover:-translate-y-0.5"
                                 style={{
                                     background: 'rgb(138, 154, 111)',
@@ -152,9 +197,11 @@ export function QuietNotebookHero() {
                                 }}
                             >
                                 {NOTIVE_VOICE.home.heroPrimaryCta}
+                                <FiArrowRight className="ml-2" size={15} aria-hidden="true" />
                             </Link>
                             <Link
                                 href="/login"
+                                onClick={onSecondaryCtaClick}
                                 className="inline-flex items-center justify-center rounded-[1.2rem] px-5 py-3 text-sm font-medium text-[rgb(62,57,50)] transition-opacity hover:opacity-80"
                                 style={{
                                     background: 'rgba(255,255,255,0.72)',
@@ -191,6 +238,54 @@ export function RealStudentsRealMoves() {
             <div className="mt-8 flex snap-x gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:overflow-visible">
                 {storyCards.map((card, index) => (
                     <QuietNotebookCard key={card.src} {...card} priority={index === 0} />
+                ))}
+            </div>
+        </motion.section>
+    );
+}
+
+export function OutcomeProofSection() {
+    return (
+        <motion.section
+            {...fadeUp}
+            className="mt-8 rounded-[2rem] px-4 py-8 md:mt-10 md:px-6 md:py-10"
+            style={quietNotebookPanelStyle}
+        >
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(126,117,103)]">
+                        Why it matters
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-normal text-[rgb(39,35,31)] md:text-[2.35rem]">
+                        The payoff is usable language from real life.
+                    </h2>
+                </div>
+                <p className="max-w-xl text-sm leading-7 text-[rgb(84,78,70)]">
+                    Notive helps the raw moment become something you can understand, return to, and use when the situation asks for words.
+                </p>
+            </div>
+
+            <div className="mt-7 grid gap-4 md:grid-cols-3">
+                {outcomeProofCards.map((card, index) => (
+                    <article
+                        key={card.eyebrow}
+                        className="rounded-[1.35rem] border border-[rgba(92,92,92,0.16)] bg-[rgba(255,255,255,0.5)] p-4"
+                    >
+                        <div className="flex items-center justify-between gap-3">
+                            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[rgb(126,117,103)]">
+                                {card.eyebrow}
+                            </p>
+                            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(92,92,92,0.14)] bg-[rgba(248,244,237,0.9)] text-[rgb(138,154,111)]">
+                                {index === 0 ? <FiBookOpen size={16} aria-hidden="true" /> : index === 1 ? <FiSearch size={16} aria-hidden="true" /> : <FiStar size={16} aria-hidden="true" />}
+                            </span>
+                        </div>
+                        <h3 className="mt-4 text-xl font-semibold leading-[1.18] tracking-normal text-[rgb(39,35,31)]">
+                            {card.title}
+                        </h3>
+                        <p className="mt-3 text-sm leading-7 text-[rgb(76,70,62)]">
+                            {card.body}
+                        </p>
+                    </article>
                 ))}
             </div>
         </motion.section>

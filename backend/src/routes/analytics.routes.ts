@@ -10,6 +10,7 @@ import {
     getTagMoodPatterns,
     getTagThemes,
     getTimelineSummary,
+    postTelemetryEvent,
 } from '../controllers/analytics.controller';
 import insightsController from '../controllers/insights.controller';
 import { getJournalIntelligence, getInsightsBundle } from '../controllers/journal-intelligence.controller';
@@ -28,6 +29,7 @@ router.get('/activity', getActivity);
 router.get('/dashboard-insights', getDashboardInsights);
 router.get('/tag-themes', getTagThemes);
 router.get('/tag-mood-patterns', getTagMoodPatterns);
+router.post('/events', postTelemetryEvent);
 
 // Journal intelligence (deterministic KPIs)
 router.get('/journal-intelligence', getJournalIntelligence);

@@ -1,17 +1,22 @@
 'use client';
 
+import { useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import NotiveLogo from '@/components/ui/NotiveLogo';
 import NotiveLoadingScreen from '@/components/ui/NotiveLoadingScreen';
 import { useAuth } from '@/context/auth-context';
+import LandingEmotionCheckIn from '@/components/marketing/LandingEmotionCheckIn';
 import {
+    OutcomeProofSection,
     QuietNotebookHero,
     RealStudentsRealMoves,
     quietNotebookPageStyle,
     quietNotebookPanelStyle,
 } from '@/components/marketing/NotiveShowcase';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
+import useTelemetry from '@/hooks/use-telemetry';
+import { rememberLandingEvent } from '@/utils/landing-checkin';
 import { isNativeCapacitorPlatform } from '@/utils/sso';
 import useHasMounted from '@/hooks/use-has-mounted';
 
@@ -23,8 +28,23 @@ const HOME_LAUNCH_PHRASES = [
 
 export default function HomePage() {
     const { user, isLoading: authLoading } = useAuth();
+    const { trackEvent } = useTelemetry();
     const hasMounted = useHasMounted();
     const shouldHoldNativeHome = hasMounted && isNativeCapacitorPlatform() && (authLoading || !!user);
+
+    const trackHomepageCta = useCallback((value: string) => {
+        rememberLandingEvent('homepage_primary_cta_clicked', value, {
+            surface: 'homepage',
+        });
+
+        if (user) {
+            void trackEvent({
+                eventType: 'homepage_primary_cta_clicked',
+                value,
+                metadata: { surface: 'homepage' },
+            });
+        }
+    }, [trackEvent, user]);
 
     if (shouldHoldNativeHome) {
         return (
@@ -37,8 +57,13 @@ export default function HomePage() {
     return (
         <main className="page-paper-canvas min-h-screen px-3 py-3 md:px-5 md:py-5" style={quietNotebookPageStyle}>
             <div className="mx-auto max-w-7xl">
-                <QuietNotebookHero />
+                <QuietNotebookHero
+                    onPrimaryCtaClick={() => trackHomepageCta('hero')}
+                    onSecondaryCtaClick={() => rememberLandingEvent('homepage_secondary_cta_clicked', 'hero', { surface: 'homepage' })}
+                />
+                <LandingEmotionCheckIn />
                 <RealStudentsRealMoves />
+                <OutcomeProofSection />
 
                 <motion.section
                     initial={{ opacity: 0, y: 18 }}
@@ -62,6 +87,7 @@ export default function HomePage() {
                         <div className="flex flex-col gap-3 sm:flex-row">
                             <Link
                                 href="/register"
+                                onClick={() => trackHomepageCta('closing')}
                                 className="inline-flex items-center justify-center rounded-[1.2rem] px-5 py-3 text-sm font-semibold text-[rgb(34,32,29)] transition-transform hover:-translate-y-0.5"
                                 style={{
                                     background: 'rgba(232, 223, 210, 0.96)',
@@ -72,6 +98,7 @@ export default function HomePage() {
                             </Link>
                             <Link
                                 href="/login"
+                                onClick={() => rememberLandingEvent('homepage_secondary_cta_clicked', 'closing', { surface: 'homepage' })}
                                 className="inline-flex items-center justify-center rounded-[1.2rem] px-5 py-3 text-sm font-medium text-[rgb(62,57,50)] transition-opacity hover:opacity-80"
                                 style={{
                                     background: 'rgba(255,255,255,0.68)',

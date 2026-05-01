@@ -3,10 +3,10 @@
  * 
  * Shows:
  * 1. Greeting + today's date
- * 2. Single action (Continue draft OR Capture memory)
- * 3. Latest memory preview (if exists)
- * 4. "What Notive Noticed" (collapsible insights)
- * 5. "Show detailed view" link
+ * 2. Persona-aware takeaway
+ * 3. Quick check-in
+ * 4. Latest memory preview (if exists)
+ * 5. Deeper insights drawer
  * 
  * Goal: Minimal decisions, calm UX, progressive disclosure
  */
@@ -16,6 +16,12 @@
 import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { getMoodEmoji, normalizeMood } from '@/constants/moods';
+import DailyCheckIn from '@/components/dashboard/DailyCheckIn';
+import DashboardTakeawayCard from '@/components/dashboard/DashboardTakeawayCard';
+import {
+  DASHBOARD_QUICK_CHECKIN_ID,
+  type DashboardHomeTakeaway,
+} from '@/services/home-takeaway.service';
 
 interface Tier1Entry {
   id: string;
@@ -47,6 +53,10 @@ interface DashboardTier1SimpleProps {
     correlations: Array<{ topic: string; direction: 'lifter' | 'drain' }>;
     triggerMap: Array<{ entity: string; direction: 'lifter' | 'drain' }>;
   } | null;
+  hasCheckedInToday: boolean;
+  todayCheckInMood: string | null;
+  onDailyCheckIn: (mood: string, note: string) => Promise<void>;
+  homeTakeaway: DashboardHomeTakeaway;
   /** Callback to switch to full dashboard */
   onViewFullDashboard?: () => void;
 }
@@ -74,14 +84,15 @@ export default function DashboardTier1Simple({
   firstName,
   todayLabel,
   entries,
-  focusCard,
   heroInsight,
   dashboardInsights,
+  hasCheckedInToday,
+  todayCheckInMood,
+  onDailyCheckIn,
+  homeTakeaway,
   onViewFullDashboard,
 }: DashboardTier1SimpleProps) {
   const latestEntry = entries[0] || null;
-  const primaryAction = focusCard?.primaryAction || null;
-  const primaryActionClassName = 'block w-full rounded-2xl bg-[rgb(var(--brand))] text-white px-6 py-4 text-center font-medium transition-colors hover:opacity-90 active:opacity-80';
 
   // Extract first 2 lines of latest entry for preview
   const latestPreview = useMemo(() => {
@@ -155,33 +166,16 @@ export default function DashboardTier1Simple({
           </p>
         </section>
 
-        {/* ── Primary Action Block ────────────────────────────────── */}
-        {focusCard && primaryAction && (
-          <section className="space-y-3">
-            {primaryAction.href ? (
-              <Link
-                href={primaryAction.href}
-                onClick={primaryAction.onClick}
-                className={primaryActionClassName}
-              >
-                {primaryAction.label}
-              </Link>
-            ) : (
-              <button
-                type="button"
-                onClick={primaryAction.onClick}
-                className={primaryActionClassName}
-              >
-                {primaryAction.label}
-              </button>
-            )}
-            {focusCard.body && (
-              <p className="notebook-muted text-center text-sm">
-                {truncateText(focusCard.body, 140)}
-              </p>
-            )}
-          </section>
-        )}
+        <DashboardTakeawayCard takeaway={homeTakeaway} compact />
+
+        {/* ── Quick Check-In ──────────────────────────────────────── */}
+        <div id={DASHBOARD_QUICK_CHECKIN_ID} className="scroll-mt-24">
+          <DailyCheckIn
+            hasCheckedInToday={hasCheckedInToday}
+            todayMood={todayCheckInMood}
+            onSubmit={onDailyCheckIn}
+          />
+        </div>
 
         {/* ── Latest Memory Card ──────────────────────────────────── */}
         {latestEntry && latestPreview && (

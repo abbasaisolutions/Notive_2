@@ -68,6 +68,11 @@ import {
     parseGentleReflectionTags,
 } from '@/utils/gentle-reflection';
 import {
+    LANDING_CHECKIN_SOURCE,
+    buildLandingCheckInText,
+    consumeLandingCheckInDraft,
+} from '@/utils/landing-checkin';
+import {
     DEFAULT_LIFE_AREA_BY_CATEGORY,
     LIFE_AREA_OPTIONS,
     EntryCategory,
@@ -818,6 +823,10 @@ function NewEntryPageContent() {
             const promptText = (eventPromptText || searchParams.get('prompt') || '').trim();
             const sharedText = entrySource === 'share' ? searchParams.get('text') : null;
             const sharedTitle = entrySource === 'share' ? (searchParams.get('title') || '').trim() : '';
+            const landingCheckInDraft = entrySource === LANDING_CHECKIN_SOURCE ? consumeLandingCheckInDraft() : null;
+            const landingCheckInText = landingCheckInDraft ? buildLandingCheckInText(landingCheckInDraft) : '';
+            const landingCheckInMood = normalizeMood(landingCheckInDraft?.mood);
+            const seededTags = landingCheckInDraft ? ['check-in'] : gentleReflectionTags;
             const moodParam = normalizeMood(searchParams.get('mood'));
             // Widget hand-off: home-screen widget passes ?mood=happy with source=widget.
             // We honor it across all branches (including resumed drafts) because the
@@ -830,8 +839,8 @@ function NewEntryPageContent() {
                 : voiceText?.trim()
                     ? toVoiceCaptureState(buildBrowserFallbackTranscription(voiceText, DEFAULT_VOICE_LANGUAGE_MODE))
                     : null;
-            const seededText = stagedTranscript?.cleanTranscript || voiceText || sharedText || '';
-            const seededTitle = sharedTitle;
+            const seededText = stagedTranscript?.cleanTranscript || voiceText || sharedText || landingCheckInText || '';
+            const seededTitle = sharedTitle || (landingCheckInDraft ? 'Quick check-in' : '');
             const hasSeededEntryState = Boolean(
                 seededText
                 || seededTitle
@@ -839,7 +848,7 @@ function NewEntryPageContent() {
                 || audioParam
                 || seededVoiceCapture
                 || seededSharedImages.length > 0
-                || gentleReflectionTags.length > 0
+                || seededTags.length > 0
             );
             const savedDraft = loadDraft();
             setDraftHistory(getDraftHistory(user.id));
@@ -877,7 +886,7 @@ function NewEntryPageContent() {
 
             pendingVoicePreviewRef.current = stagedVoiceCapture?.previewText?.trim() || '';
             const applySeededMood = (fallbackMood?: string | null) => {
-                const nextMood = widgetMoodParam || fallbackMood || null;
+                const nextMood = widgetMoodParam || landingCheckInMood || fallbackMood || null;
                 if (nextMood) {
                     setMoodOverride(nextMood);
                 }
@@ -912,7 +921,7 @@ function NewEntryPageContent() {
                         seededPromptHint: promptText || null,
                         seededSharedImages,
                         seededAudioUrl: audioParam || null,
-                        seededTags: gentleReflectionTags,
+                        seededTags,
                         seededVoiceCapture,
                     });
                     return;
@@ -921,7 +930,7 @@ function NewEntryPageContent() {
                 setContent(seededText);
                 setTitleOverride(seededTitle);
                 setPromptHint(seededText ? null : (promptText || null));
-                setTagsOverride(gentleReflectionTags);
+                setTagsOverride(seededTags);
                 setVoiceCapture(seededVoiceCapture);
                 setVoiceJob(pendingVoiceJob || restoredVoiceJob);
                 applySeededMood();
