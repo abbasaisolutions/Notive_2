@@ -1743,7 +1743,7 @@ export default function PortfolioWorkspace() {
 
                                         <details className="group rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]">
                                             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">
-                                                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary">More</span>
+                                                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary">Story readiness</span>
                                                 <TagPill>{completeness.score}%</TagPill>
                                             </summary>
 
@@ -1758,11 +1758,32 @@ export default function PortfolioWorkspace() {
                                                                 : 'Core blocks filled'}
                                                     </p>
                                                     <div className="mt-2 flex flex-wrap gap-2">
-                                                        <TagPill>{formatRatioPercent(experience.confidence || 0)} confidence</TagPill>
+                                                        <TagPill>{formatRatioPercent(experience.confidence || 0)} source strength</TagPill>
                                                         {experience.verified && <TagPill tone="primary">Checked story</TagPill>}
                                                         {completeness.missingFields.length === 0 && !experience.verified && (
                                                             <TagPill tone="primary">Core blocks filled</TagPill>
                                                         )}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Readiness checklist</p>
+                                                    <div className="mt-2 grid grid-cols-2 gap-1.5">
+                                                        {(Object.keys(EVIDENCE_FIELD_LABELS) as EvidenceField[]).map((field) => {
+                                                            const missing = completeness.missingFields.includes(field);
+                                                            return (
+                                                                <span
+                                                                    key={field}
+                                                                    className={`rounded-full px-2 py-1 text-[0.68rem] font-semibold ${
+                                                                        missing
+                                                                            ? 'bg-[rgba(var(--paper-ink),0.06)] text-muted'
+                                                                            : 'bg-primary/10 text-primary'
+                                                                    }`}
+                                                                >
+                                                                    {missing ? 'Open ' : 'Set '}{EVIDENCE_FIELD_LABELS[field]}
+                                                                </span>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
 
@@ -2233,7 +2254,7 @@ export default function PortfolioWorkspace() {
                                             <div className="flex flex-wrap gap-2 text-xs text-ink-muted">
                                                 <span>{point.entries} entries</span>
                                                 <span>{point.verified} verified</span>
-                                                <span>{formatRatioPercent(point.averageConfidence || 0)} confidence</span>
+                                                <span>{formatRatioPercent(point.averageConfidence || 0)} source strength</span>
                                             </div>
                                         </div>
                                         <div className="mt-4 space-y-2">

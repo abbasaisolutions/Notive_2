@@ -201,12 +201,19 @@ export const useUploadQueue = () => {
         saveResults(next);
     }, [recentUploads]);
 
+    const restoreUploadResult = useCallback((result: UploadResult) => {
+        const next = [result, ...recentUploads.filter(upload => upload.id !== result.id)].slice(0, 10);
+        setRecentUploads(next);
+        saveResults(next);
+    }, [recentUploads]);
+
     return {
         enqueueUpload,
         processQueue,
         queueCount,
         recentUploads,
         clearUploadResult,
+        restoreUploadResult,
     };
 };
 

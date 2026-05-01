@@ -62,6 +62,30 @@ export default function TimelineView({
     const pathname = usePathname();
     const [search, setSearch] = useState('');
     const groupedEntries = useMemo(() => buildTimelineMonthGroups(entries), [entries]);
+    const memoryThreads = useMemo(() => {
+        const counts = new Map<string, { label: string; count: number; latest: string }>();
+        entries.forEach((entry) => {
+            const candidates = [
+                ...(entry.tags || []).slice(0, 2),
+                entry.lifeArea || '',
+                entry.category || '',
+            ].map((item) => String(item).trim()).filter(Boolean);
+
+            candidates.forEach((label) => {
+                const key = label.toLowerCase();
+                const current = counts.get(key);
+                const latest = current && new Date(current.latest) > new Date(entry.createdAt)
+                    ? current.latest
+                    : entry.createdAt;
+                counts.set(key, { label, count: (current?.count || 0) + 1, latest });
+            });
+        });
+
+        return Array.from(counts.values())
+            .filter((thread) => thread.count >= 2)
+            .sort((a, b) => b.count - a.count || new Date(b.latest).getTime() - new Date(a.latest).getTime())
+            .slice(0, 8);
+    }, [entries]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -88,6 +112,28 @@ export default function TimelineView({
     return (
         <div className="relative py-3 md:py-10">
             <div className="absolute left-5 md:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-primary/55 via-white/15 to-transparent" />
+
+            {memoryThreads.length > 0 && (
+                <section className="relative z-10 mb-4 ml-10 md:mx-auto md:max-w-3xl">
+                    <div className="rounded-2xl border border-[rgba(var(--paper-border),0.42)] bg-[rgba(255,255,255,0.42)] px-3 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-muted">Memory threads</p>
+                            <span className="text-[0.68rem] font-semibold text-muted">Grouped by recurring tags</span>
+                        </div>
+                        <div className="mt-2 flex snap-x gap-2 overflow-x-auto pb-1">
+                            {memoryThreads.map((thread) => (
+                                <a
+                                    key={thread.label}
+                                    href={`/timeline?tag=${encodeURIComponent(thread.label)}`}
+                                    className="snap-start whitespace-nowrap rounded-full border border-primary/20 bg-primary/8 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/14"
+                                >
+                                    {thread.label} · {thread.count}
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            )}
 
             <div className="space-y-6 md:space-y-14">
                 {groupedEntries.map((group) => {

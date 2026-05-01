@@ -24,6 +24,7 @@ interface ToastContextType {
     error: (title: string, description?: string) => string;
     warning: (title: string, description?: string) => string;
     info: (title: string, description?: string) => string;
+    undo: (title: string, onUndo: () => void, description?: string) => string;
     notification: (title: string, description?: string, action?: Toast['action']) => string;
 }
 
@@ -83,6 +84,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         [addToast]
     );
 
+    const undo = useCallback(
+        (title: string, onUndo: () => void, description?: string) =>
+            addToast({
+                title,
+                description,
+                variant: 'notification',
+                duration: 8000,
+                action: { label: 'Undo', onClick: onUndo },
+            }),
+        [addToast]
+    );
+
     const notification = useCallback(
         (title: string, description?: string, action?: Toast['action']) =>
             addToast({ title, description, variant: 'notification', duration: 7000, action }),
@@ -97,8 +110,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         error,
         warning,
         info,
+        undo,
         notification,
-    }), [addToast, error, info, notification, removeToast, success, toasts, warning]);
+    }), [addToast, error, info, notification, removeToast, success, toasts, undo, warning]);
 
     return (
         <ToastContext.Provider value={value}>

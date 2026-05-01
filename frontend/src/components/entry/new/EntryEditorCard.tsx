@@ -6,6 +6,8 @@ import { FiImage, FiMic, FiSquare } from 'react-icons/fi';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import { Spinner } from '@/components/ui';
 import { ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR } from '@/utils/image-upload';
+import InsightReadinessMeter from '@/components/ux/InsightReadinessMeter';
+import PrivacyAssuranceStrip from '@/components/ux/PrivacyAssuranceStrip';
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
     ssr: false,
@@ -135,6 +137,13 @@ export default function EntryEditorCard({
                     maxWords={500}
                 />
             </div>
+
+            {!minimalEditor && (
+                <div className="mt-3 grid gap-2 lg:grid-cols-[1fr_0.9fr]">
+                    <InsightReadinessMeter content={content} compact={content.trim().split(/\s+/).filter(Boolean).length > 120} />
+                    <PrivacyAssuranceStrip context="draft" compact />
+                </div>
+            )}
 
             {/* Voice feedback: error or review badge */}
             {voiceError && (

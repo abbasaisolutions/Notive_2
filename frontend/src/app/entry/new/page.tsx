@@ -266,7 +266,7 @@ function NewEntryPageContent() {
     const { awardXP, refreshStats } = useGamification();
     const { apiFetch } = useApi();
     const { trackEvent } = useTelemetry();
-    const { enqueueUpload, processQueue, queueCount, recentUploads, clearUploadResult } = useUploadQueue();
+    const { enqueueUpload, processQueue, queueCount, recentUploads, clearUploadResult, restoreUploadResult } = useUploadQueue();
     const { loadDraft, saveDraft, clearDraft } = useEntryDraft(user?.id ?? null);
     const { backHref, backLabel, navigateBack } = useContextNavigation('/dashboard', 'dashboard');
     const toast = useToast();
@@ -1955,6 +1955,14 @@ function NewEntryPageContent() {
         setTagsOverride(prev => prev.filter(t => t !== tag));
     }, []);
 
+    const handleDismissUploadedImage = useCallback((id: string) => {
+        const dismissed = recentUploads.find((upload) => upload.id === id);
+        clearUploadResult(id);
+        if (dismissed) {
+            toast.undo('Upload hidden', () => restoreUploadResult(dismissed), 'Bring the image shortcut back.');
+        }
+    }, [clearUploadResult, recentUploads, restoreUploadResult, toast]);
+
     const insertUploadedImage = useCallback((url: string, id: string) => {
         setContent(prev => `${prev}\n![Image](${url})\n`);
         clearUploadResult(id);
@@ -2196,7 +2204,7 @@ function NewEntryPageContent() {
                     queueCount={queueCount}
                     recentUploads={recentUploads}
                     onInsertUploadedImage={insertUploadedImage}
-                    onDismissUploaded={clearUploadResult}
+                    onDismissUploaded={handleDismissUploadedImage}
                     audioUrl={audioUrl}
                     content={content}
                     editorPlaceholder={editorPlaceholder}

@@ -128,7 +128,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en">
+        <html lang="en" className={`${jakarta.variable} ${fraunces.variable}`}>
             <head>
                 <style
                     dangerouslySetInnerHTML={{
@@ -139,7 +139,7 @@ body:has(.app-shell) #notive-cold-shell{opacity:0}
                     }}
                 />
             </head>
-            <body className={`${jakarta.variable} ${fraunces.variable} font-sans tracking-[0.005em]`}>
+            <body className="font-sans">
                 <div id="notive-cold-shell" aria-hidden="true">
                     <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="32" cy="32" r="28" stroke="#8A9A6F" strokeWidth="2" opacity="0.4" />

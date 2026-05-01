@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TagPill } from '@/components/ui/surface';
 import { getHeroInsightConfidenceMeta, getPatternScopeLabel } from '@/utils/insight-trust';
+import PrivacyAssuranceStrip from '@/components/ux/PrivacyAssuranceStrip';
 
 type HeroInsight = {
     category: string;
@@ -209,11 +210,12 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
                         className="text-[0.66rem] font-semibold uppercase tracking-[0.12em]"
                         style={{ color: 'rgb(var(--paper-ink-muted))' }}
                     >
-                        How To Read This
+                        Why this insight
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                         <TagPill tone={confidence.tone}>{confidence.label}</TagPill>
                         <TagPill>{patternScope}</TagPill>
+                        <TagPill>{insight.entryIds.length} note{insight.entryIds.length === 1 ? '' : 's'}</TagPill>
                         {insight.evidence ? <TagPill>Has evidence</TagPill> : null}
                         {sourceEntryHref ? <TagPill>Source note linked</TagPill> : null}
                     </div>
@@ -225,6 +227,9 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
                             ? 'This is today\u2019s fresh read from your recent notes. Use it as a reflection prompt, not a final verdict.'
                             : 'This is a cached daily read from your recent notes. Use it as a reflection prompt, not a final verdict.'}
                     </p>
+                    <div className="mt-2">
+                        <PrivacyAssuranceStrip context="insight" compact />
+                    </div>
                 </div>
 
                 <AnimatePresence>

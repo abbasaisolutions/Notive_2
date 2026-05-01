@@ -4,7 +4,7 @@
    The default hero starts from saved memories and what they can become. */
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -31,6 +31,38 @@ import {
 } from '@/components/dashboard/life-balance';
 import { getMoodEmoji, getMoodScore, normalizeMood } from '@/constants/moods';
 import DashboardTier1Simple from '@/components/dashboard/DashboardTier1Simple';
+
+const DASHBOARD_MODE_KEY = 'notive_dashboard_mode';
+
+function DashboardModeSwitch({
+    mode,
+    onModeChange,
+}: {
+    mode: 'calm' | 'deep';
+    onModeChange: (mode: 'calm' | 'deep') => void;
+}) {
+    return (
+        <div className="mx-auto mb-3 flex max-w-3xl justify-end px-4">
+            <div className="inline-flex rounded-full border border-[rgba(var(--paper-border),0.42)] bg-[rgba(255,255,255,0.54)] p-1 text-xs shadow-sm">
+                {(['calm', 'deep'] as const).map((item) => (
+                    <button
+                        key={item}
+                        type="button"
+                        aria-pressed={mode === item}
+                        onClick={() => onModeChange(item)}
+                        className={`rounded-full px-3 py-1.5 font-semibold capitalize transition-colors ${
+                            mode === item
+                                ? 'bg-[rgb(var(--paper-sage))] text-white'
+                                : 'text-muted hover:bg-white/70 hover:text-strong'
+                        }`}
+                    >
+                        {item === 'calm' ? 'Calm view' : 'Deep view'}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
 
 type DashboardAction = {
     label: string;
@@ -580,6 +612,30 @@ const getWritingEnergy = (entries: DashboardNotebookViewProps['entries']): {
 
 export default function DashboardNotebookView(props: DashboardNotebookViewProps) {
     const { showCalmerLayout = false, ...rest } = props;
+    const [preferredMode, setPreferredMode] = useState<'calm' | 'deep'>(() => showCalmerLayout ? 'calm' : 'deep');
+
+    useEffect(() => {
+        try {
+            const stored = window.localStorage.getItem(DASHBOARD_MODE_KEY);
+            if (stored === 'calm' || stored === 'deep') {
+                setPreferredMode(stored);
+            } else {
+                setPreferredMode(showCalmerLayout ? 'calm' : 'deep');
+            }
+        } catch {
+            setPreferredMode(showCalmerLayout ? 'calm' : 'deep');
+        }
+    }, [showCalmerLayout]);
+
+    const handleModeChange = (mode: 'calm' | 'deep') => {
+        setPreferredMode(mode);
+        try {
+            window.localStorage.setItem(DASHBOARD_MODE_KEY, mode);
+        } catch {
+            // Local preference is optional.
+        }
+    };
+
     const homeTakeaway = buildDashboardHomeTakeaway({
         entries: rest.entries,
         themeClusters: rest.themeClusters,
@@ -598,30 +654,33 @@ export default function DashboardNotebookView(props: DashboardNotebookViewProps)
         guideHref: rest.guideHref,
     });
     
-    // If showCalmerLayout is true, render the calm Tier 1 dashboard instead
-    if (showCalmerLayout) {
+    if (preferredMode === 'calm') {
         return (
-            <DashboardTier1Simple
-                firstName={rest.firstName}
-                todayLabel={rest.todayLabel}
-                entries={rest.entries}
-                focusCard={rest.focusCard}
-                heroInsight={rest.heroInsight}
-                dashboardInsights={rest.dashboardInsights}
-                hasCheckedInToday={rest.hasCheckedInToday}
-                todayCheckInMood={rest.todayCheckInMood}
-                onDailyCheckIn={rest.onDailyCheckIn}
-                homeTakeaway={homeTakeaway}
-                onViewFullDashboard={() => {
-                    // Reload to show full dashboard
-                    window.location.reload();
-                }}
-            />
+            <>
+                <DashboardModeSwitch mode={preferredMode} onModeChange={handleModeChange} />
+                <DashboardTier1Simple
+                    firstName={rest.firstName}
+                    todayLabel={rest.todayLabel}
+                    entries={rest.entries}
+                    focusCard={rest.focusCard}
+                    heroInsight={rest.heroInsight}
+                    dashboardInsights={rest.dashboardInsights}
+                    hasCheckedInToday={rest.hasCheckedInToday}
+                    todayCheckInMood={rest.todayCheckInMood}
+                    onDailyCheckIn={rest.onDailyCheckIn}
+                    homeTakeaway={homeTakeaway}
+                    onViewFullDashboard={() => handleModeChange('deep')}
+                />
+            </>
         );
     }
 
-    // Render full dashboard
-    return <DashboardNotebookViewFull {...rest} homeTakeaway={homeTakeaway} />;
+    return (
+        <>
+            <DashboardModeSwitch mode={preferredMode} onModeChange={handleModeChange} />
+            <DashboardNotebookViewFull {...rest} homeTakeaway={homeTakeaway} />
+        </>
+    );
 }
 
 function DashboardNotebookViewFull({

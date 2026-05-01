@@ -18,6 +18,11 @@ import { Spinner } from '@/components/ui';
 // Reuse the canonical Core-10 mood list — no icons needed for filter pills,
 // emojis already render via getMoodEmoji.
 const MOOD_FILTER_OPTIONS = MOOD_OPTIONS.map(({ value, label }) => ({ value, label }));
+const HUMAN_SEARCH_PROMPTS = [
+    'times I felt overwhelmed about school',
+    'moments where I handled conflict',
+    'entries about what gave me energy',
+];
 
 interface SearchResult {
     id: string;
@@ -183,7 +188,7 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => query && setShowResults(true)}
                     autoFocus={autoFocus}
-                    placeholder="Search your memory base semantically... (e.g., 'new city', 'team conflict')"
+                    placeholder="Ask your memories in plain language..."
                     className="workspace-input w-full px-5 py-4 pl-14 pr-14 rounded-2xl placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                 />
 
@@ -226,6 +231,24 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
                     </button>
                 </div>
             </div>
+
+            {!query && !filtersOpen && (
+                <div className="mt-2 flex snap-x gap-2 overflow-x-auto pb-1">
+                    {HUMAN_SEARCH_PROMPTS.map((prompt) => (
+                        <button
+                            key={prompt}
+                            type="button"
+                            onClick={() => {
+                                setQuery(prompt);
+                                setShowResults(true);
+                            }}
+                            className="snap-start whitespace-nowrap rounded-full border border-[rgba(var(--paper-border),0.38)] bg-[rgba(255,255,255,0.46)] px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:bg-white/70 hover:text-strong"
+                        >
+                            {prompt}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* Filter panel */}
             {filtersOpen && (

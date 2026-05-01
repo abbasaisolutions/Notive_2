@@ -25,6 +25,12 @@ const DEFAULT_REMINDER: ReminderData = {
     enabled: false,
 };
 
+const QUIET_MODES = [
+    { id: 'gentle', label: 'Gentle', detail: 'One soft reminder' },
+    { id: 'digest', label: 'Digest', detail: 'Bundle nudges' },
+    { id: 'quiet', label: 'Quiet', detail: 'Pause most nudges' },
+] as const;
+
 export default function RemindersSection() {
     const { apiFetch } = useApi();
     const toast = useToast();
@@ -33,11 +39,21 @@ export default function RemindersSection() {
     const [isSaving, setIsSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [saveError, setSaveError] = useState(false);
+    const [quietMode, setQuietMode] = useState<(typeof QUIET_MODES)[number]['id']>('gentle');
     const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const initialized = useRef(false);
     const lastGoodReminder = useRef<ReminderData>(DEFAULT_REMINDER);
 
     useEffect(() => {
+        try {
+            const storedMode = window.localStorage.getItem('notive_notification_quietness');
+            if (storedMode === 'gentle' || storedMode === 'digest' || storedMode === 'quiet') {
+                setQuietMode(storedMode);
+            }
+        } catch {
+            // This preference is local-only and optional.
+        }
+
         void (async () => {
             try {
                 const res = await apiFetch('/reminders');
@@ -56,6 +72,15 @@ export default function RemindersSection() {
             }
         })();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const updateQuietMode = (mode: (typeof QUIET_MODES)[number]['id']) => {
+        setQuietMode(mode);
+        try {
+            window.localStorage.setItem('notive_notification_quietness', mode);
+        } catch {
+            // Local preference is optional.
+        }
+    };
 
     const save = (next: ReminderData) => {
         if (!initialized.current) return;
@@ -211,6 +236,31 @@ export default function RemindersSection() {
                                 ? 'Every day — tap days to pick specific ones.'
                                 : `${reminder.days.length} day${reminder.days.length !== 1 ? 's' : ''} selected`}
                         </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-[rgba(var(--paper-border),0.38)] bg-[rgba(255,255,255,0.3)] p-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <p className="type-overline text-muted">Notification quietness</p>
+                            <span className="text-[0.68rem] font-semibold text-muted">Local preference</span>
+                        </div>
+                        <div className="mt-2 grid grid-cols-3 gap-1.5">
+                            {QUIET_MODES.map((mode) => (
+                                <button
+                                    key={mode.id}
+                                    type="button"
+                                    aria-pressed={quietMode === mode.id}
+                                    onClick={() => updateQuietMode(mode.id)}
+                                    className={`rounded-xl px-2 py-2 text-left transition-colors ${
+                                        quietMode === mode.id
+                                            ? 'bg-primary/12 text-primary'
+                                            : 'bg-[rgba(var(--paper-ink),0.05)] text-muted hover:bg-[rgba(var(--paper-ink),0.09)]'
+                                    }`}
+                                >
+                                    <span className="block text-xs font-semibold">{mode.label}</span>
+                                    <span className="mt-0.5 block text-[0.66rem] leading-4">{mode.detail}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}

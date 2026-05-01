@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FiBell } from 'react-icons/fi';
 import { Button } from '@/components/ui/form-elements';
 import { TagPill } from '@/components/ui/surface';
+import PrivacyAssuranceStrip from '@/components/ux/PrivacyAssuranceStrip';
 
 type EntrySaveCompletionSummary = {
     lesson?: string;
@@ -248,10 +249,14 @@ export default function EntrySaveCompletionSheet({
                         </div>
                     )}
 
+                    <div className="mt-5">
+                        <PrivacyAssuranceStrip context="saved" compact />
+                    </div>
+
                     {nextActions.length > 0 && (
-                        <div className="mt-5 rounded-xl border border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.18)] p-4">
+                        <div className="mt-4 rounded-xl border border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.18)] p-4">
                             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">
-                                Useful next steps
+                                Recommended next step
                             </p>
                             <div className="mt-3 grid gap-2 sm:grid-cols-2">
                                 {nextActions.slice(0, 2).map((action) => (
@@ -261,7 +266,7 @@ export default function EntrySaveCompletionSheet({
                                         onClick={() => {
                                             void action.onSelect();
                                         }}
-                                        className="rounded-xl border border-primary/20 bg-primary/8 px-3.5 py-3 text-left transition-colors hover:bg-primary/14"
+                                        className="rounded-xl border border-primary/20 bg-primary/8 px-3.5 py-3 text-left transition-colors first:bg-primary/12 hover:bg-primary/14"
                                     >
                                         <span className="block text-sm font-semibold text-[rgb(var(--text-primary))]">
                                             {action.label}

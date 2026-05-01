@@ -169,14 +169,13 @@
   }
 
   h1 {
-    @apply tracking-tighter;
     line-height: 1.1;
-    letter-spacing: -0.03em;
+    letter-spacing: 0;
   }
 
   h2 {
     line-height: 1.15;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
   }
 
   p {
