@@ -71,7 +71,7 @@ export default function GlobalSearchOverlay() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.18 }}
-                    className="fixed inset-0 z-[95] flex items-start justify-center bg-[rgba(41,32,22,0.32)] px-4 pt-20 backdrop-blur-sm sm:pt-28"
+                    className="fixed inset-0 z-[95] flex items-start justify-center overflow-y-auto bg-[rgba(41,32,22,0.32)] px-3 pb-6 pt-4 backdrop-blur-sm sm:px-4 sm:pt-20 md:pt-28"
                     onClick={close}
                 >
                     <motion.div

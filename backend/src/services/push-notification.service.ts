@@ -7,6 +7,7 @@ interface PushNotificationPayload {
     title: string;
     body: string;
     icon?: string;
+    imageUrl?: string;
     badge?: string;
     sound?: string;
     data?: Record<string, string>;
@@ -300,6 +301,7 @@ export class PushNotificationService {
         const notificationType = payload.data?.type;
         const androidChannelId = this.resolveAndroidChannelId(notificationType);
         const androidTag = this.resolveAndroidTag(notificationType, payload.data);
+        const imageUrl = this.resolveNotificationImageUrl(payload);
 
         const message: Message = {
             token,
@@ -335,6 +337,7 @@ export class PushNotificationService {
                     ticker: payload.title,
                     // Notification priority within the shade (MAX = heads-up pop)
                     priority: 'max',
+                    ...(imageUrl ? { imageUrl } : {}),
                 },
             },
             apns: {
@@ -349,6 +352,7 @@ export class PushNotificationService {
                         'mutable-content': 1,
                     },
                 },
+                ...(imageUrl ? { fcmOptions: { imageUrl } } : {}),
             },
         };
 
@@ -366,6 +370,12 @@ export class PushNotificationService {
         if (type === 'reminder') return 'reminder';
         if (data?.bundleId) return `${type ?? 'notive'}:${data.bundleId}`;
         return type ?? 'notive';
+    }
+
+    private resolveNotificationImageUrl(payload: PushNotificationPayload): string | undefined {
+        const candidate = payload.imageUrl || payload.data?.senderAvatarUrl || payload.data?.avatarUrl || payload.icon;
+        if (!candidate || !/^https:\/\//i.test(candidate)) return undefined;
+        return candidate;
     }
 
     /** Console mock used when Firebase credentials are absent (development). */

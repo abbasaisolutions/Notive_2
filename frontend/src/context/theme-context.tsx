@@ -58,6 +58,12 @@ const getRouteTheme = (pathname: string | null): Theme => {
     return defaultTheme;
 };
 
+const getStoredTheme = (): Theme | null => {
+    if (typeof window === 'undefined') return null;
+    const stored = window.localStorage.getItem('notive_theme');
+    return stored === 'dark' || stored === 'paper' ? stored : null;
+};
+
 const applyTheme = (theme: Theme) => {
     if (typeof document === 'undefined') return;
 
@@ -76,15 +82,11 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-    const [theme, setThemeState] = useState<Theme>(() => getRouteTheme(pathname));
+    const [theme, setThemeState] = useState<Theme>(() => getStoredTheme() ?? getRouteTheme(pathname));
 
     useEffect(() => {
-        const nextTheme = getRouteTheme(pathname);
+        const nextTheme = getStoredTheme() ?? getRouteTheme(pathname);
         setThemeState(nextTheme);
-
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('notive_theme', nextTheme);
-        }
 
         applyTheme(nextTheme);
     }, [pathname]);

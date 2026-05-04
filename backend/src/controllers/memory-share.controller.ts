@@ -312,9 +312,12 @@ export const createBundle = async (req: Request, res: Response) => {
 
         const sender = await prisma.user.findUnique({
             where: { id: userId },
-            select: { name: true },
+            select: { name: true, avatarUrl: true },
         });
         const senderName = sender?.name || 'Someone';
+        const senderAvatarUrl = typeof sender?.avatarUrl === 'string' && /^https:\/\//i.test(sender.avatarUrl)
+            ? sender.avatarUrl
+            : null;
         const entryCount = entries.length;
         const noAccessRecipientIds = recipientIds.filter((recipientId) => !accessMap.has(recipientId));
         const acceptedRecipientIds = recipientIds.filter(
@@ -403,6 +406,7 @@ export const createBundle = async (req: Request, res: Response) => {
                         bundleId: newBundle.id,
                         senderId: userId,
                         senderName,
+                        ...(senderAvatarUrl ? { senderAvatarUrl } : {}),
                         entryCount,
                         link: `/shared/view?id=${newBundle.id}`,
                     },
@@ -416,6 +420,7 @@ export const createBundle = async (req: Request, res: Response) => {
                         bundleId: newBundle.id,
                         senderId: userId,
                         senderName,
+                        ...(senderAvatarUrl ? { senderAvatarUrl } : {}),
                         entryCount,
                         link: '/timeline?view=shared',
                     },
@@ -445,10 +450,12 @@ export const createBundle = async (req: Request, res: Response) => {
             pushService.sendPushNotification(recipientId, {
                 title: 'New shared memories',
                 body: `${senderName} shared ${formatCountLabel(entryCount)} with you`,
+                ...(senderAvatarUrl ? { imageUrl: senderAvatarUrl } : {}),
                 data: {
                     type: 'shared_memory',
                     link: `/shared/view?id=${bundle.newBundle.id}`,
                     bundleId: bundle.newBundle.id,
+                    ...(senderAvatarUrl ? { senderAvatarUrl } : {}),
                     ...(notifIdByUser.get(recipientId) ? { notificationId: notifIdByUser.get(recipientId)! } : {}),
                 },
             }).catch((err) => console.error('Push notification failed:', err));
@@ -458,10 +465,12 @@ export const createBundle = async (req: Request, res: Response) => {
             pushService.sendPushNotification(recipientId, {
                 title: 'New share request',
                 body: `${senderName} wants to share ${formatCountLabel(entryCount)} with you`,
+                ...(senderAvatarUrl ? { imageUrl: senderAvatarUrl } : {}),
                 data: {
                     type: 'memory_share_request',
                     link: '/timeline?view=shared',
                     bundleId: bundle.newBundle.id,
+                    ...(senderAvatarUrl ? { senderAvatarUrl } : {}),
                     ...(notifIdByUser.get(recipientId) ? { notificationId: notifIdByUser.get(recipientId)! } : {}),
                 },
             }).catch((err) => console.error('Push notification failed:', err));

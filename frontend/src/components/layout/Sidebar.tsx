@@ -18,6 +18,7 @@ import {
     isNavItemActive,
     shouldHideGlobalNav,
 } from './nav-config';
+import ThemeMoodToggle from '@/components/layout/ThemeMoodToggle';
 
 export default function Sidebar() {
     const pathname = usePathname();
@@ -134,6 +135,10 @@ export default function Sidebar() {
                             <div className="type-label-md truncate text-strong">{user?.name || 'User'}</div>
                             <div className="type-micro truncate text-muted">{user?.email}</div>
                         </div>
+                    </div>
+
+                    <div className="mt-3">
+                        <ThemeMoodToggle compact />
                     </div>
 
                     <button

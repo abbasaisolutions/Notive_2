@@ -4,7 +4,8 @@ import React, { memo, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { FiShare2 } from 'react-icons/fi';
-import { getMoodColor, getMoodEmoji, normalizeMood } from '@/constants/moods';
+import { getMoodColor, getMoodEmoji, getMoodScore, normalizeMood } from '@/constants/moods';
+import { TooltipHint } from '@/components/ui';
 import { appendReturnTo } from '@/utils/navigation';
 import { hapticTap } from '@/services/haptics.service';
 import { audioFeedback } from '@/services/audio-feedback.service';
@@ -70,6 +71,12 @@ const REACTION_EMOJI: Record<string, string> = {
     understood: '💛',
 };
 
+const REACTION_LABEL: Record<string, string> = {
+    grateful: 'Grateful',
+    inspired: 'Inspired',
+    understood: 'Understood',
+};
+
 const DAY_PART_PILL_STYLE: Record<string, string> = {
     'Morning':    'bg-[rgba(234,216,189,0.35)] text-[rgba(163,125,71,0.85)]',
     'Afternoon':  'bg-[rgba(138,154,111,0.12)] text-[rgba(110,124,90,0.85)]',
@@ -91,6 +98,23 @@ const formatTime = (value: string) =>
         minute: '2-digit',
     });
 
+const formatRelativeAge = (value: string) => {
+    const diffMs = Date.now() - new Date(value).getTime();
+    if (diffMs < 0) return 'Today';
+    const minutes = Math.floor(diffMs / 60_000);
+    if (minutes < 60) return minutes < 1 ? 'Just now' : `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    const weeks = Math.floor(days / 7);
+    if (weeks < 8) return `${weeks}w ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months}mo ago`;
+    const years = Math.floor(days / 365);
+    return `${years}y ago`;
+};
+
 const getDayPart = (value: string): string => {
     const hour = new Date(value).getHours();
     if (hour >= 5 && hour <= 11) return 'Morning';
@@ -98,6 +122,61 @@ const getDayPart = (value: string): string => {
     if (hour >= 17 && hour <= 20) return 'Evening';
     if (hour >= 21 && hour <= 23) return 'Night';
     return 'Late Night';
+};
+
+const getMoodConfidenceInfo = (score: number) => {
+    if (score <= 2) {
+        return {
+            label: 'Heavy',
+            shortLabel: 'Heavy',
+            description: 'A strong heavier mood comes through here.',
+        };
+    }
+    if (score <= 4) {
+        return {
+            label: 'Soft',
+            shortLabel: 'Soft',
+            description: 'A heavier mood is present, but it reads gently.',
+        };
+    }
+    if (score <= 6) {
+        return {
+            label: 'Mixed',
+            shortLabel: 'Mixed',
+            description: 'This memory sits near the middle of the mood scale.',
+        };
+    }
+    if (score <= 8) {
+        return {
+            label: 'Clear',
+            shortLabel: 'Clear',
+            description: 'A positive mood comes through clearly.',
+        };
+    }
+    return {
+        label: 'Strong',
+        shortLabel: 'Strong',
+        description: 'A very strong positive mood comes through here.',
+    };
+};
+
+const PILL_TYPE_LABEL: Record<'tag' | 'skill' | 'lesson', string> = {
+    tag: 'Tag',
+    skill: 'Skill',
+    lesson: 'Lesson',
+};
+
+const formatPillTitle = (pill: { fullLabel: string; type: 'tag' | 'skill' | 'lesson' }) =>
+    `${PILL_TYPE_LABEL[pill.type]}: ${pill.fullLabel}`;
+
+const formatReactionLabel = (reaction: string) => REACTION_LABEL[reaction] || reaction;
+
+const formatReactionSummary = (reaction: { name: string; reaction: string }) => {
+    const label = formatReactionLabel(reaction.reaction);
+    const emoji = REACTION_EMOJI[reaction.reaction] || '';
+    return emoji
+        ? `${emoji} means ${label}. ${reaction.name} reacted ${label.toLowerCase()}.`
+        : `${reaction.name} reacted ${label.toLowerCase()}.`;
 };
 
 const RING_SIZE = 18;
@@ -257,6 +336,7 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
         const dayPart = getDayPart(entry.createdAt);
         const formattedDate = formatDate(entry.createdAt);
         const formattedTime = formatTime(entry.createdAt);
+        const relativeAge = formatRelativeAge(entry.createdAt);
         const wordCount = entry.content ? entry.content.split(/\s+/).filter(Boolean).length : 0;
 
         return {
@@ -270,6 +350,7 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
             dayPart,
             formattedDate,
             formattedTime,
+            relativeAge,
             wordCount,
         };
     }, [entry.mood, entry.tags, entry.skills, entry.lessons, entry.createdAt, entry.content]);
@@ -278,12 +359,14 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
         normalizedMood,
         moodColor,
         moodLabel,
+        allPills,
         visible,
         overflowCount,
         hasPills,
         dayPart,
         formattedDate,
         formattedTime,
+        relativeAge,
         wordCount,
     } = derived;
 
@@ -292,13 +375,35 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
     const depthLevel = entry.depthLevel ?? 0;
     const topEmotions = entry.topEmotions || [];
     const growthRatio = entry.growthRatio;
+    const moodScore = getMoodScore(entry.mood);
+    const moodConfidence = getMoodConfidenceInfo(moodScore);
+    const moodEmoji = getMoodEmoji(normalizedMood);
+    const moodConfidenceTitle = moodLabel
+        ? `Mood signal: ${moodConfidence.label}. ${moodConfidence.description}`
+        : undefined;
+    const moodEmojiTitle = moodLabel || undefined;
+    const hiddenPills = allPills.slice(3);
+    const hiddenPillTitle = hiddenPills.length > 0
+        ? hiddenPills.map(formatPillTitle).join(' ')
+        : undefined;
+    const hiddenReactions = shareStat?.reactions.slice(3) || [];
+    const hiddenReactionTitle = hiddenReactions.length > 0
+        ? hiddenReactions.map(formatReactionSummary).join(' ')
+        : undefined;
+    const storySignalTitle = storySignal
+        ? `Story readiness: ${storySignal.completenessScore}% complete. ${storyStatusLabel[storySignal.status]}.`
+        : undefined;
+    const depthTitle = `Reflection depth: ${entry.depthLabel || DEPTH_LABELS[depthLevel] || 'Seed'}.`;
+    const growthTitle = typeof growthRatio === 'number' && growthRatio > 0
+        ? `Growth signal: ${growthRatio}% of this memory points toward learning, progress, or strength.`
+        : undefined;
 
     const pillClass = (type: 'tag' | 'skill' | 'lesson') => {
         if (type === 'skill')
-            return 'text-[0.6rem] font-semibold text-success bg-success/15 border border-success/35 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[6rem] min-[376px]:max-w-[7rem]';
+            return 'text-[0.6rem] font-semibold text-success bg-success/18 border border-success/45 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[6rem] min-[376px]:max-w-[7rem]';
         if (type === 'lesson')
-            return 'text-[0.6rem] font-semibold text-accent bg-accent/15 border border-accent/35 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[6.75rem] min-[376px]:max-w-[7.75rem]';
-        return 'text-[0.6rem] font-medium text-primary/75 bg-primary/8 border border-primary/20 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[5rem] min-[376px]:max-w-[6rem]';
+            return 'text-[0.6rem] font-semibold text-accent bg-accent/18 border border-accent/45 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[6.75rem] min-[376px]:max-w-[7.75rem]';
+        return 'text-[0.6rem] font-semibold text-primary/85 bg-primary/12 border border-primary/30 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[5rem] min-[376px]:max-w-[6rem]';
     };
 
     const articleClassName = `relative flex flex-col md:flex-row gap-3 md:gap-8 ${isEven ? 'md:flex-row-reverse' : ''}`;
@@ -306,8 +411,17 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
     const body = (
         <>
             <div
-                className="absolute left-5 md:left-1/2 w-3.5 h-3.5 rounded-full -translate-x-1/2 mt-7 md:mt-8 border-2 border-surface-2 z-10"
-                style={{ backgroundColor: moodColor }}
+                className="absolute left-5 md:left-1/2 mt-7 md:mt-8 z-10 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full border border-[rgba(var(--paper-border),0.6)] bg-surface-2 shadow-sm"
+                aria-hidden="true"
+            >
+                <span
+                    className="h-2.5 w-2.5 rounded-full ring-4 ring-[rgba(141,123,105,0.08)]"
+                    style={{ backgroundColor: moodColor }}
+                />
+            </div>
+            <div
+                className={`absolute left-5 top-9 hidden h-px w-5 bg-gradient-to-r from-primary/30 to-transparent md:block ${isEven ? 'md:left-[calc(50%-1.25rem)] md:-translate-x-full md:bg-gradient-to-l' : 'md:left-1/2'}`}
+                aria-hidden="true"
             />
 
             <div className="flex-1 md:w-1/2 pl-11 md:pl-0">
@@ -329,24 +443,60 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
                                 <span className={`hidden min-[376px]:inline whitespace-nowrap rounded-full px-1.5 py-px ${DAY_PART_PILL_STYLE[dayPart] || ''}`}>
                                     {dayPart}
                                 </span>
+                                <span className="hidden min-[430px]:inline text-ink-muted/40" aria-hidden="true">&middot;</span>
+                                <span className="hidden min-[430px]:inline whitespace-nowrap text-ink-muted/75">
+                                    {relativeAge}
+                                </span>
                             </span>
                             <div className="flex items-center gap-1 min-[376px]:gap-1.5 flex-shrink-0">
-                                {storySignal && <StoryRing signal={storySignal} />}
-                                {entry.category === 'PROFESSIONAL' && (
-                                    <span className="text-[0.55rem] min-[376px]:text-[0.6rem] font-semibold text-secondary bg-secondary/15 border border-secondary/35 px-1 min-[376px]:px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                                        Pro
+                                {(storySignal || entry.category === 'PROFESSIONAL') && (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(141,123,105,0.08)] px-1.5 py-1">
+                                        {storySignal && storySignalTitle && (
+                                            <TooltipHint
+                                                content={storySignalTitle}
+                                                screenReaderLabel={storySignalTitle}
+                                                side="bottom"
+                                                align="end"
+                                            >
+                                                <StoryRing signal={storySignal} />
+                                            </TooltipHint>
+                                        )}
+                                        {entry.category === 'PROFESSIONAL' && (
+                                            <span className="text-[0.55rem] min-[376px]:text-[0.6rem] font-semibold text-secondary bg-secondary/15 border border-secondary/35 px-1 min-[376px]:px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                                                Pro
+                                            </span>
+                                        )}
                                     </span>
                                 )}
                                 {moodLabel && (
                                     <span
-                                        className="text-[0.6rem] font-semibold px-1.5 min-[376px]:px-2 py-0.5 rounded-full border flex-shrink-0"
+                                        className="inline-flex flex-shrink-0 items-center overflow-visible rounded-full border text-[0.6rem] font-semibold"
                                         style={{
                                             color: moodColor,
                                             borderColor: `${moodColor}66`,
                                             backgroundColor: `${moodColor}1f`,
                                         }}
                                     >
-                                        {getMoodEmoji(normalizedMood)}
+                                        <TooltipHint
+                                            content={moodEmojiTitle}
+                                            screenReaderLabel={moodEmojiTitle}
+                                            side="bottom"
+                                            align="end"
+                                            className="px-1.5 py-0.5 min-[376px]:px-2"
+                                        >
+                                            <span role="img" aria-label={moodEmojiTitle}>
+                                                {moodEmoji}
+                                            </span>
+                                        </TooltipHint>
+                                        <TooltipHint
+                                            content={moodConfidenceTitle}
+                                            screenReaderLabel={moodConfidenceTitle}
+                                            side="bottom"
+                                            align="end"
+                                            className="hidden border-l border-current/20 px-2 py-0.5 sm:inline-flex"
+                                        >
+                                            <span className="whitespace-nowrap">{moodConfidence.shortLabel}</span>
+                                        </TooltipHint>
                                     </span>
                                 )}
                             </div>
@@ -368,24 +518,30 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
                         </div>
 
                         {(entry.analysisLine || entry.takeawayLine) && (
-                            <div className="mb-1.5 space-y-0.5">
+                            <div className="mb-1.5 space-y-1 rounded-lg border border-[rgba(141,123,105,0.12)] bg-[rgba(141,123,105,0.045)] px-2 py-1.5">
                                 {entry.analysisLine && (
-                                    <p className="text-[0.65rem] text-ink-muted leading-snug line-clamp-1 flex items-center gap-1 min-w-0">
-                                        <span className="shrink-0 text-[7px] uppercase tracking-[0.14em] font-semibold text-primary/60">Noticed</span>
-                                        <span className="truncate">{entry.analysisLine}</span>
+                                    <p className="flex min-w-0 items-start gap-1.5 text-[0.66rem] leading-snug text-ink-secondary">
+                                        <span className="mt-[0.12rem] shrink-0 rounded-full bg-primary/10 px-1.5 py-px text-[0.5rem] font-bold uppercase tracking-[0.12em] text-primary/75">Noticed</span>
+                                        <span className="line-clamp-2">{entry.analysisLine}</span>
                                     </p>
                                 )}
                                 {entry.takeawayLine && (
-                                    <p className="text-[0.65rem] text-ink-muted leading-snug line-clamp-1 flex items-center gap-1 min-w-0">
-                                        <span className="shrink-0 text-[7px] uppercase tracking-[0.14em] font-semibold text-accent/70">Takeaway</span>
-                                        <span className="truncate">{entry.takeawayLine}</span>
+                                    <p className="flex min-w-0 items-start gap-1.5 text-[0.66rem] leading-snug text-ink-secondary">
+                                        <span className="mt-[0.12rem] shrink-0 rounded-full bg-accent/12 px-1.5 py-px text-[0.5rem] font-bold uppercase tracking-[0.12em] text-accent/80">Try</span>
+                                        <span className="line-clamp-2">{entry.takeawayLine}</span>
                                     </p>
                                 )}
                             </div>
                         )}
 
                         <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-                            <DepthSeed level={depthLevel} />
+                            <TooltipHint
+                                content={depthTitle}
+                                screenReaderLabel={depthTitle}
+                                align="start"
+                            >
+                                <DepthSeed level={depthLevel} />
+                            </TooltipHint>
                             {topEmotions.length > 0 && (
                                 <>
                                     <span className="w-px h-3 bg-[rgba(141,123,105,0.2)]" />
@@ -397,23 +553,46 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
                         {(hasPills || onShareEntry) && (
                             <div className="chip-scroller gap-1 mt-1.5">
                                 {visible.map((pill) => (
-                                    <span key={pill.key} className={pillClass(pill.type)} title={pill.fullLabel}>
-                                        {pill.label}
-                                    </span>
+                                    <TooltipHint
+                                        key={pill.key}
+                                        content={formatPillTitle(pill)}
+                                        screenReaderLabel={formatPillTitle(pill)}
+                                        align="start"
+                                        tooltipClassName="max-w-[12rem]"
+                                    >
+                                        <span className={pillClass(pill.type)}>
+                                            {pill.label}
+                                        </span>
+                                    </TooltipHint>
                                 ))}
-                                {overflowCount > 0 && (
-                                    <span className="text-[0.6rem] text-ink-muted whitespace-nowrap flex-shrink-0">+{overflowCount}</span>
+                                {overflowCount > 0 && hiddenPillTitle && (
+                                    <TooltipHint
+                                        content={hiddenPillTitle}
+                                        screenReaderLabel={hiddenPillTitle}
+                                        align="start"
+                                        tooltipClassName="max-w-[13rem]"
+                                    >
+                                        <span className="text-[0.6rem] text-ink-muted whitespace-nowrap flex-shrink-0 rounded-full bg-[rgba(141,123,105,0.08)] px-1.5 py-0.5">
+                                            +{overflowCount}
+                                        </span>
+                                    </TooltipHint>
                                 )}
                                 {typeof growthRatio === 'number' && growthRatio > 0 && (
-                                    <span
-                                        className="text-[0.6rem] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-0.5"
-                                        style={{ color: 'rgba(138,154,111,0.9)', backgroundColor: 'rgba(138,154,111,0.1)' }}
+                                    <TooltipHint
+                                        content={growthTitle}
+                                        screenReaderLabel={growthTitle}
+                                        align="start"
                                     >
-                                        <svg width="8" height="8" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-                                            <path d="M5 9V4M5 4C5 2.5 3.5 1 2 1M5 4C5 2.5 6.5 1 8 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                                        </svg>
-                                        {growthRatio}%
-                                    </span>
+                                        <span
+                                            className="text-[0.6rem] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-0.5"
+                                            style={{ color: 'rgba(138,154,111,0.9)', backgroundColor: 'rgba(138,154,111,0.1)' }}
+                                        >
+                                            <svg width="8" height="8" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                                                <path d="M5 9V4M5 4C5 2.5 3.5 1 2 1M5 4C5 2.5 6.5 1 8 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                                            </svg>
+                                            {growthRatio}%
+                                        </span>
+                                    </TooltipHint>
                                 )}
                                 {onShareEntry && (
                                     <button
@@ -423,12 +602,11 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
                                             e.stopPropagation();
                                             onShareEntry(entry.id);
                                         }}
-                                        className="ml-auto flex-shrink-0 inline-flex items-center gap-1 rounded-full border border-[rgba(107,143,113,0.24)] bg-[rgba(107,143,113,0.1)] px-2 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(107,143,113)] transition-colors hover:bg-[rgba(107,143,113,0.18)]"
-                                        title="Share this memory"
+                                        className="ml-auto inline-flex h-8 w-8 flex-shrink-0 items-center justify-center gap-1 rounded-full border border-[rgba(107,143,113,0.22)] bg-[rgba(107,143,113,0.08)] text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(107,143,113)] transition-colors hover:bg-[rgba(107,143,113,0.16)] sm:w-auto sm:px-2.5"
                                         aria-label="Share this memory"
                                     >
                                         <FiShare2 size={11} aria-hidden="true" />
-                                        <span className="whitespace-nowrap">
+                                        <span className="hidden whitespace-nowrap sm:inline">
                                             {shareStat && shareStat.shareCount > 0
                                                 ? `Shared${shareStat.shareCount > 1 ? ` ${shareStat.shareCount}x` : ''}`
                                                 : 'Share'}
@@ -440,16 +618,38 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
 
                         {shareStat && shareStat.reactions.length > 0 && (
                             <div className="flex flex-wrap items-center gap-1 mt-1">
-                                {shareStat.reactions.slice(0, 3).map((r, i) => (
-                                    <span
-                                        key={`${r.name}-${r.reaction}-${i}`}
-                                        className="inline-flex items-center gap-0.5 rounded-full bg-[rgba(107,143,113,0.08)] px-1.5 py-0.5 text-[0.55rem] font-medium text-[rgb(107,143,113)]"
+                                {shareStat.reactions.slice(0, 3).map((r, i) => {
+                                    const reactionEmoji = REACTION_EMOJI[r.reaction] || '';
+                                    const reactionTitle = formatReactionSummary(r);
+
+                                    return (
+                                        <TooltipHint
+                                            key={`${r.name}-${r.reaction}-${i}`}
+                                            content={reactionTitle}
+                                            screenReaderLabel={reactionTitle}
+                                            align="start"
+                                        >
+                                            <span className="inline-flex items-center gap-0.5 rounded-full bg-[rgba(107,143,113,0.08)] px-1.5 py-0.5 text-[0.55rem] font-medium text-[rgb(107,143,113)]">
+                                                {reactionEmoji && (
+                                                    <span role="img" aria-label={`${reactionEmoji} means ${formatReactionLabel(r.reaction)}`}>
+                                                        {reactionEmoji}
+                                                    </span>
+                                                )}
+                                                {r.name}
+                                            </span>
+                                        </TooltipHint>
+                                    );
+                                })}
+                                {shareStat.reactions.length > 3 && hiddenReactionTitle && (
+                                    <TooltipHint
+                                        content={hiddenReactionTitle}
+                                        screenReaderLabel={hiddenReactionTitle}
+                                        align="start"
                                     >
-                                        {REACTION_EMOJI[r.reaction] || ''} {r.name}
-                                    </span>
-                                ))}
-                                {shareStat.reactions.length > 3 && (
-                                    <span className="text-[0.55rem] text-[rgb(160,160,160)]">+{shareStat.reactions.length - 3}</span>
+                                        <span className="rounded-full bg-[rgba(141,123,105,0.08)] px-1.5 py-0.5 text-[0.55rem] font-medium text-[rgb(160,160,160)]">
+                                            +{shareStat.reactions.length - 3}
+                                        </span>
+                                    </TooltipHint>
                                 )}
                             </div>
                         )}

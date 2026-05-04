@@ -3,6 +3,7 @@
 import { type ReactNode } from 'react';
 import { MIN_CHARACTERS_FOR_ENTRY_SAVE, MIN_WORDS_FOR_ENTRY_INSIGHTS } from '@/constants/entry-requirements';
 import { FiAlertTriangle, FiArrowLeft, FiCloud, FiMic, FiRefreshCw, FiZap } from 'react-icons/fi';
+import SaveConfidencePill from '@/components/entry/SaveConfidencePill';
 
 type EntryTopBarProps = {
     onBack: () => void;
@@ -52,11 +53,6 @@ export default function EntryTopBar({
     saveLabel = 'Save',
     saveHint = null,
 }: EntryTopBarProps) {
-    const saveStatus = isSaving
-        ? 'Saving'
-            : lastSaved
-                ? `Saved ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                : 'Draft';
     const studioLabel = isWhisperMode ? 'Whisper mode' : isQuickMode ? 'New note' : 'Writing page';
     const studioPrompt = isWhisperMode
         ? 'Keep it gentle. The first honest line is enough.'
@@ -142,10 +138,7 @@ export default function EntryTopBar({
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">
-                        <div className="flex items-center gap-1.5 workspace-pill rounded-full px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.1em] text-ink-secondary">
-                            <span className={`h-1.5 w-1.5 rounded-full ${isSaving ? 'bg-ink-secondary/60 animate-pulse' : lastSaved ? 'bg-ink-secondary' : 'bg-ink-muted/50'}`} />
-                            <span>{saveStatus}</span>
-                        </div>
+                        <SaveConfidencePill isSaving={isSaving} lastSaved={lastSaved} pendingSync={pendingSync} />
 
                         {onOpenFullStudio && isQuickMode && (
                             <button

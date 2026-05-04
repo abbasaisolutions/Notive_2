@@ -14,6 +14,7 @@ import type { ShareableEntry } from '@/components/share/ShareMemorySheet';
 import type { NotiveInsight } from '@/components/timeline/NotiveNoticedPanel';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { TagPill } from '@/components/ui/surface';
+import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import { ErrorState, EmptyState, Spinner } from '@/components/ui';
 import useApi from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
@@ -179,16 +180,16 @@ const EMPTY_TIMELINE_VARIANTS = [
 ] as const;
 const EMPTY_SHARED_VARIANTS = [
     {
-        title: 'Nothing shared yet',
-        subtitle: "When someone shares memories with you, they'll land here.",
+        title: 'No shared memories yet',
+        subtitle: "When someone sends a memory your way, it will land here with room to respond.",
     },
     {
-        title: 'Your shared shelf is quiet right now',
-        subtitle: 'Accepted requests, memory bundles, and reactions will show up here first.',
+        title: 'Your shared shelf is quiet',
+        subtitle: 'Memory bundles, accepted requests, and replies will gather here once sharing starts.',
     },
     {
         title: 'No shared moments waiting',
-        subtitle: 'Once a friend sends a memory bundle your way, this page wakes up.',
+        subtitle: 'Invite a memory into the conversation when you are ready.',
     },
 ] as const;
 const SOURCE_FILTER_OPTIONS: Array<{ key: SourceFilter; label: string }> = [
@@ -495,8 +496,15 @@ function SharedWithMeList({ bundles, loading, onRefresh, allowEmptyState = true 
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-16">
-                <Spinner size="md" />
+            <div className="workspace-soft-panel density-feature mx-auto my-4 max-w-md text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[1.2rem] bg-[rgba(138,154,111,0.1)] text-[rgb(107,143,113)]">
+                    <NotebookDoodle name="reach-someone" accent="sage" className="h-8 w-8" />
+                </div>
+                <p className="mt-3 text-sm font-semibold text-strong">Opening Shared...</p>
+                <p className="mt-1 text-xs leading-5 text-ink-secondary">Checking for requests, replies, and memory bundles.</p>
+                <div className="mt-4 flex justify-center">
+                    <Spinner size="md" />
+                </div>
             </div>
         );
     }

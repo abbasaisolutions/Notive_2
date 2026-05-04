@@ -30,39 +30,7 @@ import {
     LIFE_BALANCE_RING_CIRCUMFERENCE,
 } from '@/components/dashboard/life-balance';
 import { getMoodEmoji, getMoodScore, normalizeMood } from '@/constants/moods';
-import DashboardTier1Simple from '@/components/dashboard/DashboardTier1Simple';
-
-const DASHBOARD_MODE_KEY = 'notive_dashboard_mode';
-
-function DashboardModeSwitch({
-    mode,
-    onModeChange,
-}: {
-    mode: 'calm' | 'deep';
-    onModeChange: (mode: 'calm' | 'deep') => void;
-}) {
-    return (
-        <div className="mx-auto mb-3 flex max-w-3xl justify-end px-4">
-            <div className="inline-flex rounded-full border border-[rgba(var(--paper-border),0.42)] bg-[rgba(255,255,255,0.54)] p-1 text-xs shadow-sm">
-                {(['calm', 'deep'] as const).map((item) => (
-                    <button
-                        key={item}
-                        type="button"
-                        aria-pressed={mode === item}
-                        onClick={() => onModeChange(item)}
-                        className={`rounded-full px-3 py-1.5 font-semibold capitalize transition-colors ${
-                            mode === item
-                                ? 'bg-[rgb(var(--paper-sage))] text-white'
-                                : 'text-muted hover:bg-white/70 hover:text-strong'
-                        }`}
-                    >
-                        {item === 'calm' ? 'Calm view' : 'Deep view'}
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
-}
+import { appendReturnTo } from '@/utils/navigation';
 
 type DashboardAction = {
     label: string;
@@ -291,6 +259,24 @@ const TAB_LABELS: Record<DashboardTab, string> = {
     growth: 'Growth',
     patterns: 'Patterns',
 };
+
+const ARRIVAL_ACTIONS = [
+    {
+        label: 'Steady',
+        doodle: 'sprout' as const,
+        prompt: 'I am arriving steady today because...',
+    },
+    {
+        label: 'Heavy',
+        doodle: 'moon' as const,
+        prompt: 'What feels heavy today is...',
+    },
+    {
+        label: 'Ready',
+        doodle: 'star' as const,
+        prompt: 'One thing I am ready to notice today is...',
+    },
+] as const;
 
 const DAY_LABELS = [
     { short: 'Sun', full: 'Sunday' },
@@ -611,30 +597,7 @@ const getWritingEnergy = (entries: DashboardNotebookViewProps['entries']): {
 };
 
 export default function DashboardNotebookView(props: DashboardNotebookViewProps) {
-    const { showCalmerLayout = false, ...rest } = props;
-    const [preferredMode, setPreferredMode] = useState<'calm' | 'deep'>(() => showCalmerLayout ? 'calm' : 'deep');
-
-    useEffect(() => {
-        try {
-            const stored = window.localStorage.getItem(DASHBOARD_MODE_KEY);
-            if (stored === 'calm' || stored === 'deep') {
-                setPreferredMode(stored);
-            } else {
-                setPreferredMode(showCalmerLayout ? 'calm' : 'deep');
-            }
-        } catch {
-            setPreferredMode(showCalmerLayout ? 'calm' : 'deep');
-        }
-    }, [showCalmerLayout]);
-
-    const handleModeChange = (mode: 'calm' | 'deep') => {
-        setPreferredMode(mode);
-        try {
-            window.localStorage.setItem(DASHBOARD_MODE_KEY, mode);
-        } catch {
-            // Local preference is optional.
-        }
-    };
+    const rest = props;
 
     const homeTakeaway = buildDashboardHomeTakeaway({
         entries: rest.entries,
@@ -653,34 +616,8 @@ export default function DashboardNotebookView(props: DashboardNotebookViewProps)
         timelineHref: rest.timelineHref,
         guideHref: rest.guideHref,
     });
-    
-    if (preferredMode === 'calm') {
-        return (
-            <>
-                <DashboardModeSwitch mode={preferredMode} onModeChange={handleModeChange} />
-                <DashboardTier1Simple
-                    firstName={rest.firstName}
-                    todayLabel={rest.todayLabel}
-                    entries={rest.entries}
-                    focusCard={rest.focusCard}
-                    heroInsight={rest.heroInsight}
-                    dashboardInsights={rest.dashboardInsights}
-                    hasCheckedInToday={rest.hasCheckedInToday}
-                    todayCheckInMood={rest.todayCheckInMood}
-                    onDailyCheckIn={rest.onDailyCheckIn}
-                    homeTakeaway={homeTakeaway}
-                    onViewFullDashboard={() => handleModeChange('deep')}
-                />
-            </>
-        );
-    }
 
-    return (
-        <>
-            <DashboardModeSwitch mode={preferredMode} onModeChange={handleModeChange} />
-            <DashboardNotebookViewFull {...rest} homeTakeaway={homeTakeaway} />
-        </>
-    );
+    return <DashboardNotebookViewFull {...rest} homeTakeaway={homeTakeaway} />;
 }
 
 function DashboardNotebookViewFull({
@@ -751,6 +688,16 @@ function DashboardNotebookViewFull({
         [activityHeatmap]
     );
     const periodDelta = useMemo(() => buildPeriodDelta(entries), [entries]);
+    const arrivalActions = useMemo(
+        () => ARRIVAL_ACTIONS.map((action) => ({
+            ...action,
+            href: appendReturnTo(
+                `/entry/new?mode=quick&source=dashboard_arrival&prompt=${encodeURIComponent(action.prompt)}`,
+                _dashboardReturnTo,
+            ),
+        })),
+        [_dashboardReturnTo],
+    );
     const latestEntry = entries[0] || null;
     const resurfacedMoment = resurfacedMoments[0] || null;
     const returningThemes = themeClusters.filter((cluster) => cluster.entryCount >= 2).length;
@@ -2275,7 +2222,7 @@ function DashboardNotebookViewFull({
                         ZONE 1 — HERO  (above the fold, no scroll)
                         Tight padding on mobile so hero + capture + glance fit in viewport
                     ═══════════════════════════════════════════════ */}
-                    <Surface className="app-paper !p-4 md:!p-6">
+                    <Surface className="app-paper density-feature !p-4 md:!p-6">
                         <div className="space-y-3 md:space-y-5">
                             <div className="flex items-start gap-3">
                                 {/* Avatar — fixed circle, never shrinks */}
@@ -2323,6 +2270,31 @@ function DashboardNotebookViewFull({
                                             )}
                                         </div>
                                     )}
+                                </div>
+                            </div>
+
+                            <div className="workspace-soft-panel density-compact rounded-[1.25rem]">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                                            Today
+                                        </p>
+                                        <p className="mt-0.5 truncate text-sm font-semibold text-strong">
+                                            How are you arriving?
+                                        </p>
+                                    </div>
+                                    <div className="grid shrink-0 grid-cols-3 gap-1.5">
+                                        {arrivalActions.map((action) => (
+                                            <Link
+                                                key={action.label}
+                                                href={action.href}
+                                                className="flex h-12 w-14 flex-col items-center justify-center gap-0.5 rounded-2xl border border-[rgba(var(--paper-border),0.16)] bg-white/45 text-[0.65rem] font-semibold text-soft transition-colors hover:bg-white/70 hover:text-strong"
+                                            >
+                                                <NotebookDoodle name={action.doodle} accent="sage" className="h-4 w-4" />
+                                                {action.label}
+                                            </Link>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 

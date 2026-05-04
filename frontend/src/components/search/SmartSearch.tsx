@@ -178,6 +178,19 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
         });
     };
 
+    const buildPreview = (result: SearchResult) => {
+        const clean = result.content.replace(/\s+/g, ' ').trim();
+        const terms = extractQueryTerms(query);
+        const lower = clean.toLowerCase();
+        const firstMatch = terms
+            .map((term) => lower.indexOf(term.toLowerCase()))
+            .filter((index) => index >= 0)
+            .sort((a, b) => a - b)[0];
+        const start = typeof firstMatch === 'number' ? Math.max(0, firstMatch - 48) : 0;
+        const preview = clean.slice(start, start + 170);
+        return `${start > 0 ? '...' : ''}${preview}${start + 170 < clean.length ? '...' : ''}`;
+    };
+
     return (
         <div className="relative w-full max-w-2xl">
             {/* Search Input */}
@@ -189,18 +202,18 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
                     onFocus={() => query && setShowResults(true)}
                     autoFocus={autoFocus}
                     placeholder="Ask your memories in plain language..."
-                    className="workspace-input w-full px-5 py-4 pl-14 pr-14 rounded-2xl placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                    className="workspace-input w-full rounded-2xl px-4 py-3 pl-12 pr-28 placeholder-ink-muted transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50 sm:px-5 sm:py-4 sm:pl-14 sm:pr-32"
                 />
 
                 {/* Search Icon */}
                 <FiSearch
-                    className="absolute left-5 top-1/2 -translate-y-1/2 text-ink-secondary"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-secondary sm:left-5"
                     size={20}
                     aria-hidden="true"
                 />
 
                 {/* Loading / Clear */}
-                <div className="absolute right-5 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1.5 sm:right-5 sm:gap-2">
                     {isSearching ? (
                         <Spinner size="sm" />
                     ) : query ? (
@@ -223,11 +236,12 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
                         className={`relative flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
                             filterCount > 0
                                 ? 'border-primary/40 bg-primary/10 text-primary'
-                                : 'border-white/10 text-ink-secondary hover:bg-white/5'
+                                : 'border-[rgba(var(--paper-border),0.35)] text-ink-secondary hover:bg-white/50'
                         }`}
                     >
                         <FiFilter size={13} aria-hidden="true" />
-                        {filterCount > 0 ? filterCount : 'Filter'}
+                        <span className="hidden sm:inline">{filterCount > 0 ? filterCount : 'Filter'}</span>
+                        <span className="sm:hidden">{filterCount > 0 ? filterCount : ''}</span>
                     </button>
                 </div>
             </div>
@@ -252,7 +266,7 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
 
             {/* Filter panel */}
             {filtersOpen && (
-                <div className="mt-2 rounded-2xl border border-[rgba(var(--paper-border),0.7)] bg-[rgba(255,255,255,0.5)] p-4 backdrop-blur">
+                <div className="mt-2 max-h-[min(68vh,34rem)] overflow-y-auto rounded-2xl border border-[rgba(var(--paper-border),0.7)] bg-[rgba(255,255,255,0.72)] p-3 backdrop-blur sm:p-4">
                     <div className="flex items-center justify-between mb-3">
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">Filters</p>
                         {filterCount > 0 && (
@@ -312,7 +326,7 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
                                 })}
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <label className="block">
                                 <span className="block text-[0.68rem] font-medium uppercase tracking-[0.1em] text-ink-muted">From</span>
                                 <input
@@ -338,7 +352,7 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
 
             {/* Search Results Dropdown */}
             {showResults && results.length > 0 && (
-                <div className="absolute top-full mt-2 w-full workspace-panel rounded-2xl p-4 z-50 max-h-[500px] overflow-y-auto">
+                <div className="absolute top-full z-50 mt-2 max-h-[min(62vh,31rem)] w-full overflow-y-auto rounded-2xl p-3 workspace-panel sm:p-4">
                     <div className="flex items-center justify-between mb-4 px-2">
                         <span className="text-sm text-ink-secondary">
                             Found {results.length} {results.length === 1 ? 'entry' : 'entries'}
@@ -358,49 +372,30 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
                                 key={result.id}
                                 href={`/entry/view?id=${result.id}`}
                                 onClick={() => { setShowResults(false); onResultClick?.(); }}
-                                className="block p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all group"
+                                className="group block rounded-[1.1rem] border border-[rgba(var(--paper-border),0.16)] bg-white/45 p-3 transition-all hover:bg-white/65 sm:p-4"
                             >
                                 <div className="flex items-start gap-3">
-                                    {/* Mood Indicator */}
-                                    {result.mood && (
-                                        <span className="text-2xl flex-shrink-0">
-                                            {getMoodEmoji(result.mood)}
-                                        </span>
-                                    )}
+                                    <span className="workspace-icon-badge flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl text-lg">
+                                        {result.mood ? getMoodEmoji(result.mood) : <FiSearch size={16} aria-hidden="true" />}
+                                    </span>
 
-                                    <div className="flex-1 min-w-0">
-                                        {/* Title */}
-                                        {result.title && (
-                                            <h4
-                                                className="font-bold workspace-heading mb-1 group-hover:text-primary transition-colors"
-                                            >
-                                                {highlightText(result.title, query)}
-                                            </h4>
-                                        )}
-
-                                        {/* Content Preview */}
-                                        <p
-                                            className="text-sm text-ink-secondary line-clamp-2"
-                                        >
-                                            {highlightText(
-                                                result.content.substring(0, 150) + '...',
-                                                query
-                                            )}
-                                        </p>
-
-                                        {/* Metadata */}
-                                        <div className="flex items-center gap-3 mt-2 text-xs text-ink-muted">
-                                            <span>{new Date(result.createdAt).toLocaleDateString()}</span>
-                                            {result.relevance && (
-                                                <>
-                                                    <span>•</span>
-                                                    <span>{Math.round(result.relevance * 100)}% relevant</span>
-                                                </>
-                                            )}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="mb-1 flex items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-ink-muted">
+                                            <span>{new Date(result.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                            {result.mood && <span>{result.mood}</span>}
+                                            {result.relevance && <span>{Math.round(result.relevance * 100)}%</span>}
                                         </div>
 
+                                        <h4 className="line-clamp-1 font-bold workspace-heading transition-colors group-hover:text-primary">
+                                            {highlightText(result.title || 'Untitled memory', query)}
+                                        </h4>
+
+                                        <p className="mt-1 line-clamp-2 text-sm leading-6 text-ink-secondary">
+                                            {highlightText(buildPreview(result), query)}
+                                        </p>
+
                                         {((result.matchReasons && result.matchReasons.length > 0) || result.strategy) && (
-                                            <div className="mt-2 flex flex-wrap gap-2">
+                                            <div className="mt-3 flex flex-wrap gap-1.5">
                                                 {result.strategy && (
                                                     <span className="rounded-full border border-white/12 bg-white/[0.04] px-2 py-0.5 text-xs uppercase tracking-[0.12em] text-ink-muted">
                                                         {result.strategy === 'hybrid'
@@ -445,7 +440,7 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
 
             {/* Search Error */}
             {showResults && searchError && !isSearching && (
-                <div className="absolute top-full mt-2 w-full workspace-panel rounded-2xl p-8 z-50 text-center">
+                <div className="absolute top-full z-50 mt-2 w-full rounded-2xl p-6 text-center workspace-panel sm:p-8">
                     <div className="mb-3 inline-flex items-center justify-center rounded-full bg-red-500/10 p-3 text-red-500">
                         <FiAlertTriangle size={24} aria-hidden="true" />
                     </div>
@@ -458,7 +453,7 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
 
             {/* No Results */}
             {showResults && query && !isSearching && !searchError && results.length === 0 && (
-                <div className="absolute top-full mt-2 w-full workspace-panel rounded-2xl p-8 z-50 text-center">
+                <div className="absolute top-full z-50 mt-2 w-full rounded-2xl p-6 text-center workspace-panel sm:p-8">
                     <div className="mb-3 inline-flex items-center justify-center rounded-full bg-white/5 p-3 text-ink-secondary">
                         <FiSearch size={24} aria-hidden="true" />
                     </div>

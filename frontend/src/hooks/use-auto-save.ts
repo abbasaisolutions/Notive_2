@@ -14,6 +14,7 @@ export function useAutoSave<T>({ data, onSave, interval = 2000, enabled = true }
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const lastTrackedSnapshotRef = useRef<string>('');
     const wasEnabledRef = useRef<boolean>(enabled);
+    const hasBaselineRef = useRef<boolean>(false);
 
     // Track if initial load is done to avoid saving empty/initial state immediately
     const [isInitialized, setIsInitialized] = useState(false);
@@ -27,7 +28,9 @@ export function useAutoSave<T>({ data, onSave, interval = 2000, enabled = true }
     }, []);
 
     useEffect(() => {
+        if (hasBaselineRef.current) return;
         lastTrackedSnapshotRef.current = toSnapshot(data);
+        hasBaselineRef.current = true;
         setIsInitialized(true);
     }, [data, toSnapshot]);
 

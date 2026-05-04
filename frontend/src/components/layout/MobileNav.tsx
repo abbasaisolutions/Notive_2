@@ -14,6 +14,7 @@ import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import { openGlobalSearch } from '@/utils/global-search';
 import useHasMounted from '@/hooks/use-has-mounted';
 import UserAvatar from '@/components/ui/UserAvatar';
+import ThemeMoodToggle from '@/components/layout/ThemeMoodToggle';
 import {
     filterNavItemsByRole,
     filterNavSectionsByRole,
@@ -222,32 +223,26 @@ export default function MobileNav() {
                         aria-label="Choose capture method"
                         className="fixed inset-x-4 bottom-28 z-[90] mx-auto max-w-sm rounded-2xl glass-nav p-3 shadow-xl lg:hidden"
                     >
-                        <div className="grid gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                             <button
                                 type="button"
                                 onClick={handleStartTextCapture}
-                                className="type-label-md flex items-center gap-3 rounded-xl border border-primary/25 bg-primary/12 p-3 text-left text-strong transition-colors hover:bg-primary/18"
+                                className="type-label-md flex min-h-[5rem] flex-col items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/12 p-3 text-center text-strong transition-colors hover:bg-primary/18"
                             >
-                                <span className="workspace-icon-badge rounded-xl p-2 text-primary">
-                                    <FiEdit3 size={17} aria-hidden="true" />
+                                <span className="workspace-icon-badge rounded-2xl p-2.5 text-primary">
+                                    <FiEdit3 size={19} aria-hidden="true" />
                                 </span>
-                                <span className="min-w-0">
-                                    <span className="block font-semibold">Write a memory</span>
-                                    <span className="type-micro block text-soft">Quick text capture</span>
-                                </span>
+                                <span className="block font-semibold">Write</span>
                             </button>
                             <button
                                 type="button"
                                 onClick={handleStartVoiceCapture}
-                                className="type-label-md flex items-center gap-3 rounded-xl border border-white/12 bg-white/[0.04] p-3 text-left text-soft transition-colors hover:bg-white/[0.08] hover:text-strong"
+                                className="type-label-md flex min-h-[5rem] flex-col items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/[0.04] p-3 text-center text-soft transition-colors hover:bg-white/[0.08] hover:text-strong"
                             >
-                                <span className="workspace-icon-badge rounded-xl p-2 text-ink-secondary">
-                                    <FiMic size={17} aria-hidden="true" />
+                                <span className="workspace-icon-badge rounded-2xl p-2.5 text-ink-secondary">
+                                    <FiMic size={19} aria-hidden="true" />
                                 </span>
-                                <span className="min-w-0">
-                                    <span className="block font-semibold">Record voice</span>
-                                    <span className="type-micro block text-soft">Save & review transcript</span>
-                                </span>
+                                <span className="block font-semibold">Voice</span>
                             </button>
                         </div>
                     </motion.div>
@@ -302,6 +297,12 @@ export default function MobileNav() {
                                 </div>
                             </div>
                         ))}
+                        <div className="mt-3 border-t border-white/10 pt-3">
+                            <div className="type-overline px-2 pb-2 text-muted">
+                                Mood
+                            </div>
+                            <ThemeMoodToggle compact />
+                        </div>
                         {user && (
                             <div className="mt-3 border-t border-white/10 pt-3">
                                 <div className="type-overline px-2 pb-2 text-muted">

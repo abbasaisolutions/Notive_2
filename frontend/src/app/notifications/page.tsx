@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiBell, FiBellOff, FiCheck, FiClock, FiMoon, FiRefreshCw } from 'react-icons/fi';
+import { FiBell, FiBellOff, FiBookOpen, FiCheck, FiClock, FiMessageCircle, FiMoon, FiRefreshCw, FiShare2, FiStar } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/context/toast-context';
@@ -18,6 +18,7 @@ import {
     resolveDefaultNotificationTimezone,
     type ResolvedNotificationPreferences,
 } from '@/services/notification-preferences.service';
+import UserAvatar from '@/components/ui/UserAvatar';
 
 type InboxNotification = {
     id: string;
@@ -104,6 +105,33 @@ const resolveHref = (notification: InboxNotification): string | null => {
             ? notification.data.route
             : null;
 };
+
+const getNotificationSender = (notification: InboxNotification) => {
+    const avatarUrl = typeof notification.data?.senderAvatarUrl === 'string'
+        ? notification.data.senderAvatarUrl
+        : typeof notification.data?.avatarUrl === 'string'
+            ? notification.data.avatarUrl
+            : null;
+    const name = typeof notification.data?.senderName === 'string'
+        ? notification.data.senderName
+        : null;
+    return { avatarUrl, name };
+};
+
+const getNotificationSignal = (type: string) => {
+    if (type === 'reminder') return { label: 'Reminder', Icon: FiClock, tone: 'amber' as const };
+    if (type === 'shared_memory' || type === 'memory_share_request') return { label: 'Shared', Icon: FiShare2, tone: 'sage' as const };
+    if (type === 'share_reaction' || type === 'shared_memory_response') return { label: 'Reply', Icon: FiMessageCircle, tone: 'apricot' as const };
+    if (type.includes('insight')) return { label: 'Insight', Icon: FiStar, tone: 'sky' as const };
+    return { label: 'Memory', Icon: FiBookOpen, tone: 'sage' as const };
+};
+
+const signalToneClass = {
+    sage: 'border-[rgba(138,154,111,0.24)] bg-[rgba(138,154,111,0.12)] text-[rgb(107,143,113)]',
+    amber: 'border-[rgba(201,168,107,0.28)] bg-[rgba(234,216,189,0.18)] text-[rgb(145,111,56)]',
+    apricot: 'border-[rgba(216,164,139,0.28)] bg-[rgba(240,205,184,0.18)] text-[rgb(153,99,78)]',
+    sky: 'border-[rgba(140,174,187,0.28)] bg-[rgba(191,214,221,0.18)] text-[rgb(82,122,136)]',
+} as const;
 
 const clonePreferences = (value: ResolvedNotificationPreferences): ResolvedNotificationPreferences => ({
     reminders: value.reminders,
@@ -362,29 +390,46 @@ export default function NotificationsPage() {
                         )}
                         {!loading && notifications.map((notification) => {
                             const isRead = Boolean(notification.readAt);
+                            const signal = getNotificationSignal(notification.type);
+                            const SignalIcon = signal.Icon;
+                            const sender = getNotificationSender(notification);
+                            const hasSenderAvatar = Boolean(sender.avatarUrl || sender.name);
                             return (
                                 <button
                                     key={notification.id}
                                     type="button"
                                     onClick={() => void openNotification(notification)}
                                     aria-label={`${isRead ? 'Read' : 'Unread'} notification: ${notification.title}`}
-                                    className={`w-full rounded-xl border px-3 py-2.5 text-left transition-all ${
+                                    className={`density-compact w-full border text-left transition-all ${
                                         isRead
                                             ? 'border-dashed border-[rgba(92,92,92,0.18)] bg-transparent opacity-60 hover:opacity-100 hover:bg-white/60'
                                             : 'border-[rgba(107,143,113,0.3)] bg-[rgba(107,143,113,0.08)] shadow-sm hover:bg-[rgba(107,143,113,0.12)]'
                                     }`}
                                 >
-                                    <div className="flex items-start gap-2.5">
-                                        <span
-                                            aria-hidden="true"
-                                            className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                                                isRead ? 'bg-transparent ring-1 ring-[rgba(92,92,92,0.25)]' : 'bg-[rgb(107,143,113)]'
-                                            }`}
-                                        />
+                                    <div className="flex items-start gap-3">
+                                        <span className="relative mt-0.5 shrink-0">
+                                            {hasSenderAvatar ? (
+                                                <UserAvatar
+                                                    avatarUrl={sender.avatarUrl}
+                                                    name={sender.name || signal.label}
+                                                    size={40}
+                                                    className={isRead ? 'opacity-60 grayscale' : ''}
+                                                />
+                                            ) : (
+                                                <span className={`flex h-10 w-10 items-center justify-center rounded-2xl border ${signalToneClass[signal.tone]} ${isRead ? 'opacity-55 grayscale' : ''}`}>
+                                                    <SignalIcon size={17} aria-hidden="true" />
+                                                </span>
+                                            )}
+                                            {hasSenderAvatar && (
+                                                <span className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-[rgb(var(--paper-bg))] ${signalToneClass[signal.tone]}`}>
+                                                    <SignalIcon size={10} aria-hidden="true" />
+                                                </span>
+                                            )}
+                                        </span>
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2">
                                                 <span className={`type-micro font-semibold uppercase tracking-wide ${isRead ? 'text-muted' : 'text-[rgb(107,143,113)]'}`}>
-                                                    {notification.type.replace(/_/g, ' ')}
+                                                    {signal.label}
                                                 </span>
                                                 <span className="type-micro text-muted">· {formatRelativeTime(notification.createdAt)}</span>
                                             </div>

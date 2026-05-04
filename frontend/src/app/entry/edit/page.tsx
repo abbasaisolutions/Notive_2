@@ -13,6 +13,7 @@ import useApi from '@/hooks/use-api';
 import useContextNavigation from '@/hooks/use-context-navigation';
 import useEntryEdit from '@/hooks/use-entry-edit';
 import MemoryInsightStrip from '@/components/entry/MemoryInsightStrip';
+import SaveConfidencePill from '@/components/entry/SaveConfidencePill';
 import { EntryCategory, LIFE_AREA_OPTIONS, normalizeLifeArea } from '@/constants/life-areas';
 import { ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR } from '@/utils/image-upload';
 import { passthroughImageLoader } from '@/lib/image-loader';
@@ -143,15 +144,12 @@ function EditEntryContent() {
                         <span className="text-sm font-medium">Back</span>
                     </button>
                     <div className="flex items-center gap-3">
-                        <span className="text-xs text-ink-muted">
-                            {isAutoSaving
-                                ? 'Saving...'
-                                : hasUnsavedChanges
-                                    ? 'Unsaved changes'
-                                    : lastSaved
-                                        ? `Saved ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                                        : 'Ready to edit'}
-                        </span>
+                        <SaveConfidencePill
+                            isSaving={isAutoSaving || isSaving}
+                            lastSaved={lastSaved}
+                            hasUnsavedChanges={hasUnsavedChanges}
+                            className="hidden sm:inline-flex"
+                        />
                         <Button onClick={handleDone} isLoading={isSaving}>
                             {hasUnsavedChanges ? 'Save & done' : 'Done'}
                         </Button>
