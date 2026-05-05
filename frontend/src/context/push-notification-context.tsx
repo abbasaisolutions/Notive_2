@@ -143,6 +143,14 @@ const ANDROID_PUSH_CHANNELS = [
         visibility: 1 as const,
         vibration: false,
     },
+    {
+        id: 'notive_story',
+        name: 'Story material',
+        description: 'Useful story threads found in your writing.',
+        importance: 2 as const,
+        visibility: 1 as const,
+        vibration: false,
+    },
 ];
 const DEVICE_TOKENS_API_PATH = '/device/tokens';
 

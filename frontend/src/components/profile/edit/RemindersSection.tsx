@@ -7,6 +7,11 @@ import { useToast } from '@/context/toast-context';
 import { Spinner } from '@/components/ui';
 import DeviceSoundToggle from '@/components/profile/edit/DeviceSoundToggle';
 import CalendarToggle from '@/components/profile/edit/CalendarToggle';
+import { useAuth } from '@/context/auth-context';
+import {
+    extractNotificationPreferences,
+    mergeNotificationPreferencesIntoSignals,
+} from '@/services/notification-preferences.service';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -26,14 +31,15 @@ const DEFAULT_REMINDER: ReminderData = {
 };
 
 const QUIET_MODES = [
-    { id: 'gentle', label: 'Gentle', detail: 'One soft reminder' },
-    { id: 'digest', label: 'Digest', detail: 'Bundle nudges' },
-    { id: 'quiet', label: 'Quiet', detail: 'Pause most nudges' },
+    { id: 'gentle', label: 'Gentle', detail: 'Rare story nudges' },
+    { id: 'balanced', label: 'Balanced', detail: 'Useful updates' },
+    { id: 'active', label: 'Active', detail: 'All enabled types' },
 ] as const;
 
 export default function RemindersSection() {
     const { apiFetch } = useApi();
     const toast = useToast();
+    const { user, syncUser } = useAuth();
     const [reminder, setReminder] = useState<ReminderData>(DEFAULT_REMINDER);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -45,15 +51,6 @@ export default function RemindersSection() {
     const lastGoodReminder = useRef<ReminderData>(DEFAULT_REMINDER);
 
     useEffect(() => {
-        try {
-            const storedMode = window.localStorage.getItem('notive_notification_quietness');
-            if (storedMode === 'gentle' || storedMode === 'digest' || storedMode === 'quiet') {
-                setQuietMode(storedMode);
-            }
-        } catch {
-            // This preference is local-only and optional.
-        }
-
         void (async () => {
             try {
                 const res = await apiFetch('/reminders');
@@ -73,12 +70,31 @@ export default function RemindersSection() {
         })();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const updateQuietMode = (mode: (typeof QUIET_MODES)[number]['id']) => {
+    useEffect(() => {
+        const notificationPreferences = extractNotificationPreferences(user?.profile?.personalizationSignals);
+        setQuietMode(notificationPreferences.quietness);
+    }, [user?.profile?.personalizationSignals]);
+
+    const updateQuietMode = async (mode: (typeof QUIET_MODES)[number]['id']) => {
         setQuietMode(mode);
+        const currentPreferences = extractNotificationPreferences(user?.profile?.personalizationSignals);
         try {
-            window.localStorage.setItem('notive_notification_quietness', mode);
-        } catch {
-            // Local preference is optional.
+            const response = await apiFetch('/user/profile/privacy', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    personalizationSignals: mergeNotificationPreferencesIntoSignals(
+                        user?.profile?.personalizationSignals,
+                        { ...currentPreferences, quietness: mode, updatedAt: new Date().toISOString() }
+                    ),
+                }),
+            });
+            const data = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(data?.message || 'Couldn’t save notification quietness.');
+            if (data?.user) syncUser(data.user);
+        } catch (error: any) {
+            setQuietMode(currentPreferences.quietness);
+            toast.error(error?.message || 'Couldn’t save notification quietness.');
         }
     };
 
@@ -241,7 +257,7 @@ export default function RemindersSection() {
                     <div className="rounded-2xl border border-[rgba(var(--paper-border),0.38)] bg-[rgba(255,255,255,0.3)] p-3">
                         <div className="flex items-center justify-between gap-3">
                             <p className="type-overline text-muted">Notification quietness</p>
-                            <span className="text-[0.68rem] font-semibold text-muted">Local preference</span>
+                            <span className="text-[0.68rem] font-semibold text-muted">All devices</span>
                         </div>
                         <div className="mt-2 grid grid-cols-3 gap-1.5">
                             {QUIET_MODES.map((mode) => (
@@ -249,7 +265,7 @@ export default function RemindersSection() {
                                     key={mode.id}
                                     type="button"
                                     aria-pressed={quietMode === mode.id}
-                                    onClick={() => updateQuietMode(mode.id)}
+                                    onClick={() => void updateQuietMode(mode.id)}
                                     className={`rounded-xl px-2 py-2 text-left transition-colors ${
                                         quietMode === mode.id
                                             ? 'bg-primary/12 text-primary'

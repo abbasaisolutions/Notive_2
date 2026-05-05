@@ -345,8 +345,8 @@ export default function MobileNav() {
                         openGlobalSearch();
                     }}
                     aria-label="Search memories"
-                    className="fixed left-5 z-50 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl border border-white/12 bg-[rgba(255,255,255,0.78)] text-ink-secondary shadow-lg backdrop-blur-xl transition-colors hover:text-strong lg:hidden"
-                    style={{ bottom: 'calc(var(--app-bottom-clearance, 88px) + 0.75rem)' }}
+                    className="fixed left-4 z-50 inline-flex min-h-[42px] min-w-[42px] items-center justify-center rounded-2xl border border-white/12 bg-[rgba(255,255,255,0.78)] text-ink-secondary shadow-lg backdrop-blur-xl transition-colors hover:text-strong lg:hidden"
+                    style={{ bottom: 'calc(var(--app-bottom-clearance, 82px) + 0.55rem)' }}
                 >
                     <FiSearch size={20} aria-hidden="true" />
                 </button>
@@ -355,11 +355,11 @@ export default function MobileNav() {
             <nav
                 ref={navRef}
                 data-zen-fade
-                className="fixed left-3 right-3 z-50 lg:hidden"
-                style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+                className="fixed left-2.5 right-2.5 z-50 lg:hidden"
+                style={{ bottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
                 aria-label="Mobile navigation"
             >
-                <div className="glass-nav relative flex items-center justify-around rounded-[2.2rem] px-3 py-2.5 shadow-2xl">
+                <div className="glass-nav relative flex items-center justify-around rounded-[2rem] px-2.5 py-2 shadow-2xl">
                     <div className="absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-secondary/10 pointer-events-none" />
 
                     {mainNavItems.map((item) => {
@@ -367,7 +367,7 @@ export default function MobileNav() {
 
                         if (item.isMain) {
                             return (
-                                <div key={item.href} className="relative z-10 mx-1.5 flex flex-col items-center">
+                                <div key={item.href} className="relative z-10 mx-1 flex flex-col items-center">
                                     <motion.button
                                         type="button"
                                         onClick={handleCaptureTap}
@@ -375,14 +375,14 @@ export default function MobileNav() {
                                         aria-expanded={isCaptureOpen}
                                         aria-controls="mobile-capture-drawer"
                                         aria-label="Open capture options"
-                                        className="capture-fab relative flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-[1.7rem]"
+                                        className="capture-fab relative flex h-[3.85rem] w-[3.85rem] items-center justify-center rounded-[1.55rem]"
                                     >
                                         {/* Multi-layer background for depth */}
                                         <div className="absolute inset-0 rounded-[inherit] bg-gradient-to-br from-[#A3B87F] via-[#8A9A6F] to-[#6B7D52] shadow-[0_8px_28px_rgba(107,125,82,0.45),inset_0_1px_1px_rgba(255,255,255,0.25)]" />
                                         {/* Glass highlight on top-left */}
                                         <div className="absolute inset-0 rounded-[inherit] bg-gradient-to-br from-white/30 via-transparent to-transparent opacity-80" />
                                         {/* Subtle inner ring */}
-                                        <div className="absolute inset-[3px] rounded-[1.4rem] border border-white/15" />
+                                        <div className="absolute inset-[3px] rounded-[1.28rem] border border-white/15" />
                                         {/* Breathing glow ring */}
                                         {!prefersReducedMotion && (
                                             <motion.div

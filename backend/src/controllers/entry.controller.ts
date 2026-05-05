@@ -13,13 +13,10 @@ import { buildEntryStorySignal, deriveExperienceEvidence, OpportunityEntry } fro
 import studentActionService from '../services/student-action.service';
 import guidedReflectionService from '../services/guided-reflection.service';
 import moodForecastService from '../services/mood-forecast.service';
-import { PushNotificationService } from '../services/push-notification.service';
-import {
-    shouldCreateNotificationForType,
-    shouldSendPushForType,
-} from '../services/notification-preferences.service';
+import NotificationOutboxService from '../services/notification-outbox.service';
+import { shouldCreateNotificationForType } from '../services/notification-preferences.service';
 
-const pushService = new PushNotificationService(prisma);
+const notificationOutboxService = new NotificationOutboxService(prisma);
 import {
     buildEntryListWhere,
     filterEntriesByTemporalContext,
@@ -684,34 +681,7 @@ export const createEntry = async (req: Request, res: Response) => {
                     || entry.content.replace(/<[^>]*>/g, '').slice(0, 40).trim()
                     || 'your latest entry';
 
-                const notification = await prisma.inAppNotification.create({
-                    data: {
-                        userId,
-                        type: 'portfolio_evidence',
-                        title: 'New story found in your writing',
-                        body: `Notive extracted a story from "${titleSnippet}".`,
-                        data: {
-                            entryId: entry.id,
-                            link: `/portfolio?highlight=${entry.id}`,
-                        },
-                    },
-                    select: { id: true },
-                });
-
-                if (shouldSendPushForType(signals, 'portfolio_evidence')) {
-                    // Fire-and-forget — no reason to hold the setImmediate open
-                    // for the push round-trip; errors already swallowed.
-                    void pushService.sendPushNotification(userId, {
-                        title: 'New story found in your writing',
-                        body: `Notive extracted a story from "${titleSnippet}".`,
-                        data: {
-                            type: 'portfolio_evidence',
-                            entryId: entry.id,
-                            link: `/portfolio?highlight=${entry.id}`,
-                            notificationId: notification.id,
-                        },
-                    }).catch(() => null);
-                }
+                await notificationOutboxService.enqueueStoryDiscovery(userId, entry.id, titleSnippet);
             } catch { /* non-critical */ }
         });
 

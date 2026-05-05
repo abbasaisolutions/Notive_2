@@ -150,7 +150,7 @@ function SharedBundleViewContent() {
     const relativeTime = formatRelativeTime(bundle.createdAt);
 
     return (
-        <div className="mx-auto max-w-2xl px-4 py-6">
+        <div className="mx-auto max-w-2xl px-3 py-5 min-[430px]:px-4 min-[430px]:py-6">
             {/* Header */}
             <div className="mb-6 flex items-center gap-3">
                 <Link href="/timeline?view=shared" className="text-[0.78rem] font-medium text-[rgb(107,143,113)] hover:underline">
@@ -160,41 +160,22 @@ function SharedBundleViewContent() {
 
             {/* Sender / viewer info */}
             {isSender ? (
-                <div className="mb-6">
-                    <p className="text-[0.85rem] font-semibold text-[rgb(var(--paper-ink))]">
+                <div className="mb-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[rgb(130,130,130)]">Shared memories</p>
+                    <h1 className="mt-1 font-serif text-2xl font-semibold leading-tight text-[rgb(var(--paper-ink))]">
                         You shared {bundle.items.length} {bundle.items.length === 1 ? 'memory' : 'memories'}
-                    </p>
-                    <p className="mt-0.5 text-[0.7rem] text-[rgb(130,130,130)]">{relativeTime}</p>
-
-                    {/* Shared with list */}
-                    {bundle.recipients && bundle.recipients.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            <span className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[rgb(130,130,130)]">
-                                Shared with
-                            </span>
-                            {bundle.recipients.map((r) => (
-                                <span
-                                    key={r.recipientId}
-                                    className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(92,92,92,0.1)] bg-[rgba(248,244,237,0.5)] px-2.5 py-1 text-[0.7rem] font-medium text-[rgb(var(--paper-ink))]"
-                                >
-                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-[0.55rem] font-bold text-[rgb(107,143,113)]">
-                                        {avatarInitial(r.recipient.name)}
-                                    </span>
-                                    {r.recipient.name || 'Someone'}
-                                </span>
-                            ))}
-                        </div>
-                    )}
+                    </h1>
                 </div>
             ) : (
-                <div className="mb-6 flex items-center gap-3">
+                <div className="mb-4 flex items-center gap-3">
                     <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-sm font-bold text-[rgb(107,143,113)]">
                         {avatarInitial(bundle.sender.name)}
                     </span>
                     <div>
-                        <p className="text-[0.85rem] font-semibold text-[rgb(var(--paper-ink))]">{senderName}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[rgb(130,130,130)]">Shared by</p>
+                        <h1 className="font-serif text-xl font-semibold text-[rgb(var(--paper-ink))]">{senderName}</h1>
                         <p className="text-[0.7rem] text-[rgb(130,130,130)]">
-                            shared {bundle.items.length} {bundle.items.length === 1 ? 'memory' : 'memories'} &middot; {relativeTime}
+                            {bundle.items.length} {bundle.items.length === 1 ? 'memory' : 'memories'}
                         </p>
                     </div>
                 </div>
@@ -216,7 +197,7 @@ function SharedBundleViewContent() {
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.08, duration: 0.3 }}
-                        className="entry-paper-canvas overflow-hidden rounded-2xl border border-[rgba(92,92,92,0.12)] p-5"
+                        className="entry-paper-canvas min-w-0 overflow-hidden rounded-2xl border border-[rgba(92,92,92,0.12)] p-4 min-[430px]:p-5"
                     >
                         {item.snapshotCoverImage && (
                             <div className="relative mb-4 h-36 overflow-hidden rounded-xl">
@@ -242,24 +223,71 @@ function SharedBundleViewContent() {
                         {item.snapshotTitle && (
                             <h3 className="mb-2 font-serif text-[1.05rem] font-semibold leading-snug text-[rgb(var(--paper-ink))]">{item.snapshotTitle}</h3>
                         )}
-                        <p className="whitespace-pre-line text-[0.84rem] leading-7 text-[rgb(var(--paper-ink))]">{item.snapshotContent}</p>
-                        {item.snapshotTags.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-1.5">
-                                {item.snapshotTags.map((tag) => (
-                                    <span key={tag} className="workspace-pill-muted rounded-full px-2 py-0.5 text-[0.65rem]">{tag}</span>
-                                ))}
+                        <p className="whitespace-pre-line break-words text-[0.88rem] leading-7 text-[rgb(var(--paper-ink))]">{item.snapshotContent}</p>
+                        {(item.snapshotTags.length > 0 || item.snapshotMood) && (
+                            <div className="mt-4 border-t border-[rgba(92,92,92,0.08)] pt-3">
+                                <details className="group">
+                                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-[rgb(130,130,130)] [&::-webkit-details-marker]:hidden">
+                                        Memory details
+                                        <span className="text-[rgb(107,143,113)] group-open:hidden">Open</span>
+                                        <span className="hidden text-[rgb(107,143,113)] group-open:inline">Close</span>
+                                    </summary>
+                                    <div className="mt-3 flex flex-wrap gap-1.5">
+                                        {item.snapshotMood && (
+                                            <span className="workspace-pill-muted rounded-full px-2 py-0.5 text-[0.65rem]">{item.snapshotMood}</span>
+                                        )}
+                                        {item.snapshotTags.map((tag) => (
+                                            <span key={tag} className="workspace-pill-muted rounded-full px-2 py-0.5 text-[0.65rem]">{tag}</span>
+                                        ))}
+                                    </div>
+                                </details>
                             </div>
                         )}
                     </motion.div>
                 ))}
             </div>
 
+            <details className="group mt-6 rounded-2xl border border-[rgba(92,92,92,0.1)] bg-[rgba(248,244,237,0.4)] px-4 py-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+                    <span>
+                        <span className="block text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-[rgb(130,130,130)]">Share details</span>
+                        <span className="mt-1 block text-[0.78rem] text-[rgb(var(--paper-ink))]">
+                            {isSender ? `Sent ${relativeTime}` : `Shared ${relativeTime}`}
+                        </span>
+                    </span>
+                    <span className="text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,143,113)]">
+                        <span className="group-open:hidden">Open</span>
+                        <span className="hidden group-open:inline">Close</span>
+                    </span>
+                </summary>
+                {isSender && bundle.recipients && bundle.recipients.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2 border-t border-[rgba(92,92,92,0.08)] pt-4">
+                        <span className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[rgb(130,130,130)]">
+                            Shared with
+                        </span>
+                        {bundle.recipients.map((r) => (
+                            <span
+                                key={r.recipientId}
+                                className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(92,92,92,0.1)] bg-[rgba(248,244,237,0.5)] px-2.5 py-1 text-[0.7rem] font-medium text-[rgb(var(--paper-ink))]"
+                            >
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-[0.55rem] font-bold text-[rgb(107,143,113)]">
+                                    {avatarInitial(r.recipient.name)}
+                                </span>
+                                {r.recipient.name || 'Someone'}
+                            </span>
+                        ))}
+                    </div>
+                )}
+            </details>
+
             {/* Sender: recipient reactions overview */}
             {isSender && bundle.recipients && bundle.recipients.length > 0 && (
-                <div className="mt-8 mb-12">
-                    <p className="mb-4 text-center text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[rgb(130,130,130)]">
+                <details className="group mt-4 mb-12 rounded-2xl border border-[rgba(92,92,92,0.1)] bg-[rgba(248,244,237,0.4)] px-4 py-3">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-[rgb(130,130,130)] [&::-webkit-details-marker]:hidden">
                         Responses
-                    </p>
+                        <span className="text-[rgb(107,143,113)] group-open:hidden">Open</span>
+                        <span className="hidden text-[rgb(107,143,113)] group-open:inline">Close</span>
+                    </summary>
                     <div className="space-y-2">
                         {bundle.recipients.map((r) => {
                             const reactionInfo = r.reaction ? REACTION_MAP[r.reaction] : null;
@@ -267,7 +295,7 @@ function SharedBundleViewContent() {
                             return (
                                 <div
                                     key={r.recipientId}
-                                    className="flex items-center gap-3 rounded-xl border border-[rgba(92,92,92,0.1)] bg-[rgba(248,244,237,0.4)] px-4 py-3"
+                                    className="flex min-w-0 flex-wrap items-center gap-3 rounded-xl border border-[rgba(92,92,92,0.1)] bg-[rgba(248,244,237,0.4)] px-3 py-3 min-[430px]:px-4"
                                 >
                                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(107,143,113,0.14)] text-[0.7rem] font-bold text-[rgb(107,143,113)]">
                                         {avatarInitial(r.recipient.name)}
@@ -292,7 +320,7 @@ function SharedBundleViewContent() {
                             );
                         })}
                     </div>
-                </div>
+                </details>
             )}
 
             {/* Recipient: reaction buttons */}
@@ -301,7 +329,7 @@ function SharedBundleViewContent() {
                     <p className="mb-3 text-center text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[rgb(130,130,130)]">
                         How does this make you feel?
                     </p>
-                    <div className="flex justify-center gap-3">
+                    <div className="flex flex-wrap justify-center gap-2 min-[430px]:gap-3">
                         {REACTIONS.map((r) => {
                             const isSelected = reaction === r.value;
                             return (
@@ -313,7 +341,7 @@ function SharedBundleViewContent() {
                                     whileTap={{ scale: 0.93 }}
                                     animate={isSelected ? { scale: [1, 1.08, 1] } : {}}
                                     transition={{ duration: 0.25 }}
-                                    className={`rounded-full border px-4 py-2 text-[0.78rem] font-medium transition-all duration-200 ${
+                                    className={`min-h-11 rounded-full border px-3.5 py-2 text-[0.78rem] font-medium transition-all duration-200 min-[430px]:px-4 ${
                                         isSelected
                                             ? 'border-[rgba(107,143,113,0.5)] bg-[rgba(107,143,113,0.12)] text-[rgb(107,143,113)] shadow-[0_0_0_2px_rgba(107,143,113,0.1)]'
                                             : 'border-[rgba(92,92,92,0.15)] bg-white/60 text-[rgb(var(--paper-ink))] hover:border-[rgba(107,143,113,0.3)] hover:bg-[rgba(107,143,113,0.04)]'

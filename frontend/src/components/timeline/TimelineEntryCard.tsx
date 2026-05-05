@@ -400,12 +400,20 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
 
     const pillClass = (type: 'tag' | 'skill' | 'lesson') => {
         if (type === 'skill')
-            return 'text-[0.6rem] font-semibold text-success bg-success/18 border border-success/45 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[6rem] min-[376px]:max-w-[7rem]';
+            return 'max-w-[7.5rem] flex-shrink-0 truncate whitespace-nowrap rounded-full border border-success/45 bg-success/18 px-2 py-1 text-[0.68rem] font-semibold text-success min-[376px]:max-w-[8.5rem]';
         if (type === 'lesson')
-            return 'text-[0.6rem] font-semibold text-accent bg-accent/18 border border-accent/45 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[6.75rem] min-[376px]:max-w-[7.75rem]';
-        return 'text-[0.6rem] font-semibold text-primary/85 bg-primary/12 border border-primary/30 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 truncate max-w-[5rem] min-[376px]:max-w-[6rem]';
+            return 'max-w-[8rem] flex-shrink-0 truncate whitespace-nowrap rounded-full border border-accent/45 bg-accent/18 px-2 py-1 text-[0.68rem] font-semibold text-accent min-[376px]:max-w-[9rem]';
+        return 'max-w-[6.75rem] flex-shrink-0 truncate whitespace-nowrap rounded-full border border-primary/30 bg-primary/12 px-2 py-1 text-[0.68rem] font-semibold text-primary/85 min-[376px]:max-w-[7.75rem]';
     };
 
+    const entryHref = appendReturnTo(`/entry/view?id=${entry.id}`, currentReturnTo);
+    const openMemoryFeedback = () => {
+        hapticTap();
+        audioFeedback.pageTurn();
+    };
+    const shareLabel = shareStat && shareStat.shareCount > 0
+        ? `Shared${shareStat.shareCount > 1 ? ` ${shareStat.shareCount}x` : ''}`
+        : 'Share';
     const articleClassName = `relative flex flex-col md:flex-row gap-3 md:gap-8 ${isEven ? 'md:flex-row-reverse' : ''}`;
 
     const body = (
@@ -424,23 +432,19 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
                 aria-hidden="true"
             />
 
-            <div className="flex-1 md:w-1/2 pl-11 md:pl-0">
-                <Link
-                    href={appendReturnTo(`/entry/view?id=${entry.id}`, currentReturnTo)}
-                    onClick={() => { hapticTap(); audioFeedback.pageTurn(); }}
-                    className="block group"
-                >
+            <div className="min-w-0 flex-1 pl-10 min-[376px]:pl-11 md:w-1/2 md:pl-0">
+                <div className="group block">
                     <div
-                        className={`workspace-panel rounded-[1.25rem] p-2.5 min-[376px]:p-3 border-l-[3px] transition-all duration-300 group-active:scale-[0.985] group-active:shadow-[0_14px_32px_rgba(92,92,92,0.12)]${isFocused ? ' timeline-card-focused' : ''}`}
+                        className={`workspace-panel min-w-0 overflow-visible rounded-[1.25rem] border-l-[3px] p-3 transition-all duration-300 min-[376px]:p-3.5 sm:p-4 group-active:scale-[0.985] group-active:shadow-[0_14px_32px_rgba(92,92,92,0.12)]${isFocused ? ' timeline-card-focused' : ''}`}
                         style={{ borderLeftColor: moodColor || 'rgba(141,123,105,0.2)' }}
                     >
-                        <div className="flex items-start justify-between gap-1.5 min-[376px]:gap-2 mb-1">
-                            <span className="text-[0.6rem] min-[376px]:text-[0.65rem] text-ink-muted uppercase tracking-[0.16em] font-semibold inline-flex items-center gap-1 min-w-0 flex-1">
+                        <div className="mb-2 flex items-start justify-between gap-2">
+                            <span className="inline-flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1 text-[0.64rem] font-semibold uppercase tracking-[0.12em] text-ink-muted min-[376px]:text-[0.68rem] sm:tracking-[0.16em]">
                                 <span className="whitespace-nowrap">{formattedDate}</span>
                                 <span className="text-ink-muted/40" aria-hidden="true">&middot;</span>
                                 <span className="whitespace-nowrap">{formattedTime}</span>
-                                <span className="hidden min-[376px]:inline text-ink-muted/40" aria-hidden="true">&middot;</span>
-                                <span className={`hidden min-[376px]:inline whitespace-nowrap rounded-full px-1.5 py-px ${DAY_PART_PILL_STYLE[dayPart] || ''}`}>
+                                <span className="text-ink-muted/40" aria-hidden="true">&middot;</span>
+                                <span className={`whitespace-nowrap rounded-full px-1.5 py-px ${DAY_PART_PILL_STYLE[dayPart] || ''}`}>
                                     {dayPart}
                                 </span>
                                 <span className="hidden min-[430px]:inline text-ink-muted/40" aria-hidden="true">&middot;</span>
@@ -448,7 +452,7 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
                                     {relativeAge}
                                 </span>
                             </span>
-                            <div className="flex items-center gap-1 min-[376px]:gap-1.5 flex-shrink-0">
+                            <div className="flex flex-shrink-0 items-center gap-1 min-[376px]:gap-1.5">
                                 {(storySignal || entry.category === 'PROFESSIONAL') && (
                                     <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(141,123,105,0.08)] px-1.5 py-1">
                                         {storySignal && storySignalTitle && (
@@ -502,39 +506,51 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
                             </div>
                         </div>
 
-                        <h3 className="text-sm font-serif workspace-heading mb-0.5 group-hover:text-primary transition-colors line-clamp-2">
-                            {entry.title || 'Untitled Memory'}
-                        </h3>
+                        <Link
+                            href={entryHref}
+                            onClick={openMemoryFeedback}
+                            className="block rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/35"
+                        >
+                            <h3 className="mb-1 line-clamp-2 font-serif text-[0.98rem] leading-snug text-strong transition-colors group-hover:text-primary min-[376px]:text-[1.03rem] sm:text-[1.08rem]">
+                                {entry.title || 'Untitled Memory'}
+                            </h3>
+                        </Link>
 
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <p className="text-xs text-ink-secondary leading-snug line-clamp-2 flex-1 min-w-0">
-                                {entry.content}
-                            </p>
+                        <div className="mb-2 flex items-start gap-2">
+                            <Link
+                                href={entryHref}
+                                onClick={openMemoryFeedback}
+                                className="min-w-0 flex-1 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+                            >
+                                <p className="line-clamp-3 text-[0.82rem] leading-5 text-ink-secondary min-[376px]:text-[0.86rem] sm:line-clamp-2 sm:text-[0.9rem]">
+                                    {entry.content}
+                                </p>
+                            </Link>
                             {entry.content && (
-                                <span className="shrink-0 text-[0.55rem] font-medium text-ink-muted/70 tabular-nums">
+                                <span className="mt-0.5 shrink-0 text-[0.62rem] font-semibold text-ink-muted/80 tabular-nums">
                                     {wordCount}w
                                 </span>
                             )}
                         </div>
 
                         {(entry.analysisLine || entry.takeawayLine) && (
-                            <div className="mb-1.5 space-y-1 rounded-lg border border-[rgba(141,123,105,0.12)] bg-[rgba(141,123,105,0.045)] px-2 py-1.5">
+                            <div className="mb-2 space-y-1 rounded-lg border border-[rgba(141,123,105,0.14)] bg-[rgba(141,123,105,0.05)] px-2.5 py-2">
                                 {entry.analysisLine && (
-                                    <p className="flex min-w-0 items-start gap-1.5 text-[0.66rem] leading-snug text-ink-secondary">
-                                        <span className="mt-[0.12rem] shrink-0 rounded-full bg-primary/10 px-1.5 py-px text-[0.5rem] font-bold uppercase tracking-[0.12em] text-primary/75">Noticed</span>
+                                    <p className="flex min-w-0 items-start gap-1.5 text-[0.72rem] leading-5 text-ink-secondary min-[376px]:text-[0.74rem]">
+                                        <span className="mt-[0.15rem] shrink-0 rounded-full bg-primary/10 px-1.5 py-px text-[0.54rem] font-bold uppercase tracking-[0.1em] text-primary/85">Noticed</span>
                                         <span className="line-clamp-2">{entry.analysisLine}</span>
                                     </p>
                                 )}
                                 {entry.takeawayLine && (
-                                    <p className="flex min-w-0 items-start gap-1.5 text-[0.66rem] leading-snug text-ink-secondary">
-                                        <span className="mt-[0.12rem] shrink-0 rounded-full bg-accent/12 px-1.5 py-px text-[0.5rem] font-bold uppercase tracking-[0.12em] text-accent/80">Try</span>
+                                    <p className="flex min-w-0 items-start gap-1.5 text-[0.72rem] leading-5 text-ink-secondary min-[376px]:text-[0.74rem]">
+                                        <span className="mt-[0.15rem] shrink-0 rounded-full bg-accent/12 px-1.5 py-px text-[0.54rem] font-bold uppercase tracking-[0.1em] text-accent/85">Try</span>
                                         <span className="line-clamp-2">{entry.takeawayLine}</span>
                                     </p>
                                 )}
                             </div>
                         )}
 
-                        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                        <div className="mb-2 flex flex-wrap items-center gap-1.5">
                             <TooltipHint
                                 content={depthTitle}
                                 screenReaderLabel={depthTitle}
@@ -550,68 +566,74 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
                             )}
                         </div>
 
-                        {(hasPills || onShareEntry) && (
-                            <div className="chip-scroller gap-1 mt-1.5">
-                                {visible.map((pill) => (
-                                    <TooltipHint
-                                        key={pill.key}
-                                        content={formatPillTitle(pill)}
-                                        screenReaderLabel={formatPillTitle(pill)}
-                                        align="start"
-                                        tooltipClassName="max-w-[12rem]"
-                                    >
-                                        <span className={pillClass(pill.type)}>
-                                            {pill.label}
-                                        </span>
-                                    </TooltipHint>
-                                ))}
-                                {overflowCount > 0 && hiddenPillTitle && (
-                                    <TooltipHint
-                                        content={hiddenPillTitle}
-                                        screenReaderLabel={hiddenPillTitle}
-                                        align="start"
-                                        tooltipClassName="max-w-[13rem]"
-                                    >
-                                        <span className="text-[0.6rem] text-ink-muted whitespace-nowrap flex-shrink-0 rounded-full bg-[rgba(141,123,105,0.08)] px-1.5 py-0.5">
-                                            +{overflowCount}
-                                        </span>
-                                    </TooltipHint>
-                                )}
-                                {typeof growthRatio === 'number' && growthRatio > 0 && (
-                                    <TooltipHint
-                                        content={growthTitle}
-                                        screenReaderLabel={growthTitle}
-                                        align="start"
-                                    >
-                                        <span
-                                            className="text-[0.6rem] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-0.5"
-                                            style={{ color: 'rgba(138,154,111,0.9)', backgroundColor: 'rgba(138,154,111,0.1)' }}
+                        {(hasPills || onShareEntry || (typeof growthRatio === 'number' && growthRatio > 0)) && (
+                            <div className="mt-2 flex min-w-0 flex-col gap-2 min-[430px]:flex-row min-[430px]:items-start min-[430px]:justify-between">
+                                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                                    {visible.map((pill) => (
+                                        <TooltipHint
+                                            key={pill.key}
+                                            content={formatPillTitle(pill)}
+                                            screenReaderLabel={formatPillTitle(pill)}
+                                            align="start"
+                                            tooltipClassName="max-w-[12rem]"
                                         >
-                                            <svg width="8" height="8" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-                                                <path d="M5 9V4M5 4C5 2.5 3.5 1 2 1M5 4C5 2.5 6.5 1 8 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                                            </svg>
-                                            {growthRatio}%
-                                        </span>
-                                    </TooltipHint>
-                                )}
+                                            <span className={pillClass(pill.type)}>
+                                                {pill.label}
+                                            </span>
+                                        </TooltipHint>
+                                    ))}
+                                    {overflowCount > 0 && hiddenPillTitle && (
+                                        <TooltipHint
+                                            content={hiddenPillTitle}
+                                            screenReaderLabel={hiddenPillTitle}
+                                            align="start"
+                                            tooltipClassName="max-w-[13rem]"
+                                        >
+                                            <span className="flex-shrink-0 whitespace-nowrap rounded-full bg-[rgba(141,123,105,0.08)] px-2 py-1 text-[0.66rem] font-semibold text-ink-muted">
+                                                +{overflowCount}
+                                            </span>
+                                        </TooltipHint>
+                                    )}
+                                    {typeof growthRatio === 'number' && growthRatio > 0 && (
+                                        <TooltipHint
+                                            content={growthTitle}
+                                            screenReaderLabel={growthTitle}
+                                            align="start"
+                                        >
+                                            <span
+                                                className="inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[0.66rem] font-semibold"
+                                                style={{ color: 'rgba(138,154,111,0.9)', backgroundColor: 'rgba(138,154,111,0.1)' }}
+                                            >
+                                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                                                    <path d="M5 9V4M5 4C5 2.5 3.5 1 2 1M5 4C5 2.5 6.5 1 8 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                                                </svg>
+                                                {growthRatio}%
+                                            </span>
+                                        </TooltipHint>
+                                    )}
+                                </div>
                                 {onShareEntry && (
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            onShareEntry(entry.id);
-                                        }}
-                                        className="ml-auto inline-flex h-8 w-8 flex-shrink-0 items-center justify-center gap-1 rounded-full border border-[rgba(107,143,113,0.22)] bg-[rgba(107,143,113,0.08)] text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(107,143,113)] transition-colors hover:bg-[rgba(107,143,113,0.16)] sm:w-auto sm:px-2.5"
-                                        aria-label="Share this memory"
+                                    <TooltipHint
+                                        content={shareLabel === 'Share' ? 'Share this memory' : `${shareLabel} with people you trust`}
+                                        screenReaderLabel={shareLabel === 'Share' ? 'Share this memory' : `${shareLabel} with people you trust`}
+                                        align="end"
+                                        interactive={false}
+                                        className="self-end min-[430px]:self-start"
                                     >
-                                        <FiShare2 size={11} aria-hidden="true" />
-                                        <span className="hidden whitespace-nowrap sm:inline">
-                                            {shareStat && shareStat.shareCount > 0
-                                                ? `Shared${shareStat.shareCount > 1 ? ` ${shareStat.shareCount}x` : ''}`
-                                                : 'Share'}
-                                        </span>
-                                    </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                onShareEntry(entry.id);
+                                            }}
+                                            className="inline-flex h-11 min-w-11 flex-shrink-0 items-center justify-center gap-1.5 rounded-full border border-[rgba(107,143,113,0.25)] bg-[rgba(107,143,113,0.09)] px-3 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[rgb(107,143,113)] transition-colors hover:bg-[rgba(107,143,113,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(107,143,113,0.35)]"
+                                            aria-label="Share this memory"
+                                        >
+                                            <FiShare2 size={14} aria-hidden="true" />
+                                            <span className="hidden whitespace-nowrap min-[376px]:inline">{shareLabel}</span>
+                                        </button>
+                                    </TooltipHint>
                                 )}
                             </div>
                         )}
@@ -662,7 +684,7 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
                             </div>
                         )}
                     </div>
-                </Link>
+                </div>
             </div>
 
             <div className="hidden md:block flex-1 md:w-1/2" />

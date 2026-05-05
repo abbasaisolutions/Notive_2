@@ -237,46 +237,9 @@ export default function ImportPage() {
                     <SectionHeader
                         kicker={NOTIVE_VOICE.surfaces.memoryInbox}
                         title={NOTIVE_VOICE.imports.title}
-                        description={NOTIVE_VOICE.imports.description}
+                        description="Connect sources and bring older posts into your memory archive."
                         as="h1"
                     />
-
-                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
-                        <div className="workspace-panel rounded-2xl p-4">
-                            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Recommended next step</p>
-                            <h2 className="workspace-heading mt-2 text-xl font-semibold">{nextAction.label}</h2>
-                            <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{nextAction.description}</p>
-                            <Link
-                                href={nextAction.href}
-                                className="workspace-button-primary mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
-                            >
-                                Continue
-                                <FiArrowRight size={14} aria-hidden="true" />
-                            </Link>
-                        </div>
-
-                        <div className="space-y-3">
-                            <div className="workspace-soft-panel rounded-2xl p-4">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Import snapshot</p>
-                                <p className="mt-2 text-sm leading-7 text-[rgb(var(--text-primary))]">{importSnapshot}</p>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    <TagPill tone="primary">
-                                        {connectedCount}/2 connected · {(status?.instagram || 0) + (status?.facebook || 0)} imported
-                                    </TagPill>
-                                    {leadTopic && <TagPill tone="primary">{leadTopic}</TagPill>}
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setShowImportDetails((current) => !current)}
-                                className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
-                                aria-expanded={showImportDetails}
-                            >
-                                {showImportDetails ? 'Hide other import routes' : 'Show other import routes'}
-                                <FiChevronDown size={14} className={`transition-transform ${showImportDetails ? 'rotate-180' : ''}`} aria-hidden="true" />
-                            </button>
-                        </div>
-                    </div>
                 </AppPanel>
 
                 {error && (
@@ -291,8 +254,53 @@ export default function ImportPage() {
                     />
                 )}
 
-                {showImportDetails && (
-                    <>
+                <div id="social-import-panel">
+                    <SocialImportPanel returnToPath="/import" compact />
+                </div>
+
+                <details
+                    className="group rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]"
+                    open={showImportDetails}
+                    onToggle={(event) => setShowImportDetails(event.currentTarget.open)}
+                >
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+                        <span>
+                            <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Import guidance</span>
+                            <span className="mt-1 block text-sm text-ink-secondary">Recommended next step, queue status, and story routes.</span>
+                        </span>
+                        <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+                            <span className="group-open:hidden">Open</span>
+                            <span className="hidden group-open:inline">Close</span>
+                            <FiChevronDown size={14} className="transition-transform group-open:rotate-180" aria-hidden="true" />
+                        </span>
+                    </summary>
+                    <div className="space-y-4 border-t border-[rgba(141,123,105,0.14)] p-4">
+                        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+                            <div className="workspace-panel rounded-2xl p-4">
+                                <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Recommended next step</p>
+                                <h2 className="workspace-heading mt-2 text-xl font-semibold">{nextAction.label}</h2>
+                                <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{nextAction.description}</p>
+                                <Link
+                                    href={nextAction.href}
+                                    className="workspace-button-primary mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
+                                >
+                                    Continue
+                                    <FiArrowRight size={14} aria-hidden="true" />
+                                </Link>
+                            </div>
+
+                            <div className="workspace-soft-panel rounded-2xl p-4">
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Import snapshot</p>
+                                <p className="mt-2 text-sm leading-7 text-[rgb(var(--text-primary))]">{importSnapshot}</p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <TagPill tone="primary">
+                                        {connectedCount}/2 connected · {(status?.instagram || 0) + (status?.facebook || 0)} imported
+                                    </TagPill>
+                                    {leadTopic && <TagPill tone="primary">{leadTopic}</TagPill>}
+                                </div>
+                            </div>
+                        </div>
+
                         <AppPanel className="space-y-4">
                             <SectionHeader
                                 kicker="More Paths"
@@ -406,12 +414,8 @@ export default function ImportPage() {
                                 ))}
                             </ActionBar>
                         </AppPanel>
-                    </>
-                )}
-
-                <div id="social-import-panel">
-                    <SocialImportPanel returnToPath="/import" compact />
-                </div>
+                    </div>
+                </details>
             </div>
         </div>
     );

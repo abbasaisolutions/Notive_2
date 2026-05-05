@@ -116,6 +116,7 @@ model User {
   memoryShareAccessSent      MemoryShareAccess[] @relation("memoryShareAccessSender")
   memoryShareAccessReceived  MemoryShareAccess[] @relation("memoryShareAccessRecipient")
   inAppNotifications  InAppNotification[]
+  notificationOutbox  NotificationOutbox[]
   reminders           Reminder[]
 
   // Friendships & Blocks
@@ -696,6 +697,30 @@ model InAppNotification {
 
   @@index([userId, readAt, createdAt])
   @@index([userId, type, createdAt])
+}
+
+// ── Notification Outbox ─────────────────────────────────────
+
+model NotificationOutbox {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          String    @db.VarChar(64)
+  title         String
+  body          String?   @db.Text
+  data          Json?
+  channel       String    @default("push") @db.VarChar(24)
+  status        String    @default("pending") @db.VarChar(24)
+  scheduledFor  DateTime
+  dedupeKey     String?   @unique @db.VarChar(160)
+  attemptCount  Int       @default(0)
+  lastAttemptAt DateTime?
+  lastError     String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status, scheduledFor])
+  @@index([userId, type, scheduledFor])
 }
 
 // ── Journal Reminders ─────────────────────────────────────

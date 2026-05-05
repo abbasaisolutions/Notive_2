@@ -130,7 +130,7 @@ export default function DashboardTakeawayCard({ takeaway, compact = false }: Das
     const tone = personaTone[takeaway.persona];
     const styles = toneStyles[tone];
     const PersonaIcon = iconForPersona[takeaway.persona];
-    const visibleSignals = takeaway.signals.slice(0, compact ? 2 : 3);
+    const visibleSignals = compact ? [] : takeaway.signals.slice(0, 3);
     const detailSignals = takeaway.signals.slice(0, 4);
     const steps = [
         { label: 'Noticed', value: takeaway.eyebrow },
@@ -140,32 +140,32 @@ export default function DashboardTakeawayCard({ takeaway, compact = false }: Das
 
     return (
         <section
-            className={`relative overflow-hidden rounded-[1.35rem] border ${styles.border} bg-[rgba(255,251,245,0.72)] px-4 py-4 shadow-[0_12px_28px_rgba(92,92,92,0.07)] md:rounded-[1.65rem] md:px-5 md:py-5`}
+            className={`relative overflow-hidden rounded-[1.25rem] border ${styles.border} bg-[rgba(255,251,245,0.72)] ${compact ? 'px-3.5 py-3.5 md:px-5 md:py-5' : 'px-4 py-4 md:px-5 md:py-5'} shadow-[0_12px_28px_rgba(92,92,92,0.07)] md:rounded-[1.65rem]`}
             aria-label="Dashboard takeaway"
         >
             <div className={`absolute inset-y-4 left-0 w-1 rounded-r-full ${styles.dot}`} aria-hidden="true" />
 
-            <div className="flex items-start gap-3">
-                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${styles.border} ${styles.bg} ${styles.text}`}>
-                    <PersonaIcon size={19} aria-hidden="true" />
+            <div className="flex items-start gap-2.5 min-[430px]:gap-3">
+                <div className={`flex ${compact ? 'h-10 w-10 rounded-xl min-[430px]:h-11 min-[430px]:w-11 min-[430px]:rounded-2xl' : 'h-11 w-11 rounded-2xl'} shrink-0 items-center justify-center border ${styles.border} ${styles.bg} ${styles.text}`}>
+                    <PersonaIcon size={compact ? 18 : 19} aria-hidden="true" />
                 </div>
                 <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                         <p className="section-label">{takeaway.eyebrow}</p>
-                        <span className={`rounded-full border px-2 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.1em] ${styles.border} ${styles.bg} ${styles.text}`}>
+                        <span className={`rounded-full border px-2 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.1em] ${compact ? 'hidden min-[430px]:inline-flex' : 'inline-flex'} ${styles.border} ${styles.bg} ${styles.text}`}>
                             {takeaway.personaLabel}
                         </span>
                     </div>
-                    <h2 className={`${compact ? 'text-[1.25rem] md:text-[1.55rem]' : 'text-[1.45rem] md:text-[1.9rem]'} notebook-title mt-2 leading-tight`}>
+                    <h2 className={`${compact ? 'text-[1.35rem] md:text-[1.55rem]' : 'text-[1.45rem] md:text-[1.9rem]'} notebook-title mt-1.5 leading-tight`}>
                         {takeaway.headline}
                     </h2>
-                    <p className="notebook-copy mt-2 max-w-2xl text-[0.9rem] leading-7">
+                    <p className={`notebook-copy mt-2 max-w-2xl text-[0.9rem] leading-7 ${compact ? 'line-clamp-3' : ''}`}>
                         {takeaway.body}
                     </p>
                 </div>
             </div>
 
-            <div className="mt-4 flex flex-col gap-3 rounded-[1rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.38)] px-3 py-3 md:flex-row md:items-center md:justify-between">
+            <div className={`${compact ? 'mt-3' : 'mt-4'} flex flex-col gap-3 rounded-[1rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.38)] px-3 py-3 md:flex-row md:items-center md:justify-between`}>
                 <div className="min-w-0">
                     <p className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-[rgb(var(--paper-ink-soft))]">
                         Next
@@ -193,7 +193,7 @@ export default function DashboardTakeawayCard({ takeaway, compact = false }: Das
                 )}
             </div>
 
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <div className={`${compact ? 'mt-3' : 'mt-4'} flex flex-col gap-2 sm:flex-row sm:flex-wrap`}>
                 <TakeawayAction action={takeaway.primaryAction} variant="primary" />
                 <TakeawayAction action={takeaway.secondaryAction} variant="secondary" />
             </div>
@@ -239,9 +239,9 @@ export default function DashboardTakeawayCard({ takeaway, compact = false }: Das
                         </div>
                     )}
 
-                    {detailSignals.length > visibleSignals.length && (
+                    {(compact ? detailSignals.length > 0 : detailSignals.length > visibleSignals.length) && (
                         <div className="mt-3 flex flex-wrap gap-1.5">
-                            {detailSignals.slice(visibleSignals.length).map((signal) => {
+                            {detailSignals.slice(compact ? 0 : visibleSignals.length).map((signal) => {
                                 const signalStyles = toneStyles[signal.tone];
                                 return (
                                     <span

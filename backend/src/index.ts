@@ -58,6 +58,7 @@ const bootstrap = async () => {
         const { ReminderService } = await import('./services/reminder.service');
         stage = 'notification_jobs.import';
         const { PushNotificationService } = await import('./services/push-notification.service');
+        const { NotificationOutboxService } = await import('./services/notification-outbox.service');
         const { tryAcquireDistributedLock } = await import('./services/distributed-lock.service');
 
         stage = 'server.listen';
@@ -74,6 +75,7 @@ const bootstrap = async () => {
             // Reminder scheduler: check for due reminders every minute
             const reminderService = new ReminderService(prisma);
             const pushNotificationService = new PushNotificationService(prisma);
+            const notificationOutboxService = new NotificationOutboxService(prisma);
 
             const runReminderDispatch = () => {
                 const slotKey = `scheduler:reminders:${new Date().toISOString().slice(0, 16)}`;
@@ -109,6 +111,21 @@ const bootstrap = async () => {
                     .catch(() => {});
             };
 
+            const runNotificationOutboxDispatch = () => {
+                const slotKey = `scheduler:notification-outbox:${new Date().toISOString().slice(0, 16)}`;
+                void tryAcquireDistributedLock(slotKey, 50)
+                    .then((acquired) => {
+                        if (!acquired) return null;
+                        return notificationOutboxService.dispatchDue();
+                    })
+                    .then((result) => {
+                        if (result && (result.sent > 0 || result.skipped > 0 || result.failed > 0)) {
+                            serverLogger.info('notifications.outbox_dispatched', result);
+                        }
+                    })
+                    .catch(() => {});
+            };
+
             const runWeeklyJobs = () => {
                 const weeklyKey = `scheduler:weekly:${new Date().toISOString().slice(0, 16)}`;
                 void tryAcquireDistributedLock(weeklyKey, 300)
@@ -123,8 +140,10 @@ const bootstrap = async () => {
             };
 
             runReminderDispatch();
+            runNotificationOutboxDispatch();
             runInactiveTokenCleanup();
             setInterval(runReminderDispatch, 60_000);
+            setInterval(runNotificationOutboxDispatch, 60_000);
             setInterval(runWeeklyJobs, 60_000);
             setInterval(runInactiveTokenCleanup, 6 * 60 * 60 * 1000);
         });

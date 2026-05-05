@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useCallback, useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -81,6 +81,8 @@ function EntryDetailContent() {
     const [isLoadingRelated, setIsLoadingRelated] = useState(false);
     const [entryAction, setEntryAction] = useState<StudentActionResponse | null>(null);
     const [entryError, setEntryError] = useState<string | null>(null);
+    const [notiveDetailsOpen, setNotiveDetailsOpen] = useState(false);
+    const [hasLoadedRelated, setHasLoadedRelated] = useState(false);
 
     useEffect(() => {
         if (!id) {
@@ -97,14 +99,9 @@ function EntryDetailContent() {
                     setRelatedEntries([]);
                     setEntryError(null);
                 }
-                const [entryResponse, relatedResponse] = await Promise.all([
-                    apiFetch(`/entries/${id}`, {
-                        signal: controller.signal,
-                    }),
-                    apiFetch(`/entries/${id}/related?limit=4`, {
-                        signal: controller.signal,
-                    }).catch(() => null),
-                ]);
+                const entryResponse = await apiFetch(`/entries/${id}`, {
+                    signal: controller.signal,
+                });
 
                 if (!mounted) return;
 
@@ -118,12 +115,6 @@ function EntryDetailContent() {
                     return;
                 }
 
-                if (relatedResponse?.ok) {
-                    const relatedData = await relatedResponse.json().catch(() => null);
-                    setRelatedEntries(Array.isArray(relatedData?.relatedEntries) ? relatedData.relatedEntries : []);
-                } else {
-                    setRelatedEntries([]);
-                }
             } catch (error) {
                 if (controller.signal.aborted) return;
                 console.error('Failed to fetch entry:', error);
@@ -142,6 +133,34 @@ function EntryDetailContent() {
             controller.abort();
         };
     }, [backHref, id, router, apiFetch]);
+
+    const loadRelatedEntries = useCallback(async () => {
+        if (!id || hasLoadedRelated || isLoadingRelated) return;
+        setIsLoadingRelated(true);
+        try {
+            const response = await apiFetch(`/entries/${id}/related?limit=4`);
+            if (response.ok) {
+                const data = await response.json().catch(() => null);
+                setRelatedEntries(Array.isArray(data?.relatedEntries) ? data.relatedEntries : []);
+            } else {
+                setRelatedEntries([]);
+            }
+            setHasLoadedRelated(true);
+        } catch {
+            setRelatedEntries([]);
+            setHasLoadedRelated(true);
+        } finally {
+            setIsLoadingRelated(false);
+        }
+    }, [apiFetch, hasLoadedRelated, id, isLoadingRelated]);
+
+    const handleNotiveDetailsToggle = useCallback((event: React.SyntheticEvent<HTMLDetailsElement>) => {
+        const nextOpen = event.currentTarget.open;
+        setNotiveDetailsOpen(nextOpen);
+        if (nextOpen) {
+            void loadRelatedEntries();
+        }
+    }, [loadRelatedEntries]);
 
     useEffect(() => {
         if (!entry?.id) return;
@@ -291,8 +310,15 @@ function EntryDetailContent() {
         || storySignal
         || entryAction?.brief
         || entryAction?.bridge
-        || isLoadingRelated
+        || (notiveDetailsOpen && isLoadingRelated)
         || relatedEntries.length > 0
+    );
+    const hasMemoryDetails = Boolean(
+        sourceLabel
+        || normalizedMood
+        || entry.tags.filter(isCardTag).length > 0
+        || entry.audioUrl
+        || entry.coverImage
     );
     const handleEntryBridgeCopy = (recipient: string) => {
         void trackEvent({
@@ -310,7 +336,7 @@ function EntryDetailContent() {
     return (
         <div className="min-h-screen p-3 md:p-6">
             <div className="max-w-2xl mx-auto">
-                <header className="mb-4 flex items-center justify-between gap-3">
+                <header className="mb-4 flex flex-wrap items-center justify-between gap-2 min-[430px]:gap-3">
                     <button
                         type="button"
                         onClick={navigateBack}
@@ -320,23 +346,23 @@ function EntryDetailContent() {
                         <FiArrowLeft size={20} aria-hidden="true" />
                     </button>
 
-                    <div className="flex items-center gap-2">
+                    <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
                         <Link
                             href={withCurrentReturnTo(`/entry/edit?id=${id}`)}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(107,143,113,0.28)] bg-[rgb(107,143,113)] px-3.5 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_10px_24px_rgba(107,143,113,0.22)] transition-all hover:-translate-y-[1px] hover:bg-[rgb(96,131,102)]"
+                            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[rgba(107,143,113,0.28)] bg-[rgb(107,143,113)] px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_10px_24px_rgba(107,143,113,0.22)] transition-all hover:-translate-y-[1px] hover:bg-[rgb(96,131,102)] min-[430px]:px-3.5"
                         >
-                            Edit transcript
+                            Edit memory
                         </Link>
                         <button
                             type="button"
                             onClick={navigateBack}
-                            className="workspace-button-outline rounded-full px-3.5 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.08em]"
+                            className="workspace-button-outline min-h-10 rounded-full px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.08em] min-[430px]:px-3.5"
                         >
                             Done
                         </button>
                         <details className="relative">
                             <summary
-                                className="workspace-button-outline flex cursor-pointer list-none items-center justify-center rounded-full p-2 text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))] [&::-webkit-details-marker]:hidden"
+                                className="workspace-button-outline flex min-h-10 min-w-10 cursor-pointer list-none items-center justify-center rounded-full p-2 text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))] [&::-webkit-details-marker]:hidden"
                                 aria-label="More memory actions"
                                 title="More memory actions"
                             >
@@ -381,32 +407,12 @@ function EntryDetailContent() {
                     />
                 )}
 
-                <div className="mb-3">
-                    <h1 className="workspace-heading mb-1.5 text-lg font-semibold md:text-xl">{entry.title || 'Untitled memory'}</h1>
-                    <p className="text-xs text-ink-muted uppercase tracking-[0.1em]">
-                        {createdAt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                        {' · '}{wordCount} words{' · '}{readingTime} min read
+                <div className="mb-5">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Saved memory</p>
+                    <h1 className="workspace-heading break-words text-[1.65rem] font-semibold leading-tight md:text-3xl">{entry.title || 'Untitled memory'}</h1>
+                    <p className="mt-2 text-sm text-ink-muted">
+                        {createdAt.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                     </p>
-                </div>
-
-                <div className="mb-3 flex flex-wrap gap-1.5">
-                    <span className="workspace-pill rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-ink-secondary">
-                        {sourceLabel}
-                    </span>
-                    {normalizedMood && (
-                        <span className="rounded-full border border-primary/35 bg-primary/15 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-primary">
-                            {getMoodEmoji(normalizedMood)} {normalizedMood}
-                        </span>
-                    )}
-                    {entry.tags.filter(isCardTag).slice(0, 3).map((tag) => (
-                        <span
-                            key={tag}
-                            title={`#${tag}`}
-                            className="workspace-pill inline-flex max-w-[11rem] items-center truncate rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-ink-secondary"
-                        >
-                            {clipCompactPillByLimit(`#${tag}`, COMPACT_PILL_LIMITS.entryDetailTag)}
-                        </span>
-                    ))}
                 </div>
 
                 {entryAction && entryAction.risk.level !== 'none' && (
@@ -415,57 +421,94 @@ function EntryDetailContent() {
                     </div>
                 )}
 
-                <AppPanel className="mb-6 space-y-5">
+                <AppPanel className="mb-4 space-y-5">
                     {safeHtml ? (
                         <div
-                            className="prose max-w-none prose-headings:text-[rgb(var(--text-primary))] prose-p:text-ink-secondary prose-strong:text-[rgb(var(--text-primary))] prose-li:text-ink-secondary prose-a:text-primary prose-blockquote:text-ink-secondary"
+                            className="prose max-w-none break-words prose-headings:text-[rgb(var(--text-primary))] prose-p:text-ink-secondary prose-p:leading-8 prose-strong:text-[rgb(var(--text-primary))] prose-li:text-ink-secondary prose-a:text-primary prose-blockquote:text-ink-secondary"
                             dangerouslySetInnerHTML={{ __html: safeHtml }}
                         />
                     ) : (
-                        <p className="text-ink-secondary whitespace-pre-wrap leading-relaxed">{entry.content}</p>
+                        <p className="whitespace-pre-wrap break-words text-base leading-8 text-ink-secondary">{entry.content}</p>
                     )}
-
-                    {entry.audioUrl && (
-                        <details className="group rounded-2xl border border-[rgba(var(--paper-border),0.82)] px-3 py-3">
-                            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
-                                <span className="flex min-w-0 items-center gap-2">
-                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-                                        <FiMic size={18} aria-hidden="true" />
-                                    </span>
-                                    <span>
-                                        <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-ink-secondary">Original recording</span>
-                                        <span className="block text-xs text-ink-muted">Open only if you want to compare the audio.</span>
-                                    </span>
-                                </span>
-                                <span className="text-xs font-semibold uppercase tracking-[0.08em] text-primary">
-                                    <span className="group-open:hidden">Open</span>
-                                    <span className="hidden group-open:inline">Close</span>
-                                </span>
-                            </summary>
-                            <div className="mt-3 border-t border-[rgba(var(--paper-border),0.72)] pt-3">
-                                <audio controls src={entry.audioUrl} className="w-full h-8 opacity-80" />
-                            </div>
-                        </details>
-                    )}
-
-                    {entry.coverImage && (
-                        <div className="relative h-64 overflow-hidden rounded-2xl md:h-80">
-                            <Image
-                                src={entry.coverImage}
-                                loader={passthroughImageLoader}
-                                unoptimized
-                                alt={entry.title || 'Cover'}
-                                fill
-                                sizes="(max-width: 768px) 100vw, 896px"
-                                className="object-cover"
-                            />
-                        </div>
-                    )}
-
                 </AppPanel>
 
+                {hasMemoryDetails && (
+                    <details className="group mb-3 rounded-2xl border border-[rgba(var(--paper-border),0.78)] bg-[rgba(255,255,255,0.03)] px-4 py-3">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+                            <span>
+                                <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Memory details</span>
+                                <span className="mt-1 block text-sm text-ink-secondary">Mood, tags, attachments, and source stay tucked away from the writing.</span>
+                            </span>
+                            <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.08em] text-primary">
+                                <span className="group-open:hidden">Open</span>
+                                <span className="hidden group-open:inline">Close</span>
+                            </span>
+                        </summary>
+
+                        <div className="mt-4 space-y-4 border-t border-[rgba(var(--paper-border),0.72)] pt-4">
+                            <div className="flex flex-wrap gap-1.5">
+                                <span className="workspace-pill rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-ink-secondary">
+                                    {sourceLabel}
+                                </span>
+                                <span className="workspace-pill rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-ink-secondary">
+                                    {wordCount} words
+                                </span>
+                                <span className="workspace-pill rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-ink-secondary">
+                                    {readingTime} min read
+                                </span>
+                                {normalizedMood && (
+                                    <span className="rounded-full border border-primary/35 bg-primary/15 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-primary">
+                                        {getMoodEmoji(normalizedMood)} {normalizedMood}
+                                    </span>
+                                )}
+                                {entry.tags.filter(isCardTag).map((tag) => (
+                                    <span
+                                        key={tag}
+                                        title={`#${tag}`}
+                                        className="workspace-pill inline-flex max-w-[11rem] items-center truncate rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-ink-secondary"
+                                    >
+                                        {clipCompactPillByLimit(`#${tag}`, COMPACT_PILL_LIMITS.entryDetailTag)}
+                                    </span>
+                                ))}
+                            </div>
+
+                            {entry.audioUrl && (
+                                <div className="rounded-2xl border border-[rgba(var(--paper-border),0.82)] px-3 py-3">
+                                    <div className="mb-3 flex min-w-0 items-center gap-2">
+                                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                                            <FiMic size={18} aria-hidden="true" />
+                                        </span>
+                                        <span>
+                                            <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-ink-secondary">Original recording</span>
+                                            <span className="block text-xs text-ink-muted">Compare the source audio when you need it.</span>
+                                        </span>
+                                    </div>
+                                    <audio controls src={entry.audioUrl} className="w-full h-8 opacity-80" />
+                                </div>
+                            )}
+
+                            {entry.coverImage && (
+                                <div className="relative h-64 overflow-hidden rounded-2xl md:h-80">
+                                    <Image
+                                        src={entry.coverImage}
+                                        loader={passthroughImageLoader}
+                                        unoptimized
+                                        alt={entry.title || 'Cover'}
+                                        fill
+                                        sizes="(max-width: 768px) 100vw, 896px"
+                                        className="object-cover"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </details>
+                )}
+
                 {hasNotiveDetails && (
-                    <details className="group mb-8 rounded-2xl border border-[rgba(var(--paper-border),0.8)] px-4 py-4">
+                    <details
+                        className="group mb-8 rounded-2xl border border-[rgba(var(--paper-border),0.8)] px-4 py-4"
+                        onToggle={handleNotiveDetailsToggle}
+                    >
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
                             <span>
                                 <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">What Notive noticed</span>

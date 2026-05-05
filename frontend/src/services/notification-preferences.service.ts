@@ -3,6 +3,8 @@ export type NotificationPreferencesSettings = {
     sharedMemories?: boolean;
     friendActivity?: boolean;
     insights?: boolean;
+    storyMaterial?: boolean;
+    quietness?: 'gentle' | 'balanced' | 'active';
     quietHours?: {
         enabled?: boolean;
         start?: string;
@@ -17,6 +19,8 @@ export type ResolvedNotificationPreferences = {
     sharedMemories: boolean;
     friendActivity: boolean;
     insights: boolean;
+    storyMaterial: boolean;
+    quietness: 'gentle' | 'balanced' | 'active';
     quietHours: {
         enabled: boolean;
         start: string;
@@ -50,9 +54,11 @@ export const resolveDefaultNotificationTimezone = (): string => {
 export const getDefaultNotificationPreferences = (): ResolvedNotificationPreferences => ({
     reminders: true,
     sharedMemories: true,
-    friendActivity: true,
-    insights: true,
-    quietHours: {
+        friendActivity: true,
+        insights: true,
+        storyMaterial: true,
+        quietness: 'balanced',
+        quietHours: {
         enabled: false,
         start: DEFAULT_QUIET_HOURS_START,
         end: DEFAULT_QUIET_HOURS_END,
@@ -74,12 +80,17 @@ export const normalizeNotificationPreferences = (value: unknown): NotificationPr
     const updatedAt = typeof source.updatedAt === 'string' && source.updatedAt.trim().length > 0
         ? source.updatedAt
         : undefined;
+    const quietness = source.quietness === 'gentle' || source.quietness === 'balanced' || source.quietness === 'active'
+        ? source.quietness
+        : undefined;
 
     const normalized: NotificationPreferencesSettings = {
         ...(source.reminders === false ? { reminders: false } : {}),
         ...(source.sharedMemories === false ? { sharedMemories: false } : {}),
         ...(source.friendActivity === false ? { friendActivity: false } : {}),
         ...(source.insights === false ? { insights: false } : {}),
+        ...(source.storyMaterial === false ? { storyMaterial: false } : {}),
+        ...(quietness ? { quietness } : {}),
         ...(quietHoursEnabled || quietHoursStart || quietHoursEnd || quietHoursTimezone
             ? {
                 quietHours: {
@@ -112,6 +123,8 @@ export const extractNotificationPreferences = (
         sharedMemories: normalized?.sharedMemories !== false,
         friendActivity: normalized?.friendActivity !== false,
         insights: normalized?.insights !== false,
+        storyMaterial: normalized?.storyMaterial !== false,
+        quietness: normalized?.quietness || defaults.quietness,
         quietHours: {
             enabled: normalized?.quietHours?.enabled === true,
             start: normalized?.quietHours?.start || defaults.quietHours.start,
@@ -138,6 +151,8 @@ export const mergeNotificationPreferencesIntoSignals = (
         sharedMemories: preferences.sharedMemories,
         friendActivity: preferences.friendActivity,
         insights: preferences.insights,
+        storyMaterial: preferences.storyMaterial,
+        quietness: preferences.quietness,
         quietHours: {
             ...(preferences.quietHours.enabled ? { enabled: true } : {}),
             ...(preferences.quietHours.start ? { start: preferences.quietHours.start } : {}),

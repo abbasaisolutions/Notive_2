@@ -1239,7 +1239,7 @@ function DashboardNotebookViewFull({
     ) : null;
     const topPreviewContent = activeTab === 'overview' ? (
         <>
-            <DashboardTakeawayCard takeaway={homeTakeaway} />
+            <DashboardTakeawayCard takeaway={homeTakeaway} compact />
 
             {welcomeNotebookBanner}
 
@@ -1251,7 +1251,25 @@ function DashboardNotebookViewFull({
                 />
             </div>
 
-            {heroContent}
+            <details className="group rounded-[1.25rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.38)]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
+                    <span>
+                        <span className="section-label block">Suggested focus</span>
+                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                            Extra guidance for the day, tucked away from the main summary.
+                        </span>
+                    </span>
+                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:hidden">
+                        Open
+                    </span>
+                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:inline">
+                        Hide
+                    </span>
+                </summary>
+                <div className="border-t border-[rgba(92,92,92,0.12)] px-3 pb-3 pt-3">
+                    {heroContent}
+                </div>
+            </details>
 
             <details className="group rounded-[1.25rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.42)]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3">
@@ -2214,17 +2232,17 @@ function DashboardNotebookViewFull({
     );
 
     return (
-        <div className="page-paper-canvas min-h-screen pb-6 md:pb-20">
-            <main className="mx-auto w-full max-w-4xl px-4 py-4 md:px-6 md:py-10">
-                <div className="space-y-4 md:space-y-6">
+        <div className="page-paper-canvas min-h-screen pb-32 md:pb-20">
+            <main className="mx-auto w-full max-w-4xl px-3 py-3 md:px-6 md:py-10">
+                <div className="space-y-3 md:space-y-6">
 
                     {/* ═══════════════════════════════════════════════
                         ZONE 1 — HERO  (above the fold, no scroll)
                         Tight padding on mobile so hero + capture + glance fit in viewport
                     ═══════════════════════════════════════════════ */}
-                    <Surface className="app-paper density-feature !p-4 md:!p-6">
-                        <div className="space-y-3 md:space-y-5">
-                            <div className="flex items-start gap-3">
+                    <Surface className="app-paper density-feature !p-3 min-[430px]:!p-4 md:!p-6">
+                        <div className="space-y-2.5 md:space-y-5">
+                            <div className="flex items-start gap-2.5 md:gap-3">
                                 {/* Avatar — fixed circle, never shrinks */}
                                 <div className="shrink-0 mt-0.5">
                                     <UserAvatar
@@ -2236,70 +2254,74 @@ function DashboardNotebookViewFull({
                                     <UserAvatar
                                         avatarUrl={avatarUrl}
                                         name={firstName}
-                                        size={34}
+                                        size={32}
                                         className="ring-2 ring-[rgba(var(--paper-border),0.3)] flex sm:hidden"
                                     />
                                 </div>
                                 {/* Text block — takes remaining space, clips overflow */}
                                 <div className="min-w-0 flex-1">
-                                    <h1 className="notive-logo flex items-baseline gap-1 text-xl font-semibold leading-tight md:text-3xl">
+                                    <h1 className="notive-logo flex min-w-0 flex-wrap items-baseline gap-x-1 text-[1.35rem] font-semibold leading-tight md:text-3xl">
                                         <span className="truncate">Hey {firstName}</span>
-                                        <span className="shrink-0 text-[0.75rem] font-normal text-[rgb(107,107,107)] md:text-sm">
+                                        <span className="min-w-0 truncate text-[0.72rem] font-normal text-[rgb(107,107,107)] md:text-sm">
                                             {greetingLocation}
                                         </span>
                                     </h1>
-                                    <p className="mt-1 truncate whitespace-nowrap text-[0.72rem] text-[rgb(107,107,107)]">
+                                    <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
                                         {todayLabel}
-                                        <span className="mx-1.5 text-[rgba(107,107,107,0.55)]">•</span>
-                                        <span className="sprout-accent">{energyLine}</span>
+                                        <span className="text-[rgba(107,107,107,0.55)]">•</span>
+                                        <span className="sprout-accent line-clamp-1 min-w-0">{energyLine}</span>
                                     </p>
-                                    {(profileTags.length > 0 || zodiacSign) && (
-                                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                                            {profileTags.map((tag) => (
-                                                <span
-                                                    key={tag}
-                                                    className="rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.48)] px-2.5 py-1 text-[0.66rem] text-[rgb(107,107,107)]"
-                                                >
-                                                    {tag}
-                                                </span>
-                                            ))}
-                                            {zodiacSign && (
-                                                <span className="rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.48)] px-2.5 py-1 text-[0.66rem] text-[rgb(107,107,107)]">
-                                                    {zodiacSign.symbol} {zodiacSign.sign}
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 
-                            <div className="workspace-soft-panel density-compact rounded-[1.25rem]">
-                                <div className="flex items-center justify-between gap-3">
-                                    <div className="min-w-0">
-                                        <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">
-                                            Today
-                                        </p>
-                                        <p className="mt-0.5 truncate text-sm font-semibold text-strong">
-                                            How are you arriving?
-                                        </p>
+                            {((profileTags.length > 0 || zodiacSign) || arrivalActions.length > 0) && (
+                                <details className="group rounded-[1.05rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.32)]">
+                                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+                                        <span>
+                                            <span className="block text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">Context and quick starts</span>
+                                            <span className="mt-0.5 block text-[0.76rem] leading-5 text-ink-secondary">Profile signals and writing prompts are here when useful.</span>
+                                        </span>
+                                        <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-primary">
+                                            <span className="group-open:hidden">Open</span>
+                                            <span className="hidden group-open:inline">Close</span>
+                                        </span>
+                                    </summary>
+                                    <div className="space-y-3 border-t border-[rgba(92,92,92,0.1)] px-3 pb-3 pt-3">
+                                        {(profileTags.length > 0 || zodiacSign) && (
+                                            <div className="chip-scroller -mx-1 px-1">
+                                                {profileTags.map((tag) => (
+                                                    <span
+                                                        key={tag}
+                                                        className="shrink-0 rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.48)] px-2.5 py-1 text-[0.66rem] text-[rgb(107,107,107)]"
+                                                    >
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                                {zodiacSign && (
+                                                    <span className="shrink-0 rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.48)] px-2.5 py-1 text-[0.66rem] text-[rgb(107,107,107)]">
+                                                        {zodiacSign.symbol} {zodiacSign.sign}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                        <div className="grid grid-cols-3 gap-1.5">
+                                            {arrivalActions.map((action) => (
+                                                <Link
+                                                    key={action.label}
+                                                    href={action.href}
+                                                    className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-xl border border-[rgba(var(--paper-border),0.16)] bg-white/45 px-1 text-[0.62rem] font-semibold leading-none text-soft transition-colors hover:bg-white/70 hover:text-strong"
+                                                >
+                                                    <NotebookDoodle name={action.doodle} accent="sage" className="h-3.5 w-3.5" />
+                                                    {action.label}
+                                                </Link>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="grid shrink-0 grid-cols-3 gap-1.5">
-                                        {arrivalActions.map((action) => (
-                                            <Link
-                                                key={action.label}
-                                                href={action.href}
-                                                className="flex h-12 w-14 flex-col items-center justify-center gap-0.5 rounded-2xl border border-[rgba(var(--paper-border),0.16)] bg-white/45 text-[0.65rem] font-semibold text-soft transition-colors hover:bg-white/70 hover:text-strong"
-                                            >
-                                                <NotebookDoodle name={action.doodle} accent="sage" className="h-4 w-4" />
-                                                {action.label}
-                                            </Link>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
+                                </details>
+                            )}
 
                             <div className="overflow-x-auto scrollbar-hide">
-                                <div role="tablist" aria-label="Dashboard pages" className="inline-flex min-w-full gap-1 rounded-[1.5rem] bg-[rgba(237,228,216,0.72)] p-1 border border-[rgba(92,92,92,0.12)]">
+                                <div role="tablist" aria-label="Dashboard pages" className="inline-flex min-w-full gap-1 rounded-[1.2rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(237,228,216,0.72)] p-0.5 min-[430px]:rounded-[1.5rem] min-[430px]:p-1">
                                     {TAB_ORDER.map((tab) => (
                                         <button
                                             key={tab}
@@ -2308,7 +2330,7 @@ function DashboardNotebookViewFull({
                                             aria-selected={activeTab === tab}
                                             aria-controls={`dashboard-page-${tab}`}
                                             onClick={() => setActiveTab(tab)}
-                                            className={`flex-1 whitespace-nowrap rounded-[1.1rem] px-2.5 py-2 text-[0.8rem] font-medium transition-all ${
+                                            className={`flex-1 whitespace-nowrap rounded-[0.95rem] px-2 py-1.5 text-[0.74rem] font-medium transition-all min-[430px]:rounded-[1.1rem] min-[430px]:px-2.5 min-[430px]:py-2 min-[430px]:text-[0.8rem] ${
                                                 activeTab === tab
                                                     ? 'bg-[rgba(248,244,237,0.98)] text-[rgb(41,38,34)] shadow-[0_2px_8px_rgba(92,92,92,0.08)]'
                                                     : 'text-[rgb(107,107,107)] hover:bg-[rgba(255,255,255,0.5)]'
@@ -2316,13 +2338,13 @@ function DashboardNotebookViewFull({
                                         >
                                             <span className="flex items-center justify-center gap-1">
                                                 {tab === 'overview' && (
-                                                    <NotebookDoodle name="sprout" accent="sage" className="h-3.5 w-3.5" />
+                                                    <NotebookDoodle name="sprout" accent="sage" className="h-3 w-3 min-[430px]:h-3.5 min-[430px]:w-3.5" />
                                                 )}
                                                 {tab === 'growth' && (
-                                                    <NotebookDoodle name="ladder" accent="apricot" className="h-3.5 w-3.5" />
+                                                    <NotebookDoodle name="ladder" accent="apricot" className="h-3 w-3 min-[430px]:h-3.5 min-[430px]:w-3.5" />
                                                 )}
                                                 {tab === 'patterns' && (
-                                                    <NotebookDoodle name="compass" accent="lilac" className="h-3.5 w-3.5" />
+                                                    <NotebookDoodle name="compass" accent="lilac" className="h-3 w-3 min-[430px]:h-3.5 min-[430px]:w-3.5" />
                                                 )}
                                                 <span>{TAB_LABELS[tab]}</span>
                                             </span>

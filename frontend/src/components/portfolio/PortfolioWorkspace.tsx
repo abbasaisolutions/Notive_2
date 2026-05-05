@@ -2857,33 +2857,44 @@ export default function PortfolioWorkspace() {
                     </div>
                 </details>
 
-                {/* Workspace switcher — horizontal chip row */}
-                <div ref={workspaceChipRowRef} className="chip-scroller relative -mx-1 hidden px-1 md:block">
-                    {workspaceDestinations.map(({ id, label, detail, icon: Icon, active, recommended, onClick }) => (
-                        <button
-                            key={id}
-                            ref={registerWorkspaceChip(id)}
-                            type="button"
-                            onClick={onClick}
-                            title={detail}
-                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-left transition-colors ${
-                                active
-                                    ? 'border-primary/40 bg-primary/15 text-strong'
-                                    : recommended
-                                        ? 'border-primary/25 bg-primary/5 text-soft hover:text-strong'
-                                        : 'border-[rgba(92,92,92,0.18)] bg-white/50 text-soft hover:text-strong'
-                            }`}
-                        >
-                            <Icon size={13} aria-hidden="true" className={active ? 'text-primary' : ''} />
-                            <span className="type-label-sm font-semibold">{label}</span>
-                            {recommended && !active && (
-                                <span className="type-micro rounded-full bg-primary/15 px-1.5 py-0.5 font-semibold uppercase tracking-wide text-primary">
-                                    Next
-                                </span>
-                            )}
-                        </button>
-                    ))}
-                </div>
+                <details className="group relative hidden rounded-xl border border-[rgba(92,92,92,0.14)] bg-white/45 md:block">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+                        <span className="inline-flex min-w-0 items-center gap-2 text-sm font-semibold text-strong">
+                            <ActiveViewIcon size={14} aria-hidden="true" className="text-primary" />
+                            <span className="truncate">Story tools: {currentWorkspaceLabel}</span>
+                        </span>
+                        <span className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-muted">
+                            <span className="group-open:hidden">Switch</span>
+                            <span className="hidden group-open:inline">Close</span>
+                        </span>
+                    </summary>
+                    <div ref={workspaceChipRowRef} className="chip-scroller relative border-t border-[rgba(92,92,92,0.12)] px-3 py-3">
+                        {workspaceDestinations.map(({ id, label, detail, icon: Icon, active, recommended, onClick }) => (
+                            <button
+                                key={id}
+                                ref={registerWorkspaceChip(id)}
+                                type="button"
+                                onClick={onClick}
+                                title={detail}
+                                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-left transition-colors ${
+                                    active
+                                        ? 'border-primary/40 bg-primary/15 text-strong'
+                                        : recommended
+                                            ? 'border-primary/25 bg-primary/5 text-soft hover:text-strong'
+                                            : 'border-[rgba(92,92,92,0.18)] bg-white/50 text-soft hover:text-strong'
+                                }`}
+                            >
+                                <Icon size={13} aria-hidden="true" className={active ? 'text-primary' : ''} />
+                                <span className="type-label-sm font-semibold">{label}</span>
+                                {recommended && !active && (
+                                    <span className="type-micro rounded-full bg-primary/15 px-1.5 py-0.5 font-semibold uppercase tracking-wide text-primary">
+                                        Next
+                                    </span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </details>
             </AppPanel>
 
             {error && (

@@ -39,6 +39,10 @@ const INSIGHT_NOTIFICATION_TYPES = new Set([
     'insight_ready',
 ]);
 
+const STORY_NOTIFICATION_TYPES = new Set([
+    'portfolio_evidence',
+]);
+
 // ── Firebase Admin Initialization ────────────────────────────────────────────
 // Initializes once on first use. No-ops when credentials are absent so
 // development still works without a service account file.
@@ -362,6 +366,7 @@ export class PushNotificationService {
     private resolveAndroidChannelId(type: string | undefined): string {
         if (type === 'reminder') return 'notive_reminders';
         if (type && SOCIAL_NOTIFICATION_TYPES.has(type)) return 'notive_social';
+        if (type && STORY_NOTIFICATION_TYPES.has(type)) return 'notive_story';
         if (type && INSIGHT_NOTIFICATION_TYPES.has(type)) return 'notive_insights';
         return 'notive_default';
     }

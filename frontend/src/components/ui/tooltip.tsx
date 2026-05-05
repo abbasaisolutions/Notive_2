@@ -24,6 +24,7 @@ type TooltipHintProps = React.HTMLAttributes<HTMLSpanElement> & {
     side?: TooltipSide;
     align?: TooltipAlign;
     tooltipClassName?: string;
+    interactive?: boolean;
 };
 
 export function TooltipHint({
@@ -32,6 +33,7 @@ export function TooltipHint({
     screenReaderLabel,
     side = 'top',
     align = 'center',
+    interactive = true,
     className,
     tooltipClassName,
     onBlur,
@@ -44,20 +46,21 @@ export function TooltipHint({
     const description = screenReaderLabel || (typeof content === 'string' ? content : undefined);
     const descriptionId = description ? `${id}-description` : undefined;
     const hasContent = Boolean(content);
+    const isInteractive = hasContent && interactive;
 
     return (
         <span
             className={cn('group/tooltip relative inline-flex items-center', hasContent && 'touch-manipulation', className)}
             aria-describedby={descriptionId}
-            aria-expanded={hasContent ? isOpen : undefined}
-            role={hasContent ? 'button' : props.role}
-            tabIndex={hasContent ? props.tabIndex ?? 0 : props.tabIndex}
+            aria-expanded={isInteractive ? isOpen : undefined}
+            role={isInteractive ? 'button' : props.role}
+            tabIndex={isInteractive ? props.tabIndex ?? 0 : props.tabIndex}
             onBlur={(event) => {
                 setIsOpen(false);
                 onBlur?.(event);
             }}
             onClick={(event) => {
-                if (hasContent) {
+                if (isInteractive) {
                     event.preventDefault();
                     event.stopPropagation();
                     setIsOpen((current) => !current);
@@ -65,12 +68,12 @@ export function TooltipHint({
                 onClick?.(event);
             }}
             onKeyDown={(event) => {
-                if (hasContent && (event.key === 'Enter' || event.key === ' ')) {
+                if (isInteractive && (event.key === 'Enter' || event.key === ' ')) {
                     event.preventDefault();
                     event.stopPropagation();
                     setIsOpen((current) => !current);
                 }
-                if (hasContent && event.key === 'Escape') {
+                if (isInteractive && event.key === 'Escape') {
                     event.preventDefault();
                     setIsOpen(false);
                 }

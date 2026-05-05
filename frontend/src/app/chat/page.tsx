@@ -376,7 +376,18 @@ export default function ChatPage() {
                 </AppPanel>
 
                 {coachMode === 'guided' && guidedLenses.length > 0 && (
-                    <AppPanel className="space-y-3">
+                    <details className="group rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+                            <span>
+                                <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Reflection lens</span>
+                                <span className="mt-1 block text-sm text-ink-secondary">{selectedLensLabel}</span>
+                            </span>
+                            <span className="text-xs font-semibold uppercase tracking-[0.1em] text-primary">
+                                <span className="group-open:hidden">Change</span>
+                                <span className="hidden group-open:inline">Close</span>
+                            </span>
+                        </summary>
+                    <AppPanel className="space-y-3 rounded-none border-t border-[rgba(141,123,105,0.14)]">
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                             <div className="min-w-0">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Reflection lens</p>
@@ -421,6 +432,7 @@ export default function ChatPage() {
                             })}
                         </div>
                     </AppPanel>
+                    </details>
                 )}
 
                 <AppPanel className="min-h-[60vh]">

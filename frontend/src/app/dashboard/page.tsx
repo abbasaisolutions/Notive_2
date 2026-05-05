@@ -1377,13 +1377,35 @@ export default function DashboardPage() {
 
                 {/* ── Tag Cloud — your themes (tier 3+) ────────── */}
                 <Gate minTier={3} currentTier={insightTier}>
-                    <TagCloud />
+                    <details className="rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink-secondary">
+                            <span>
+                                <span className="block text-xs uppercase tracking-[0.14em] text-ink-muted">Themes</span>
+                                <span className="mt-1 block font-normal text-ink-secondary">Open when you want to browse recurring topics.</span>
+                            </span>
+                            <span className="text-xs uppercase tracking-[0.12em] text-ink-muted">Optional</span>
+                        </summary>
+                        <div className="border-t border-[rgba(141,123,105,0.14)] px-1 pb-1">
+                            <TagCloud />
+                        </div>
+                    </details>
                 </Gate>
 
                 {/* ── Journal Intelligence — compact pills, expand on tap ── */}
                 {journalIntel && (
                     <Gate minTier={3} currentTier={insightTier}>
-                        <JournalIntelligenceSection intel={journalIntel} />
+                        <details className="rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]">
+                            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink-secondary">
+                                <span>
+                                    <span className="block text-xs uppercase tracking-[0.14em] text-ink-muted">Deeper reads</span>
+                                    <span className="mt-1 block font-normal text-ink-secondary">Open Notive&apos;s pattern read only when you want the extra layer.</span>
+                                </span>
+                                <span className="text-xs uppercase tracking-[0.12em] text-ink-muted">Optional</span>
+                            </summary>
+                            <div className="border-t border-[rgba(141,123,105,0.14)] px-1 pb-1">
+                                <JournalIntelligenceSection intel={journalIntel} />
+                            </div>
+                        </details>
                     </Gate>
                 )}
 

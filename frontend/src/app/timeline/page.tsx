@@ -23,7 +23,7 @@ import useTelemetry from '@/hooks/use-telemetry';
 import { useToast } from '@/context/toast-context';
 import { NOTIFICATION_BADGE_REFRESH_EVENT, refreshNotificationBadge } from '@/hooks/use-notification-count';
 import { getMoodEmoji } from '@/constants/moods';
-import { FiArrowLeft, FiChevronDown, FiMapPin, FiSearch, FiSliders } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowUp, FiChevronDown, FiMapPin, FiSearch, FiSliders } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo, buildSearchString } from '@/utils/navigation';
 import {
     buildSeasonAnchorMap,
@@ -2372,58 +2372,47 @@ function TimelinePageContent() {
             <AnimatePresence>
                 {isMobileTimelineRailVisible && visibleEntries.length > 0 && (
                     <motion.div
-                        initial={{ opacity: 0, y: -18 }}
+                        initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -18 }}
+                        exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.22, ease: 'easeOut' }}
-                        className="fixed inset-x-4 top-4 z-30 md:hidden"
+                        className="fixed left-3 right-[4.75rem] top-3 z-30 md:hidden"
                     >
-                        <div className="workspace-panel rounded-[1.6rem] px-4 py-3 shadow-xl">
-                            <div className="flex items-start gap-3">
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-muted">
-                                        {mobileScrollDirection === 'up' ? 'Timeline Focus' : 'Keep Exploring'}
-                                    </p>
-                                    <div className="mt-1 flex items-center gap-2">
-                                        <span className="workspace-heading truncate text-sm font-semibold">
-                                            {activeMonth?.label || timelineStats.dateRange}
-                                        </span>
-                                        <span className="workspace-pill-muted rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-ink-secondary">
-                                            {visibleEntries.length}
-                                        </span>
-                                    </div>
-                                    <AnimatePresence initial={false}>
-                                        {mobileScrollDirection === 'up' && (
-                                            <motion.p
-                                                initial={{ opacity: 0, y: -4 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: -4 }}
-                                                transition={{ duration: 0.16, ease: 'easeOut' }}
-                                                className="mt-1 truncate text-xs text-ink-secondary"
-                                            >
-                                                {activeFilterSummary}
-                                            </motion.p>
-                                        )}
-                                    </AnimatePresence>
+                        <div className="workspace-panel flex min-h-12 min-w-0 items-center gap-2 rounded-full px-2.5 py-1.5 shadow-xl backdrop-blur-xl">
+                            <div className="min-w-0 flex-1 pl-1">
+                                <p className="truncate text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                                    {mobileScrollDirection === 'up' ? 'Focus' : 'Exploring'}
+                                </p>
+                                <div className="flex min-w-0 items-center gap-1.5">
+                                    <span className="workspace-heading truncate text-sm font-semibold">
+                                        {activeMonth?.label || timelineStats.dateRange}
+                                    </span>
+                                    <span className="workspace-pill-muted shrink-0 rounded-full px-1.5 py-0.5 text-[0.65rem] font-semibold tabular-nums text-ink-secondary">
+                                        {visibleEntries.length}
+                                    </span>
                                 </div>
                             </div>
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <div className="flex shrink-0 items-center gap-1">
                                 <button
                                     type="button"
                                     onClick={() => {
                                         scrollToTop();
                                         openControlDeck({ focusSearch: true, source: 'search', panel: 'search' });
                                     }}
-                                    className="workspace-button-outline rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em]"
+                                    className="workspace-button-outline inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-secondary"
+                                    aria-label="Search memories"
+                                    title="Search memories"
                                 >
-                                    Search
+                                    <FiSearch size={16} aria-hidden="true" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={scrollToTop}
-                                    className="rounded-full border border-primary/30 bg-primary/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-primary/30 bg-primary/15 text-primary"
+                                    aria-label="Back to top"
+                                    title="Back to top"
                                 >
-                                    Top
+                                    <FiArrowUp size={16} aria-hidden="true" />
                                 </button>
                             </div>
                         </div>
@@ -2443,9 +2432,10 @@ function TimelinePageContent() {
                             >
                                 <FiArrowLeft size={18} aria-hidden="true" />
                             </button>
-                            <p className="text-sm text-ink-secondary">
-                                {archiveMetaSummary}
-                            </p>
+                            <div>
+                                <h1 className="workspace-heading text-xl font-semibold leading-tight md:text-2xl">Memories</h1>
+                                <p className="mt-0.5 text-xs text-ink-muted">{archiveMetaSummary}</p>
+                            </div>
                         </div>
                     </div>
 
@@ -2525,8 +2515,8 @@ function TimelinePageContent() {
                             </div>
                         ) : (
                             <>
-                                <div className="flex items-center gap-2">
-                                    <label className="relative block flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <label className="relative block min-w-0 flex-1 basis-full min-[520px]:basis-auto">
                                         <FiSearch
                                             size={16}
                                             aria-hidden="true"
@@ -2555,7 +2545,7 @@ function TimelinePageContent() {
                                         }}
                                         aria-expanded={isFilterStudioOpen}
                                         aria-controls="timeline-filter-studio"
-                                        className="workspace-pill inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.1em] transition hover:opacity-85"
+                                        className="workspace-pill inline-flex min-h-10 flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.1em] transition hover:opacity-85"
                                     >
                                         <FiSliders size={13} aria-hidden="true" />
                                         Filters
@@ -2583,7 +2573,7 @@ function TimelinePageContent() {
                                             }}
                                             aria-expanded={isQuickJumpOpen}
                                             aria-controls="timeline-quick-jump"
-                                            className="workspace-pill inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.1em] transition hover:opacity-85"
+                                            className="workspace-pill inline-flex min-h-10 flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.1em] transition hover:opacity-85"
                                         >
                                             <FiMapPin size={13} aria-hidden="true" />
                                             Jump to
@@ -2597,7 +2587,7 @@ function TimelinePageContent() {
                                     <button
                                         type="button"
                                         onClick={closeControlDeck}
-                                        className="workspace-button-outline flex-shrink-0 rounded-full px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.1em]"
+                                        className="workspace-button-outline ml-auto min-h-10 flex-shrink-0 rounded-full px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.1em]"
                                     >
                                         Done
                                     </button>
@@ -2853,7 +2843,18 @@ function TimelinePageContent() {
                     )}
 
                     {activeStoryArc && (
-                        <div className="mt-4 rounded-[1.8rem] border border-primary/20 bg-primary/[0.08] p-5 md:p-6">
+                        <details className="group mt-4 rounded-[1.8rem] border border-primary/20 bg-primary/[0.08]">
+                            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 md:px-6 [&::-webkit-details-marker]:hidden">
+                                <span>
+                                    <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-primary">Story arc available</span>
+                                    <span className="mt-1 block text-sm text-ink-secondary">Open this optional read when you want a larger pattern view.</span>
+                                </span>
+                                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-primary">
+                                    <span className="group-open:hidden">Open</span>
+                                    <span className="hidden group-open:inline">Close</span>
+                                </span>
+                            </summary>
+                        <div className="border-t border-primary/15 p-5 md:p-6">
                             <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                                 <div className="max-w-3xl">
                                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Story Arc</p>
@@ -2922,17 +2923,30 @@ function TimelinePageContent() {
                                 </div>
                             </div>
                         </div>
+                        </details>
                     )}
 
                 </header>
 
                 {surface === 'timeline' && (
-                    <div className="mt-2">
-                        <TagCloud
-                            selectedTag={themeFilter || null}
-                            onSelectTag={(tag) => setThemeFilter(tag || '')}
-                        />
-                    </div>
+                    <details className="group mt-2 rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+                            <span>
+                                <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Topics and filters</span>
+                                <span className="mt-1 block text-sm text-ink-secondary">Keep the memory stream first; open topics when you want to narrow it.</span>
+                            </span>
+                            <span className="text-xs font-semibold uppercase tracking-[0.1em] text-primary">
+                                <span className="group-open:hidden">Open</span>
+                                <span className="hidden group-open:inline">Close</span>
+                            </span>
+                        </summary>
+                        <div className="border-t border-[rgba(141,123,105,0.14)] p-3">
+                            <TagCloud
+                                selectedTag={themeFilter || null}
+                                onSelectTag={(tag) => setThemeFilter(tag || '')}
+                            />
+                        </div>
+                    </details>
                 )}
 
                 <section

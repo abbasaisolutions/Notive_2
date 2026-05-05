@@ -267,7 +267,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
             key={entry.id}
             type="button"
             onClick={onClick}
-            className={`flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+            className={`flex w-full min-w-0 items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${
                 checked
                     ? 'border-[rgba(107,143,113,0.4)] bg-[rgba(107,143,113,0.08)]'
                     : 'border-[rgba(92,92,92,0.12)] bg-white/60 hover:bg-white/80'
@@ -283,7 +283,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                 )}
             </div>
             <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                     {entry.mood && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: MOOD_COLORS[entry.mood] || '#94A3B8' }} />}
                     <span className="truncate text-[0.78rem] font-medium text-[rgb(var(--paper-ink))]">{entry.title || 'Untitled'}</span>
                     <span className="ml-auto shrink-0 text-[0.65rem] text-[rgb(107,107,107)]">
@@ -479,14 +479,14 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: '100%' }}
                 transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                className="fixed inset-x-0 bottom-0 z-[100] max-h-[85vh] overflow-hidden rounded-t-[1.5rem] border-t border-[rgba(92,92,92,0.12)] bg-[rgb(var(--paper-bg))] shadow-xl md:inset-x-auto md:inset-y-0 md:m-auto md:max-h-[560px] md:max-w-lg md:rounded-[1.5rem] md:border"
+                className="fixed inset-x-0 bottom-0 z-[100] max-h-[88vh] overflow-hidden rounded-t-[1.5rem] border-t border-[rgba(92,92,92,0.12)] bg-[rgb(var(--paper-bg))] shadow-xl md:inset-x-auto md:inset-y-0 md:m-auto md:max-h-[560px] md:max-w-lg md:rounded-[1.5rem] md:border"
                 style={{ bottom: 'var(--app-bottom-clearance, 0px)' }}
                 onClick={(event) => event.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-label="Share memories"
             >
-                <div className="flex items-center justify-between border-b border-[rgba(92,92,92,0.1)] px-5 py-3">
+                <div className="flex items-center justify-between border-b border-[rgba(92,92,92,0.1)] px-4 py-3 min-[430px]:px-5">
                     <div className="flex gap-1.5">
                         {[0, 1, 2].map((index) => (
                             <div key={index} className={`h-1 rounded-full transition-all ${index <= step && step < 3 ? 'w-6 bg-[rgb(107,143,113)]' : 'w-3 bg-[rgba(92,92,92,0.18)]'}`} />
@@ -497,7 +497,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                     </button>
                 </div>
 
-                <div className="overflow-y-auto px-5 py-4" style={{ maxHeight: 'calc(85vh - 120px)' }}>
+                <div className="overflow-y-auto px-4 py-4 min-[430px]:px-5" style={{ maxHeight: 'calc(88vh - 132px)' }}>
                     <AnimatePresence mode="wait" custom={direction}>
                         <motion.div
                             key={step}
@@ -514,7 +514,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                 </div>
 
                 {step < 3 && (
-                    <div className="flex items-center gap-3 border-t border-[rgba(92,92,92,0.1)] px-5 py-3" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0.75rem)' }}>
+                    <div className="flex flex-wrap items-center gap-3 border-t border-[rgba(92,92,92,0.1)] px-4 py-3 min-[430px]:px-5" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0.75rem)' }}>
                         {step > 0 && (
                             <button type="button" onClick={goBack} className="workspace-button-outline rounded-xl px-4 py-2.5 text-[0.78rem] font-semibold">
                                 Back
@@ -524,7 +524,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                             type="button"
                             disabled={!canProceed[step] || sending}
                             onClick={step === 2 ? handleSend : goForward}
-                            className="workspace-button-primary ml-auto rounded-xl px-5 py-2.5 text-[0.78rem] font-semibold disabled:opacity-40"
+                            className="workspace-button-primary ml-auto min-h-11 rounded-xl px-5 py-2.5 text-[0.78rem] font-semibold disabled:opacity-40 max-[374px]:w-full"
                         >
                             {sending ? 'Sharing...' : step === 2 ? `Share ${selectedIds.size} ${selectedIds.size === 1 ? 'memory' : 'memories'}` : 'Next'}
                         </button>

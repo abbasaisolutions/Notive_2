@@ -130,10 +130,10 @@ function EditEntryContent() {
     );
 
     return (
-        <div className="min-h-screen p-4 md:p-6">
-            <div className="max-w-2xl mx-auto">
+        <div className="min-h-screen p-3 min-[430px]:p-4 md:p-6">
+            <div className="mx-auto max-w-3xl">
                 {/* ── Top bar ── */}
-                <div className="flex items-center justify-between mb-5">
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
                     <button
                         type="button"
                         onClick={hasUnsavedChanges ? handleDone : navigateBack}
@@ -143,7 +143,7 @@ function EditEntryContent() {
                         <FiArrowLeft size={18} aria-hidden="true" />
                         <span className="text-sm font-medium">Back</span>
                     </button>
-                    <div className="flex items-center gap-3">
+                    <div className="ml-auto flex min-w-0 items-center gap-2 min-[430px]:gap-3">
                         <SaveConfidencePill
                             isSaving={isAutoSaving || isSaving}
                             lastSaved={lastSaved}
@@ -162,13 +162,18 @@ function EditEntryContent() {
                     </div>
                 )}
 
-                {/* ── Title ── */}
+                <div className="mb-5">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Edit saved memory</p>
+                    <p className="text-sm leading-6 text-ink-secondary">Keep the writing true to what happened. Tags, mood, and Notive signals are optional.</p>
+                </div>
+
                 <input
                     type="text"
-                    placeholder="Title"
+                    placeholder="Memory title"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full ink-title-input text-xl font-bold font-serif focus:outline-none mb-5 bg-transparent"
+                    className="mb-5 w-full bg-transparent font-serif text-[1.65rem] font-bold leading-tight text-[rgb(var(--text-primary))] focus:outline-none md:text-3xl"
+                    aria-label="Memory title"
                 />
 
                 {/* ── Editor ── */}
@@ -181,7 +186,10 @@ function EditEntryContent() {
                 {hasMemorySignals && (
                     <details className="group mt-5 rounded-2xl border border-[rgba(141,123,105,0.18)] bg-[rgba(255,255,255,0.03)]">
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink-secondary">
-                            <span>What Notive noticed</span>
+                            <span>
+                                <span className="block text-xs uppercase tracking-[0.14em] text-ink-muted">Optional writing signals</span>
+                                <span className="mt-1 block font-normal text-ink-secondary">Open only if these help you strengthen the memory.</span>
+                            </span>
                             <span className="text-xs uppercase tracking-[0.12em] text-ink-muted group-open:hidden">Open</span>
                             <span className="hidden text-xs uppercase tracking-[0.12em] text-ink-muted group-open:inline">Hide</span>
                         </summary>
@@ -202,7 +210,10 @@ function EditEntryContent() {
 
                 <details className="group mt-5 rounded-2xl border border-[rgba(141,123,105,0.18)] bg-[rgba(255,255,255,0.03)]">
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink-secondary">
-                        <span>Organize memory</span>
+                        <span>
+                            <span className="block text-xs uppercase tracking-[0.14em] text-ink-muted">Organize memory</span>
+                            <span className="mt-1 block font-normal text-ink-secondary">Mood, collection, tags, and cover image stay out of the writing flow.</span>
+                        </span>
                         <span className="text-xs uppercase tracking-[0.12em] text-ink-muted group-open:hidden">Optional</span>
                         <span className="hidden text-xs uppercase tracking-[0.12em] text-ink-muted group-open:inline">Hide</span>
                     </summary>
@@ -216,7 +227,7 @@ function EditEntryContent() {
                                 key={option}
                                 type="button"
                                 onClick={() => handleCategorySelect(option)}
-                                className={`rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] transition ${
+                                className={`min-h-10 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] transition ${
                                     category === option
                                         ? 'border-primary/45 bg-primary/15 text-primary'
                                         : 'workspace-button-outline text-ink-muted'
@@ -229,7 +240,7 @@ function EditEntryContent() {
                         <select
                             value={lifeArea}
                             onChange={(event) => setLifeArea(normalizeLifeArea(event.target.value, category))}
-                            className="workspace-input rounded-full px-3 py-1.5 text-xs text-ink-secondary focus:outline-none focus:ring-1 focus:ring-primary/30 border border-[rgba(141,123,105,0.18)]"
+                            className="workspace-input min-h-10 min-w-0 rounded-full border border-[rgba(141,123,105,0.18)] px-3 py-1.5 text-xs text-ink-secondary focus:outline-none focus:ring-1 focus:ring-primary/30"
                         >
                             {availableLifeAreas.map((option) => (
                                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -238,7 +249,7 @@ function EditEntryContent() {
                         <select
                             value={chapterId || ''}
                             onChange={(event) => setChapterId(event.target.value || null)}
-                            className="workspace-input rounded-full px-3 py-1.5 text-xs text-ink-secondary focus:outline-none focus:ring-1 focus:ring-primary/30 border border-[rgba(141,123,105,0.18)]"
+                            className="workspace-input min-h-10 min-w-0 rounded-full border border-[rgba(141,123,105,0.18)] px-3 py-1.5 text-xs text-ink-secondary focus:outline-none focus:ring-1 focus:ring-primary/30"
                         >
                             <option value="">No collection</option>
                             {collections.map((collection) => (
@@ -257,7 +268,7 @@ function EditEntryContent() {
                                     onClick={() => setMood(mood === m.value ? null : m.value)}
                                     title={m.label}
                                     aria-pressed={mood === m.value}
-                                    className={`px-3 py-1.5 rounded-full text-xs flex items-center gap-1.5 transition-all ${
+                                    className={`flex min-h-10 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-all ${
                                         mood === m.value
                                             ? 'bg-primary/15 border border-primary/40 text-primary font-medium'
                                             : 'workspace-pill text-ink-muted border border-transparent hover:border-primary/15'

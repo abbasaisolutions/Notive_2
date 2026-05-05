@@ -122,6 +122,7 @@ const getNotificationSignal = (type: string) => {
     if (type === 'reminder') return { label: 'Reminder', Icon: FiClock, tone: 'amber' as const };
     if (type === 'shared_memory' || type === 'memory_share_request') return { label: 'Shared', Icon: FiShare2, tone: 'sage' as const };
     if (type === 'share_reaction' || type === 'shared_memory_response') return { label: 'Reply', Icon: FiMessageCircle, tone: 'apricot' as const };
+    if (type === 'portfolio_evidence') return { label: 'Story material', Icon: FiStar, tone: 'sky' as const };
     if (type.includes('insight')) return { label: 'Insight', Icon: FiStar, tone: 'sky' as const };
     return { label: 'Memory', Icon: FiBookOpen, tone: 'sage' as const };
 };
@@ -138,9 +139,41 @@ const clonePreferences = (value: ResolvedNotificationPreferences): ResolvedNotif
     sharedMemories: value.sharedMemories,
     friendActivity: value.friendActivity,
     insights: value.insights,
+    storyMaterial: value.storyMaterial,
+    quietness: value.quietness,
     quietHours: { ...value.quietHours },
     ...(value.updatedAt ? { updatedAt: value.updatedAt } : {}),
 });
+
+const getDateGroup = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Earlier';
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+    const startOfWeek = new Date(startOfToday);
+    startOfWeek.setDate(startOfWeek.getDate() - 6);
+
+    if (date >= startOfToday) return 'Today';
+    if (date >= startOfYesterday) return 'Yesterday';
+    if (date >= startOfWeek) return 'This week';
+    return 'Earlier';
+};
+
+const groupNotifications = (items: InboxNotification[]) => {
+    const groups: Array<{ label: string; items: InboxNotification[] }> = [];
+    for (const item of items) {
+        const label = getDateGroup(item.createdAt);
+        const group = groups.find((candidate) => candidate.label === label);
+        if (group) {
+            group.items.push(item);
+        } else {
+            groups.push({ label, items: [item] });
+        }
+    }
+    return groups;
+};
 
 export default function NotificationsPage() {
     const router = useRouter();
@@ -273,6 +306,7 @@ export default function NotificationsPage() {
     const hasMore = notifications.length < total;
     const empty = !loading && notifications.length === 0;
     const deviceTimezone = useMemo(() => preferences.quietHours.timezone || resolveDefaultNotificationTimezone(), [preferences.quietHours.timezone]);
+    const notificationGroups = useMemo(() => groupNotifications(notifications), [notifications]);
     const emptyCopy = filter === 'unread'
         ? pickRotatingCopy('empty-notifications-unread', EMPTY_UNREAD_VARIANTS)
         : pickRotatingCopy('empty-notifications-all', EMPTY_INBOX_VARIANTS);
@@ -388,65 +422,81 @@ export default function NotificationsPage() {
                                 )}
                             </div>
                         )}
-                        {!loading && notifications.map((notification) => {
-                            const isRead = Boolean(notification.readAt);
-                            const signal = getNotificationSignal(notification.type);
-                            const SignalIcon = signal.Icon;
-                            const sender = getNotificationSender(notification);
-                            const hasSenderAvatar = Boolean(sender.avatarUrl || sender.name);
-                            return (
-                                <button
-                                    key={notification.id}
-                                    type="button"
-                                    onClick={() => void openNotification(notification)}
-                                    aria-label={`${isRead ? 'Read' : 'Unread'} notification: ${notification.title}`}
-                                    className={`density-compact w-full border text-left transition-all ${
-                                        isRead
-                                            ? 'border-dashed border-[rgba(92,92,92,0.18)] bg-transparent opacity-60 hover:opacity-100 hover:bg-white/60'
-                                            : 'border-[rgba(107,143,113,0.3)] bg-[rgba(107,143,113,0.08)] shadow-sm hover:bg-[rgba(107,143,113,0.12)]'
-                                    }`}
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <span className="relative mt-0.5 shrink-0">
-                                            {hasSenderAvatar ? (
-                                                <UserAvatar
-                                                    avatarUrl={sender.avatarUrl}
-                                                    name={sender.name || signal.label}
-                                                    size={40}
-                                                    className={isRead ? 'opacity-60 grayscale' : ''}
-                                                />
-                                            ) : (
-                                                <span className={`flex h-10 w-10 items-center justify-center rounded-2xl border ${signalToneClass[signal.tone]} ${isRead ? 'opacity-55 grayscale' : ''}`}>
-                                                    <SignalIcon size={17} aria-hidden="true" />
+                        {!loading && notificationGroups.map((group) => (
+                            <section key={group.label} className="space-y-1.5" aria-label={group.label}>
+                                <div className="sticky top-2 z-10 flex items-center gap-2 py-1">
+                                    <span className="type-micro rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgb(var(--paper-bg))]/90 px-2 py-1 font-semibold uppercase tracking-wide text-muted backdrop-blur">
+                                        {group.label}
+                                    </span>
+                                    <span className="h-px flex-1 bg-[rgba(92,92,92,0.10)]" aria-hidden="true" />
+                                </div>
+                                {group.items.map((notification) => {
+                                    const isRead = Boolean(notification.readAt);
+                                    const signal = getNotificationSignal(notification.type);
+                                    const SignalIcon = signal.Icon;
+                                    const sender = getNotificationSender(notification);
+                                    const hasSenderAvatar = Boolean(sender.avatarUrl || sender.name);
+                                    const href = resolveHref(notification);
+                                    return (
+                                        <div
+                                            key={notification.id}
+                                            className={`density-compact w-full border text-left transition-all ${
+                                                isRead
+                                                    ? 'border-dashed border-[rgba(92,92,92,0.18)] bg-transparent opacity-70 hover:opacity-100 hover:bg-white/60'
+                                                    : 'border-[rgba(107,143,113,0.3)] bg-[rgba(107,143,113,0.08)] shadow-sm hover:bg-[rgba(107,143,113,0.12)]'
+                                            }`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <span className="relative mt-0.5 shrink-0">
+                                                    {hasSenderAvatar ? (
+                                                        <UserAvatar
+                                                            avatarUrl={sender.avatarUrl}
+                                                            name={sender.name || signal.label}
+                                                            size={40}
+                                                            className={isRead ? 'opacity-60 grayscale' : ''}
+                                                        />
+                                                    ) : (
+                                                        <span className={`flex h-10 w-10 items-center justify-center rounded-2xl border ${signalToneClass[signal.tone]} ${isRead ? 'opacity-55 grayscale' : ''}`}>
+                                                            <SignalIcon size={17} aria-hidden="true" />
+                                                        </span>
+                                                    )}
+                                                    {hasSenderAvatar && (
+                                                        <span className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-[rgb(var(--paper-bg))] ${signalToneClass[signal.tone]}`}>
+                                                            <SignalIcon size={10} aria-hidden="true" />
+                                                        </span>
+                                                    )}
                                                 </span>
-                                            )}
-                                            {hasSenderAvatar && (
-                                                <span className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-[rgb(var(--paper-bg))] ${signalToneClass[signal.tone]}`}>
-                                                    <SignalIcon size={10} aria-hidden="true" />
-                                                </span>
-                                            )}
-                                        </span>
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`type-micro font-semibold uppercase tracking-wide ${isRead ? 'text-muted' : 'text-[rgb(107,143,113)]'}`}>
-                                                    {signal.label}
-                                                </span>
-                                                <span className="type-micro text-muted">· {formatRelativeTime(notification.createdAt)}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void openNotification(notification)}
+                                                    aria-label={`${isRead ? 'Read' : 'Unread'} notification: ${notification.title}`}
+                                                    className="min-w-0 flex-1 text-left"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`type-micro font-semibold uppercase tracking-wide ${isRead ? 'text-muted' : 'text-[rgb(107,143,113)]'}`}>
+                                                            {signal.label}
+                                                        </span>
+                                                        <span className="type-micro text-muted">· {formatRelativeTime(notification.createdAt)}</span>
+                                                    </div>
+                                                    <p className={`type-label-md mt-0.5 ${isRead ? 'font-normal text-muted' : 'font-semibold text-strong'}`}>
+                                                        {notification.title}
+                                                    </p>
+                                                    {notification.body && (
+                                                        <p className={`type-body-sm mt-0.5 line-clamp-2 ${isRead ? 'text-muted' : 'text-soft'}`}>
+                                                            {notification.body}
+                                                        </p>
+                                                    )}
+                                                    <span className="type-micro mt-1.5 inline-flex text-muted">
+                                                        {href ? (notification.type === 'portfolio_evidence' ? 'Open story material' : 'Open') : 'Mark as read'}
+                                                    </span>
+                                                </button>
+                                                {activeNotificationId === notification.id && <Spinner size="sm" />}
                                             </div>
-                                            <p className={`type-label-md mt-0.5 ${isRead ? 'font-normal text-muted' : 'font-semibold text-strong'}`}>
-                                                {notification.title}
-                                            </p>
-                                            {notification.body && (
-                                                <p className={`type-body-sm mt-0.5 line-clamp-2 ${isRead ? 'text-muted' : 'text-soft'}`}>
-                                                    {notification.body}
-                                                </p>
-                                            )}
                                         </div>
-                                        {activeNotificationId === notification.id && <Spinner size="sm" />}
-                                    </div>
-                                </button>
-                            );
-                        })}
+                                    );
+                                })}
+                            </section>
+                        ))}
 
                         {hasMore && (
                             <div className="flex justify-center pt-2">
@@ -474,6 +524,7 @@ export default function NotificationsPage() {
                             <div className="mt-3 space-y-1.5">
                                 {([
                                     ['reminders', 'Reminders'],
+                                    ['storyMaterial', 'Story material'],
                                     ['sharedMemories', 'Shared memories'],
                                     ['friendActivity', 'Friend activity'],
                                     ['insights', 'Insights'],
@@ -494,6 +545,38 @@ export default function NotificationsPage() {
                                             <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
                                         </button>
                                     </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className="rounded-2xl border border-[rgba(92,92,92,0.12)] bg-white/60 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <h2 className="type-label-md font-semibold text-strong">Quietness</h2>
+                                    <p className="type-micro text-muted">Controls how often low-urgency pushes leave the app.</p>
+                                </div>
+                                <span className="type-micro text-muted">{savingPreferences ? 'Saving…' : 'Auto-saved'}</span>
+                            </div>
+                            <div className="mt-3 grid gap-1.5 sm:grid-cols-3">
+                                {([
+                                    ['gentle', 'Gentle', 'Reminders and rare story material'],
+                                    ['balanced', 'Balanced', 'Useful updates without chatter'],
+                                    ['active', 'Active', 'All enabled notification types'],
+                                ] as const).map(([id, label, detail]) => (
+                                    <button
+                                        key={id}
+                                        type="button"
+                                        aria-pressed={preferences.quietness === id}
+                                        onClick={() => void savePreferences({ ...preferences, quietness: id })}
+                                        className={`rounded-xl px-2.5 py-2 text-left transition-colors ${
+                                            preferences.quietness === id
+                                                ? 'bg-[rgba(107,143,113,0.14)] text-[rgb(107,143,113)] ring-1 ring-[rgba(107,143,113,0.35)]'
+                                                : 'bg-white/50 text-soft hover:bg-white/80 hover:text-strong'
+                                        }`}
+                                    >
+                                        <span className="type-label-sm block font-semibold">{label}</span>
+                                        <span className="type-micro mt-0.5 block leading-4">{detail}</span>
+                                    </button>
                                 ))}
                             </div>
                         </section>

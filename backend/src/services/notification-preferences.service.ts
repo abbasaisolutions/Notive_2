@@ -1,4 +1,5 @@
-type NotificationCategory = 'reminders' | 'sharedMemories' | 'friendActivity' | 'insights';
+type NotificationCategory = 'reminders' | 'sharedMemories' | 'friendActivity' | 'insights' | 'storyMaterial';
+type NotificationQuietness = 'gentle' | 'balanced' | 'active';
 
 type QuietHoursPreference = {
     enabled: boolean;
@@ -9,6 +10,7 @@ type QuietHoursPreference = {
 
 export type NormalizedNotificationPreferences = {
     categories: Record<NotificationCategory, boolean>;
+    quietness: NotificationQuietness;
     quietHours: QuietHoursPreference;
 };
 
@@ -18,7 +20,9 @@ const DEFAULT_NOTIFICATION_PREFERENCES: NormalizedNotificationPreferences = {
         sharedMemories: true,
         friendActivity: true,
         insights: true,
+        storyMaterial: true,
     },
+    quietness: 'balanced',
     quietHours: {
         enabled: false,
         start: null,
@@ -41,7 +45,7 @@ const NOTIFICATION_CATEGORY_BY_TYPE: Record<string, NotificationCategory> = {
     insight: 'insights',
     insights: 'insights',
     insight_ready: 'insights',
-    portfolio_evidence: 'insights',
+    portfolio_evidence: 'storyMaterial',
     weekly_digest: 'insights',
     re_engagement: 'reminders',
 };
@@ -60,6 +64,11 @@ const asTimezone = (value: unknown): string | null =>
     typeof value === 'string' && value.trim().length > 0
         ? value.trim()
         : null;
+
+const asQuietness = (value: unknown): NotificationQuietness =>
+    value === 'gentle' || value === 'balanced' || value === 'active'
+        ? value
+        : DEFAULT_NOTIFICATION_PREFERENCES.quietness;
 
 const parseTimeToMinutes = (value: string | null): number | null => {
     if (!value) return null;
@@ -111,7 +120,9 @@ export const getNotificationPreferences = (signals: unknown): NormalizedNotifica
             sharedMemories: notificationSettings?.sharedMemories !== false,
             friendActivity: notificationSettings?.friendActivity !== false,
             insights: notificationSettings?.insights !== false,
+            storyMaterial: notificationSettings?.storyMaterial !== false,
         },
+        quietness: asQuietness(notificationSettings?.quietness),
         quietHours: {
             enabled: quietHours?.enabled === true,
             start: asTimeString(quietHours?.start),
@@ -156,13 +167,37 @@ export const isWithinNotificationQuietHours = (signals: unknown, now = new Date(
     return currentMinutes >= startMinutes || currentMinutes < endMinutes;
 };
 
+const shouldSendForQuietness = (signals: unknown, type: string): boolean => {
+    const { quietness } = getNotificationPreferences(signals);
+    if (quietness === 'active') return true;
+
+    if (quietness === 'gentle') {
+        return new Set([
+            'reminder',
+            'memory_share_request',
+            'shared_memory',
+            'portfolio_evidence',
+        ]).has(type);
+    }
+
+    return !new Set([
+        're_engagement',
+        'friend_accepted',
+        'share_reaction',
+        'shared_memory_response',
+    ]).has(type);
+};
+
 export const shouldCreateNotificationForType = (signals: unknown, type: string): boolean =>
     isNotificationTypeEnabled(signals, type);
 
 export const shouldSendPushForType = (signals: unknown, type: string, now = new Date()): boolean =>
-    isNotificationTypeEnabled(signals, type) && !isWithinNotificationQuietHours(signals, now);
+    isNotificationTypeEnabled(signals, type)
+    && shouldSendForQuietness(signals, type)
+    && !isWithinNotificationQuietHours(signals, now);
 
 export const getDefaultNotificationPreferences = (): NormalizedNotificationPreferences => ({
     categories: { ...DEFAULT_NOTIFICATION_PREFERENCES.categories },
+    quietness: DEFAULT_NOTIFICATION_PREFERENCES.quietness,
     quietHours: { ...DEFAULT_NOTIFICATION_PREFERENCES.quietHours },
 });
