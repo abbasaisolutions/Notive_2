@@ -9,9 +9,8 @@ import { useGamification } from '@/context/gamification-context';
 import { useTheme } from '@/context/theme-context';
 import { useNotificationCount } from '@/hooks/use-notification-count';
 import { useSharedUnreadCount } from '@/hooks/use-shared-unread-count';
-import { FiEdit3, FiMic, FiMoreHorizontal, FiSearch } from 'react-icons/fi';
+import { FiEdit3, FiMic, FiMoreHorizontal } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
-import { openGlobalSearch } from '@/utils/global-search';
 import useHasMounted from '@/hooks/use-has-mounted';
 import UserAvatar from '@/components/ui/UserAvatar';
 import ThemeMoodToggle from '@/components/layout/ThemeMoodToggle';
@@ -285,7 +284,7 @@ export default function MobileNav() {
                                                 <span className="relative">
                                                     {item.icon}
                                                     {itemBadgeCount > 0 && (
-                                                        <span className="absolute -top-1.5 -right-2 inline-flex min-w-[16px] items-center justify-center rounded-full bg-[rgb(107,143,113)] px-1 py-[1px] text-[10px] font-bold leading-none text-white">
+                                                        <span className="absolute -top-1.5 -right-2 inline-flex min-w-[16px] items-center justify-center rounded-full bg-[rgb(107,143,113)] px-1 py-[1px] text-xs font-bold leading-none text-white">
                                                             {itemBadgeCount > 99 ? '99+' : itemBadgeCount}
                                                         </span>
                                                     )}
@@ -336,21 +335,6 @@ export default function MobileNav() {
                     />
                 )}
             </AnimatePresence>
-
-            {!isMoreOpen && !isCaptureOpen && (
-                <button
-                    type="button"
-                    onClick={() => {
-                        hapticTap();
-                        openGlobalSearch();
-                    }}
-                    aria-label="Search memories"
-                    className="fixed left-4 z-50 inline-flex min-h-[42px] min-w-[42px] items-center justify-center rounded-2xl border border-white/12 bg-[rgba(255,255,255,0.78)] text-ink-secondary shadow-lg backdrop-blur-xl transition-colors hover:text-strong lg:hidden"
-                    style={{ bottom: 'calc(var(--app-bottom-clearance, 82px) + 0.55rem)' }}
-                >
-                    <FiSearch size={20} aria-hidden="true" />
-                </button>
-            )}
 
             <nav
                 ref={navRef}
@@ -434,7 +418,7 @@ export default function MobileNav() {
                                             />
                                             {unreadCount > 0 && (
                                                 <span
-                                                    className="absolute -top-0.5 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-[rgb(107,143,113)] text-white text-[10px] font-bold leading-none px-1 shadow-sm"
+                                                    className="absolute -top-0.5 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-[rgb(107,143,113)] text-white text-xs font-bold leading-none px-1 shadow-sm"
                                                     aria-label={`${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}`}
                                                 >
                                                     {unreadCount > 99 ? '99+' : unreadCount}
@@ -448,7 +432,7 @@ export default function MobileNav() {
                                                 strokeWidth: isActive ? 2.5 : 2
                                             })}
                                             {item.href === '/timeline' && sharedUnread > 0 && (
-                                                <span className="absolute -top-0.5 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-[rgb(107,143,113)] text-white text-[10px] font-bold leading-none px-1 shadow-sm">
+                                                <span className="absolute -top-0.5 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-[rgb(107,143,113)] text-white text-xs font-bold leading-none px-1 shadow-sm">
                                                     {sharedUnread > 99 ? '99+' : sharedUnread}
                                                 </span>
                                             )}

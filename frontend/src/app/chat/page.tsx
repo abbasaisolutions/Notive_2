@@ -379,7 +379,7 @@ export default function ChatPage() {
                     <details className="group rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]">
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
                             <span>
-                                <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Reflection lens</span>
+                                <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Private mirror mode</span>
                                 <span className="mt-1 block text-sm text-ink-secondary">{selectedLensLabel}</span>
                             </span>
                             <span className="text-xs font-semibold uppercase tracking-[0.1em] text-primary">
@@ -390,10 +390,10 @@ export default function ChatPage() {
                     <AppPanel className="space-y-3 rounded-none border-t border-[rgba(141,123,105,0.14)]">
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                             <div className="min-w-0">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Reflection lens</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Private mirror mode</p>
                                 <h2 className="workspace-heading mt-2 text-lg font-semibold">{selectedLensLabel}</h2>
                                 <p className="mt-1 text-sm leading-7 text-ink-secondary">
-                                    {activeGuidedLens?.description || 'Choose the lens that best matches what you want to understand or reuse from your notes.'}
+                                    {activeGuidedLens?.description || 'Choose how you want Notive to read with you: understand the moment, find the thread, name growth, or prepare material for outside use.'}
                                 </p>
                             </div>
                             <button
@@ -450,9 +450,9 @@ export default function ChatPage() {
                                 <EmptyState
                                     doodle="compass"
                                     doodleAccent="sky"
-                                    title="Ask anything about your notes"
+                                    title="Ask your private mirror"
                                     description={coachAvailable
-                                        ? 'Start with a question, or write one fresh memory first so Notive has more to work with.'
+                                        ? 'Start with a question about what a note means, what keeps repeating, or what you may want to use later.'
                                         : 'Come back when the guide is available.'}
                                     actionLabel={coachAvailable ? 'Write memory' : undefined}
                                     actionHref={coachAvailable ? '/entry/new?mode=quick' : undefined}
@@ -551,7 +551,7 @@ export default function ChatPage() {
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
                             aria-label="Message to your guide"
-                            placeholder={coachAvailable ? 'Ask about a memory, a lesson, a pattern, or a story you want to reuse...' : 'Guide is unavailable right now.'}
+                            placeholder={coachAvailable ? 'Ask what this means, what keeps repeating, or what you can use outside Notive...' : 'Guide is unavailable right now.'}
                             rows={1}
                             disabled={!coachAvailable}
                             className="workspace-input flex-1 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(var(--brand))]/35 resize-none"

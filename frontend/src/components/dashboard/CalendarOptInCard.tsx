@@ -199,7 +199,7 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
                     ))}
                 </ul>
 
-                <p className="mt-3 text-[11px] leading-4" style={{ color: 'rgb(var(--paper-ink-muted))' }}>
+                <p className="type-micro mt-3 leading-4" style={{ color: 'rgb(var(--paper-ink-muted))' }}>
                     Read-only access. Event titles never leave your device.
                 </p>
 

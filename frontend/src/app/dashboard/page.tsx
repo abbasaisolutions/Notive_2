@@ -373,11 +373,11 @@ const buildValueFocus = (input: {
         : 'Older memories start resurfacing once you have a few memories here.';
     const storyPipeline = storyOverview
         ? readyToReuse > 0
-            ? `${readyToReuse} stor${readyToReuse === 1 ? 'y is' : 'ies are'} ready to reuse.`
-            : readyToReview > 0
-                ? `${readyToReview} stor${readyToReview === 1 ? 'y is' : 'ies are'} ready for review.`
-                : 'Your diary is building reusable story material.'
-        : 'Your diary is building reusable story material.';
+                ? `${readyToReuse} stor${readyToReuse === 1 ? 'y is' : 'ies are'} ready to reuse.`
+                : readyToReview > 0
+                    ? `${readyToReview} stor${readyToReview === 1 ? 'y is' : 'ies are'} ready for review.`
+                    : 'Your diary is building useful outside material.'
+        : 'Your diary is building useful outside material.';
 
     return {
         eyebrow: NOTIVE_VOICE.dashboard.heroEyebrow,
@@ -401,7 +401,7 @@ const buildValueFocus = (input: {
                 value: resurfacedSignal,
             },
             {
-                label: 'Story pipeline',
+                label: 'Use outside Notive',
                 value: storyPipeline,
             },
         ],
@@ -411,7 +411,7 @@ const buildValueFocus = (input: {
             onClick: latestEntry ? onPrimary : undefined,
         },
         secondaryAction: {
-            label: latestEntry ? 'Open Stories' : 'Browse memories',
+            label: latestEntry ? 'Use outside Notive' : 'Browse notebook',
             href: latestEntry ? portfolioHref : timelineHref,
             tone: 'secondary',
         },
@@ -1116,8 +1116,8 @@ export default function DashboardPage() {
                     insightTier={insightTier}
                 />
                 {!showCalmerDashboard && (
-                    <div className="mx-auto max-w-3xl px-4">
-                        <details className="mt-6 rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]">
+                    <div className="mx-auto max-w-3xl px-4 pb-[calc(var(--app-bottom-clearance,5rem)+1.25rem)] md:pb-0">
+                        <details className="mt-2 rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]">
                             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink-secondary">
                                 <span>Browse by life area</span>
                                 <span className="text-xs uppercase tracking-[0.12em] text-ink-muted">Optional</span>

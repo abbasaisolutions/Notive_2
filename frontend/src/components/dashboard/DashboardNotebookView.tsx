@@ -10,7 +10,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import ActionBriefPanel from '@/components/action/ActionBriefPanel';
 import DailyCheckIn from '@/components/dashboard/DailyCheckIn';
-import DashboardTakeawayCard from '@/components/dashboard/DashboardTakeawayCard';
 import type { StudentActionBrief } from '@/components/action/types';
 import DailyGentleReflectionCard from '@/components/dashboard/DailyGentleReflectionCard';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
@@ -30,7 +29,6 @@ import {
     LIFE_BALANCE_RING_CIRCUMFERENCE,
 } from '@/components/dashboard/life-balance';
 import { getMoodEmoji, getMoodScore, normalizeMood } from '@/constants/moods';
-import { appendReturnTo } from '@/utils/navigation';
 
 type DashboardAction = {
     label: string;
@@ -259,24 +257,6 @@ const TAB_LABELS: Record<DashboardTab, string> = {
     growth: 'Growth',
     patterns: 'Patterns',
 };
-
-const ARRIVAL_ACTIONS = [
-    {
-        label: 'Steady',
-        doodle: 'sprout' as const,
-        prompt: 'I am arriving steady today because...',
-    },
-    {
-        label: 'Heavy',
-        doodle: 'moon' as const,
-        prompt: 'What feels heavy today is...',
-    },
-    {
-        label: 'Ready',
-        doodle: 'star' as const,
-        prompt: 'One thing I am ready to notice today is...',
-    },
-] as const;
 
 const DAY_LABELS = [
     { short: 'Sun', full: 'Sunday' },
@@ -637,7 +617,6 @@ function DashboardNotebookViewFull({
     timelineHref,
     portfolioHref,
     guideHref,
-    dashboardReturnTo: _dashboardReturnTo,
     hasSafetyFocus,
     setGentleReflectionsEnabled,
     setGentleReflection,
@@ -688,16 +667,6 @@ function DashboardNotebookViewFull({
         [activityHeatmap]
     );
     const periodDelta = useMemo(() => buildPeriodDelta(entries), [entries]);
-    const arrivalActions = useMemo(
-        () => ARRIVAL_ACTIONS.map((action) => ({
-            ...action,
-            href: appendReturnTo(
-                `/entry/new?mode=quick&source=dashboard_arrival&prompt=${encodeURIComponent(action.prompt)}`,
-                _dashboardReturnTo,
-            ),
-        })),
-        [_dashboardReturnTo],
-    );
     const latestEntry = entries[0] || null;
     const resurfacedMoment = resurfacedMoments[0] || null;
     const returningThemes = themeClusters.filter((cluster) => cluster.entryCount >= 2).length;
@@ -1035,6 +1004,53 @@ function DashboardNotebookViewFull({
             title: 'First thread',
             body: 'A few more memories will give Notive enough evidence to sketch this page more clearly.',
         }];
+    const innerWeatherMood = strongestEmotion?.emotion
+        || latestEntry?.mood
+        || todayCheckInMood
+        || null;
+    const innerWeatherLabel = innerWeatherMood
+        ? formatNotebookLabel(innerWeatherMood)
+        : entries.length > 0
+            ? 'Still forming'
+            : 'Unwritten';
+    const innerWeatherBody = strongestEmotion
+        ? `${formatNotebookLabel(strongestEmotion.emotion)} has the strongest signal across your recent notes.`
+        : latestEntry?.mood
+            ? `Your last saved mood was ${formatNotebookLabel(latestEntry.mood)}.`
+            : 'Write one private note and Notive will start reading the emotional weather gently.';
+    const primaryThread = themeClusters[0] || null;
+    const secondaryThreadCount = Math.max(themeClusters.length - (primaryThread ? 1 : 0), 0);
+    const primaryThreadLabel = primaryThread
+        ? formatNotebookLabel(primaryThread.label)
+        : strongestEmotion
+            ? formatNotebookLabel(strongestEmotion.emotion)
+            : entries.length > 0
+                ? 'Your latest note'
+                : 'First private note';
+    const primaryThreadReason = primaryThread
+        ? `${primaryThreadLabel} has shown up in ${primaryThread.entryCount} recent ${primaryThread.entryCount === 1 ? 'note' : 'notes'}${primaryThread.dominantMood ? `, often with ${formatNotebookLabel(primaryThread.dominantMood).toLowerCase()} nearby` : ''}.`
+        : strongestEmotion
+            ? `${formatNotebookLabel(strongestEmotion.emotion)} is the clearest emotional signal Notive can read right now.`
+            : entries.length > 0
+                ? 'Notive needs a few more notes before it can name a repeating thread clearly.'
+                : 'Your first note gives Notive a private signal to hold and understand.';
+    const todaysReadLine = primaryThread
+        ? `${primaryThreadLabel} is the thread showing up most clearly. ${innerWeatherBody}`
+        : innerWeatherBody;
+    const privateReflectionQuestion = todayBrief?.followUpPrompt
+        || (primaryThread
+            ? `What part of ${primaryThreadLabel.toLowerCase()} is actually yours to carry today?`
+            : 'What do you need to admit to yourself before the day gets louder?');
+    const threadWriteHref = `${recommendedHref}&prompt=${encodeURIComponent(privateReflectionQuestion)}&thread=${encodeURIComponent(primaryThreadLabel)}`;
+    const quietGrowthLine = growthLedgerItems[0]
+        || growthEvidence
+        || 'Notive will keep growth quiet until there is enough evidence to say something useful.';
+    const generatedMaterialCount = storyPipelineCounts.ready + storyPipelineCounts.verified;
+    const generatedMaterialLine = generatedMaterialCount > 0
+        ? `${generatedMaterialCount} generated ${generatedMaterialCount === 1 ? 'piece is' : 'pieces are'} ready when you want to use them.`
+            : storyPipelineCounts.shaping > 0
+                ? `${storyPipelineCounts.shaping} ${storyPipelineCounts.shaping === 1 ? 'memory is' : 'memories are'} shaping into possible story, resume, lesson, or skill material.`
+                : 'Story, resume, lesson, and skill material will appear here after the diary has enough signal.';
 
     const renderFocusAction = (action: DashboardAction | null | undefined, tone: 'primary' | 'secondary') => {
         if (!action) return null;
@@ -1171,7 +1187,7 @@ function DashboardNotebookViewFull({
                 <div className="rounded-[1.1rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.5)] px-3 py-3">
                     <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                            <p className="section-label">Story pipeline</p>
+                            <p className="section-label">Use outside Notive</p>
                             {storyPipelineCounts.leadSignal && (
                                 <p className="mt-1 text-[0.69rem] leading-5 text-[rgb(107,107,107)]">
                                     Top material: {formatNotebookLabel(storyPipelineCounts.leadSignal)}
@@ -1239,17 +1255,131 @@ function DashboardNotebookViewFull({
     ) : null;
     const topPreviewContent = activeTab === 'overview' ? (
         <>
-            <DashboardTakeawayCard takeaway={homeTakeaway} compact />
-
             {welcomeNotebookBanner}
 
-            <div id={DASHBOARD_QUICK_CHECKIN_ID} className="scroll-mt-24">
-                <DailyCheckIn
-                    hasCheckedInToday={hasCheckedInToday}
-                    todayMood={todayCheckInMood}
-                    onSubmit={onDailyCheckIn}
-                />
-            </div>
+            <section className="rounded-[1.35rem] border border-[rgba(92,92,92,0.12)] bg-[linear-gradient(135deg,rgba(255,251,245,0.84),rgba(248,244,237,0.6))] px-3 py-3 shadow-[0_14px_32px_rgba(92,92,92,0.06)] sm:px-4 sm:py-4">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="section-label">Today&apos;s read</p>
+                        <h2 className="notebook-title mt-1 text-[1.1rem] leading-tight sm:text-[1.35rem]">
+                            {primaryThread ? `${primaryThreadLabel} is worth noticing.` : 'Start with one honest signal.'}
+                        </h2>
+                        <p className="mt-2 max-w-2xl text-[0.82rem] leading-6 text-[rgb(107,107,107)]">
+                            {todaysReadLine}
+                        </p>
+                    </div>
+                    <NotebookDoodle name="moon" accent="sky" className="h-10 w-10 shrink-0 opacity-90 sm:h-12 sm:w-12" />
+                </div>
+
+                <div className="mt-3 grid gap-2 sm:grid-cols-[0.85fr_1.15fr]">
+                    <div className="rounded-[1.05rem] border border-[rgba(140,174,187,0.24)] bg-[rgba(255,255,255,0.46)] p-3">
+                        <div className="flex items-start gap-3">
+                            <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[rgba(140,174,187,0.28)] bg-[rgba(191,214,221,0.22)]">
+                                <span className="absolute h-10 w-10 rounded-full border border-[rgba(140,174,187,0.28)]" aria-hidden="true" />
+                                <span className="text-xl" aria-hidden="true">{innerWeatherMood ? moodEmojiFor(innerWeatherMood) : '✦'}</span>
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-[rgb(107,107,107)]">Inner weather</p>
+                                <p className="mt-1 text-base font-semibold leading-tight text-[rgb(var(--paper-ink))]">{innerWeatherLabel}</p>
+                                <p className="mt-1.5 text-[0.75rem] leading-5 text-[rgb(107,107,107)]">{innerWeatherBody}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="rounded-[1.05rem] border border-[rgba(138,154,111,0.24)] bg-[rgba(138,154,111,0.08)] p-3">
+                        <p className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-[rgb(118,134,91)]">Thread to notice</p>
+                        <p className="mt-1 text-base font-semibold leading-tight text-[rgb(var(--paper-ink))]">{primaryThreadLabel}</p>
+                        <p className="mt-1.5 text-[0.75rem] leading-5 text-[rgb(107,107,107)]">{primaryThreadReason}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            <Link
+                                href={threadWriteHref}
+                                className="inline-flex rounded-xl bg-[rgb(var(--paper-ink))] px-3 py-2 text-[0.74rem] font-semibold text-[rgb(var(--paper-bg))] transition-opacity hover:opacity-90"
+                            >
+                                Write into this thread
+                            </Link>
+                            <Link
+                                href={timelineHref}
+                                className="inline-flex rounded-xl border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.42)] px-3 py-2 text-[0.74rem] font-semibold text-[rgb(var(--paper-ink))] transition-colors hover:bg-[rgba(255,255,255,0.7)]"
+                            >
+                                {secondaryThreadCount > 0 ? `View ${secondaryThreadCount + 1} threads` : 'Open notebook'}
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+
+                <Link
+                    href={threadWriteHref}
+                    className="mt-3 block rounded-[1.05rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.38)] p-3 transition-all hover:-translate-y-0.5 hover:bg-[rgba(255,255,255,0.56)]"
+                >
+                    <p className="section-label">Private prompt</p>
+                    <p className="mt-1.5 text-[0.9rem] font-semibold leading-6 text-[rgb(var(--paper-ink))]">
+                        {privateReflectionQuestion}
+                    </p>
+                    <p className="mt-2 text-[0.72rem] font-semibold text-[rgb(118,134,91)]">
+                        Write privately →
+                    </p>
+                </Link>
+
+                <div className="mt-3 rounded-[1.05rem] border border-[rgba(216,199,232,0.24)] bg-[rgba(216,199,232,0.1)] p-3">
+                    <p className="section-label">Notive noticed</p>
+                    <p className="mt-1.5 text-[0.78rem] leading-5 text-[rgb(var(--paper-ink))]">
+                        {quietGrowthLine}
+                    </p>
+                </div>
+
+                {(resurfacedMoment || entries.length > 0) && (
+                    <div className="mt-3 rounded-[1.05rem] border border-[rgba(192,160,100,0.22)] bg-[rgba(234,216,189,0.16)] p-3">
+                        <p className="section-label">{resurfacedMoment ? 'Continue from a memory echo' : 'Continue from last time'}</p>
+                        {resurfacedMoment ? (
+                            <Link href={openDashboardEntryHref(resurfacedMoment.matchedEntry.id)} className="mt-1.5 block transition-opacity hover:opacity-80">
+                                <p className="text-[0.8rem] font-semibold leading-5 text-[rgb(var(--paper-ink))]">
+                                    {resurfacedMoment.matchedEntry.title || 'An older note is echoing'}
+                                </p>
+                                <p className="mt-1 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                                    {compactText(resurfacedMoment.matchedEntry.contentPreview, 132)}
+                                </p>
+                            </Link>
+                        ) : latestEntry ? (
+                            <Link href={openDashboardEntryHref(latestEntry.id)} className="mt-1.5 block transition-opacity hover:opacity-80">
+                                <p className="text-[0.8rem] font-semibold leading-5 text-[rgb(var(--paper-ink))]">
+                                    {latestEntry.title || 'Your latest note'}
+                                </p>
+                                <p className="mt-1 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                                    {compactText(latestEntry.content, 132)}
+                                </p>
+                            </Link>
+                        ) : null}
+                    </div>
+                )}
+
+                <p className="mt-3 text-[0.66rem] leading-5 text-[rgb(130,130,130)]">
+                    Private to you. Notive reads for patterns, not judgment.
+                </p>
+            </section>
+
+            <details id={DASHBOARD_QUICK_CHECKIN_ID} className="group scroll-mt-24 rounded-[1.25rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.3)]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
+                    <span>
+                        <span className="section-label block">Quick check-in</span>
+                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                            Add today&apos;s mood only if it helps the notebook read the day better.
+                        </span>
+                    </span>
+                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:hidden">
+                        Open
+                    </span>
+                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:inline">
+                        Hide
+                    </span>
+                </summary>
+                <div className="border-t border-[rgba(92,92,92,0.1)] px-3 pb-3 pt-3">
+                    <DailyCheckIn
+                        hasCheckedInToday={hasCheckedInToday}
+                        todayMood={todayCheckInMood}
+                        onSubmit={onDailyCheckIn}
+                    />
+                </div>
+            </details>
 
             <details className="group rounded-[1.25rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.38)]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
@@ -1268,6 +1398,48 @@ function DashboardNotebookViewFull({
                 </summary>
                 <div className="border-t border-[rgba(92,92,92,0.12)] px-3 pb-3 pt-3">
                     {heroContent}
+                </div>
+            </details>
+
+            <details className="group rounded-[1.25rem] border border-[rgba(216,199,232,0.22)] bg-[rgba(255,255,255,0.34)]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
+                    <span>
+                        <span className="section-label block">Use outside Notive</span>
+                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                            Story, resume, lesson, and skill signals stay behind the diary until you need them.
+                        </span>
+                    </span>
+                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:hidden">
+                        Open
+                    </span>
+                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:inline">
+                        Hide
+                    </span>
+                </summary>
+                <div className="border-t border-[rgba(92,92,92,0.12)] px-3 pb-3 pt-3">
+                    <div className="flex items-start gap-3">
+                        <NotebookDoodle name="shape-my-future" accent="lilac" className="h-11 w-11 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                            <p className="text-[0.82rem] font-semibold leading-6 text-[rgb(var(--paper-ink))]">
+                                {generatedMaterialLine}
+                            </p>
+                            <div className="mt-3 grid grid-cols-4 gap-1.5">
+                                {storyPipelineStages.length > 0 ? storyPipelineStages.map((stage) => (
+                                    <div key={stage.label} className="rounded-[0.8rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.42)] px-2 py-2">
+                                        <p className="truncate text-[0.54rem] font-semibold uppercase tracking-[0.06em] text-[rgb(107,107,107)]">{stage.label}</p>
+                                        <p className="mt-1 text-[0.9rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">{stage.value}</p>
+                                    </div>
+                                )) : (
+                                    <div className="col-span-4 rounded-[0.8rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.42)] px-3 py-2 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                                        Keep writing privately. Useful outside material appears after the notebook has enough context.
+                                    </div>
+                                )}
+                            </div>
+                            <Link href={portfolioHref} className="mt-3 inline-flex rounded-xl border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.46)] px-3 py-2 text-[0.76rem] font-semibold text-[rgb(var(--paper-ink))] transition-colors hover:bg-[rgba(255,255,255,0.72)]">
+                                Open Use Outside Notive →
+                            </Link>
+                        </div>
+                    </div>
                 </div>
             </details>
 
@@ -2232,7 +2404,7 @@ function DashboardNotebookViewFull({
     );
 
     return (
-        <div className="page-paper-canvas min-h-screen pb-32 md:pb-20">
+        <div className="page-paper-canvas pb-6 md:min-h-screen md:pb-20">
             <main className="mx-auto w-full max-w-4xl px-3 py-3 md:px-6 md:py-10">
                 <div className="space-y-3 md:space-y-6">
 
@@ -2271,54 +2443,25 @@ function DashboardNotebookViewFull({
                                         <span className="text-[rgba(107,107,107,0.55)]">•</span>
                                         <span className="sprout-accent line-clamp-1 min-w-0">{energyLine}</span>
                                     </p>
+                                    {(profileTags.length > 0 || zodiacSign) && (
+                                        <div className="chip-scroller -mx-1 mt-2 max-w-full px-1">
+                                            {profileTags.map((tag) => (
+                                                <span
+                                                    key={tag}
+                                                    className="shrink-0 rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.5)] px-2.5 py-1 text-[0.66rem] leading-none text-[rgb(107,107,107)]"
+                                                >
+                                                    {tag}
+                                                </span>
+                                            ))}
+                                            {zodiacSign && (
+                                                <span className="shrink-0 rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.5)] px-2.5 py-1 text-[0.66rem] leading-none text-[rgb(107,107,107)]">
+                                                    {zodiacSign.symbol} {zodiacSign.sign}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-
-                            {((profileTags.length > 0 || zodiacSign) || arrivalActions.length > 0) && (
-                                <details className="group rounded-[1.05rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.32)]">
-                                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
-                                        <span>
-                                            <span className="block text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">Context and quick starts</span>
-                                            <span className="mt-0.5 block text-[0.76rem] leading-5 text-ink-secondary">Profile signals and writing prompts are here when useful.</span>
-                                        </span>
-                                        <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-primary">
-                                            <span className="group-open:hidden">Open</span>
-                                            <span className="hidden group-open:inline">Close</span>
-                                        </span>
-                                    </summary>
-                                    <div className="space-y-3 border-t border-[rgba(92,92,92,0.1)] px-3 pb-3 pt-3">
-                                        {(profileTags.length > 0 || zodiacSign) && (
-                                            <div className="chip-scroller -mx-1 px-1">
-                                                {profileTags.map((tag) => (
-                                                    <span
-                                                        key={tag}
-                                                        className="shrink-0 rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.48)] px-2.5 py-1 text-[0.66rem] text-[rgb(107,107,107)]"
-                                                    >
-                                                        {tag}
-                                                    </span>
-                                                ))}
-                                                {zodiacSign && (
-                                                    <span className="shrink-0 rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.48)] px-2.5 py-1 text-[0.66rem] text-[rgb(107,107,107)]">
-                                                        {zodiacSign.symbol} {zodiacSign.sign}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-                                        <div className="grid grid-cols-3 gap-1.5">
-                                            {arrivalActions.map((action) => (
-                                                <Link
-                                                    key={action.label}
-                                                    href={action.href}
-                                                    className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-xl border border-[rgba(var(--paper-border),0.16)] bg-white/45 px-1 text-[0.62rem] font-semibold leading-none text-soft transition-colors hover:bg-white/70 hover:text-strong"
-                                                >
-                                                    <NotebookDoodle name={action.doodle} accent="sage" className="h-3.5 w-3.5" />
-                                                    {action.label}
-                                                </Link>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </details>
-                            )}
 
                             <div className="overflow-x-auto scrollbar-hide">
                                 <div role="tablist" aria-label="Dashboard pages" className="inline-flex min-w-full gap-1 rounded-[1.2rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(237,228,216,0.72)] p-0.5 min-[430px]:rounded-[1.5rem] min-[430px]:p-1">

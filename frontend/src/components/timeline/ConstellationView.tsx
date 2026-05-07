@@ -172,7 +172,7 @@ export default function ConstellationView({ model, totalEntries, currentReturnTo
                                         <span className="min-w-0 flex-1 truncate text-sm font-medium text-strong">
                                             {entry.title || 'Untitled entry'}
                                         </span>
-                                        <span className="flex-shrink-0 text-[11px] text-ink-muted">
+                                        <span className="type-micro flex-shrink-0 text-ink-muted">
                                             {new Date(entry.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                         </span>
                                         <motion.span

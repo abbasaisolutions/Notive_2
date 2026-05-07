@@ -72,32 +72,32 @@ export type GuidedReflectionResponse = {
 };
 
 const DEFAULT_SUGGESTIONS = [
-    'What lesson keeps showing up in my notes?',
-    'Which memory feels worth keeping?',
-    'What skills are showing up in this entry?',
-    'Turn this into a story I can use later.',
+    'Help me understand what I keep circling back to.',
+    'Find the thread underneath my recent notes.',
+    'Ask me a better question about this memory.',
+    'Turn this into something I can use outside Notive.',
 ];
 
 const GUIDED_LENSES: GuidedReflectionStatus['lenses'] = [
     {
         id: 'memory',
-        label: 'Memory',
-        description: 'Reconnect the present note to older moments worth keeping.',
+        label: 'Understand this',
+        description: 'Look closely at one note and what it may be trying to tell you.',
     },
     {
         id: 'patterns',
-        label: 'Patterns',
-        description: 'Look across notes for repeated themes, moods, and signals.',
+        label: 'Find the thread',
+        description: 'Look across notes for repeated themes, moods, people, and unresolved loops.',
     },
     {
         id: 'lessons',
-        label: 'Lessons',
-        description: 'Pull out lessons, strengths, and skills from what you wrote.',
+        label: 'Name the growth',
+        description: 'Pull out lessons, strengths, and shifts in how you handled things.',
     },
     {
         id: 'stories',
-        label: 'Stories',
-        description: 'Turn your notes into story material you can reuse later.',
+        label: 'Use outside Notive',
+        description: 'Turn private notes into story, resume, lesson, or shareable material only when you choose.',
     },
 ];
 
@@ -309,7 +309,7 @@ const buildOverviewLine = (input: {
     if (input.lens === 'patterns') {
         return `Across ${input.entryCount} note${input.entryCount === 1 ? '' : 's'}, the strongest repeated pattern is ${input.topTopics[0] || input.dominantMood || 'still emerging'}. The recent trend looks ${input.moodTrend}.`;
     }
-    return `Across ${input.entryCount} note${input.entryCount === 1 ? '' : 's'}, there is reusable story material forming${topicText}. The recent pattern looks ${input.moodTrend}.`;
+    return `Across ${input.entryCount} note${input.entryCount === 1 ? '' : 's'}, useful outside material is forming${topicText}. The recent thread looks ${input.moodTrend}.`;
 };
 
 const buildStrategyLabel = (searchResults: HybridSearchResult[] | null, entryCount: number): GuidedReflectionResponse['strategy'] => {

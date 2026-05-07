@@ -264,7 +264,7 @@ function EmotionBars({ emotions }: { emotions: TopEmotion[] }) {
                 const pct = Math.round((intensity / maxIntensity) * 100);
                 return (
                     <div key={emotion} className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-[10px] text-ink-muted uppercase tracking-wider truncate max-w-[4.5rem]">{emotion}</span>
+                        <span className="type-micro text-ink-muted uppercase tracking-wider truncate max-w-[4.5rem]">{emotion}</span>
                         <div className="h-1.5 w-10 rounded-full bg-[rgba(141,123,105,0.12)] overflow-hidden">
                             <div
                                 className="h-full rounded-full bg-gradient-to-r from-primary/60 to-primary/90 transition-all"

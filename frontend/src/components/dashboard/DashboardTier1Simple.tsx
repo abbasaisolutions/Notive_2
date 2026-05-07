@@ -131,7 +131,7 @@ export default function DashboardTier1Simple({
 
     return [
       {
-        label: 'Memories',
+        label: 'Notes',
         value: String(entries.length),
         note: entries.length < 3 ? 'Still warming up' : 'Enough to compare',
       },
@@ -146,7 +146,7 @@ export default function DashboardTier1Simple({
         note: moodCount === 0 ? 'Add moods to sharpen this' : 'Ready for patterns',
       },
       {
-        label: 'Patterns',
+        label: 'Threads',
         value: String(patternCount),
         note: patternCount === 0 ? 'Still listening' : 'Worth opening',
       },

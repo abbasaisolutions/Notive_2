@@ -316,8 +316,8 @@ export const buildDashboardHomeTakeaway = (input: DashboardHomeTakeawayInput): D
 
     if (hasTodayActivity) {
         const moodLabel = input.todayCheckInMood ? toTitleCase(input.todayCheckInMood) : null;
-        const readyStoryText = storyCounts.ready > 0
-            ? `${storyCounts.ready} ${storyCounts.ready === 1 ? 'story is' : 'stories are'} ready when you want more.`
+        const readyMaterialText = storyCounts.ready > 0
+            ? `${storyCounts.ready} generated ${storyCounts.ready === 1 ? 'piece is' : 'pieces are'} waiting quietly when you want them.`
             : '';
 
         return {
@@ -330,13 +330,13 @@ export const buildDashboardHomeTakeaway = (input: DashboardHomeTakeawayInput): D
             body: input.hasCheckedInToday
                 ? "You can stop here. Add one sentence only if there's something else worth keeping."
                 : "You already saved something from today. That counts; the dashboard does not need to ask for more.",
-            why: readyStoryText
+            why: readyMaterialText
                 || patternSignal?.sentence
                 || 'The point of Home is to help you keep what matters, then let you leave without turning reflection into homework.',
             nextStep: 'Done for now',
             primaryAction: { label: 'Done for now', kind: 'none' },
             secondaryAction: storyCounts.ready > 0
-                ? makeHrefAction('Open ready stories', input.portfolioHref)
+                ? makeHrefAction('View generated material', input.portfolioHref)
                 : makeHrefAction('Add one sentence', input.recommendedHref),
             signals: baseSignals(input, [
                 { label: 'Enough', value: 'Kept', tone: 'sage' },
@@ -361,24 +361,6 @@ export const buildDashboardHomeTakeaway = (input: DashboardHomeTakeawayInput): D
         };
     }
 
-    if (storyCounts.ready > 0) {
-        const readyText = `${storyCounts.ready} ${storyCounts.ready === 1 ? 'story is' : 'stories are'} ready to use`;
-        return {
-            persona: 'story_ready',
-            personaLabel: 'Reusable material',
-            eyebrow: 'Takeaway',
-            headline: `${readyText}.`,
-            body: storyLeadSignal
-                ? `${toTitleCase(storyLeadSignal)} is the strongest piece of material showing up right now.`
-                : 'Your memories have enough shape to become something useful outside the notebook.',
-            why: 'This is the moment to move from capture into use: story, lesson, skill, resume note, reflection, or decision support.',
-            nextStep: 'Open the story material',
-            primaryAction: makeHrefAction('Open ready stories', input.portfolioHref),
-            secondaryAction: makeHrefAction('Add a fresh note', input.recommendedHref),
-            signals: baseSignals(input, [{ label: 'Ready', value: String(storyCounts.ready), tone: 'lilac' }]),
-        };
-    }
-
     if (patternSignal) {
         return {
             persona: 'pattern',
@@ -396,6 +378,24 @@ export const buildDashboardHomeTakeaway = (input: DashboardHomeTakeawayInput): D
         };
     }
 
+    if (storyCounts.ready > 0) {
+        const readyText = `${storyCounts.ready} generated ${storyCounts.ready === 1 ? 'piece is' : 'pieces are'} ready`;
+        return {
+            persona: 'story_ready',
+            personaLabel: 'Quiet output',
+            eyebrow: 'What Notive noticed',
+            headline: 'Your notebook has a reusable thread, but reflection stays first.',
+            body: storyLeadSignal
+                ? `${toTitleCase(storyLeadSignal)} is showing up as material you may want later. For now, start with what it means to you.`
+                : 'Your memories have enough shape to become something useful outside the notebook. The private read still comes first.',
+            why: 'Stories, lessons, and resume notes are outputs from the diary. Home keeps the diary itself as the center.',
+            nextStep: 'Write privately about the thread',
+            primaryAction: makeHrefAction('Write privately', input.recommendedHref),
+            secondaryAction: makeHrefAction(`View ${readyText}`, input.portfolioHref),
+            signals: baseSignals(input, [{ label: 'Generated', value: String(storyCounts.ready), tone: 'lilac' }]),
+        };
+    }
+
     if (hasGrowthIntent(input, storyLeadSignal)) {
         const growthPhrase = storyLeadSignal
             ? toTitleCase(storyLeadSignal)
@@ -406,13 +406,13 @@ export const buildDashboardHomeTakeaway = (input: DashboardHomeTakeawayInput): D
         return {
             persona: 'growth',
             personaLabel: 'Growth signal',
-            eyebrow: 'Use this later',
-            headline: `${growthPhrase} is starting to become evidence.`,
-            body: 'The useful part is not just what happened. It is what the memory proves about how you handled it.',
-            why: 'That can become a story, a skill, a decision clue, or language you reuse when you need to explain yourself clearly.',
-            nextStep: 'Turn the signal into a usable note',
-            primaryAction: makeHrefAction('Build the story', input.portfolioHref),
-            secondaryAction: makeHrefAction('Add one example', input.recommendedHref),
+            eyebrow: 'Quiet growth',
+            headline: `${growthPhrase} is starting to become visible.`,
+            body: 'The useful part is not just what happened. It is what the memory shows about how you are learning to handle things.',
+            why: 'That can become a story or a skill later, but today it is first a private sign of growth.',
+            nextStep: 'Name what this shows about you',
+            primaryAction: makeHrefAction('Write privately', input.recommendedHref),
+            secondaryAction: makeHrefAction('View generated material', input.portfolioHref),
             signals: baseSignals(input, [{ label: 'Signal', value: growthPhrase, tone: 'apricot' }]),
         };
     }
@@ -423,13 +423,13 @@ export const buildDashboardHomeTakeaway = (input: DashboardHomeTakeawayInput): D
             personaLabel: 'Deep map',
             eyebrow: 'Your map is filling in',
             headline: 'There is enough signal here to compare, not just collect.',
-            body: 'Home can now show mood, story, people, gratitude, and growth threads without forcing every detail into the first screen.',
+            body: 'Home can now show mood, themes, people, gratitude, growth, and generated material without forcing every detail into the first screen.',
             why: input.heroInsight?.body
                 ? compactText(input.heroInsight.body, 170)
                 : 'The best takeaway is the one that helps you choose where to look next.',
             nextStep: 'Open the deeper read',
             primaryAction: makeHrefAction('Open patterns', input.timelineHref),
-            secondaryAction: makeHrefAction('Open stories', input.portfolioHref),
+            secondaryAction: makeHrefAction('View generated material', input.portfolioHref),
             signals: baseSignals(input, [{ label: 'Depth', value: 'Ready', tone: 'lilac' }]),
         };
     }

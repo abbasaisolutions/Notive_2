@@ -312,7 +312,7 @@ export default function TiptapEditor({
             <div className="relative">
                 <EditorContent editor={editor} />
                 {maxWords !== undefined && (
-                    <div className={`absolute bottom-3 right-4 text-[11px] font-semibold tabular-nums pointer-events-none select-none transition-colors ${
+                    <div className={`absolute bottom-3 right-4 type-micro font-semibold tabular-nums pointer-events-none select-none transition-colors ${
                         atLimit
                             ? 'text-red-400'
                             : nearLimit

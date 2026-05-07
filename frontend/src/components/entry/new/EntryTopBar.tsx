@@ -128,7 +128,7 @@ export default function EntryTopBar({
                             <FiArrowLeft size={20} aria-hidden="true" />
                         </button>
                         <div className="min-w-0">
-                            <p className="text-[10px] uppercase tracking-[0.16em] text-ink-muted font-semibold leading-none">{studioLabel}</p>
+                            <p className="type-overline text-ink-muted leading-none">{studioLabel}</p>
                             <p className={`mt-0.5 text-[0.65rem] leading-none ${
                                 !isQuickMode && wordCount >= MIN_WORDS_FOR_ENTRY_INSIGHTS ? 'text-[rgb(var(--paper-sage))]' : 'text-ink-muted'
                             }`}>

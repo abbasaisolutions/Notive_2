@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { FiBell } from 'react-icons/fi';
+import { FiBell, FiSearch } from 'react-icons/fi';
 import { useAuth } from '@/context/auth-context';
 import { useNotificationCount } from '@/hooks/use-notification-count';
 import useHasMounted from '@/hooks/use-has-mounted';
 import { hapticTap } from '@/services/haptics.service';
 import { shouldHideGlobalNav } from '@/components/layout/nav-config';
+import { openGlobalSearch } from '@/utils/global-search';
 
 /**
  * Persistent bell in the top-right corner that opens /notifications.
@@ -38,9 +39,20 @@ export default function NotificationBell() {
 
     return (
         <div
-            className="fixed right-3 z-40 lg:hidden"
+            className="fixed right-3 z-40 flex items-center gap-2 lg:hidden"
             style={{ top: 'max(0.75rem, env(safe-area-inset-top))' }}
         >
+            <button
+                type="button"
+                aria-label="Search memories"
+                onClick={() => {
+                    hapticTap();
+                    openGlobalSearch();
+                }}
+                className="glass-nav flex h-9 w-9 items-center justify-center rounded-full text-ink-secondary shadow-md transition-transform hover:text-strong active:scale-95"
+            >
+                <FiSearch size={17} aria-hidden="true" />
+            </button>
             <Link
                 href="/notifications"
                 aria-label={ariaLabel}
@@ -56,7 +68,7 @@ export default function NotificationBell() {
                             animate={{ scale: 1, opacity: 1 }}
                             exit={prefersReducedMotion ? { opacity: 0 } : { scale: 0, opacity: 0 }}
                             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                            className="absolute -top-0.5 -right-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-[rgb(107,143,113)] px-1 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-[#F8F4ED]"
+                            className="absolute -top-0.5 -right-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-[rgb(107,143,113)] px-1 py-0.5 text-xs font-bold leading-none text-white shadow-sm ring-2 ring-[#F8F4ED]"
                         >
                             {unreadCount > 99 ? '99+' : unreadCount}
                         </motion.span>

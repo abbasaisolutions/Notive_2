@@ -138,7 +138,7 @@ function ConnectionDots({ entryTags, tagCounts }: { entryTags: string[]; tagCoun
                     />
                 ))}
             </span>
-            <span className="text-[9px] text-ink-muted">{relatedCount}×</span>
+            <span className="type-micro text-ink-muted">{relatedCount}×</span>
         </span>
     );
 }

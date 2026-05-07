@@ -21,27 +21,27 @@ const STEPS: Step[] = [
     {
         doodle: 'ladder',
         accent: 'sky',
-        label: 'Timeline',
+        label: 'Notebook',
         title: 'Look back as you grow',
-        body: 'Every note you write appears here in order. Patterns and themes surface as entries accumulate.',
+        body: 'Every note you write appears here in order. Threads and emotional signals surface as entries accumulate.',
         href: '/timeline',
-        cta: 'See the timeline →',
+        cta: 'Open notebook →',
     },
     {
         doodle: 'sprout',
         accent: 'sage',
-        label: 'Groups',
-        title: 'Group related moments',
-        body: 'Collect entries into groups by project, semester, or anything that feels connected.',
+        label: 'Threads',
+        title: 'Follow what keeps returning',
+        body: 'Collect and revisit related notes by theme, season, person, project, or part of life.',
         href: '/chapters',
-        cta: 'Browse groups →',
+        cta: 'Browse threads →',
     },
     {
         doodle: 'see-my-growth',
         accent: 'lilac',
         label: 'AskNotive',
-        title: 'Turn notes into next moves',
-        body: 'Notive reads what you write and surfaces insights, prompts, and patterns to act on.',
+        title: 'Ask a better question',
+        body: 'Notive helps you understand a note, find the thread, name growth, or prepare outside material.',
         href: '/chat',
         cta: 'Open AskNotive →',
     },
@@ -114,7 +114,7 @@ export default function FirstVisitWalkthrough() {
                                     </div>
                                     <p className="text-sm font-semibold text-strong leading-snug">{step.title}</p>
                                     <p className="text-xs leading-relaxed text-ink-secondary">{step.body}</p>
-                                    <span className="mt-auto text-[10px] font-semibold uppercase tracking-[0.12em] text-primary/60 group-hover:text-primary transition-colors">
+                                    <span className="type-micro mt-auto font-semibold uppercase tracking-[0.12em] text-primary/60 group-hover:text-primary transition-colors">
                                         {step.cta}
                                     </span>
                                 </Link>
@@ -125,7 +125,7 @@ export default function FirstVisitWalkthrough() {
                     <button
                         type="button"
                         onClick={dismiss}
-                        className="mt-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted hover:text-ink-secondary transition-colors"
+                        className="type-micro mt-4 font-semibold uppercase tracking-[0.12em] text-ink-muted hover:text-ink-secondary transition-colors"
                     >
                         Got it, hide this
                     </button>

@@ -184,7 +184,7 @@ export default function OfflineBanner() {
                         <button
                             type="button"
                             onClick={() => setExpanded((current) => !current)}
-                            className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors hover:bg-white/15"
+                            className="rounded-full border border-white/20 bg-white/10 px-3 py-1 type-overline transition-colors hover:bg-white/15"
                         >
                             {expanded ? 'Hide sync details' : 'View sync details'}
                         </button>

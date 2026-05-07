@@ -13,6 +13,7 @@ type EntrySaveCompletionSummary = {
     people?: string[];
     topics?: string[];
     growthFlag?: boolean;
+    threadConnection?: string;
     phrase?: string;
 };
 
@@ -101,6 +102,13 @@ export default function EntrySaveCompletionSheet({
         if (!summary) return [];
 
         const next: Highlight[] = [];
+        if (summary.threadConnection?.trim()) {
+            next.push({
+                key: 'threadConnection',
+                label: 'Quiet connection',
+                value: `This may connect to ${summary.threadConnection.trim()}.`,
+            });
+        }
         if (summary.lesson?.trim()) {
             next.push({ key: 'lesson', label: 'Lesson', value: summary.lesson.trim() });
         }
@@ -124,7 +132,7 @@ export default function EntrySaveCompletionSheet({
                 next.push({ key: 'people', label: 'People', value: peopleSummary });
             }
         }
-        if (summary.topics && summary.topics.length > 0) {
+        if (!summary.threadConnection && summary.topics && summary.topics.length > 0) {
             next.push({ key: 'topics', label: 'Thread', value: summary.topics[0] });
         }
         if (summary.phrase?.trim()) {
@@ -180,6 +188,7 @@ export default function EntrySaveCompletionSheet({
     }, [handleKeyDown, open]);
 
     if (!open) return null;
+    const isReflectionSave = kicker.toLowerCase().includes('reflection');
 
     return (
         <>
@@ -205,7 +214,7 @@ export default function EntrySaveCompletionSheet({
                                 {kicker}
                             </p>
                             <h2 id="entry-save-completion-title" className="workspace-heading mt-2 text-xl font-semibold">
-                                {title?.trim() || (kicker === 'Reflection saved' ? 'Your reflection is safe' : 'Your memory is safe')}
+                                {title?.trim() || (isReflectionSave ? 'Your reflection is safe' : 'Your note is safe')}
                             </h2>
                             <p id="entry-save-completion-description" className="mt-2 text-sm leading-6 text-ink-secondary">
                                 {description}

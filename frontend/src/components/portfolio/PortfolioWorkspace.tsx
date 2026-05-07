@@ -55,6 +55,7 @@ type DocumentExportType = 'resume' | 'statement';
 type ExportDownloadFormat = 'html' | 'markdown';
 type EvidenceField = 'situation' | 'action' | 'lesson' | 'outcome' | 'skills';
 type EvidenceFilter = 'all' | 'needs_attention' | 'ready_to_verify' | 'ready_to_export' | 'verified';
+type StoryUseCase = 'story' | 'interview' | 'resume' | 'statement' | 'reflection';
 
 type EvidenceCompleteness = {
     score: number;
@@ -133,6 +134,7 @@ type Draft = {
 
 type ExportPreview = {
     type: DocumentExportType;
+    variant: StatementVariant;
     fileName: string;
     content: string;
 };
@@ -197,15 +199,38 @@ const exportTypeIcons: Record<ExportType, IconType> = {
 
 const evidenceFilterLabels: Record<EvidenceFilter, string> = {
     all: 'All Stories',
-    needs_attention: 'Needs Detail',
-    ready_to_verify: 'Ready to Check',
-    ready_to_export: 'Ready to Use',
-    verified: 'Checked',
+    needs_attention: 'Shape',
+    ready_to_verify: 'Review',
+    ready_to_export: 'Use',
+    verified: 'Saved',
+};
+
+const storyStatusLabels: Record<Exclude<EvidenceFilter, 'all'>, string> = {
+    needs_attention: 'Needs shaping',
+    ready_to_verify: 'Ready to review',
+    ready_to_export: 'Ready to use',
+    verified: 'Saved as reusable',
+};
+
+const storyUseCaseLabels: Record<StoryUseCase, string> = {
+    story: 'Reusable story',
+    interview: 'Interview answer',
+    resume: 'Resume bullet',
+    statement: 'Statement material',
+    reflection: 'Reflection lesson',
+};
+
+const storyUseCaseDescriptions: Record<StoryUseCase, string> = {
+    story: 'Keep the story clear, grounded, and easy to reuse later.',
+    interview: 'Prioritize situation, action, and result so it rehearses cleanly out loud.',
+    resume: 'Tighten action, result, and skills so the material can become a strong bullet.',
+    statement: 'Keep voice and lesson visible so the moment can support a personal narrative.',
+    reflection: 'Focus on what changed in you and what the moment taught.',
 };
 
 const portfolioViewLabels: Record<PortfolioView, string> = {
     export: 'Resume & Statement',
-    evidence: 'In Progress',
+    evidence: 'Story Queue',
     interview: 'Interview',
     growth: 'Growth',
 };
@@ -428,6 +453,7 @@ export default function PortfolioWorkspace() {
     const reduceMotion = hasMounted && !!reduceMotionPreference;
     const previewRequestRef = useRef(0);
     const hasHydratedWorkspaceRef = useRef(false);
+    const openedEditStoryParamRef = useRef<string | null>(null);
     const resumeSessionRef = useRef<PortfolioSessionState | null>(null);
 
     const [overview, setOverview] = useState<Overview | null>(null);
@@ -440,6 +466,8 @@ export default function PortfolioWorkspace() {
     const [showInterviewTools, setShowInterviewTools] = useState(false);
     const [showEditingDetails, setShowEditingDetails] = useState(false);
     const [activeStoryEntryId, setActiveStoryEntryId] = useState<string | null>(null);
+    const [editingUseCase, setEditingUseCase] = useState<StoryUseCase>('story');
+    const [storySaveMessage, setStorySaveMessage] = useState('');
     const [practiceMode, setPracticeMode] = useState(false);
     const [practiceReveal, setPracticeReveal] = useState(false);
     const [evidenceFilter, setEvidenceFilter] = useState<EvidenceFilter>('all');
@@ -543,6 +571,7 @@ export default function PortfolioWorkspace() {
 
             setExportPreview({
                 type,
+                variant: statementVariant,
                 fileName,
                 content,
             });
@@ -554,7 +583,7 @@ export default function PortfolioWorkspace() {
                 setIsPreviewLoading(false);
             }
         }
-    }, [requestExportDocument]);
+    }, [requestExportDocument, statementVariant]);
 
     const downloadExport = useCallback(async (type: DocumentExportType, format: ExportDownloadFormat) => {
         const key = `${type}:${format}`;
@@ -571,7 +600,7 @@ export default function PortfolioWorkspace() {
         });
 
         try {
-            if (format === 'html' && exportPreview?.type === type) {
+            if (format === 'html' && exportPreview?.type === type && exportPreview.variant === statementVariant) {
                 triggerDownload(exportPreview.fileName, exportPreview.content, 'text/html; charset=utf-8');
                 return;
             }
@@ -586,6 +615,7 @@ export default function PortfolioWorkspace() {
             if (format === 'html') {
                 setExportPreview({
                     type,
+                    variant: statementVariant,
                     fileName,
                     content,
                 });
@@ -598,11 +628,12 @@ export default function PortfolioWorkspace() {
     }, [activeView, exportPreview, requestExportDocument, statementVariant, trackEvent]);
 
     const printSelectedExport = useCallback(async () => {
-        const printWindow = window.open('', '_blank', 'noopener,noreferrer');
+        const printWindow = window.open('', '_blank');
         if (!printWindow) {
             setPreviewError('Pop-up blocked. Allow pop-ups to print the export.');
             return;
         }
+        printWindow.opener = null;
 
         setDownloadingKey(`${selectedExportType}:print`);
         void trackEvent({
@@ -614,10 +645,11 @@ export default function PortfolioWorkspace() {
             },
         });
         try {
-            const payload = exportPreview?.type === selectedExportType
+            const payload = exportPreview?.type === selectedExportType && exportPreview.variant === statementVariant
                 ? exportPreview
                 : {
                     type: selectedExportType,
+                    variant: statementVariant,
                     ...(await requestExportDocument(selectedExportType, 'html')),
                 };
 
@@ -922,7 +954,7 @@ export default function PortfolioWorkspace() {
             return {
                 title: 'Tighten one unfinished story',
                 description: `${filterCounts.needs_attention} stor${filterCounts.needs_attention === 1 ? 'y needs' : 'ies need'} one clearer block before export or practice will feel useful.`,
-                actionLabel: 'Open In Progress',
+                actionLabel: 'Open Story Queue',
                 actionHref: null as string | null,
                 targetView: 'evidence' as PortfolioView,
                 targetExportType: null as DocumentExportType | null,
@@ -991,7 +1023,7 @@ export default function PortfolioWorkspace() {
                     ? `${filterCounts.ready_to_export} experience${filterCounts.ready_to_export === 1 ? '' : 's'} ready to export`
                     : overview.profileContext?.track
                         ? `${formatLabel(overview.profileContext.track)} track`
-                        : 'Use your strongest verified story';
+                        : 'Use your strongest saved story';
 
             return {
                 type,
@@ -1018,13 +1050,13 @@ export default function PortfolioWorkspace() {
     const evidenceFocusTitle = useMemo(() => {
         switch (recommendedEvidenceFilter) {
             case 'needs_attention':
-                return 'Fill the missing pieces first';
+                return 'Shape the missing pieces first';
             case 'ready_to_verify':
-                return 'Check the strongest unfinished stories';
+                return 'Review the strongest unfinished stories';
             case 'ready_to_export':
-                return 'Your strongest draft stories are ready';
+                return 'Your strongest stories are ready to use';
             case 'verified':
-                return 'Your safest proof is already waiting';
+                return 'Your saved reusable stories are waiting';
             default:
                 return 'Work the full story queue';
         }
@@ -1034,11 +1066,11 @@ export default function PortfolioWorkspace() {
             case 'needs_attention':
                 return `${filterCounts.needs_attention} stor${filterCounts.needs_attention === 1 ? 'y is' : 'ies are'} missing core detail. Tighten situation, action, lesson, or outcome before you export anything.`;
             case 'ready_to_verify':
-                return `${filterCounts.ready_to_verify} stor${filterCounts.ready_to_verify === 1 ? 'y has' : 'ies have'} enough structure to verify and strengthen.`;
+                return `${filterCounts.ready_to_verify} stor${filterCounts.ready_to_verify === 1 ? 'y has' : 'ies have'} enough structure to review and strengthen.`;
             case 'ready_to_export':
                 return `${filterCounts.ready_to_export} stor${filterCounts.ready_to_export === 1 ? 'y is' : 'ies are'} complete enough to reuse in a pack right now.`;
             case 'verified':
-                return `${filterCounts.verified} verified stor${filterCounts.verified === 1 ? 'y is' : 'ies are'} ready to reuse or rehearse without much extra work.`;
+                return `${filterCounts.verified} saved stor${filterCounts.verified === 1 ? 'y is' : 'ies are'} ready to reuse or rehearse without much extra work.`;
             default:
                 return 'Use the full queue when you want the complete picture of what is weak, ready, or already strong.';
         }
@@ -1056,10 +1088,10 @@ export default function PortfolioWorkspace() {
             return `${filterCounts.needs_attention} stor${filterCounts.needs_attention === 1 ? 'y still needs' : 'ies still need'} shaping`;
         }
         if (filterCounts.ready_to_verify > 0) {
-            return `${filterCounts.ready_to_verify} stor${filterCounts.ready_to_verify === 1 ? 'y is' : 'ies are'} close to verification`;
+            return `${filterCounts.ready_to_verify} stor${filterCounts.ready_to_verify === 1 ? 'y is' : 'ies are'} ready to review`;
         }
         if (filterCounts.verified > 0) {
-            return `${filterCounts.verified} stor${filterCounts.verified === 1 ? 'y is' : 'ies are'} already strong source material`;
+            return `${filterCounts.verified} stor${filterCounts.verified === 1 ? 'y is' : 'ies are'} saved as reusable`;
         }
         return `${evidenceSummary.total} stor${evidenceSummary.total === 1 ? 'y is' : 'ies are'} in the queue`;
     }, [evidenceSummary.total, filterCounts.needs_attention, filterCounts.ready_to_verify, filterCounts.verified]);
@@ -1068,7 +1100,7 @@ export default function PortfolioWorkspace() {
             return 'Start with the weakest stories first. A single missing block or clearer proof detail usually unlocks the rest of the queue.';
         }
         if (filterCounts.ready_to_verify > 0) {
-            return 'These stories already have structure. The next step is checking proof instead of reopening everything.';
+            return 'These stories already have structure. The next step is reviewing proof instead of reopening everything.';
         }
         if (filterCounts.verified > 0) {
             return 'Your strongest stories are ready to support exports and interview practice, so you can stay focused on reuse.';
@@ -1122,10 +1154,10 @@ export default function PortfolioWorkspace() {
     const interviewToolsDescription = showInterviewTools
         ? 'Go back to one focused story and one primary practice move.'
         : 'Switch stories or change practice mode without leaving the current answer.';
-    const editingDetailsLabel = showEditingDetails ? 'Hide supporting blocks' : 'Supporting blocks';
+    const editingDetailsLabel = showEditingDetails ? 'Hide supporting details' : 'Supporting details';
     const editingDetailsDescription = showEditingDetails
         ? 'Go back to the shortest edit path when you only want the core story blocks.'
-        : 'Skills, proof notes, and the remaining story blocks stay here when you want to round the story out.';
+        : 'Skills, proof notes, readiness, and the source memory stay here when you want to round the story out.';
     const toggleExportTools = () => {
         const nextValue = !showExportTools;
         setShowExportTools(nextValue);
@@ -1167,6 +1199,7 @@ export default function PortfolioWorkspace() {
     const startEdit = (experience: Experience) => {
         setEditingEntryId(experience.entryId);
         setShowEditingDetails(false);
+        setStorySaveMessage('');
         setDrafts((prev) => ({
             ...prev,
             [experience.entryId]: {
@@ -1180,6 +1213,18 @@ export default function PortfolioWorkspace() {
             },
         }));
     };
+
+    useEffect(() => {
+        if (!overview || typeof window === 'undefined') return;
+        const editStoryId = new URLSearchParams(window.location.search).get('editStory');
+        if (!editStoryId || openedEditStoryParamRef.current === editStoryId) return;
+        const experience = overview.experiences.find((item) => item.entryId === editStoryId);
+        if (!experience) return;
+
+        openedEditStoryParamRef.current = editStoryId;
+        switchView('evidence', 'replace');
+        startEdit(experience);
+    }, [overview, switchView]);
 
     const updateDraft = (entryId: string, field: keyof Draft, value: string) => {
         setDrafts((prev) => ({ ...prev, [entryId]: { ...prev[entryId], [field]: value } }));
@@ -1210,6 +1255,7 @@ export default function PortfolioWorkspace() {
             if (!response.ok) throw new Error(data.message || 'Couldn\u2019t save that experience.');
 
             setEditingEntryId(null);
+            setStorySaveMessage('Story saved. Your reusable version is updated.');
             await Promise.all([fetchOverview(), fetchTrends(trendPeriod)]);
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Couldn\u2019t save that experience.');
@@ -1643,7 +1689,7 @@ export default function PortfolioWorkspace() {
                             <TagPill>{evidenceSummary.total} total</TagPill>
                             <TagPill tone={filterCounts.needs_attention > 0 ? 'muted' : 'default'}>{filterCounts.needs_attention} need detail</TagPill>
                             <TagPill>{filterCounts.ready_to_verify} ready to check</TagPill>
-                            <TagPill tone="primary">{filterCounts.verified} checked</TagPill>
+                            <TagPill tone="primary">{filterCounts.verified} saved</TagPill>
                         </div>
                     </div>
                 </details>
@@ -1666,6 +1712,7 @@ export default function PortfolioWorkspace() {
                         const meta = experienceMetaByEntryId.get(experience.entryId) || getExperienceMeta(experience);
                         const { completeness, state } = meta;
                         const sourceHref = appendReturnTo(`/entry/view?id=${experience.entryId}`, currentReturnTo);
+                        const storyHref = appendReturnTo(`/portfolio/story?id=${experience.entryId}`, currentReturnTo);
                         const primarySnippet = experience.outcome || experience.action || experience.lesson || experience.situation;
                         const stateTone = state === 'verified' ? 'primary' : state === 'needs_attention' ? 'muted' : 'default';
                         const nextMissingField = completeness.missingFields[0] || null;
@@ -1676,8 +1723,8 @@ export default function PortfolioWorkspace() {
                                 : `${completeness.missingFields.length} block${completeness.missingFields.length === 1 ? '' : 's'} still open`;
                         const focusTitle = nextMissingField
                             ? `Best next block: ${EVIDENCE_FIELD_LABELS[nextMissingField]}`
-                            : !experience.verified
-                                ? 'Best next move: verify this story'
+                                : !experience.verified
+                                    ? 'Best next move: review this story'
                                 : 'Best next move: keep this story reusable';
                         const focusDescription = (() => {
                             if (nextMissingField === 'situation') return 'Add the setup first so the rest of the story makes sense right away.';
@@ -1685,13 +1732,13 @@ export default function PortfolioWorkspace() {
                             if (nextMissingField === 'lesson') return 'Write the takeaway so this moment becomes reusable in future prompts.';
                             if (nextMissingField === 'outcome') return 'Capture what changed or improved so the story has a clean finish.';
                             if (nextMissingField === 'skills') return 'Add one to three skills so this story can travel into resume and statement drafts.';
-                            if (!experience.verified) return 'The core blocks are filled. Add any last proof details, then verify it when it feels solid.';
+                            if (!experience.verified) return 'The core blocks are filled. Add any last proof details, then save it when it feels solid.';
                             return 'This one is already strong. Only tighten the label or details if you want a cleaner version later.';
                         })();
                         const primaryActionLabel = nextMissingField
                             ? `Refine ${EVIDENCE_FIELD_LABELS[nextMissingField]}`
                             : !experience.verified
-                                ? 'Check story'
+                                ? 'Review story'
                                 : 'Polish story';
                         const isPrimaryVerifyAction = !nextMissingField && !experience.verified;
 
@@ -1710,11 +1757,11 @@ export default function PortfolioWorkspace() {
                                         <div>
                                             <h3 className="workspace-heading text-lg font-semibold">{experience.title || 'Untitled experience'}</h3>
                                             <p className="mt-2 max-w-3xl text-sm leading-7 text-ink-secondary">
-                                                {primarySnippet || 'Add outcome, lesson, and skill detail so this story is ready for export.'}
+                                                {primarySnippet || 'This part is missing from the memory. Add what happened next, what you learned, or the proof you want to reuse.'}
                                             </p>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
-                                            <TagPill tone={stateTone}>{evidenceFilterLabels[state]}</TagPill>
+                                            <TagPill tone={stateTone}>{storyStatusLabels[state]}</TagPill>
                                             <TagPill>{readinessLabel}</TagPill>
                                         </div>
                                         <div className="workspace-panel rounded-[22px] p-3">
@@ -1738,12 +1785,19 @@ export default function PortfolioWorkspace() {
                                             className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20"
                                         >
                                             {isPrimaryVerifyAction ? <FiCheckCircle size={14} aria-hidden="true" /> : <FiEdit2 size={14} aria-hidden="true" />}
-                                            {isPrimaryVerifyAction && updatingEntryId === experience.entryId ? 'Checking...' : primaryActionLabel}
+                                            {isPrimaryVerifyAction && updatingEntryId === experience.entryId ? 'Saving...' : primaryActionLabel}
                                         </button>
+                                        <Link
+                                            href={storyHref}
+                                            className="workspace-button-outline inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
+                                        >
+                                            <FiEye size={14} aria-hidden="true" />
+                                            View story
+                                        </Link>
 
                                         <details className="group rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]">
                                             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">
-                                                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary">Story readiness</span>
+                                                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-secondary">Story details</span>
                                                 <TagPill>{completeness.score}%</TagPill>
                                             </summary>
 
@@ -1754,12 +1808,12 @@ export default function PortfolioWorkspace() {
                                                         {completeness.missingFields.length > 0
                                                             ? `${completeness.missingFields.length} block${completeness.missingFields.length === 1 ? '' : 's'} still open`
                                                             : experience.verified
-                                                                ? 'Checked and reusable'
+                                                                ? 'Saved as reusable'
                                                                 : 'Core blocks filled'}
                                                     </p>
                                                     <div className="mt-2 flex flex-wrap gap-2">
                                                         <TagPill>{formatRatioPercent(experience.confidence || 0)} source strength</TagPill>
-                                                        {experience.verified && <TagPill tone="primary">Checked story</TagPill>}
+                                                        {experience.verified && <TagPill tone="primary">Saved story</TagPill>}
                                                         {completeness.missingFields.length === 0 && !experience.verified && (
                                                             <TagPill tone="primary">Core blocks filled</TagPill>
                                                         )}
@@ -1813,8 +1867,8 @@ export default function PortfolioWorkspace() {
                                                         {updatingEntryId === experience.entryId
                                                             ? 'Updating...'
                                                             : experience.verified
-                                                                ? 'Mark unchecked'
-                                                                : 'Check story'}
+                                                                ? 'Mark unsaved'
+                                                                : 'Save as reusable'}
                                                     </button>
                                                     <Link
                                                         href={sourceHref}
@@ -1842,7 +1896,7 @@ export default function PortfolioWorkspace() {
                 <EmptyState
                     title="No interview stories yet"
                     description="Check a few stronger stories and the interview workspace will build a focused STAR story set."
-                    actionLabel="Open In Progress"
+                    actionLabel="Open Story Queue"
                     actionHref={`${pathname}?view=evidence`}
                 />
             );
@@ -1854,6 +1908,7 @@ export default function PortfolioWorkspace() {
         const experience = activeInterviewExperience;
         const storyMeta = experienceMetaByEntryId.get(story.entryId) || null;
         const sourceHref = appendReturnTo(`/entry/view?id=${story.entryId}`, currentReturnTo);
+        const storyHref = appendReturnTo(`/portfolio/story?id=${story.entryId}`, currentReturnTo);
         const canGoPrevious = activeIndex > 0;
         const canGoNext = activeIndex < stories.length - 1;
         const storyCountLabel = `Story ${activeIndex + 1} of ${stories.length}`;
@@ -1899,7 +1954,7 @@ export default function PortfolioWorkspace() {
                         <div className="flex flex-wrap gap-2">
                             <TagPill>{storyCountLabel}</TagPill>
                             <TagPill tone={experience?.verified ? 'primary' : 'default'}>
-                                {experience?.verified ? 'Verified source' : 'Needs verification'}
+                                {experience?.verified ? 'Saved source' : 'Needs review'}
                             </TagPill>
                             {storyMeta && <TagPill>{evidenceFilterLabels[storyMeta.state]}</TagPill>}
                         </div>
@@ -1952,7 +2007,7 @@ export default function PortfolioWorkspace() {
                                                         Story {index + 1}
                                                     </p>
                                                 </div>
-                                                {experienceMetaByEntryId.get(item.entryId)?.state === 'verified' && <TagPill tone="primary">Verified</TagPill>}
+                                                {experienceMetaByEntryId.get(item.entryId)?.state === 'verified' && <TagPill tone="primary">Saved</TagPill>}
                                             </div>
                                         </button>
                                     ))}
@@ -2090,13 +2145,22 @@ export default function PortfolioWorkspace() {
                                 ].map((section) => (
                                     <div key={section.label} className="workspace-soft-panel rounded-[26px] p-4">
                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">{section.label}</p>
-                                        <p className="mt-3 text-sm leading-7 text-ink-secondary">{section.value || 'Add more evidence detail to strengthen this section.'}</p>
+                                    <p className="mt-3 text-sm leading-7 text-ink-secondary">
+                                        {section.value || `This ${section.label.toLowerCase()} is missing from the memory. Add it when you want this story to rehearse cleanly.`}
+                                    </p>
                                     </div>
                                 ))}
                             </div>
                         )}
 
                         <div className="flex flex-wrap gap-2">
+                            <Link
+                                href={storyHref}
+                                className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
+                            >
+                                <FiEye size={14} aria-hidden="true" />
+                                View Story
+                            </Link>
                             <Link
                                 href={sourceHref}
                                 className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
@@ -2136,7 +2200,7 @@ export default function PortfolioWorkspace() {
                         <div className="min-w-0">
                             <p className="type-overline text-muted">Progress</p>
                             <p className="type-body-sm text-soft">
-                                Verified {formatRatioPercent(verifiedRate)} · Quality {evidenceSummary.avgScore}% · Lens {lensReadiness}%
+                                Saved {formatRatioPercent(verifiedRate)} · Quality {evidenceSummary.avgScore}% · Lens {lensReadiness}%
                             </p>
                         </div>
                         <ActionBar>
@@ -2253,7 +2317,7 @@ export default function PortfolioWorkspace() {
                                             <p className="workspace-heading text-sm font-semibold">{point.periodLabel}</p>
                                             <div className="flex flex-wrap gap-2 text-xs text-ink-muted">
                                                 <span>{point.entries} entries</span>
-                                                <span>{point.verified} verified</span>
+                                                <span>{point.verified} saved</span>
                                                 <span>{formatRatioPercent(point.averageConfidence || 0)} source strength</span>
                                             </div>
                                         </div>
@@ -2269,7 +2333,7 @@ export default function PortfolioWorkspace() {
                                             </div>
                                             <div>
                                                 <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-[0.12em] text-ink-muted">
-                                                    <span>Verified</span>
+                                                    <span>Saved</span>
                                                     <span>{point.verified}</span>
                                                 </div>
                                                 <div className="h-2 rounded-full bg-white/10">
@@ -2353,17 +2417,9 @@ export default function PortfolioWorkspace() {
         const missingStoryFields = storyFieldOrder.filter((field) => draftCompleteness.missingFields.includes(field as EvidenceField));
         const recommendedEditorField: keyof Draft = missingStoryFields[0]
             || (draftCompleteness.missingFields.includes('skills') ? 'skillsText' : !editingExperience.verified ? 'notes' : 'title');
-        const primaryFieldKeySet = new Set<keyof Draft>(['title']);
-
-        primaryFieldKeySet.add(recommendedEditorField);
-        if (missingStoryFields.length > 0) {
-            missingStoryFields.slice(0, 2).forEach((field) => primaryFieldKeySet.add(field));
-        } else if (!draftCompleteness.missingFields.includes('skills') && editingExperience.verified) {
-            primaryFieldKeySet.add('lesson');
-        }
-
-        const primaryFields = fields.filter(({ field }) => primaryFieldKeySet.has(field));
-        const secondaryFields = fields.filter(({ field }) => !primaryFieldKeySet.has(field));
+        const storyEditorFields = new Set<keyof Draft>(['title', 'situation', 'action', 'outcome', 'lesson']);
+        const primaryFields = fields.filter(({ field }) => storyEditorFields.has(field));
+        const secondaryFields = fields.filter(({ field }) => !storyEditorFields.has(field));
         const secondaryMissingFields = secondaryFields.filter(({ field }) => !hasValue(editingDraft[field]));
         const focusFieldLabel = fieldConfigByKey.get(recommendedEditorField)?.label || 'Title';
         const focusCardTitle = draftCompleteness.missingFields.length > 0
@@ -2377,7 +2433,7 @@ export default function PortfolioWorkspace() {
             if (recommendedEditorField === 'outcome') return 'Capture what changed, improved, or happened next so the story has a clean finish.';
             if (recommendedEditorField === 'lesson') return 'Write the takeaway this moment proves so it becomes reusable in interviews and exports.';
             if (recommendedEditorField === 'skillsText') return 'Add one to three skills next so this story can travel into resume and statement drafts.';
-            if (recommendedEditorField === 'notes') return 'Drop in any proof, metric, or follow-up note you would want before marking this story verified.';
+            if (recommendedEditorField === 'notes') return 'Drop in any proof, metric, or follow-up note you would want before saving this story as reusable.';
             return 'Give this story a cleaner label so it is easier to find and reuse later.';
         })();
         const statusTitle = draftCompleteness.readyForExport
@@ -2385,6 +2441,7 @@ export default function PortfolioWorkspace() {
             : draftCompleteness.readyForVerification
                 ? 'Almost ready'
                 : `${draftCompleteness.missingFields.length} block${draftCompleteness.missingFields.length === 1 ? '' : 's'} still open`;
+        const currentUseCaseDescription = storyUseCaseDescriptions[editingUseCase];
         const renderField = ({
             field,
             label,
@@ -2447,12 +2504,12 @@ export default function PortfolioWorkspace() {
                     >
                         <div className="flex items-start justify-between gap-4 border-b border-[rgba(var(--paper-border),0.92)] px-5 py-4 md:px-6">
                             <div>
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Story Refinery</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Edit Story</p>
                                 <h2 id="portfolio-evidence-editor-title" className="workspace-heading mt-1 text-xl font-semibold">
                                     {editingExperience.title || 'Refine story'}
                                 </h2>
                                 <p className="mt-2 text-sm text-ink-secondary">
-                                    Sharpen the evidence here without expanding the main workspace into a long editing thread.
+                                    Tune the version you will reuse later. Supporting checks stay tucked away until you need them.
                                 </p>
                             </div>
                             <button
@@ -2466,54 +2523,60 @@ export default function PortfolioWorkspace() {
                         </div>
 
                         <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5 md:px-6">
-                            <div className="workspace-panel rounded-[24px] p-4">
-                                <div className="flex flex-wrap items-center justify-between gap-3">
-                                    <div>
-                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Draft readiness</p>
-                                        <p className="workspace-heading mt-1 text-lg font-semibold">{draftCompleteness.score}% complete</p>
+                            <div className="rounded-[24px] border border-primary/25 bg-primary/12 p-4">
+                                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                    <div className="min-w-0">
+                                        <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Start here</p>
+                                        <h3 className="workspace-heading mt-2 text-lg font-semibold">{focusCardTitle}</h3>
+                                        <p className="mt-2 text-sm leading-7 text-ink-secondary">{focusCardBody}</p>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        <TagPill>{draftCompleteness.presentCount}/{draftCompleteness.totalCount} blocks filled</TagPill>
-                                        <TagPill tone={editingExperience.verified ? 'primary' : 'muted'}>
-                                            {editingExperience.verified ? 'Verified' : 'Not verified'}
-                                        </TagPill>
-                                    </div>
-                                </div>
-                                <div className="mt-4 h-2 rounded-full bg-[rgba(var(--paper-border),0.62)]">
-                                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${draftCompleteness.score}%` }} />
+                                    <TagPill tone={draftCompleteness.readyForExport ? 'primary' : 'default'}>{statusTitle}</TagPill>
                                 </div>
                             </div>
 
-                            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_240px]">
-                                <div className="rounded-[24px] border border-primary/25 bg-primary/12 p-4">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best next block</p>
-                                    <h3 className="workspace-heading mt-2 text-lg font-semibold">{focusCardTitle}</h3>
-                                    <p className="mt-2 text-sm leading-7 text-ink-secondary">{focusCardBody}</p>
-                                </div>
-
-                                <div className="workspace-panel rounded-[24px] p-4">
-                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Current status</p>
-                                    <p className="workspace-heading mt-2 text-lg font-semibold">{statusTitle}</p>
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        {draftCompleteness.missingFields.length > 0 ? draftCompleteness.missingFields.map((field) => (
-                                            <TagPill key={field} tone="muted">{EVIDENCE_FIELD_LABELS[field]}</TagPill>
-                                        )) : (
-                                            <TagPill tone="primary">All core blocks filled</TagPill>
-                                        )}
+                            <div className="workspace-panel rounded-[24px] p-4">
+                                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                    <div className="min-w-0">
+                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Tune for</p>
+                                        <h3 className="workspace-heading mt-2 text-lg font-semibold">{storyUseCaseLabels[editingUseCase]}</h3>
+                                        <p className="mt-2 text-sm leading-7 text-ink-secondary">{currentUseCaseDescription}</p>
                                     </div>
-                                    <p className="mt-3 text-sm leading-7 text-ink-secondary">
-                                        {editingExperience.verified
-                                            ? 'This story is already verified, so any change here is refinement.'
-                                            : 'Keep this pass short. You can verify after the story and proof feel solid.'}
-                                    </p>
+                                </div>
+                                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                                    {(Object.keys(storyUseCaseLabels) as StoryUseCase[]).map((useCase) => (
+                                        <button
+                                            key={useCase}
+                                            type="button"
+                                            onClick={() => setEditingUseCase(useCase)}
+                                            aria-pressed={editingUseCase === useCase}
+                                            className={`rounded-2xl border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                                                editingUseCase === useCase
+                                                    ? 'border-primary/35 bg-primary/12 text-primary'
+                                                    : 'border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.04)] text-ink-secondary'
+                                            }`}
+                                        >
+                                            {storyUseCaseLabels[useCase]}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 
                             <div className="workspace-panel space-y-4 rounded-[24px] p-4">
-                                <div>
-                                    <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Start here</p>
+                                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                    <div className="min-w-0">
+                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Story draft</p>
+                                        <h3 className="workspace-heading mt-2 text-lg font-semibold">Shape the story people will read</h3>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <TagPill>{draftCompleteness.presentCount}/{draftCompleteness.totalCount} blocks</TagPill>
+                                        <TagPill tone={editingExperience.verified ? 'primary' : 'muted'}>
+                                            {editingExperience.verified ? 'Saved' : 'Needs review'}
+                                        </TagPill>
+                                    </div>
+                                </div>
+                                <div className="rounded-2xl border border-[rgba(141,123,105,0.14)] bg-[rgba(255,255,255,0.035)] px-4 py-3">
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                        Keep this edit pass short. The highest-value fields stay open first, and the rest of the draft stays tucked away.
+                                        Keep the wording plain and real. The title, setup, action, result, and lesson are the story; everything else is optional support.
                                     </p>
                                 </div>
                                 <div className="space-y-4">
@@ -2530,7 +2593,7 @@ export default function PortfolioWorkspace() {
                                     className="workspace-soft-panel flex w-full items-start justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors"
                                 >
                                     <span className="min-w-0">
-                                        <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">Supporting blocks</span>
+                                        <span className="block text-xs uppercase tracking-[0.12em] text-ink-muted">Supporting details</span>
                                         <span className="workspace-heading mt-2 block text-base font-semibold">{editingDetailsLabel}</span>
                                         <span className="mt-2 block text-sm leading-7 text-ink-secondary">{editingDetailsDescription}</span>
                                     </span>
@@ -2549,20 +2612,56 @@ export default function PortfolioWorkspace() {
                                     </div>
                                     <p className="text-sm leading-7 text-ink-secondary">
                                         {secondaryMissingFields.length > 0
-                                            ? `${secondaryMissingFields.length} supporting block${secondaryMissingFields.length === 1 ? '' : 's'} still open: ${secondaryMissingFields.map(({ label }) => label).join(', ')}.`
-                                            : 'All supporting blocks are filled if you want to polish them further.'}
+                                            ? `${secondaryMissingFields.map(({ label }) => label).join(' and ')} can help this story travel into exports or final review.`
+                                            : 'Skills and proof notes are filled if you want to polish them further.'}
                                     </p>
                                 </div>
 
                                 {showEditingDetails && (
-                                    <div id="portfolio-evidence-editor-details" className="grid gap-4 px-1 pb-1 md:grid-cols-2">
-                                        {secondaryFields.map(renderField)}
+                                    <div id="portfolio-evidence-editor-details" className="space-y-4 px-1 pb-1">
+                                        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+                                            <div className="rounded-[24px] border border-[rgba(141,123,105,0.14)] p-4">
+                                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Readiness</p>
+                                                <p className="workspace-heading mt-2 text-lg font-semibold">{draftCompleteness.score}% complete</p>
+                                                <div className="mt-3 h-2 rounded-full bg-[rgba(var(--paper-border),0.62)]">
+                                                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${draftCompleteness.score}%` }} />
+                                                </div>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {draftCompleteness.missingFields.length > 0 ? draftCompleteness.missingFields.map((field) => (
+                                                        <TagPill key={field} tone="muted">{EVIDENCE_FIELD_LABELS[field]}</TagPill>
+                                                    )) : (
+                                                        <TagPill tone="primary">All core blocks filled</TagPill>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-[24px] border border-[rgba(141,123,105,0.14)] p-4">
+                                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Source</p>
+                                                <p className="workspace-heading mt-2 text-sm font-semibold">
+                                                    {editingExperience.verified ? 'Saved story' : 'Story needs review'}
+                                                </p>
+                                                <p className="mt-2 text-sm leading-6 text-ink-secondary">
+                                                    {formatRatioPercent(editingExperience.confidence || 0)} source strength
+                                                </p>
+                                                <Link
+                                                    href={sourceHref}
+                                                    className="workspace-button-outline mt-3 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
+                                                >
+                                                    <FiArrowRight size={14} aria-hidden="true" />
+                                                    Open memory
+                                                </Link>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            {secondaryFields.map(renderField)}
+                                        </div>
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        <div className="border-t border-[rgba(var(--paper-border),0.92)] px-5 py-4 md:px-6">
+                        <div className="border-t border-[rgba(var(--paper-border),0.92)] bg-[rgb(var(--paper-bg))] px-5 py-4 md:px-6">
                             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                 <div className="flex flex-wrap gap-2">
                                     <Link
@@ -2581,14 +2680,14 @@ export default function PortfolioWorkspace() {
                                         className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/12 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/20 disabled:opacity-60"
                                     >
                                         <FiCheckCircle size={14} aria-hidden="true" />
-                                        {editingExperience.verified ? 'Mark Unverified' : 'Verify Story'}
+                                        {editingExperience.verified ? 'Remove Saved Mark' : 'Save as Reusable'}
                                     </button>
                                 </div>
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap">
                                     <button
                                         type="button"
                                         onClick={() => setEditingEntryId(null)}
-                                        className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
+                                        className="workspace-button-outline inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                                     >
                                         Cancel
                                     </button>
@@ -2598,7 +2697,7 @@ export default function PortfolioWorkspace() {
                                             void saveDraft(editingExperience.entryId);
                                         }}
                                         disabled={savingEntryId === editingExperience.entryId}
-                                        className="workspace-button-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] disabled:opacity-60"
+                                        className="workspace-button-primary inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-semibold uppercase tracking-[0.1em] disabled:opacity-60 sm:w-auto sm:py-2"
                                     >
                                         <FiEdit2 size={14} aria-hidden="true" />
                                         {savingEntryId === editingExperience.entryId ? 'Saving...' : 'Save Story'}
@@ -2703,8 +2802,8 @@ export default function PortfolioWorkspace() {
         },
         {
             id: 'evidence',
-            label: 'In Progress',
-            detail: 'Refine and check',
+            label: 'Story Queue',
+            detail: 'Shape, review, use, save',
             icon: FiCheckCircle,
             active: activeView === 'evidence',
             recommended: recommendedView === 'evidence',
@@ -2910,6 +3009,12 @@ export default function PortfolioWorkspace() {
                         },
                     }}
                 />
+            )}
+
+            {storySaveMessage && (
+                <div className="rounded-2xl border border-primary/25 bg-primary/12 px-4 py-3 text-sm font-medium text-strong" role="status">
+                    {storySaveMessage}
+                </div>
             )}
 
             <AnimatePresence mode="wait" initial={false}>

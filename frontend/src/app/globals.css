@@ -387,6 +387,46 @@ html[data-theme='dark'] body {
     letter-spacing: 0;
   }
 
+  .type-caption {
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.45;
+    letter-spacing: 0;
+  }
+
+  .radius-ui-sm {
+    border-radius: 0.75rem;
+  }
+
+  .radius-ui-md {
+    border-radius: 1rem;
+  }
+
+  .radius-ui-lg {
+    border-radius: 1.25rem;
+  }
+
+  .radius-ui-xl {
+    border-radius: 1.5rem;
+  }
+
+  .radius-ui-hero {
+    border-radius: clamp(1.25rem, 3vw, 2rem);
+  }
+
+  .quiet-panel {
+    background: linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,251,245,0.66));
+    border: 1px solid rgba(var(--paper-border), 0.2);
+    box-shadow: 0 10px 26px rgba(92, 92, 92, 0.06);
+  }
+
+  .quiet-panel-strong {
+    background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,251,245,0.76));
+    border: 1.5px solid rgba(var(--paper-border), 0.28);
+    box-shadow: 0 12px 30px rgba(92, 92, 92, 0.08);
+  }
+
   .cosmic-bg {
     background: var(--app-shell-background);
   }

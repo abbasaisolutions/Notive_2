@@ -108,12 +108,14 @@ type DraftConflict = {
     seededAudioUrl: string | null;
     seededTags: string[];
     seededVoiceCapture: VoiceCaptureState | null;
+    seededThreadContext: string | null;
 };
 
 type SaveCompletionSummary = {
     people: string[];
     topics: string[];
     growthFlag: boolean;
+    threadConnection?: string;
     phrase?: string;
     lesson?: string;
     strengths?: string[];
@@ -285,6 +287,8 @@ function NewEntryPageContent() {
     const [contentHtml, setContentHtml] = useState('');
     const contentRef = useRef('');
     const [promptHint, setPromptHint] = useState<string | null>(null);
+    const [threadContext, setThreadContext] = useState<string | null>(null);
+    const [hasStartedPromptInput, setHasStartedPromptInput] = useState(false);
 
     // Zen mode — fades `[data-zen-fade]` chrome (mobile nav) while actively typing
     useZenMode(true, content.length);
@@ -821,6 +825,7 @@ function NewEntryPageContent() {
             const voiceText = searchParams.get('voice');
             const eventPromptText = searchParams.get('eventPrompt');
             const promptText = (eventPromptText || searchParams.get('prompt') || '').trim();
+            const threadText = (searchParams.get('thread') || '').trim();
             const sharedText = entrySource === 'share' ? searchParams.get('text') : null;
             const sharedTitle = entrySource === 'share' ? (searchParams.get('title') || '').trim() : '';
             const landingCheckInDraft = entrySource === LANDING_CHECKIN_SOURCE ? consumeLandingCheckInDraft() : null;
@@ -846,6 +851,7 @@ function NewEntryPageContent() {
                 || seededTitle
                 || promptText
                 || audioParam
+                || threadText
                 || seededVoiceCapture
                 || seededSharedImages.length > 0
                 || seededTags.length > 0
@@ -898,6 +904,7 @@ function NewEntryPageContent() {
                     setContentHtml(savedDraft.contentHtml || '');
                     setTitleOverride(savedDraft.title || '');
                     setPromptHint(null);
+                    setThreadContext(null);
                     applySeededMood(savedDraft.mood);
                     setTagsOverride(savedDraft.tags || []);
                     setAudioUrl(savedDraft.audioUrl || null);
@@ -923,6 +930,7 @@ function NewEntryPageContent() {
                         seededAudioUrl: audioParam || null,
                         seededTags,
                         seededVoiceCapture,
+                        seededThreadContext: threadText || null,
                     });
                     return;
                 }
@@ -930,6 +938,8 @@ function NewEntryPageContent() {
                 setContent(seededText);
                 setTitleOverride(seededTitle);
                 setPromptHint(seededText ? null : (promptText || null));
+                setThreadContext(threadText || null);
+                setHasStartedPromptInput(Boolean(seededText));
                 setTagsOverride(seededTags);
                 setVoiceCapture(seededVoiceCapture);
                 setVoiceJob(pendingVoiceJob || restoredVoiceJob);
@@ -950,6 +960,7 @@ function NewEntryPageContent() {
                 setContentHtml(savedDraft.contentHtml || '');
                 setTitleOverride(savedDraft.title || '');
                 setPromptHint(null);
+                setThreadContext(null);
                 applySeededMood(savedDraft.mood);
                 setTagsOverride(savedDraft.tags || []);
                 setAudioUrl(savedDraft.audioUrl || null);
@@ -983,6 +994,9 @@ function NewEntryPageContent() {
             if (moodParam) {
                 setMoodOverride(moodParam);
             }
+            setPromptHint(promptText || null);
+            setThreadContext(threadText || null);
+            setHasStartedPromptInput(false);
         })();
     }, [user, searchParams, entrySource, loadDraft, clearDraft, gentleReflectionTags, importSharedImages, setExtractedData, setAiInsights]);
 
@@ -1086,6 +1100,7 @@ function NewEntryPageContent() {
         setContentHtml('');
         setTitleOverride(draftConflict.seededTitle);
         setPromptHint(draftConflict.seededText ? null : draftConflict.seededPromptHint);
+        setThreadContext(draftConflict.seededThreadContext);
         setMoodOverride(null);
         setTagsOverride(draftConflict.seededTags);
         setAudioUrl(draftConflict.seededAudioUrl);
@@ -1160,6 +1175,9 @@ function NewEntryPageContent() {
     }, [user?.id]);
 
     const handleEditorChange = useCallback((text: string, html: string) => {
+        if (text.trim()) {
+            setHasStartedPromptInput(true);
+        }
         setContent(text);
         setContentHtml(html);
     }, []);
@@ -1189,6 +1207,7 @@ function NewEntryPageContent() {
     const buildSaveCompletionSummary = useCallback((): SaveCompletionSummary | null => {
         const people = extractedData?.people?.map((person) => person.name).slice(0, 2) ?? [];
         const topics = extractedData?.insights?.slice(0, 1).map((insight) => insight.content) ?? [];
+        const threadConnection = threadContext || topics[0] || undefined;
         const growthFlag = (extractedData?.growthPoints?.length ?? 0) > 0;
         const phrase = extractedData?.keyPhrases?.[0];
         const lesson = extractedData?.insights?.find((insight) => insight.type === 'lesson')?.content
@@ -1203,6 +1222,7 @@ function NewEntryPageContent() {
             people.length === 0
             && topics.length === 0
             && !growthFlag
+            && !threadConnection
             && !phrase
             && !lesson
             && strengths.length === 0
@@ -1215,12 +1235,13 @@ function NewEntryPageContent() {
             people,
             topics,
             growthFlag,
+            ...(threadConnection ? { threadConnection } : {}),
             ...(phrase ? { phrase } : {}),
             ...(lesson ? { lesson } : {}),
             ...(strengths.length > 0 ? { strengths } : {}),
             ...(goals.length > 0 ? { goals } : {}),
         };
-    }, [extractedData]);
+    }, [extractedData, threadContext]);
 
     const openSaveCompletion = useCallback((savedEntryId: string, savedTitle: string | null, isGentleReflectionSave: boolean) => {
         setHasShownSaveCompletion(true);
@@ -1413,6 +1434,7 @@ function NewEntryPageContent() {
 
         hapticSuccess(); // recording start
         audioFeedback.scratch();
+        setHasStartedPromptInput(true);
 
         setVoiceError(null);
         setVoiceJob(null);
@@ -2007,8 +2029,22 @@ function NewEntryPageContent() {
     const handleAskAboutSavedEntry = useCallback(() => {
         if (!saveCompletion) return;
         setSaveCompletion(null);
-        router.push(appendReturnTo('/chat?lens=stories', `/entry/view?id=${saveCompletion.entryId}`));
+        router.push(appendReturnTo('/chat?lens=memory', `/entry/view?id=${saveCompletion.entryId}`));
     }, [router, saveCompletion]);
+
+    const handleContinueSavedThread = useCallback(() => {
+        if (!saveCompletion?.summary?.threadConnection) {
+            handleTurnSavedEntryIntoStory();
+            return;
+        }
+        const thread = saveCompletion.summary.threadConnection;
+        const prompt = `What changed since ${thread.toLowerCase()} showed up here?`;
+        setSaveCompletion(null);
+        router.push(appendReturnTo(
+            `/entry/new?mode=quick&source=thread_continue&thread=${encodeURIComponent(thread)}&prompt=${encodeURIComponent(prompt)}`,
+            `/entry/view?id=${saveCompletion.entryId}`,
+        ));
+    }, [handleTurnSavedEntryIntoStory, router, saveCompletion]);
 
     const handleLeaveAfterSave = useCallback(() => {
         setSaveCompletion(null);
@@ -2122,6 +2158,7 @@ function NewEntryPageContent() {
             : isWhisperMode
                 ? 'What\u2019s on your mind tonight?'
                 : `Try this: ${starterPrompt.text}`;
+    const showContextualPrompt = Boolean((promptHint || threadContext) && !hasStartedPromptInput && !content.trim() && !isRecording && !liveTranscriptText.trim() && !interimText.trim());
 
     const handleCategorySelect = (nextCategory: EntryCategory) => {
         setCategory(nextCategory);
@@ -2186,6 +2223,24 @@ function NewEntryPageContent() {
                     onRestore={handleRestoreDraftSnapshot}
                     onDelete={handleDeleteDraftSnapshot}
                 />
+
+                {showContextualPrompt && (
+                    <section className="mb-4 rounded-[1.35rem] border border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.34)] px-4 py-4">
+                        {threadContext && (
+                            <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                                Writing into: <span className="text-[rgb(var(--paper-sage))]">{threadContext}</span>
+                            </p>
+                        )}
+                        {promptHint && (
+                            <p className="mt-2 text-sm font-semibold leading-6 text-[rgb(var(--text-primary))]">
+                                {promptHint}
+                            </p>
+                        )}
+                        <p className="mt-2 text-xs leading-5 text-ink-secondary">
+                            This prompt disappears when you start typing or speaking.
+                        </p>
+                    </section>
+                )}
 
                 <EntryEditorCard
                     isRecording={isRecording}
@@ -2438,11 +2493,13 @@ function NewEntryPageContent() {
 
             <EntrySaveCompletionSheet
                 open={Boolean(saveCompletion)}
-                kicker={saveCompletion?.isGentleReflection ? 'Reflection saved' : 'Memory saved'}
+                kicker={saveCompletion?.isGentleReflection ? 'Reflection saved privately' : 'Saved privately'}
                 description={
                     saveCompletion?.isGentleReflection
-                        ? 'Your reflection is safe. Choose whether to open it, keep shaping it, or head back.'
-                        : 'Your memory is safe. Choose what you want to do next while it is still fresh.'
+                        ? 'Your reflection is safe. You can open it, keep writing, or leave it here.'
+                        : saveCompletion?.summary?.threadConnection
+                            ? `Your note is safe. Notive quietly connected it to ${saveCompletion.summary.threadConnection}.`
+                            : 'Your note is safe. Nothing leaves your diary unless you choose it.'
                 }
                 title={saveCompletion?.title}
                 summary={saveCompletion?.summary || null}
@@ -2457,13 +2514,15 @@ function NewEntryPageContent() {
                     saveCompletion
                         ? [
                             {
-                                label: 'Turn into story',
-                                description: 'Open Stories and shape this memory into reusable evidence.',
-                                onSelect: handleTurnSavedEntryIntoStory,
+                                label: saveCompletion.summary?.threadConnection ? 'Continue this thread' : 'Use outside Notive',
+                                description: saveCompletion.summary?.threadConnection
+                                    ? 'Stay with this same thread while it is still fresh.'
+                                    : 'Shape this memory into story, resume, lesson, or skill material only if you need it.',
+                                onSelect: handleContinueSavedThread,
                             },
                             {
                                 label: 'Ask about it',
-                                description: 'Use AskNotive to pull lessons, patterns, or next steps from this save.',
+                                description: 'Use AskNotive to understand the note or find what keeps repeating.',
                                 onSelect: handleAskAboutSavedEntry,
                             },
                         ]

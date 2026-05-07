@@ -106,6 +106,8 @@ export default function EntryEditorCard({
     }, []);
 
     const hasContent = content.trim().length > 0;
+    const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
+    const showDraftAssist = !minimalEditor && (wordCount >= 18 || isRecording || isVoiceProcessing || queueCount > 0 || recentUploads.length > 0);
     const committedTranscript = transcriptText.trim();
     const interimWords = interimText.trim().split(/\s+/).filter(Boolean);
     // Don't show inline panel during recording — FloatingRecordBar covers that.
@@ -138,9 +140,9 @@ export default function EntryEditorCard({
                 />
             </div>
 
-            {!minimalEditor && (
-                <div className="mt-3 grid gap-2 lg:grid-cols-[1fr_0.9fr]">
-                    <InsightReadinessMeter content={content} compact={content.trim().split(/\s+/).filter(Boolean).length > 120} />
+            {showDraftAssist && (
+                <div className="mt-3 grid gap-2 lg:grid-cols-[1fr_0.9fr]" aria-label="Draft helper feedback">
+                    <InsightReadinessMeter content={content} compact={wordCount > 120} />
                     <PrivacyAssuranceStrip context="draft" compact />
                 </div>
             )}
@@ -232,7 +234,7 @@ export default function EntryEditorCard({
             )}
 
             {/* Upload queue */}
-            {(queueCount > 0 || recentUploads.length > 0) && (
+            {(queueCount > 0 || recentUploads.length > 0) && showDraftAssist && (
                 <div className={`mt-3 rounded-xl border p-3 ${utilityPanelClass}`}>
                     {queueCount > 0 && (
                         <p className={`type-overline mb-2 ${mutedTextClass}`}>
@@ -288,7 +290,7 @@ export default function EntryEditorCard({
                                 ) : (
                                     <FiImage size={16} aria-hidden="true" />
                                 )}
-                                <span className="type-label-sm text-[11px]">Image</span>
+                                <span className="type-label-sm">Image</span>
                             </button>
                         </>
                     )}
