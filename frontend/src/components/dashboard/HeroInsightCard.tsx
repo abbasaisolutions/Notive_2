@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TagPill } from '@/components/ui/surface';
 import { getHeroInsightConfidenceMeta, getPatternScopeLabel } from '@/utils/insight-trust';
 import PrivacyAssuranceStrip from '@/components/ux/PrivacyAssuranceStrip';
+import { getToneMicrocopy, readExceptionalUxPreferences } from '@/utils/exceptional-ux';
 
 type HeroInsight = {
     category: string;
@@ -61,9 +62,17 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
     const [typing, setTyping] = useState(true);
     const [selectedFeedback, setSelectedFeedback] = useState<'helpful' | 'not_helpful' | null>(null);
     const [feedbackPending, setFeedbackPending] = useState(false);
+    const [toneLabel, setToneLabel] = useState(getToneMicrocopy('gentle'));
 
     const body = insight?.body ?? '';
     const freshness = insight?.freshness ?? 'cached';
+
+    useEffect(() => {
+        const refreshTone = () => setToneLabel(getToneMicrocopy(readExceptionalUxPreferences().aiTone));
+        refreshTone();
+        window.addEventListener('notive:exceptional-ux-preferences-changed', refreshTone);
+        return () => window.removeEventListener('notive:exceptional-ux-preferences-changed', refreshTone);
+    }, []);
 
     useEffect(() => {
         setExpanded(false);
@@ -226,6 +235,12 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
                         {freshness === 'fresh'
                             ? 'This is today\u2019s fresh read from your recent notes. Use it as a reflection prompt, not a final verdict.'
                             : 'This is a cached daily read from your recent notes. Use it as a reflection prompt, not a final verdict.'}
+                    </p>
+                    <p
+                        className="mt-1 text-[0.72rem] leading-5"
+                        style={{ color: 'rgb(var(--paper-ink-muted))' }}
+                    >
+                        Response style: {toneLabel}
                     </p>
                     <div className="mt-2">
                         <PrivacyAssuranceStrip context="insight" compact />

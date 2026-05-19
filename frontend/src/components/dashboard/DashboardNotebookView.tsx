@@ -9,10 +9,14 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import ActionBriefPanel from '@/components/action/ActionBriefPanel';
+import DailyPathCard from '@/components/dashboard/DailyPathCard';
 import DailyCheckIn from '@/components/dashboard/DailyCheckIn';
+import ExperienceControlPanel from '@/components/ux/ExperienceControlPanel';
+import FirstWeekJourneyCard from '@/components/dashboard/FirstWeekJourneyCard';
 import type { StudentActionBrief } from '@/components/action/types';
 import DailyGentleReflectionCard from '@/components/dashboard/DailyGentleReflectionCard';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
+import WeeklyReflectionDigestCard from '@/components/dashboard/WeeklyReflectionDigestCard';
 import { Surface } from '@/components/ui/surface';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
@@ -29,6 +33,11 @@ import {
     LIFE_BALANCE_RING_CIRCUMFERENCE,
 } from '@/components/dashboard/life-balance';
 import { getMoodEmoji, getMoodScore, normalizeMood } from '@/constants/moods';
+import {
+    buildDailyPath,
+    buildFallbackWeeklyDigest,
+    buildFirstWeekSteps,
+} from '@/utils/exceptional-ux';
 
 type DashboardAction = {
     label: string;
@@ -879,6 +888,30 @@ function DashboardNotebookViewFull({
             : 'A few more memories will sharpen the pattern view.';
     const lastMoodKey = latestEntry?.mood ? String(latestEntry.mood).toLowerCase() : null;
     const lastMoodEmoji = lastMoodKey ? moodEmojiFor(lastMoodKey) : null;
+    const dailyPath = useMemo(
+        () => buildDailyPath({
+            entries,
+            hasCheckedInToday,
+            focusTitle: focusCard.title,
+            recommendedHref,
+            portfolioHref,
+            timelineHref,
+        }),
+        [entries, focusCard.title, hasCheckedInToday, portfolioHref, recommendedHref, timelineHref]
+    );
+    const fallbackWeeklyDigest = useMemo(() => buildFallbackWeeklyDigest(entries), [entries]);
+    const displayWeeklyDigest = weeklyDigest
+        ? {
+            title: weeklyDigest.title,
+            editorial: weeklyDigest.spotlightLine || weeklyDigest.editorial,
+            highlights: weeklyDigest.highlights,
+            entryCount: weeklyDigest.entryCount,
+        }
+        : fallbackWeeklyDigest;
+    const firstWeekSteps = useMemo(
+        () => buildFirstWeekSteps(entries.length, hasCheckedInToday),
+        [entries.length, hasCheckedInToday]
+    );
 
     const glanceSignals = [
         {
@@ -1256,6 +1289,11 @@ function DashboardNotebookViewFull({
     const topPreviewContent = activeTab === 'overview' ? (
         <>
             {welcomeNotebookBanner}
+            <DailyPathCard {...dailyPath} />
+
+            {entries.length < 5 && (
+                <FirstWeekJourneyCard steps={firstWeekSteps} />
+            )}
 
             <section className="rounded-[1.35rem] border border-[rgba(92,92,92,0.12)] bg-[linear-gradient(135deg,rgba(255,251,245,0.84),rgba(248,244,237,0.6))] px-3 py-3 shadow-[0_14px_32px_rgba(92,92,92,0.06)] sm:px-4 sm:py-4">
                 <div className="flex items-start justify-between gap-3">
@@ -1440,6 +1478,36 @@ function DashboardNotebookViewFull({
                             </Link>
                         </div>
                     </div>
+                </div>
+            </details>
+
+            {entries.length > 0 && (
+                <WeeklyReflectionDigestCard
+                    title={displayWeeklyDigest.title}
+                    editorial={displayWeeklyDigest.editorial}
+                    highlights={displayWeeklyDigest.highlights}
+                    entryCount={displayWeeklyDigest.entryCount}
+                    href={timelineHref}
+                />
+            )}
+
+            <details className="group rounded-[1.25rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.3)]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
+                    <span>
+                        <span className="section-label block">Experience controls</span>
+                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                            Adjust tone, insight posture, and private capture defaults.
+                        </span>
+                    </span>
+                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:hidden">
+                        Open
+                    </span>
+                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:inline">
+                        Hide
+                    </span>
+                </summary>
+                <div className="border-t border-[rgba(92,92,92,0.12)] px-3 pb-3 pt-3">
+                    <ExperienceControlPanel compact />
                 </div>
             </details>
 

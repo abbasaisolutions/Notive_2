@@ -152,6 +152,20 @@ npm run dev
 # Runs on http://localhost:3000
 ```
 
+## Unified Checks
+
+Run the offline release checks from the repository root:
+
+```bash
+node run-tests.mjs
+```
+
+This runs frontend typecheck, unit tests, API path audit, strict UI audit, link audit, backend typecheck, backend lint, backend tests, and the Android launch-readiness audit. To include the live production smoke test, run:
+
+```bash
+node run-tests.mjs --online
+```
+
 ### Local Retrieval Rollout
 
 The recommended local-first setup is already reflected in [backend/.env.example](./backend/.env.example):

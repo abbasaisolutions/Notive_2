@@ -2,10 +2,15 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/context/auth-context';
-import { SmartSearch } from '@/components/search/SmartSearch';
 import { setNativeBackHandler } from '@/utils/native-navigation';
 import { GLOBAL_SEARCH_OPEN_EVENT } from '@/utils/global-search';
+
+const SmartSearch = dynamic(
+    () => import('@/components/search/SmartSearch').then((module) => module.SmartSearch),
+    { ssr: false }
+);
 
 const isMac = () => typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
 

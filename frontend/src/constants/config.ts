@@ -24,6 +24,14 @@ const isLocalHostname = (hostname: string) =>
     || hostname === '0.0.0.0'
     || hostname.endsWith('.local');
 
+const shouldUseSameOriginApiProxy = () => {
+    if (typeof window === 'undefined') return false;
+    if (isLocalHostname(window.location.hostname)) return false;
+
+    const configuredUrl = resolveConfiguredApiUrl((process.env.NEXT_PUBLIC_API_URL || '').trim());
+    return !configuredUrl || configuredUrl === CANONICAL_PRODUCTION_API_URL;
+};
+
 export const resolveApiUrl = () => {
     const configuredUrl = resolveConfiguredApiUrl((process.env.NEXT_PUBLIC_API_URL || '').trim());
     const nativeConfiguredUrl = resolveConfiguredApiUrl((process.env.NEXT_PUBLIC_NATIVE_API_URL || '').trim());
@@ -40,6 +48,10 @@ export const resolveApiUrl = () => {
         return CANONICAL_PRODUCTION_API_URL;
     }
 
+    if (shouldUseSameOriginApiProxy()) {
+        return '/api/v1';
+    }
+
     if (configuredUrl) {
         return configuredUrl;
     }
@@ -49,7 +61,7 @@ export const resolveApiUrl = () => {
         return LOCAL_API_URL;
     }
 
-    return CANONICAL_PRODUCTION_API_URL;
+    return '/api/v1';
 };
 
 // Lazy singleton: evaluated once on first access (client-side window is available)

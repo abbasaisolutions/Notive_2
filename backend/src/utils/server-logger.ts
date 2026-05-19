@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/node';
+
 type LogLevel = 'info' | 'warn' | 'error';
 
 type LogPayload = Record<string, unknown>;
@@ -13,6 +15,10 @@ const writeLog = (level: LogLevel, event: string, payload: LogPayload = {}) => {
     const serialized = JSON.stringify(record);
 
     if (level === 'error') {
+        Sentry.captureMessage(event, {
+            level: 'error',
+            extra: payload,
+        });
         console.error(serialized);
         return;
     }

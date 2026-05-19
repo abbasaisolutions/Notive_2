@@ -9,6 +9,7 @@ This is the shortest path to a launch-ready Android build for Notive.
 - Android builds now sync the latest exported frontend automatically.
 - Custom-scheme deep links are enabled with `com.notive.app://`.
 - HTTPS app-link intent handling is enabled for `https://notive.abbasaisolutions.com`.
+- Native push token registration, foreground handling, notification channels, badge refresh, and backend FCM send support are implemented.
 - `npm run android:ready` checks core release blockers.
 - `npm run android:ready:launch` checks the fuller launch path, including push and verified app links.
 
@@ -80,19 +81,25 @@ Current state:
 
 - Without this file, the app still builds and runs, but Android push notifications are not ready.
 
-### 3. Native push token flow
+### 3. Production FCM credentials
 
-The repo still needs a full native push path before push can be called production-ready:
+Set backend Firebase Admin credentials in production with one of:
 
-- add `@capacitor/push-notifications`
-- request notification permission in-app
-- register the device token
-- store that token on the backend
-- send and verify a real notification from Firebase or your server
+```env
+FIREBASE_SERVICE_ACCOUNT={"type":"service_account",...}
+```
+
+or:
+
+```env
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+```
 
 Current state:
 
-- Push is not implemented end to end yet, even if `google-services.json` is added.
+- Native push registration and backend FCM delivery are implemented.
+- If Firebase Admin credentials are missing, the backend logs a structured mock send instead of contacting FCM.
+- A production release still needs `google-services.json`, Firebase Admin credentials, and a real-device push send/receive test.
 
 ### 4. Release signing
 
@@ -151,7 +158,7 @@ This is what makes Android open `https://notive.abbasaisolutions.com/...` direct
 
 1. Set the production `NEXT_PUBLIC_NATIVE_API_URL` and Google client ID values.
 2. Add `google-services.json`.
-3. Implement the native push token flow if push notifications are part of launch.
+3. Configure backend Firebase Admin credentials and verify a real push notification on a physical device.
 4. Add release signing config.
 5. Generate the SHA-256 fingerprint from the release keystore and publish `assetlinks.json`.
 6. Run `npm run android:ready:launch`.

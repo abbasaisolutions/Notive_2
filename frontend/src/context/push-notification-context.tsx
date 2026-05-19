@@ -154,6 +154,19 @@ const ANDROID_PUSH_CHANNELS = [
 ];
 const DEVICE_TOKENS_API_PATH = '/device/tokens';
 
+const scheduleIdle = (callback: () => void, timeout = 2500) => {
+    if (typeof window === 'undefined') return () => {};
+
+    const idleCallback = window.requestIdleCallback;
+    if (idleCallback) {
+        const id = idleCallback(callback, { timeout });
+        return () => window.cancelIdleCallback?.(id);
+    }
+
+    const id = window.setTimeout(callback, Math.min(timeout, 1200));
+    return () => window.clearTimeout(id);
+};
+
 function applyResolvedPushPermission(
     nextPermissionState: PermissionStatus,
     setPermissionState: (value: PermissionStatus) => void,
@@ -967,7 +980,9 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
 
         if (hasInitializedPushRef.current) return;
         hasInitializedPushRef.current = true;
-        void initializePushNotifications();
+        return scheduleIdle(() => {
+            void initializePushNotifications();
+        });
     }, [initializePushNotifications]);
 
     useEffect(() => {

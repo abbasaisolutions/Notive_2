@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
 import { StatusBar, Style as StatusBarStyle } from '@capacitor/status-bar';
@@ -9,12 +10,6 @@ import { useAuth } from '@/context/auth-context';
 import { hapticTap } from '@/services/haptics.service';
 import { useGamification } from '@/context/gamification-context';
 import { isChipScrollerInteraction } from '@/components/layout/chip-scroller-haptics';
-import ProgressivePersonalizationPrompt from '@/components/smart/ProgressivePersonalizationPrompt';
-import MobileNav from '@/components/layout/MobileNav';
-import NotificationBell from '@/components/layout/NotificationBell';
-import Sidebar from '@/components/layout/Sidebar';
-import CelebrationModal from '@/components/gamification/CelebrationModal';
-import FloatingVoiceButton from '@/components/voice/FloatingVoiceButton';
 import { getWorkspaceMaturity, shouldHideGlobalNav } from '@/components/layout/nav-config';
 import { initSessionTracker } from '@/services/app-session-tracker.service';
 import { API_URL } from '@/constants/config';
@@ -22,6 +17,26 @@ import { extractNativeAppPath } from '@/utils/native-app-links';
 import { isNativeCapacitorPlatform } from '@/utils/sso';
 import { resolveAuthenticatedPublicEntryDestination } from '@/utils/public-entry-routing';
 import { getNativeBackHandler } from '@/utils/native-navigation';
+
+const Sidebar = dynamic(() => import('@/components/layout/Sidebar'), { ssr: false });
+const MobileNav = dynamic(() => import('@/components/layout/MobileNav'), { ssr: false });
+const NotificationBell = dynamic(() => import('@/components/layout/NotificationBell'), { ssr: false });
+const CelebrationModal = dynamic(() => import('@/components/gamification/CelebrationModal'), { ssr: false });
+const FloatingVoiceButton = dynamic(() => import('@/components/voice/FloatingVoiceButton'), { ssr: false });
+const ProgressivePersonalizationPrompt = dynamic(() => import('@/components/smart/ProgressivePersonalizationPrompt'), { ssr: false });
+
+const scheduleIdle = (callback: () => void, timeout = 1600) => {
+    if (typeof window === 'undefined') return () => {};
+
+    const idleCallback = window.requestIdleCallback;
+    if (idleCallback) {
+        const id = idleCallback(callback, { timeout });
+        return () => window.cancelIdleCallback?.(id);
+    }
+
+    const id = window.setTimeout(callback, Math.min(timeout, 900));
+    return () => window.clearTimeout(id);
+};
 
 export default function AppChrome() {
     const router = useRouter();
@@ -38,17 +53,20 @@ export default function AppChrome() {
     const showCalmAuxiliary = workspaceMaturity !== 'new';
 
     useEffect(() => {
-        if (user) {
-            refreshStats();
-        }
+        if (!user) return;
+        return scheduleIdle(() => {
+            void refreshStats();
+        }, 2200);
     }, [user, refreshStats]);
 
     // Initialize session tracker once when user is available
     useEffect(() => {
         if (!user) return;
-        initSessionTracker(API_URL, () => {
-            return accessToken;
-        });
+        return scheduleIdle(() => {
+            initSessionTracker(API_URL, () => {
+                return accessToken;
+            });
+        }, 1800);
     }, [user, accessToken]);
 
     // Deep link handler (native only)

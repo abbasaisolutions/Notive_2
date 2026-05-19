@@ -79,6 +79,7 @@ import {
     normalizeCategory,
     normalizeLifeArea,
 } from '@/constants/life-areas';
+import { readExceptionalUxPreferences } from '@/utils/exceptional-ux';
 import {
     checkPermission,
     hasSeenRuntimePermissionPrompt,
@@ -324,6 +325,7 @@ function NewEntryPageContent() {
     const [draftHistory, setDraftHistory] = useState<DraftHistorySnapshot[]>([]);
     const [saveCompletion, setSaveCompletion] = useState<SaveCompletionState | null>(null);
     const [hasShownSaveCompletion, setHasShownSaveCompletion] = useState(false);
+    const [excludeFromInsights, setExcludeFromInsights] = useState(false);
     const [entryLocation, setEntryLocation] = useState<EntryLocation | null>(null);
     const [deviceSnapshot, setDeviceSnapshot] = useState<DeviceSnapshot | null>(null);
     const [audioLevel, setAudioLevel] = useState(0);
@@ -381,6 +383,20 @@ function NewEntryPageContent() {
         pendingSync,
         isSaved: hasBeenSaved,
     });
+
+    useEffect(() => {
+        setExcludeFromInsights(readExceptionalUxPreferences().privateEntryByDefault);
+
+        const handlePreferenceChange = (event: Event) => {
+            const detail = (event as CustomEvent).detail as { privateEntryByDefault?: boolean } | undefined;
+            if (typeof detail?.privateEntryByDefault === 'boolean') {
+                setExcludeFromInsights(detail.privateEntryByDefault);
+            }
+        };
+
+        window.addEventListener('notive:exceptional-ux-preferences-changed', handlePreferenceChange);
+        return () => window.removeEventListener('notive:exceptional-ux-preferences-changed', handlePreferenceChange);
+    }, []);
     const duplicateCheckTitle = titleOverride || extractedData?.title || '';
 
     useEffect(() => {
@@ -1276,13 +1292,20 @@ function NewEntryPageContent() {
             }
             : null;
 
-        if (!baseAnalysis && !voiceAnalysis) return undefined;
+        if (!baseAnalysis && !voiceAnalysis && !excludeFromInsights) return undefined;
 
         return {
             ...(baseAnalysis || {}),
             ...(voiceAnalysis ? { voice: voiceAnalysis } : {}),
+            ...(excludeFromInsights ? {
+                privacy: {
+                    excludeFromInsights: true,
+                    reason: 'user_private_mode',
+                    setAt: new Date().toISOString(),
+                },
+            } : {}),
         };
-    }, [buildAnalysisPayload, voiceCapture, voiceJob]);
+    }, [buildAnalysisPayload, excludeFromInsights, voiceCapture, voiceJob]);
 
     const persistDraftSnapshot = useCallback((pendingSyncOverride: boolean) => {
         saveDraft({
@@ -1769,6 +1792,7 @@ function NewEntryPageContent() {
                         hasMood: Boolean(finalMood),
                         hasTags: finalTags.length > 0,
                         source: entrySource || null,
+                        excludeFromInsights,
                     },
                 });
                 if (voiceCapture) {
@@ -1897,6 +1921,7 @@ function NewEntryPageContent() {
         titleOverride,
         toast,
         trackEvent,
+        excludeFromInsights,
         user?.id,
         voiceCapture,
         voiceJob?.entryId,
@@ -2109,6 +2134,27 @@ function NewEntryPageContent() {
         setReminderPromptVisible(false);
     }, [markReminderPromptShown]);
 
+    useEffect(() => {
+        if (!content.trim() || hasBeenSaved) return;
+
+        const onVisibilityChange = () => {
+            if (document.visibilityState !== 'hidden') return;
+            void trackEvent({
+                eventType: 'entry_friction_exit_with_unsaved_content',
+                value: isQuickMode ? 'quick' : 'full',
+                metadata: {
+                    wordCount: content.trim() ? content.trim().split(/\s+/).length : 0,
+                    excludeFromInsights,
+                    hasAudio: Boolean(audioUrl),
+                    hasImages: recentUploads.length > 0,
+                },
+            });
+        };
+
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+    }, [audioUrl, content, excludeFromInsights, hasBeenSaved, isQuickMode, recentUploads.length, trackEvent]);
+
     if (authLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -2124,6 +2170,7 @@ function NewEntryPageContent() {
     const displayTags = tagsOverride.length > 0 ? tagsOverride : (extractedData?.suggestedTags || []);
     const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
     const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
+
     // R4c — surface the 60-character minimum live so users see the gate
     // before tapping Save instead of getting a silent toast on submit.
     const saveCharCount = content.replace(/\s+/g, ' ').trim().length;
@@ -2223,6 +2270,37 @@ function NewEntryPageContent() {
                     onRestore={handleRestoreDraftSnapshot}
                     onDelete={handleDeleteDraftSnapshot}
                 />
+
+                <section className={`mb-3 rounded-2xl border px-4 py-3 transition-colors ${
+                    excludeFromInsights
+                        ? 'border-[rgba(216,199,232,0.38)] bg-[rgba(216,199,232,0.12)]'
+                        : 'border-[rgba(var(--paper-border),0.72)] bg-[rgba(255,255,255,0.24)]'
+                }`}>
+                    <label className="flex cursor-pointer items-start gap-3">
+                        <input
+                            type="checkbox"
+                            checked={excludeFromInsights}
+                            onChange={(event) => {
+                                const next = event.target.checked;
+                                setExcludeFromInsights(next);
+                                void trackEvent({
+                                    eventType: 'entry_private_mode_toggled',
+                                    value: next ? 'on' : 'off',
+                                    metadata: { source: 'entry_new' },
+                                });
+                            }}
+                            className="mt-1 h-4 w-4 rounded border-[rgba(var(--paper-border),0.9)] accent-[rgb(var(--paper-sage))]"
+                        />
+                        <span className="min-w-0">
+                            <span className="block text-sm font-semibold text-[rgb(var(--text-primary))]">
+                                Keep this entry out of insights
+                            </span>
+                            <span className="mt-1 block text-xs leading-5 text-ink-secondary">
+                                Save it privately without using it for dashboard patterns, embeddings, or story suggestions.
+                            </span>
+                        </span>
+                    </label>
+                </section>
 
                 {showContextualPrompt && (
                     <section className="mb-4 rounded-[1.35rem] border border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.34)] px-4 py-4">

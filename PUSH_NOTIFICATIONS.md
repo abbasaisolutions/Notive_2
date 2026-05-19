@@ -62,10 +62,11 @@ class PushNotificationService {
 }
 ```
 
-**Note**: Currently uses mock implementation. To integrate with Firebase Cloud Messaging (FCM) in production:
-1. Set up Firebase Admin SDK credentials
-2. Replace `mockSendToDevice()` with FCM API calls
-3. Handle token refresh/invalidation from Firebase
+**Production behavior**: The service sends through Firebase Cloud Messaging when backend Firebase Admin credentials are configured with `FIREBASE_SERVICE_ACCOUNT` or `GOOGLE_APPLICATION_CREDENTIALS`.
+
+**Development behavior**: When Firebase credentials are absent, the service records a structured mock send in the backend logs. This keeps local development usable while making production configuration explicit.
+
+**Token lifecycle**: Permanent FCM token failures are marked inactive automatically so stale devices age out during cleanup.
 
 #### 3. **API Endpoints** (`backend/src/routes/device.routes.ts`)
 

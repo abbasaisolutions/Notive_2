@@ -78,7 +78,9 @@ function getFirebaseApp(): App | null {
         }
         return _firebaseApp;
     } catch (err) {
-        console.error('[PushNotificationService] Firebase Admin init failed:', err);
+        serverLogger.error('push.firebase_init_failed', {
+            errorMessage: err instanceof Error ? err.message : String(err),
+        });
         return null;
     }
 }
@@ -385,14 +387,14 @@ export class PushNotificationService {
 
     /** Console mock used when Firebase credentials are absent (development). */
     private logMockSend(token: string, platform: string, payload: PushNotificationPayload): void {
-        console.log('---------------------------------------------------------');
-        console.log(`[PushNotificationService] MOCK send to ${platform.toUpperCase()}`);
-        console.log(`Token: ${token.substring(0, 20)}...`);
-        console.log(`Title: ${payload.title}`);
-        console.log(`Body: ${payload.body}`);
-        if (payload.data) console.log('Data:', payload.data);
-        console.log('Set FIREBASE_SERVICE_ACCOUNT env var to enable real FCM.');
-        console.log('---------------------------------------------------------');
+        serverLogger.info('push.mock_send', {
+            platform,
+            tokenPreview: previewPushToken(token),
+            title: payload.title,
+            body: payload.body,
+            data: payload.data,
+            configurationHint: 'Set FIREBASE_SERVICE_ACCOUNT or GOOGLE_APPLICATION_CREDENTIALS to enable real FCM.',
+        });
     }
 
     /**

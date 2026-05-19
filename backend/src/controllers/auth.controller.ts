@@ -19,6 +19,21 @@ const getRefreshTokenExpiry = (): Date => {
     return expiry;
 };
 
+const REFRESH_TOKEN_ROTATION_GRACE_MS = Number.parseInt(
+    process.env.REFRESH_TOKEN_ROTATION_GRACE_MS || '15000',
+    10
+);
+
+const isRecentRefreshRotation = (revokedAt: Date | null, revokedReason: string | null): boolean => {
+    if (!revokedAt || revokedReason !== 'rotated') return false;
+
+    const graceMs = Number.isFinite(REFRESH_TOKEN_ROTATION_GRACE_MS) && REFRESH_TOKEN_ROTATION_GRACE_MS > 0
+        ? REFRESH_TOKEN_ROTATION_GRACE_MS
+        : 15000;
+
+    return Date.now() - revokedAt.getTime() <= graceMs;
+};
+
 const isMobileClient = (req: Request): boolean => {
     const platform = (req.header('x-client-platform') || '').toLowerCase();
     return platform === 'mobile' || platform === 'capacitor' || platform === 'native';
@@ -286,23 +301,32 @@ export const refresh = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Refresh token expired or invalid' });
         }
 
-        // Reuse detection: a token that was already rotated should never be presented again.
-        // Treat replay as evidence of theft and revoke every active refresh token for the user.
+        // Reuse detection: a token that was already rotated should rarely be presented again.
+        // A tiny grace window prevents benign browser/tab races from force-logging users out.
         if (storedToken.revokedAt) {
-            serverLogger.warn('auth.refresh.reuse_detected', {
-                userId: storedToken.user.id,
-                tokenId: storedToken.id,
-                revokedAt: storedToken.revokedAt.toISOString(),
-                revokedReason: storedToken.revokedReason,
-            });
-            await prisma.refreshToken.updateMany({
-                where: { userId: storedToken.user.id, revokedAt: null },
-                data: { revokedAt: new Date(), revokedReason: 'reuse_detected' },
-            });
-            clearRefreshTokenCookie(res);
-            return res.status(401).json({
-                message: 'Your session was ended for security reasons. Please sign in again.',
-            });
+            if (isRecentRefreshRotation(storedToken.revokedAt, storedToken.revokedReason)) {
+                serverLogger.warn('auth.refresh.rotation_race_grace', {
+                    userId: storedToken.user.id,
+                    tokenId: storedToken.id,
+                    revokedAt: storedToken.revokedAt.toISOString(),
+                    replacedById: storedToken.replacedById,
+                });
+            } else {
+                serverLogger.warn('auth.refresh.reuse_detected', {
+                    userId: storedToken.user.id,
+                    tokenId: storedToken.id,
+                    revokedAt: storedToken.revokedAt.toISOString(),
+                    revokedReason: storedToken.revokedReason,
+                });
+                await prisma.refreshToken.updateMany({
+                    where: { userId: storedToken.user.id, revokedAt: null },
+                    data: { revokedAt: new Date(), revokedReason: 'reuse_detected' },
+                });
+                clearRefreshTokenCookie(res);
+                return res.status(401).json({
+                    message: 'Your session was ended for security reasons. Please sign in again.',
+                });
+            }
         }
 
         if (storedToken.expiresAt < new Date()) {
@@ -325,24 +349,37 @@ export const refresh = async (req: Request, res: Response) => {
         });
         const newRefreshTokenHash = hashToken(newRefreshToken);
 
-        const [, createdToken] = await prisma.$transaction([
-            prisma.refreshToken.update({
-                where: { id: storedToken.id },
-                data: { revokedAt: new Date(), revokedReason: 'rotated' },
-            }),
-            prisma.refreshToken.create({
+        let createdToken: { id: string };
+
+        if (storedToken.revokedAt) {
+            createdToken = await prisma.refreshToken.create({
                 data: {
                     token: newRefreshTokenHash,
                     userId: storedToken.user.id,
                     expiresAt: getRefreshTokenExpiry(),
                 },
-            }),
-        ]);
+            });
+        } else {
+            const [, nextToken] = await prisma.$transaction([
+                prisma.refreshToken.update({
+                    where: { id: storedToken.id },
+                    data: { revokedAt: new Date(), revokedReason: 'rotated' },
+                }),
+                prisma.refreshToken.create({
+                    data: {
+                        token: newRefreshTokenHash,
+                        userId: storedToken.user.id,
+                        expiresAt: getRefreshTokenExpiry(),
+                    },
+                }),
+            ]);
 
-        await prisma.refreshToken.update({
-            where: { id: storedToken.id },
-            data: { replacedById: createdToken.id },
-        });
+            createdToken = nextToken;
+            await prisma.refreshToken.update({
+                where: { id: storedToken.id },
+                data: { replacedById: createdToken.id },
+            });
+        }
 
         // Generate new access token
         const accessToken = generateAccessToken({

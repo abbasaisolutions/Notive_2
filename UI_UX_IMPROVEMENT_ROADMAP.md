@@ -44,7 +44,7 @@ components/error-fallback.tsx          // Display error UI
 - [x] Wrap entire app in ErrorBoundary
 - [x] Show user-friendly error message (theme-aware tokens)
 - [x] Provide "Refresh" button
-- [ ] Log errors to monitoring service
+- [x] Log errors to monitoring service with Sentry
 - [ ] Test with intentional error throw
 
 ---

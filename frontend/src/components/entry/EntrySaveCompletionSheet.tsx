@@ -235,7 +235,7 @@ export default function EntrySaveCompletionSheet({
                         <div className="mt-5 space-y-3">
                             <div className="flex items-center justify-between gap-3">
                                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">
-                                    What stood out
+                                    What just happened
                                 </p>
                                 <TagPill tone="muted">Fresh from this save</TagPill>
                             </div>
@@ -265,7 +265,7 @@ export default function EntrySaveCompletionSheet({
                     {nextActions.length > 0 && (
                         <div className="mt-4 rounded-xl border border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.18)] p-4">
                             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">
-                                Recommended next step
+                                Memory-to-outcome bridge
                             </p>
                             <div className="mt-3 grid gap-2 sm:grid-cols-2">
                                 {nextActions.slice(0, 2).map((action) => (

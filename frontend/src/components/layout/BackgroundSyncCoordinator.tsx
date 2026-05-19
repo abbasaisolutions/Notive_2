@@ -9,6 +9,19 @@ import useUploadQueue from '@/hooks/use-upload-queue';
 import { syncPendingEntryDraft } from '@/services/pending-entry-draft-sync.service';
 import { isNativePlatform } from '@/utils/platform';
 
+const scheduleIdle = (callback: () => void, timeout = 2500) => {
+    if (typeof window === 'undefined') return () => {};
+
+    const idleCallback = window.requestIdleCallback;
+    if (idleCallback) {
+        const id = idleCallback(callback, { timeout });
+        return () => window.cancelIdleCallback?.(id);
+    }
+
+    const id = window.setTimeout(callback, Math.min(timeout, 1200));
+    return () => window.clearTimeout(id);
+};
+
 export default function BackgroundSyncCoordinator() {
     const pathname = usePathname();
     const { user, isLoading } = useAuth();
@@ -38,7 +51,9 @@ export default function BackgroundSyncCoordinator() {
     }, [apiFetch, isLoading, pathname, processQueue, user?.id]);
 
     useEffect(() => {
-        void runSync();
+        return scheduleIdle(() => {
+            void runSync();
+        });
     }, [runSync]);
 
     useEffect(() => {

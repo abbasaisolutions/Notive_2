@@ -9,17 +9,15 @@ import { SmartProvider } from "@/context/smart-context";
 import { GamificationProvider } from "@/context/gamification-context";
 import { ThemeProvider } from "@/context/theme-context";
 import { PushNotificationProvider } from "@/context/push-notification-context";
-import { PushNotificationPermissionPrompt } from "@/components/push-notification-permission-prompt";
 import { ToastProvider, ToastContainer } from "@/context/toast-context";
 import ErrorBoundary from "@/components/error-boundary";
 import ReducedMotionProvider from "@/components/ReducedMotionProvider";
 import AppChrome from "@/components/layout/AppChrome";
-import BackgroundSyncCoordinator from "@/components/layout/BackgroundSyncCoordinator";
+import DeferredClientSystems from "@/components/layout/DeferredClientSystems";
 import RouteHeader from "@/components/layout/RouteHeader";
 import PageTransition from "@/components/layout/PageTransition";
 import OfflineBanner from "@/components/layout/OfflineBanner";
 import OnboardingGuard from "@/components/onboarding/OnboardingGuard";
-import GlobalSearchOverlay from "@/components/search/GlobalSearchOverlay";
 import { NOTIVE_VOICE } from "@/content/notive-voice";
 import { getCredentialSsoClientId } from "@/utils/sso";
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -187,11 +185,9 @@ body:has(.app-shell) #notive-cold-shell{opacity:0}
                                                         </footer>
                                                     </main>
                                                 </div>
-                                                <BackgroundSyncCoordinator />
                                                 <OfflineBanner />
-                                                <GlobalSearchOverlay />
+                                                <DeferredClientSystems />
                                                 <ToastContainer />
-                                                <PushNotificationPermissionPrompt />
                                             </SmartProvider>
                                         </GamificationProvider>
                                     </PushNotificationProvider>

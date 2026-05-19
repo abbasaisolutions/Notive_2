@@ -79,6 +79,12 @@ const hasPersistableAiInsights = (analysis: unknown): analysis is Prisma.JsonObj
     return hasSentiment || hasTopics || hasEvidence;
 };
 
+const shouldExcludeFromInsights = (analysis: unknown): boolean => {
+    if (!isJsonObject(analysis)) return false;
+    const privacy = analysis.privacy;
+    return isJsonObject(privacy) && privacy.excludeFromInsights === true;
+};
+
 const normalizedText = (value: unknown): string => {
     if (typeof value !== 'string') return '';
     return value.trim();
@@ -513,10 +519,11 @@ export const createEntry = async (req: Request, res: Response) => {
         let autoTagMeta: Array<{ name: string; confidence: number; source: TagSource }> = [];
         const safeContentHtml = sanitizeHtml(contentHtml);
         const payloadAnalysis = isJsonObject(analysis) ? analysis : null;
+        const excludeFromInsights = shouldExcludeFromInsights(payloadAnalysis);
         const hasPayloadAiInsights = hasPersistableAiInsights(payloadAnalysis);
         const payloadGrowthSignals = hasPayloadAiInsights ? deriveGrowthSignalsFromAnalysis(payloadAnalysis) : null;
 
-        if (!hasPayloadAiInsights) {
+        if (!excludeFromInsights && !hasPayloadAiInsights) {
             const nlpTitle = typeof title === 'string' && title.trim() ? title : undefined;
             nlpFallback = await nlpService.analyzeContent(content, {
                 title: nlpTitle,
@@ -524,7 +531,7 @@ export const createEntry = async (req: Request, res: Response) => {
             });
         }
 
-        if (autoTag || (providedTags.length === 0 && content.length > 20)) {
+        if (!excludeFromInsights && (autoTag || (providedTags.length === 0 && content.length > 20))) {
             try {
                 const text = `${title ? `Title: ${title}\n` : ''}${content}`.trim();
                 const suggestedTags = nlpFallback
@@ -589,14 +596,14 @@ export const createEntry = async (req: Request, res: Response) => {
         // These three operations write to independent tables (EntryTag, EntryAnalysis,
         // opportunity evidence) and don't share transactional constraints, so
         // running them in parallel shaves ~100-200ms off the create response path.
-        const analysisPromise = hasPayloadAiInsights && payloadAnalysis
+        const analysisPromise = !excludeFromInsights && hasPayloadAiInsights && payloadAnalysis
             ? upsertEntryAnalysisFromPayload({
                 entryId: entry.id,
                 userId,
                 payload: payloadAnalysis,
                 content,
             })
-            : nlpFallback
+            : !excludeFromInsights && nlpFallback
                 ? upsertEntryAnalysisFromNlp({
                     entryId: entry.id,
                     userId,
@@ -608,46 +615,60 @@ export const createEntry = async (req: Request, res: Response) => {
         const [, , opportunityAnalysis] = await Promise.all([
             syncEntryTags({ entryId: entry.id, userId, tags: tagMeta }),
             analysisPromise,
-            upsertAutoOpportunityEvidence({
-                id: entry.id,
+            excludeFromInsights
+                ? Promise.resolve(null)
+                : upsertAutoOpportunityEvidence({
+                    id: entry.id,
+                    title: entry.title,
+                    content: entry.content,
+                    mood: entry.mood,
+                    tags: entry.tags,
+                    skills: entry.skills,
+                    lessons: entry.lessons,
+                    reflection: entry.reflection,
+                    createdAt: entry.createdAt,
+                    analysis: entry.analysis,
+                }),
+        ]);
+        const { mergedAnalysis, response: studentActionResponse } = excludeFromInsights
+            ? {
+                mergedAnalysis: entry.analysis,
+                response: {
+                    risk: { level: 'none' as const },
+                    safetyCard: null,
+                },
+            }
+            : await studentActionService.persistEntrySignals({
+                entryId: entry.id,
+                userId,
                 title: entry.title,
                 content: entry.content,
+                analysis: opportunityAnalysis ?? entry.analysis,
+            });
+
+        if (!excludeFromInsights) {
+            embeddingService.enqueueEntryEmbedding({
+                entryId: entry.id,
+                userId,
+                content,
+                title: typeof title === 'string' ? title : null,
                 mood: entry.mood,
                 tags: entry.tags,
                 skills: entry.skills,
                 lessons: entry.lessons,
                 reflection: entry.reflection,
-                createdAt: entry.createdAt,
-                analysis: entry.analysis,
-            }),
-        ]);
-        const { mergedAnalysis, response: studentActionResponse } = await studentActionService.persistEntrySignals({
-            entryId: entry.id,
-            userId,
-            title: entry.title,
-            content: entry.content,
-            analysis: opportunityAnalysis ?? entry.analysis,
-        });
-
-        embeddingService.enqueueEntryEmbedding({
-            entryId: entry.id,
-            userId,
-            content,
-            title: typeof title === 'string' ? title : null,
-            mood: entry.mood,
-            tags: entry.tags,
-            skills: entry.skills,
-            lessons: entry.lessons,
-            reflection: entry.reflection,
-            analysis: mergedAnalysis,
-            category: entry.category,
-            lifeArea: entry.lifeArea,
-        });
+                analysis: mergedAnalysis,
+                category: entry.category,
+                lifeArea: entry.lifeArea,
+            });
+        }
 
         const responseEntry = { ...entry, analysis: mergedAnalysis };
 
         // Fire-and-forget: generate Notive Noticed insights in the background
-        guidedReflectionService.generateNotiveInsights(entry.id, userId).catch(() => {});
+        if (!excludeFromInsights) {
+            guidedReflectionService.generateNotiveInsights(entry.id, userId).catch(() => {});
+        }
 
         // Invalidate mood forecast cache — next dashboard load will recompute.
         void moodForecastService.invalidate(userId);
@@ -655,6 +676,7 @@ export const createEntry = async (req: Request, res: Response) => {
         // Fire-and-forget: notify when career evidence is extracted
         setImmediate(async () => {
             try {
+                if (excludeFromInsights) return;
                 const opportunityEntry: OpportunityEntry = {
                     id: entry.id,
                     title: entry.title,
@@ -949,6 +971,7 @@ export const updateEntry = async (req: Request, res: Response) => {
             ? sanitizeHtml(contentHtml)
             : existing.contentHtml;
         const payloadAnalysis = isJsonObject(analysis) ? analysis : null;
+        const excludeFromInsights = shouldExcludeFromInsights(payloadAnalysis);
         const hasPayloadAiInsights = hasPersistableAiInsights(payloadAnalysis);
         const payloadGrowthSignals = hasPayloadAiInsights
             ? deriveGrowthSignalsFromAnalysis(payloadAnalysis)
@@ -973,7 +996,7 @@ export const updateEntry = async (req: Request, res: Response) => {
         }
 
         let nlpFallback: AnalysisResult | null = null;
-        if (!hasPayloadAiInsights && contentChanged) {
+        if (!excludeFromInsights && !hasPayloadAiInsights && contentChanged) {
             const nlpTitle = typeof nextTitle === 'string' && nextTitle.trim() ? nextTitle : undefined;
             nlpFallback = await nlpService.analyzeContent(nextContent, {
                 title: nlpTitle,
@@ -1036,14 +1059,14 @@ export const updateEntry = async (req: Request, res: Response) => {
         const updateTagsPromise = tagMeta
             ? syncEntryTags({ entryId: entry.id, userId, tags: tagMeta })
             : Promise.resolve();
-        const updateAnalysisPromise = hasPayloadAiInsights && payloadAnalysis
+        const updateAnalysisPromise = !excludeFromInsights && hasPayloadAiInsights && payloadAnalysis
             ? upsertEntryAnalysisFromPayload({
                 entryId: entry.id,
                 userId,
                 payload: payloadAnalysis,
                 content: nextContent,
             })
-            : nlpFallback
+            : !excludeFromInsights && nlpFallback
                 ? upsertEntryAnalysisFromNlp({
                     entryId: entry.id,
                     userId,
@@ -1055,46 +1078,54 @@ export const updateEntry = async (req: Request, res: Response) => {
         const [, , opportunityAnalysis] = await Promise.all([
             updateTagsPromise,
             updateAnalysisPromise,
-            upsertAutoOpportunityEvidence({
-                id: entry.id,
+            excludeFromInsights
+                ? Promise.resolve(null)
+                : upsertAutoOpportunityEvidence({
+                    id: entry.id,
+                    title: entry.title,
+                    content: entry.content,
+                    mood: entry.mood,
+                    tags: entry.tags,
+                    skills: entry.skills,
+                    lessons: entry.lessons,
+                    reflection: entry.reflection,
+                    createdAt: entry.createdAt,
+                    analysis: entry.analysis,
+                }),
+        ]);
+        const { mergedAnalysis } = excludeFromInsights
+            ? { mergedAnalysis: entry.analysis }
+            : await studentActionService.persistEntrySignals({
+                entryId: entry.id,
+                userId,
                 title: entry.title,
                 content: entry.content,
+                analysis: opportunityAnalysis ?? entry.analysis,
+            });
+
+        if (!excludeFromInsights) {
+            embeddingService.enqueueEntryEmbedding({
+                entryId: entry.id,
+                userId,
+                content: nextContent,
+                title: typeof nextTitle === 'string' ? nextTitle : null,
                 mood: entry.mood,
                 tags: entry.tags,
                 skills: entry.skills,
                 lessons: entry.lessons,
                 reflection: entry.reflection,
-                createdAt: entry.createdAt,
-                analysis: entry.analysis,
-            }),
-        ]);
-        const { mergedAnalysis } = await studentActionService.persistEntrySignals({
-            entryId: entry.id,
-            userId,
-            title: entry.title,
-            content: entry.content,
-            analysis: opportunityAnalysis ?? entry.analysis,
-        });
-
-        embeddingService.enqueueEntryEmbedding({
-            entryId: entry.id,
-            userId,
-            content: nextContent,
-            title: typeof nextTitle === 'string' ? nextTitle : null,
-            mood: entry.mood,
-            tags: entry.tags,
-            skills: entry.skills,
-            lessons: entry.lessons,
-            reflection: entry.reflection,
-            analysis: mergedAnalysis,
-            category: entry.category,
-            lifeArea: entry.lifeArea,
-        });
+                analysis: mergedAnalysis,
+                category: entry.category,
+                lifeArea: entry.lifeArea,
+            });
+        }
 
         const responseEntry = { ...entry, analysis: mergedAnalysis };
 
         // Fire-and-forget: regenerate Notive Noticed insights after content update
-        guidedReflectionService.generateNotiveInsights(entry.id, userId).catch(() => {});
+        if (!excludeFromInsights) {
+            guidedReflectionService.generateNotiveInsights(entry.id, userId).catch(() => {});
+        }
 
         // Invalidate mood forecast cache if mood changed (or content may have shifted analysis)
         void moodForecastService.invalidate(userId);
