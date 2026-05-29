@@ -124,7 +124,15 @@ const ONBOARDING_STEPS = [
     { id: 3, label: 'Starter' },
 ];
 
+const SETUP_PROGRESS_STEPS = [
+    { label: 'Google verified', status: 'done' },
+    { label: 'Basics', status: 'done' },
+    { label: 'Setup', status: 'active' },
+    { label: 'First note', status: 'upcoming' },
+] as const;
+
 type ProfileSnapshot = {
+    birthDate?: string | null;
     primaryGoal?: string | null;
     focusArea?: string | null;
     experienceLevel?: string | null;
@@ -152,6 +160,26 @@ const deriveResumeStepFromProfile = (profile: ProfileSnapshot): number => {
     return 3;
 };
 
+const getAgeFromBirthDate = (birthDate: string | null | undefined): number | null => {
+    if (!birthDate) return null;
+    const parsed = new Date(birthDate);
+    if (Number.isNaN(parsed.getTime())) return null;
+
+    const now = new Date();
+    let age = now.getFullYear() - parsed.getUTCFullYear();
+    const monthDelta = now.getMonth() - parsed.getUTCMonth();
+    if (monthDelta < 0 || (monthDelta === 0 && now.getDate() < parsed.getUTCDate())) {
+        age -= 1;
+    }
+
+    return age >= 0 ? age : null;
+};
+
+const shouldSuggestStudent = (birthDate: string | null | undefined): boolean => {
+    const age = getAgeFromBirthDate(birthDate);
+    return age !== null && age <= 22;
+};
+
 function OnboardingPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -177,11 +205,13 @@ function OnboardingPageContent() {
         () => unwrapSetupReturnTo(searchParams.get('returnTo')),
         [searchParams]
     );
+    const arrivedFromProfileBasics = searchParams.get('source') === 'profile-basics';
 
     const promptOptions = useMemo(() => {
         if (!goal || !track) return [];
         return STARTER_PROMPTS[goal][track];
     }, [goal, track]);
+    const ageSuggestsStudent = shouldSuggestStudent(user?.profile?.birthDate || null);
 
     useEffect(() => {
         const profile = user?.profile;
@@ -201,6 +231,9 @@ function OnboardingPageContent() {
         }
         if (profile.experienceLevel && EXPERIENCE_LEVELS.some((item) => item.id === profile.experienceLevel)) {
             setExperienceLevel(profile.experienceLevel as OnboardingExperienceLevel);
+        } else if (shouldSuggestStudent(profile.birthDate || null)) {
+            setExperienceLevel('student');
+            setShowOptionalProfile(true);
         }
         if (profile.writingPreference && WRITING_PREFERENCES.some((item) => item.id === profile.writingPreference)) {
             setWritingPreference(profile.writingPreference as OnboardingWritingPreference);
@@ -228,6 +261,13 @@ function OnboardingPageContent() {
         if (step !== 3 || selectedPrompt !== null || promptOptions.length === 0) return;
         setSelectedPrompt(promptOptions[0]);
     }, [promptOptions, selectedPrompt, step]);
+
+    useEffect(() => {
+        if (!arrivedFromProfileBasics) return;
+        setSavedNotice(ageSuggestsStudent
+            ? 'Basics saved. We suggested Student from your birthday; change it anytime if that is not right.'
+            : 'Basics saved. Now choose how Notive should help you first.');
+    }, [ageSuggestsStudent, arrivedFromProfileBasics]);
 
     const isCompletedProfile = hasCompletedOnboardingFromProfile(user?.profile);
     const firstIncompleteStep = useMemo(() => {
@@ -449,6 +489,22 @@ function OnboardingPageContent() {
                     <p className="type-body-sm mx-auto mt-3 max-w-2xl text-default">
                         Pick your goal, choose the part of life to focus on, and start with one easy first question for your first note.
                     </p>
+                    <div className="mx-auto mt-4 grid max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Setup progress">
+                        {SETUP_PROGRESS_STEPS.map((item) => (
+                            <div
+                                key={item.label}
+                                className={`rounded-[1rem] border px-3 py-2 text-xs font-semibold ${
+                                    item.status === 'done'
+                                        ? 'border-[rgba(65,93,76,0.28)] bg-[rgba(202,221,208,0.28)] text-[rgb(65,93,76)]'
+                                        : item.status === 'active'
+                                            ? 'border-primary/35 bg-primary/15 text-strong'
+                                            : 'workspace-pill-muted text-muted'
+                                }`}
+                            >
+                                {item.label}
+                            </div>
+                        ))}
+                    </div>
                     <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                         {ONBOARDING_STEPS.map((item) => {
                             const isActive = item.id === step;
@@ -475,13 +531,14 @@ function OnboardingPageContent() {
                 </div>
 
                 {submitError && (
-                    <div className="workspace-soft-panel type-body-sm mb-4 rounded-xl px-4 py-3 text-strong">
-                        {submitError}
+                    <div role="alert" className="workspace-soft-panel type-body-sm mb-4 rounded-xl px-4 py-3 text-strong">
+                        <p>{submitError}</p>
+                        <p className="mt-1 text-xs text-muted">Your selections are still here. Try again when the connection settles.</p>
                     </div>
                 )}
 
                 {savedNotice && (
-                    <div className="type-body-sm mb-4 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-accent">
+                    <div role="status" className="type-body-sm mb-4 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-accent">
                         {savedNotice}
                     </div>
                 )}
@@ -602,6 +659,11 @@ function OnboardingPageContent() {
                                     <div className="mt-5 space-y-5">
                                         <div>
                                             <p className="type-body-sm mb-3 text-default">Where are you right now?</p>
+                                            {ageSuggestsStudent && !user?.profile?.experienceLevel && (
+                                                <p className="mb-3 text-xs leading-5 text-muted">
+                                                    We suggested Student from your birthday to save a tap. Pick another option if it fits better.
+                                                </p>
+                                            )}
                                             <div className="flex flex-wrap gap-2">
                                                 {EXPERIENCE_LEVELS.map((item) => (
                                                     <button
@@ -729,6 +791,15 @@ function OnboardingPageContent() {
                             >
                                 Start with a blank note
                             </button>
+
+                            <div className="workspace-soft-panel type-body-sm mt-5 rounded-2xl border border-primary/15 p-4 text-default">
+                                <p className="type-overline text-muted">First note preview</p>
+                                <p className="mt-2 text-strong">
+                                    {selectedPrompt
+                                        ? selectedPrompt
+                                        : 'You will start with a blank note.'}
+                                </p>
+                            </div>
 
                             <div className="workspace-soft-panel type-micro mt-6 rounded-xl p-4 text-default">
                                 You can bring in old posts, files, and memories later in Me after your first note is saved.

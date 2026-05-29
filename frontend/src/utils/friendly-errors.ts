@@ -25,7 +25,7 @@ const GENERIC_ERROR_PATTERNS = [
 ];
 
 const DEFAULT_NETWORK_FALLBACK = 'We couldn’t reach Notive right now. Check your connection and try again.';
-const GOOGLE_OAUTH_CONFIG_FALLBACK = 'Google sign-in is temporarily unavailable because the app’s Google connection needs to be refreshed. Use email and password for now.';
+const GOOGLE_OAUTH_CONFIG_FALLBACK = 'Google sign-in is temporarily unavailable because the app’s Google connection needs to be refreshed. Please try again in a moment or contact support.';
 
 const toErrorMessage = (value: unknown): string => {
     if (typeof value === 'string') {

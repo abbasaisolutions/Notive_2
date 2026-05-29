@@ -7,10 +7,13 @@ let googleInitPromise: Promise<void> | null = null;
 const NATIVE_GOOGLE_CANCELED_FALLBACK =
     'Google sign-in did not finish on this device. Choose the account again and try once more.';
 const NATIVE_GOOGLE_ANDROID_BUILD_FALLBACK =
-    "Google sign-in is temporarily unavailable on this Android build because the app's Google connection needs to be refreshed. Use email and password for now.";
+    "Google sign-in is temporarily unavailable on this Android build because the app's Google connection needs to be refreshed. Please try again in a moment or contact support.";
+const NATIVE_GOOGLE_NO_CREDENTIAL_FALLBACK =
+    'No Google account was available for this device. Add a Google account in Android Settings, then try again.';
 const NATIVE_GOOGLE_REAUTH_FALLBACK =
     'Google sign-in still needs the Google account on this device to be active. Open Android Settings, confirm the Google account is signed in, then try again.';
 type NativeGoogleLoginStyle = 'bottom' | 'standard';
+type NativeGoogleLoginIntent = 'signin' | 'signup' | 'reauth';
 
 const buildNativeGoogleConfig = () => {
     const availability = getCredentialSsoAvailability('google');
@@ -119,6 +122,10 @@ export const normalizeNativeGoogleSsoError = (error: unknown): Error => {
         return new Error(NATIVE_GOOGLE_ANDROID_BUILD_FALLBACK);
     }
 
+    if (/no credential|no google account|no credentials available/i.test(message)) {
+        return new Error(NATIVE_GOOGLE_NO_CREDENTIAL_FALLBACK);
+    }
+
     if (
         code === 16
         || /\bcancel(?:led|ed)?\b|dismiss(?:ed|al)|interrupted/i.test(message)
@@ -169,11 +176,22 @@ const buildNativeGoogleLoginOptions = (style: NativeGoogleLoginStyle) => ({
     autoSelectEnabled: false,
 });
 
-const loginWithNativeGoogle = async () => {
+const getNativeGoogleLoginStyles = (
+    platform: ReturnType<typeof getNativeCapacitorPlatform>,
+    intent: NativeGoogleLoginIntent
+): NativeGoogleLoginStyle[] => {
+    if (platform !== 'android') {
+        return ['standard'];
+    }
+
+    return intent === 'signup'
+        ? ['standard', 'bottom']
+        : ['bottom', 'standard'];
+};
+
+const loginWithNativeGoogle = async (intent: NativeGoogleLoginIntent) => {
     const platform = getNativeCapacitorPlatform();
-    const styles: NativeGoogleLoginStyle[] = platform === 'android'
-        ? ['bottom', 'standard']
-        : ['standard'];
+    const styles = getNativeGoogleLoginStyles(platform, intent);
     let lastError: unknown;
 
     for (const style of styles) {
@@ -197,11 +215,13 @@ const loginWithNativeGoogle = async () => {
     throw lastError instanceof Error ? lastError : new Error('Google sign-in failed. Please try again.');
 };
 
-export const signInWithNativeGoogleCredential = async (): Promise<string> => {
+export const signInWithNativeGoogleCredential = async (
+    intent: NativeGoogleLoginIntent = 'signin'
+): Promise<string> => {
     await ensureNativeGoogleSsoInitialized();
 
     try {
-        const response = await loginWithNativeGoogle();
+        const response = await loginWithNativeGoogle(intent);
 
         if (response.result.responseType !== 'online' || !response.result.idToken) {
             throw new Error('Google sign-in did not return a usable identity token.');

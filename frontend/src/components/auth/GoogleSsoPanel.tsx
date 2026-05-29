@@ -7,6 +7,7 @@ import { ensureNativeGoogleSsoInitialized, signInWithNativeGoogleCredential } fr
 import { resolveFriendlyMessage } from '@/utils/friendly-errors';
 import { FiLoader } from 'react-icons/fi';
 import useHasMounted from '@/hooks/use-has-mounted';
+import logger from '@/utils/logger';
 
 type GoogleSsoPanelMode = 'login' | 'register' | 'reauth';
 
@@ -25,6 +26,10 @@ const PANEL_COPY: Record<GoogleSsoPanelMode, {
     title: string;
     description: string;
     supportText: string;
+    troubleText: string;
+    nativeButtonLabel: string;
+    loadingText: string;
+    successText: string;
     buttonText: 'signin_with' | 'signup_with' | 'continue_with';
 }> = {
     login: {
@@ -32,13 +37,21 @@ const PANEL_COPY: Record<GoogleSsoPanelMode, {
         title: 'Continue with Google',
         description: 'Skip the password and reopen the same Notive workspace tied to your Google email.',
         supportText: 'Use the same Google email as your Notive account to keep your notes, patterns, and story history together.',
+        troubleText: 'Having trouble? Confirm a Google account is active on this device, then try again.',
+        nativeButtonLabel: 'Continue with Google',
+        loadingText: 'Opening your notebook...',
+        successText: 'Google verified. Opening Notive...',
         buttonText: 'continue_with',
     },
     register: {
         eyebrow: 'Google',
         title: 'Start with Google',
         description: 'Create your account faster and keep your sign-in simple from the start.',
-        supportText: 'If you already have a Notive account with that email, Google will open it instead of creating a duplicate.',
+        supportText: 'After Google verifies you, we will ask for your birthday and finish setup.',
+        troubleText: 'Having trouble? Add or confirm a Google account in Android Settings, then return to Notive.',
+        nativeButtonLabel: 'Create account with Google',
+        loadingText: 'Creating your Notive account...',
+        successText: 'Account created. Finishing setup...',
         buttonText: 'signup_with',
     },
     reauth: {
@@ -46,6 +59,10 @@ const PANEL_COPY: Record<GoogleSsoPanelMode, {
         title: 'Re-verify with Google',
         description: 'Use your Google account to unlock sensitive security changes for a short time.',
         supportText: 'This does not change your Google account. It only proves it is still you before high-impact account changes.',
+        troubleText: 'Having trouble? Confirm the Google account for this Notive profile is active on this device.',
+        nativeButtonLabel: 'Re-verify with Google',
+        loadingText: 'Re-verifying with Google...',
+        successText: 'Verified. You can continue...',
         buttonText: 'continue_with',
     },
 };
@@ -56,6 +73,14 @@ const ALIGNMENT = {
 } as const;
 
 const getErrorMessage = (error: unknown, fallback: string) => resolveFriendlyMessage(error, fallback);
+
+const classifyGoogleSsoError = (message: string) => {
+    if (/did not finish|cancel|dismiss|interrupted/i.test(message)) return 'cancelled';
+    if (/no google account|no credential|no credentials/i.test(message)) return 'no_device_account';
+    if (/connection needs to be refreshed|oauth client|invalid_client|deleted_client/i.test(message)) return 'configuration';
+    if (/network|failed to fetch|timeout/i.test(message)) return 'network';
+    return 'unknown';
+};
 
 type GoogleCredentialResponse = {
     credential?: string;
@@ -197,9 +222,10 @@ function GoogleSsoPanelComponent({
     const copy = PANEL_COPY[mode];
     const [nativeLoading, setNativeLoading] = useState(false);
     const [nativeError, setNativeError] = useState<string | null>(null);
+    const [nativeSuccess, setNativeSuccess] = useState(false);
     const showButton = hasMounted && availability.enabled;
     const isNativeSso = availability.enabled && availability.surface === 'native';
-    const isInteractionDisabled = isLoading || isBlocked || nativeLoading;
+    const isInteractionDisabled = isLoading || isBlocked || nativeLoading || nativeSuccess;
 
     useEffect(() => {
         if (!isNativeSso) return;
@@ -228,13 +254,40 @@ function GoogleSsoPanelComponent({
     }, [availability.reason, nativeError]);
 
     const handleNativeSignIn = async () => {
+        if (isInteractionDisabled) return;
+
         try {
             setNativeError(null);
+            setNativeSuccess(false);
             setNativeLoading(true);
-            const credential = await signInWithNativeGoogleCredential();
+            const nativeIntent = mode === 'register'
+                ? 'signup'
+                : mode === 'reauth'
+                    ? 'reauth'
+                    : 'signin';
+            logger.info('Native Google SSO started', {
+                mode,
+                intent: nativeIntent,
+                surface: availability.surface,
+            });
+            const credential = await signInWithNativeGoogleCredential(nativeIntent);
+            setNativeSuccess(true);
+            logger.info('Native Google SSO credential received', {
+                mode,
+                intent: nativeIntent,
+                surface: availability.surface,
+            });
             await onSuccess({ credential });
         } catch (error) {
-            setNativeError(getErrorMessage(error, 'Google sign-in failed. Please try again.'));
+            const message = getErrorMessage(error, mode === 'register'
+                ? 'Google sign-up failed. Please try again.'
+                : 'Google sign-in failed. Please try again.');
+            setNativeError(message);
+            logger.warn('Native Google SSO failed', {
+                mode,
+                category: classifyGoogleSsoError(message),
+                surface: availability.surface,
+            });
         } finally {
             setNativeLoading(false);
         }
@@ -277,7 +330,7 @@ function GoogleSsoPanelComponent({
                                         G
                                     </span>
                                 )}
-                                <span>{copy.title}</span>
+                                <span>{copy.nativeButtonLabel}</span>
                             </button>
                         ) : (
                             <div className={`max-w-full ${isInteractionDisabled ? 'pointer-events-none opacity-60' : ''}`}>
@@ -290,8 +343,15 @@ function GoogleSsoPanelComponent({
                         )}
                         {isBlocked && blockedMessage ? (
                             <p className="text-xs text-ink-muted">{blockedMessage}</p>
+                        ) : nativeSuccess ? (
+                            <p className="text-xs text-[rgb(65,93,76)]">{copy.successText}</p>
+                        ) : nativeLoading ? (
+                            <p className="text-xs text-ink-muted">{copy.loadingText}</p>
                         ) : nativeError ? (
-                            <p className="text-xs text-[rgb(122,87,76)]">{nativeError}</p>
+                            <div className="space-y-1">
+                                <p className="text-xs text-[rgb(122,87,76)]">{nativeError}</p>
+                                <p className="text-xs text-ink-muted">{copy.troubleText}</p>
+                            </div>
                         ) : (
                             <p className="text-xs text-ink-muted">{copy.supportText}</p>
                         )}

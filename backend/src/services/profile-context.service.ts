@@ -10,8 +10,14 @@ export type ProfileContextSource = {
     importPreference?: string | null;
     lifeGoals?: string[] | null;
     outputGoals?: string[] | null;
+    personalizationSignals?: unknown;
     onboardingCompletedAt?: Date | string | null;
     updatedAt?: Date | string | null;
+};
+
+export type ProfileIdentityContext = {
+    gender: string | null;
+    useGenderForPersonalization: boolean;
 };
 
 export type ProfileContextSummary = {
@@ -32,6 +38,7 @@ export type ProfileContextSummary = {
     professionalSignals: number;
     personalGrowthScore: number;
     professionalReadinessScore: number;
+    identity: ProfileIdentityContext;
     onboardingCompleted: boolean;
     updatedAt: string | null;
 };
@@ -68,6 +75,22 @@ const asIsoDateString = (value: unknown): string | null => {
     return parsed.toISOString();
 };
 
+const asRecord = (value: unknown): Record<string, unknown> =>
+    value && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : {};
+
+const resolveIdentityContext = (signals: unknown): ProfileIdentityContext => {
+    const identity = asRecord(asRecord(signals).identity);
+    const genderLabel = typeof identity.genderLabel === 'string' ? identity.genderLabel.trim() : '';
+    const useGenderForPersonalization = identity.useGenderForPersonalization === true && Boolean(genderLabel);
+
+    return {
+        gender: useGenderForPersonalization ? genderLabel : null,
+        useGenderForPersonalization,
+    };
+};
+
 const hasProfessionalOutputGoal = (goals: string[]): boolean => {
     const normalized = goals.map((goal) => goal.toLowerCase());
     return normalized.some((goal) => PROFESSIONAL_OUTPUT_GOALS.has(goal));
@@ -102,6 +125,7 @@ export const buildProfileContextSummary = (
     const importPreference = normalizeOptionalText(source?.importPreference);
     const lifeGoals = normalizeStringArray(source?.lifeGoals);
     const outputGoals = normalizeStringArray(source?.outputGoals);
+    const identity = resolveIdentityContext(source?.personalizationSignals);
 
     const hasPrimaryGoal = primaryGoal !== null;
     const hasFocusArea = focusArea !== null;
@@ -164,6 +188,7 @@ export const buildProfileContextSummary = (
         professionalSignals,
         personalGrowthScore: toPercent(personalSignals, 4),
         professionalReadinessScore: toPercent(professionalSignals, 4),
+        identity,
         onboardingCompleted,
         updatedAt: asIsoDateString(source?.updatedAt),
     };

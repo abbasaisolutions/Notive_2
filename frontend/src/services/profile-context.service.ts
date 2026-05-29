@@ -12,7 +12,13 @@ export type ProfileContextSource = {
     importPreference?: string | null;
     lifeGoals?: string[] | null;
     outputGoals?: string[] | null;
+    personalizationSignals?: unknown;
     onboardingCompletedAt?: string | null;
+};
+
+export type ProfileIdentityContext = {
+    gender: string | null;
+    useGenderForPersonalization: boolean;
 };
 
 export type ProfileContextSummary = {
@@ -23,6 +29,7 @@ export type ProfileContextSummary = {
     track: ProfileTrack;
     personalGrowthScore: number;
     professionalReadinessScore: number;
+    identity: ProfileIdentityContext;
 };
 
 const TOTAL_PROFILE_FIELDS = 7;
@@ -50,6 +57,22 @@ const toPercent = (numerator: number, denominator: number): number =>
 const hasProfessionalOutputGoal = (goals: string[]): boolean =>
     goals.some((goal) => PROFESSIONAL_OUTPUT_GOALS.has(goal.toLowerCase()));
 
+const asRecord = (value: unknown): Record<string, unknown> =>
+    value && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : {};
+
+const resolveIdentityContext = (signals: unknown): ProfileIdentityContext => {
+    const identity = asRecord(asRecord(signals).identity);
+    const genderLabel = typeof identity.genderLabel === 'string' ? identity.genderLabel.trim() : '';
+    const useGenderForPersonalization = identity.useGenderForPersonalization === true && Boolean(genderLabel);
+
+    return {
+        gender: useGenderForPersonalization ? genderLabel : null,
+        useGenderForPersonalization,
+    };
+};
+
 const deriveTrack = (focusArea: string | null, hasProfessionalGoals: boolean): ProfileTrack => {
     if (focusArea === 'both') return 'blended';
     if (focusArea === 'career') return 'professional';
@@ -68,6 +91,7 @@ export const buildProfileContextSummary = (
     const starterPrompt = hasText(source?.starterPrompt) ? source.starterPrompt.trim() : null;
     const lifeGoals = normalizeStringArray(source?.lifeGoals);
     const outputGoals = normalizeStringArray(source?.outputGoals);
+    const identity = resolveIdentityContext(source?.personalizationSignals);
 
     const completedFields = [
         primaryGoal,
@@ -113,5 +137,6 @@ export const buildProfileContextSummary = (
         track: deriveTrack(focusArea, hasProfessionalGoals),
         personalGrowthScore: toPercent(personalSignals, 4),
         professionalReadinessScore: toPercent(professionalSignals, 4),
+        identity,
     };
 };
