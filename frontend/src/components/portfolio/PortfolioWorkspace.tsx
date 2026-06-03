@@ -2643,13 +2643,13 @@ export default function PortfolioWorkspace() {
                                                 <p className="mt-2 text-sm leading-6 text-ink-secondary">
                                                     {formatRatioPercent(editingExperience.confidence || 0)} source strength
                                                 </p>
-                                                <Link
+                                                <a
                                                     href={sourceHref}
                                                     className="workspace-button-outline mt-3 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                                                 >
                                                     <FiArrowRight size={14} aria-hidden="true" />
                                                     Open memory
-                                                </Link>
+                                                </a>
                                             </div>
                                         </div>
 
@@ -2664,13 +2664,13 @@ export default function PortfolioWorkspace() {
                         <div className="border-t border-[rgba(var(--paper-border),0.92)] bg-[rgb(var(--paper-bg))] px-5 py-4 md:px-6">
                             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                 <div className="flex flex-wrap gap-2">
-                                    <Link
+                                    <a
                                         href={sourceHref}
                                         className="workspace-button-outline inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em]"
                                     >
                                         <FiArrowRight size={14} aria-hidden="true" />
                                         Source Entry
-                                    </Link>
+                                    </a>
                                     <button
                                         type="button"
                                         onClick={() => {
