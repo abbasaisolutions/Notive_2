@@ -123,8 +123,7 @@ export default function MandatoryAppUpdateGate({
     }, [resolvedVersion, updateConfig]);
 
     useEffect(() => {
-        if (!shouldShow) return;
-        setIsOpen(true);
+        setIsOpen(shouldShow);
     }, [shouldShow]);
 
     const handleUpdate = async () => {
