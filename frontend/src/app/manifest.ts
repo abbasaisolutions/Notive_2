@@ -3,7 +3,7 @@ import { NOTIVE_VOICE } from '@/content/notive-voice';
 
 export default function manifest(): MetadataRoute.Manifest {
     return {
-        name: `Notive | ${NOTIVE_VOICE.signature}`,
+        name: 'Notive | Private Diary for Useful Stories',
         short_name: 'Notive',
         description: NOTIVE_VOICE.longSummary,
         start_url: '/',

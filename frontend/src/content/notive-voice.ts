@@ -31,15 +31,15 @@ export type ProgressivePromptFramingVariant = 'guide' | 'benefit' | 'future';
 
 export const NOTIVE_VOICE = {
     appName: 'Notive',
-    signature: 'Capture moments. Keep what matters. Use it later.',
-    shortSummary: 'A private diary for capturing real moments and turning them into something useful.',
-    longSummary: 'Notive is a private diary that helps you capture real moments, keep meaningful memories, understand what they hold, and turn them into lessons, skills, patterns, and stories you can use later.',
+    signature: 'Private diary for useful stories.',
+    shortSummary: 'A private diary for turning real moments into lessons, patterns, and stories you can use.',
+    longSummary: 'Notive is a private diary that helps you capture real moments, understand what they hold, and turn them into lessons, skills, patterns, and stories for life, school, and work.',
     journey: ['Capture', 'Keep', 'Understand', 'Use'],
     surfaces: {
         homeBase: 'Today',
         memoryAtlas: 'Notebook',
         signalStudio: 'Patterns',
-        outcomeStudio: 'Use Outside Notive',
+        outcomeStudio: 'Story Seeds',
         reflectionCoach: 'AskNotive',
         storyCollections: 'Threads',
         memoryInbox: 'Bring In',
@@ -47,13 +47,13 @@ export const NOTIVE_VOICE = {
         admin: 'Manage',
     },
     home: {
-        heroTitle: 'Save the moment while it is fresh.',
-        heroBody: 'Write, speak, or import a note. Notive keeps it private and helps you find the lesson, pattern, or story later.',
+        heroTitle: 'Save the moment. Find the story.',
+        heroBody: 'Write, speak, or import a note. Notive keeps it private and helps you find the lesson, pattern, or story you may use later.',
         heroPrimaryCta: 'Start with one moment',
         heroSecondaryCta: 'Sign in',
         showcaseEyebrow: 'Private diary',
         showcaseTitle: 'Capture, notice, use.',
-        showcaseBody: 'One simple flow: save the moment, find what mattered, and come back when you need useful material outside the diary.',
+        showcaseBody: 'One simple flow: save the moment, find what mattered, and turn it into story material when you need it.',
         closingTitle: 'Start with one real moment.',
         closingBody: 'No system to learn first. Capture it, review it, and move on.',
     },
@@ -133,8 +133,8 @@ export const NOTIVE_VOICE = {
         actionLabel: 'Suggested reuse',
     },
     stories: {
-        title: 'Turn saved moments into stories you can use later.',
-        description: 'Build resume bullets, statements, interview stories, growth summaries, and reusable life evidence from your diary.',
+        title: 'Turn saved moments into story seeds you can use later.',
+        description: 'Build resume bullets, statements, interview stories, growth summaries, and reusable life evidence from your private diary.',
     },
     imports: {
         title: 'Bring old memories into your diary system.',

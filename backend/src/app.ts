@@ -160,6 +160,19 @@ app.get('/', (_req: Request, res: Response) => {
     res.json({ message: 'Notive API is running', version: '0.1.0' });
 });
 
+app.get('/api/v1/app-update', (_req: Request, res: Response) => {
+    const androidPackageName = (process.env.ANDROID_PACKAGE_NAME || process.env.PLAY_STORE_PACKAGE_NAME || '').trim() || 'com.notive.app';
+    const androidUpdateUrl = (process.env.ANDROID_UPDATE_URL || process.env.PLAY_STORE_UPDATE_URL || '').trim();
+
+    res.status(200).json({
+        android: {
+            minimumVersion: (process.env.MINIMUM_ANDROID_APP_VERSION || process.env.MINIMUM_APP_VERSION || '1.0.0').trim(),
+            packageName: androidPackageName,
+            updateUrl: androidUpdateUrl || `https://play.google.com/store/apps/details?id=${androidPackageName}`,
+        },
+    });
+});
+
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/entries', entryRoutes);
 app.use('/api/v1/ai', aiRoutes);

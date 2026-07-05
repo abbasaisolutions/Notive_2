@@ -198,7 +198,7 @@ const exportTypeIcons: Record<ExportType, IconType> = {
 };
 
 const evidenceFilterLabels: Record<EvidenceFilter, string> = {
-    all: 'All Stories',
+    all: 'All Seeds',
     needs_attention: 'Shape',
     ready_to_verify: 'Review',
     ready_to_export: 'Use',
@@ -230,7 +230,7 @@ const storyUseCaseDescriptions: Record<StoryUseCase, string> = {
 
 const portfolioViewLabels: Record<PortfolioView, string> = {
     export: 'Resume & Statement',
-    evidence: 'Story Queue',
+    evidence: 'Story Seeds',
     interview: 'Interview',
     growth: 'Growth',
 };
@@ -688,6 +688,7 @@ export default function PortfolioWorkspace() {
             const nextExportType = resolvePortfolioExportType(params.get('pack'));
             const nextFilter = resolvePortfolioEvidenceFilter(params.get('filter'));
             const nextStoryId = params.get('story');
+            const nextUseCase = params.get('use') as StoryUseCase | null;
 
             if (nextView) {
                 setActiveView(nextView);
@@ -698,6 +699,8 @@ export default function PortfolioWorkspace() {
                     setActiveView('interview');
                 } else if (nextExportType === 'growth') {
                     setActiveView('growth');
+                } else {
+                    setActiveView('export');
                 }
             }
             if (nextFilter) {
@@ -706,6 +709,9 @@ export default function PortfolioWorkspace() {
             if (nextStoryId) {
                 setActiveStoryEntryId(nextStoryId);
             }
+            if (nextUseCase && nextUseCase in storyUseCaseLabels) {
+                setEditingUseCase(nextUseCase);
+            }
         };
 
         const params = new URLSearchParams(window.location.search);
@@ -713,6 +719,7 @@ export default function PortfolioWorkspace() {
         const queryExportType = resolvePortfolioExportType(params.get('pack'));
         const queryFilter = resolvePortfolioEvidenceFilter(params.get('filter'));
         const queryStoryId = params.get('story');
+        const queryUseCase = params.get('use') as StoryUseCase | null;
 
         if (queryExportType) {
             setSelectedExportType(normalizeDocumentExportType(queryExportType));
@@ -723,11 +730,16 @@ export default function PortfolioWorkspace() {
         if (queryStoryId) {
             setActiveStoryEntryId(queryStoryId);
         }
+        if (queryUseCase && queryUseCase in storyUseCaseLabels) {
+            setEditingUseCase(queryUseCase);
+        }
 
         if (queryExportType === 'interview') {
             setActiveView('interview');
         } else if (queryExportType === 'growth') {
             setActiveView('growth');
+        } else if (queryExportType) {
+            setActiveView('export');
         } else if (queryView) {
             setActiveView(queryView);
         } else if (storedSession?.view) {
@@ -941,8 +953,8 @@ export default function PortfolioWorkspace() {
     const nextAction = useMemo(() => {
         if (!overview || overview.experiences.length === 0) {
             return {
-                title: 'Capture your first proof point',
-                description: 'Start with one quick entry. The portfolio gets better once there is one concrete situation, action, and outcome to work from.',
+                title: 'Capture your first story seed',
+                description: 'Start with one quick entry. Story Seeds get stronger once there is one concrete situation, action, and outcome to work from.',
                 actionLabel: 'Start Quick Capture',
                 actionHref: captureHref,
                 targetView: null as PortfolioView | null,
@@ -954,7 +966,7 @@ export default function PortfolioWorkspace() {
             return {
                 title: 'Tighten one unfinished story',
                 description: `${filterCounts.needs_attention} stor${filterCounts.needs_attention === 1 ? 'y needs' : 'ies need'} one clearer block before export or practice will feel useful.`,
-                actionLabel: 'Open Story Queue',
+                actionLabel: 'Open Story Seeds',
                 actionHref: null as string | null,
                 targetView: 'evidence' as PortfolioView,
                 targetExportType: null as DocumentExportType | null,
@@ -1217,11 +1229,15 @@ export default function PortfolioWorkspace() {
     useEffect(() => {
         if (!overview || typeof window === 'undefined') return;
         const editStoryId = new URLSearchParams(window.location.search).get('editStory');
+        const queryUseCase = new URLSearchParams(window.location.search).get('use') as StoryUseCase | null;
         if (!editStoryId || openedEditStoryParamRef.current === editStoryId) return;
         const experience = overview.experiences.find((item) => item.entryId === editStoryId);
         if (!experience) return;
 
         openedEditStoryParamRef.current = editStoryId;
+        if (queryUseCase && queryUseCase in storyUseCaseLabels) {
+            setEditingUseCase(queryUseCase);
+        }
         switchView('evidence', 'replace');
         startEdit(experience);
     }, [overview, switchView]);
@@ -1626,7 +1642,7 @@ export default function PortfolioWorkspace() {
         <div className="space-y-5">
             <AppPanel className="space-y-4">
                 <SectionHeader
-                    kicker="Stories in progress"
+                    kicker="Story seeds"
                     title={evidenceSnapshotTitle}
                     description={evidenceSnapshotDescription}
                     actionLabel="Add memory"
@@ -1640,7 +1656,7 @@ export default function PortfolioWorkspace() {
                                 <FiFlag size={16} aria-hidden="true" />
                             </span>
                             <div className="min-w-0">
-                                <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Start here</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Best next seed</p>
                                 <h3 className="workspace-heading mt-1 text-base font-semibold">{evidenceFocusTitle}</h3>
                                 <p className="mt-1 text-sm leading-6 text-ink-secondary">{evidenceFocusDescription}</p>
                             </div>
@@ -1699,10 +1715,10 @@ export default function PortfolioWorkspace() {
                 <EmptyState
                     doodle="ladder"
                     doodleAccent="apricot"
-                    title={hasPortfolioMaterial ? 'No evidence in this lane yet' : 'Your first proof point starts with one memory'}
+                    title={hasPortfolioMaterial ? 'No story seeds in this lane yet' : 'Your first story seed starts with one memory'}
                     description={hasPortfolioMaterial
-                        ? 'Switch lanes or capture another memory to generate more stories for the queue.'
-                        : 'Save a moment with a situation, action, lesson, or outcome. The story queue will build from there.'}
+                        ? 'Switch lanes or capture another memory to generate more story seeds.'
+                        : 'Save a moment with a situation, action, lesson, or outcome. Story Seeds will build from there.'}
                     actionLabel={hasPortfolioMaterial ? 'Add memory' : 'Start Quick Capture'}
                     actionHref={captureHref}
                 />
@@ -1896,7 +1912,7 @@ export default function PortfolioWorkspace() {
                 <EmptyState
                     title="No interview stories yet"
                     description="Check a few stronger stories and the interview workspace will build a focused STAR story set."
-                    actionLabel="Open Story Queue"
+                    actionLabel="Open Story Seeds"
                     actionHref={`${pathname}?view=evidence`}
                 />
             );
@@ -2802,7 +2818,7 @@ export default function PortfolioWorkspace() {
         },
         {
             id: 'evidence',
-            label: 'Story Queue',
+            label: 'Story Seeds',
             detail: 'Shape, review, use, save',
             icon: FiCheckCircle,
             active: activeView === 'evidence',

@@ -71,6 +71,16 @@ describe('backend smoke tests', () => {
         });
     });
 
+    describe('GET /api/v1/app-update', () => {
+        it('returns public Android update policy', async () => {
+            const res = await request(app).get('/api/v1/app-update');
+            expect(res.status).toBe(200);
+            expect(res.body.android.minimumVersion).toBeDefined();
+            expect(res.body.android.packageName).toBe('com.notive.app');
+            expect(res.body.android.updateUrl).toContain('play.google.com/store/apps/details');
+        });
+    });
+
     // ─── Auth input validation ──────────────────────────────────────
 
     describe('POST /api/v1/auth/register', () => {

@@ -121,6 +121,9 @@ type SaveCompletionSummary = {
     lesson?: string;
     strengths?: string[];
     goals?: string[];
+    storySeedTitle?: string;
+    storyUse?: string;
+    storyWhy?: string;
 };
 
 type SaveCompletionState = {
@@ -1233,6 +1236,27 @@ function NewEntryPageContent() {
             .slice(0, 2)
             .map((point) => point.insight) ?? [];
         const goals = extractedData?.goals?.slice(0, 2).map((goal) => goal.goal) ?? [];
+        const titleSource = titleOverride.trim() || extractedData?.title || content.trim().split(/[.!?]/)[0] || 'This moment';
+        const storySeedTitle = titleSource.length > 72 ? `${titleSource.slice(0, 69).trim()}...` : titleSource;
+        const hasProfessionalSignal = /work|job|career|resume|interview|project|class|school|application|internship/i.test(content)
+            || extractedData?.growthPoints?.some((point) => point.category === 'professional');
+        const hasRelationshipSignal = /friend|family|team|partner|relationship|conversation|helped|supported/i.test(content)
+            || people.length > 0;
+        const hasLessonSignal = Boolean(lesson || strengths.length > 0 || growthFlag);
+        const storyUse = hasProfessionalSignal
+            ? 'resume, interview, or application story'
+            : hasRelationshipSignal
+                ? 'conversation prep or personal growth story'
+                : hasLessonSignal
+                    ? 'lesson learned or growth story'
+                    : 'future story seed';
+        const storyWhy = strengths.length > 0
+            ? `This moment already points to ${strengths.slice(0, 2).join(', ')}. Add what changed and it can travel outside the diary.`
+            : lesson
+                ? `This moment already has a lesson: ${lesson}. Shape it with what you did and what changed.`
+                : threadConnection
+                    ? `This connects to ${threadConnection}. Add one action or result and it becomes easier to reuse later.`
+                    : 'This is saved as raw material. Add a clear action, result, or lesson when you want to use it later.';
 
         if (
             people.length === 0
@@ -1243,6 +1267,7 @@ function NewEntryPageContent() {
             && !lesson
             && strengths.length === 0
             && goals.length === 0
+            && content.trim().length < 60
         ) {
             return null;
         }
@@ -1256,8 +1281,11 @@ function NewEntryPageContent() {
             ...(lesson ? { lesson } : {}),
             ...(strengths.length > 0 ? { strengths } : {}),
             ...(goals.length > 0 ? { goals } : {}),
+            storySeedTitle,
+            storyUse,
+            storyWhy,
         };
-    }, [extractedData, threadContext]);
+    }, [content, extractedData, threadContext, titleOverride]);
 
     const openSaveCompletion = useCallback((savedEntryId: string, savedTitle: string | null, isGentleReflectionSave: boolean) => {
         setHasShownSaveCompletion(true);
@@ -2048,7 +2076,16 @@ function NewEntryPageContent() {
     const handleTurnSavedEntryIntoStory = useCallback(() => {
         if (!saveCompletion) return;
         setSaveCompletion(null);
-        router.push(appendReturnTo('/portfolio?view=evidence', `/entry/view?id=${saveCompletion.entryId}`));
+        router.push(appendReturnTo(`/portfolio?view=evidence&editStory=${saveCompletion.entryId}&use=story`, `/entry/view?id=${saveCompletion.entryId}`));
+    }, [router, saveCompletion]);
+
+    const handleOpenSavedEntryUse = useCallback((target: 'resume' | 'statement' | 'interview') => {
+        if (!saveCompletion) return;
+        setSaveCompletion(null);
+        const targetUrl = target === 'interview'
+            ? `/portfolio?pack=interview&story=${saveCompletion.entryId}`
+            : `/portfolio?pack=${target}&story=${saveCompletion.entryId}`;
+        router.push(appendReturnTo(targetUrl, `/entry/view?id=${saveCompletion.entryId}`));
     }, [router, saveCompletion]);
 
     const handleAskAboutSavedEntry = useCallback(() => {
@@ -2592,16 +2629,36 @@ function NewEntryPageContent() {
                     saveCompletion
                         ? [
                             {
-                                label: saveCompletion.summary?.threadConnection ? 'Continue this thread' : 'Use outside Notive',
-                                description: saveCompletion.summary?.threadConnection
-                                    ? 'Stay with this same thread while it is still fresh.'
-                                    : 'Shape this memory into story, resume, lesson, or skill material only if you need it.',
-                                onSelect: handleContinueSavedThread,
+                                label: 'Shape story seed',
+                                description: 'Fill in situation, action, lesson, result, and skills so the memory becomes reusable.',
+                                onSelect: handleTurnSavedEntryIntoStory,
+                            },
+                            {
+                                label: 'Interview answer',
+                                description: 'Turn this into a clear story you can rehearse out loud later.',
+                                onSelect: () => handleOpenSavedEntryUse('interview'),
+                            },
+                            {
+                                label: 'Resume bullet',
+                                description: 'Pull out action, result, and skill language from the moment.',
+                                onSelect: () => handleOpenSavedEntryUse('resume'),
+                            },
+                            {
+                                label: 'Statement material',
+                                description: 'Use the lesson or growth angle as personal narrative material.',
+                                onSelect: () => handleOpenSavedEntryUse('statement'),
                             },
                             {
                                 label: 'Ask about it',
                                 description: 'Use AskNotive to understand the note or find what keeps repeating.',
                                 onSelect: handleAskAboutSavedEntry,
+                            },
+                            {
+                                label: saveCompletion.summary?.threadConnection ? 'Continue this thread' : 'Write the next moment',
+                                description: saveCompletion.summary?.threadConnection
+                                    ? 'Stay with this same thread while it is still fresh.'
+                                    : 'Add the next real moment while the context is still close.',
+                                onSelect: handleContinueSavedThread,
                             },
                         ]
                         : []

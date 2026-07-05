@@ -1474,7 +1474,7 @@ function DashboardNotebookViewFull({
                                 )}
                             </div>
                             <Link href={portfolioHref} className="mt-3 inline-flex rounded-xl border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.46)] px-3 py-2 text-[0.76rem] font-semibold text-[rgb(var(--paper-ink))] transition-colors hover:bg-[rgba(255,255,255,0.72)]">
-                                Open Use Outside Notive →
+                                Open Story Seeds →
                             </Link>
                         </div>
                     </div>

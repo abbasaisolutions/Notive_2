@@ -15,6 +15,9 @@ type EntrySaveCompletionSummary = {
     growthFlag?: boolean;
     threadConnection?: string;
     phrase?: string;
+    storySeedTitle?: string;
+    storyUse?: string;
+    storyWhy?: string;
 };
 
 export type ReminderPromptOptions = {
@@ -142,7 +145,7 @@ export default function EntrySaveCompletionSheet({
             next.push({ key: 'growth', label: 'Growth', value: 'Growth language showed up clearly in this memory.' });
         }
 
-        return next.slice(0, 4);
+        return next.slice(0, 3);
     }, [summary]);
 
     const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -235,10 +238,29 @@ export default function EntrySaveCompletionSheet({
                         <div className="mt-5 space-y-3">
                             <div className="flex items-center justify-between gap-3">
                                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">
-                                    What just happened
+                                    First read
                                 </p>
-                                <TagPill tone="muted">Fresh from this save</TagPill>
+                                <TagPill tone="muted">Private story seed</TagPill>
                             </div>
+
+                            {summary?.storySeedTitle && (
+                                <div className="rounded-xl border border-primary/25 bg-primary/10 px-3.5 py-3">
+                                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-primary">
+                                        Use this later
+                                    </p>
+                                    <h3 className="mt-1 text-base font-semibold text-[rgb(var(--text-primary))]">
+                                        {summary.storySeedTitle}
+                                    </h3>
+                                    <p className="mt-1 text-sm leading-6 text-ink-secondary">
+                                        {summary.storyWhy || 'This memory may become useful story material once you add a clear action, result, or lesson.'}
+                                    </p>
+                                    {summary.storyUse && (
+                                        <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                                            Best first use: {summary.storyUse}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
                             <div className="grid gap-2">
                                 {highlights.map((highlight) => (
@@ -265,10 +287,10 @@ export default function EntrySaveCompletionSheet({
                     {nextActions.length > 0 && (
                         <div className="mt-4 rounded-xl border border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.18)] p-4">
                             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">
-                                Memory-to-outcome bridge
+                                Turn this into
                             </p>
                             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                                {nextActions.slice(0, 2).map((action) => (
+                                {nextActions.slice(0, 6).map((action) => (
                                     <button
                                         key={action.label}
                                         type="button"

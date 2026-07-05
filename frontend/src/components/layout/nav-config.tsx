@@ -86,7 +86,7 @@ const notificationsNavItem: NavItem = { href: '/notifications', label: 'Notifica
 const guideNavItem: NavItem = { href: '/chat', label: NOTIVE_VOICE.surfaces.reflectionCoach, shortLabel: 'Ask', icon: icons.guide, matchPrefixes: ['/chat'] };
 const groupsNavItem: NavItem = { href: '/chapters', label: NOTIVE_VOICE.surfaces.storyCollections, shortLabel: 'Threads', icon: icons.chapters, matchPrefixes: ['/chapters'] };
 const importsNavItem: NavItem = { href: '/import', label: NOTIVE_VOICE.surfaces.memoryInbox, shortLabel: 'Bring In', icon: icons.imports, matchPrefixes: ['/import'] };
-// Naming alias note: the user-facing "Use Outside Notive" surface lives at /portfolio and
+// Naming alias note: the user-facing "Story Seeds" surface lives at /portfolio and
 // is labeled from NOTIVE_VOICE.surfaces.outcomeStudio.
 const storiesNavItem: NavItem = { href: '/portfolio', label: NOTIVE_VOICE.surfaces.outcomeStudio, shortLabel: 'Use', icon: icons.stories, matchPrefixes: ['/portfolio'] };
 const profileNavItem: NavItem = { href: '/profile', label: NOTIVE_VOICE.surfaces.profileStudio, shortLabel: 'Me', icon: icons.profile, matchPrefixes: ['/profile'] };
@@ -311,7 +311,7 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
             section: 'Organize',
             breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Bring In' }],
             primaryAction: { label: 'Open Notebook', shortLabel: 'Notebook', href: '/timeline' },
-            secondaryAction: { label: 'Use Outside Notive', shortLabel: 'Use', href: '/portfolio?view=evidence' },
+            secondaryAction: { label: 'Open Story Seeds', shortLabel: 'Seeds', href: '/portfolio?view=evidence' },
             visibleInfo: ['Connected apps', 'Import queue', 'Ready items'],
             journeyStage: 'organize',
             headerMode: 'none',
@@ -334,10 +334,10 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
     {
         prefix: '/portfolio',
         meta: {
-            title: 'Use Outside Notive',
-            description: 'Open story, resume, statement, interview, and growth tools built from your private notes.',
+            title: 'Story Seeds',
+            description: 'Turn private notes into story, resume, statement, interview, and growth material you choose to use.',
             section: 'Apply',
-            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Use Outside Notive' }],
+            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Story Seeds' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
             secondaryAction: { label: 'Open Me', shortLabel: 'Me', href: '/profile/edit' },
             visibleInfo: ['Stories', 'Resume moments', 'Exports'],
