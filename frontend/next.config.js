@@ -1,3 +1,5 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const outputMode = process.env.NEXT_OUTPUT_MODE === 'export' ? 'export' : undefined;
 const CANONICAL_PRODUCTION_API_URL = 'https://notive2-production.up.railway.app/api/v1';
@@ -17,6 +19,14 @@ const resolveProxyApiUrl = () => {
 
 const nextConfig = {
     ...(outputMode ? { output: outputMode } : {}),
+    webpack(config) {
+        config.resolve.alias = {
+            ...config.resolve.alias,
+            '@': path.resolve(__dirname, 'src'),
+        };
+
+        return config;
+    },
     ...(outputMode
         ? {
             images: {
