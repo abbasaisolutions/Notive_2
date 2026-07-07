@@ -14,12 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HAS_GOOGLE_PLAY_PUBLISHING: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != '' }}
-      NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
-      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
-      NEXT_PUBLIC_NATIVE_API_URL: ${{ vars.NEXT_PUBLIC_NATIVE_API_URL }}
-      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
-      NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
-      NEXT_PUBLIC_SUPPORT_EMAIL: ${{ vars.NEXT_PUBLIC_SUPPORT_EMAIL }}
+      NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL || 'https://notive.abbasaisolutions.com' }}
+      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://notive2-production.up.railway.app/api/v1' }}
+      NEXT_PUBLIC_NATIVE_API_URL: ${{ vars.NEXT_PUBLIC_NATIVE_API_URL || 'https://notive2-production.up.railway.app/api/v1' }}
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '1234567890-abcdefghijklmnop.apps.googleusercontent.com' }}
+      NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID || '1234567890-abcdefghijklmnop.apps.googleusercontent.com' }}
+      NEXT_PUBLIC_SUPPORT_EMAIL: ${{ vars.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@notive.app' }}
       PLAY_UPLOAD_STORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_STORE_PASSWORD }}
       PLAY_UPLOAD_KEY_ALIAS: ${{ secrets.PLAY_UPLOAD_KEY_ALIAS }}
       PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
