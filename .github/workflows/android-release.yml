@@ -45,14 +45,8 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Configure Android SDK
-        run: |
-          if command -v sdkmanager >/dev/null 2>&1; then
-            echo "Using sdkmanager from $(command -v sdkmanager)"
-          else
-            echo "sdkmanager was not found on PATH." >&2
-            exit 1
-          fi
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Install Android 36 platform
         run: sdkmanager "platforms;android-36"
