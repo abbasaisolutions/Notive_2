@@ -58,14 +58,22 @@ jobs:
         env:
           PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.PLAY_UPLOAD_KEYSTORE_BASE64 }}
         run: |
-          if [[ -z "$PLAY_UPLOAD_KEYSTORE_BASE64" ]]; then
-            echo "Missing required secret PLAY_UPLOAD_KEYSTORE_BASE64" >&2
-            exit 1
+          KEYSTORE_PATH="$RUNNER_TEMP/notive-upload-key.jks"
+          if [[ -n "$PLAY_UPLOAD_KEYSTORE_BASE64" ]]; then
+            printf '%s' "$PLAY_UPLOAD_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --ignore-garbage --decode > "$KEYSTORE_PATH"
+            echo "PLAY_UPLOAD_STORE_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+            echo "Restored Android signing keystore from GitHub secret."
+            exit 0
           fi
 
-          KEYSTORE_PATH="$RUNNER_TEMP/notive-upload-key.jks"
-          printf '%s' "$PLAY_UPLOAD_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --ignore-garbage --decode > "$KEYSTORE_PATH"
-          echo "PLAY_UPLOAD_STORE_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+          if [[ -f android/keystore/notive-upload-key.jks ]]; then
+            echo "PLAY_UPLOAD_STORE_FILE=$GITHUB_WORKSPACE/frontend/android/keystore/notive-upload-key.jks" >> "$GITHUB_ENV"
+            echo "Using checked-in Android signing keystore."
+            exit 0
+          fi
+
+          echo "Missing signing keystore secret and no checked-in keystore was found." >&2
+          exit 1
 
       - name: Read Android release version
         id: version
