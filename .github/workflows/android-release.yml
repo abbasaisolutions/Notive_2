@@ -36,8 +36,6 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -52,7 +50,7 @@ jobs:
         run: sdkmanager "platforms;android-36"
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: npm install
 
       - name: Restore Android signing keystore
         env:
