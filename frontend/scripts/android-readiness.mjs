@@ -204,7 +204,12 @@ resolveAndroidVersionConfig();
 const googleClientId = resolveEnvValue('NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID')
     || resolveEnvValue('NEXT_PUBLIC_GOOGLE_CLIENT_ID');
 if (isMissing(googleClientId) || !isGoogleClientId(googleClientId)) {
-    blockers.push('Set a real `NEXT_PUBLIC_GOOGLE_CLIENT_ID` or `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` in `frontend/.env` or CI environment variables for web and Android Google sign-in.');
+    const message = 'Set a real `NEXT_PUBLIC_GOOGLE_CLIENT_ID` or `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` in `frontend/.env` or CI environment variables for web and Android Google sign-in.';
+    if (mode === 'launch') {
+        blockers.push(message);
+    } else {
+        warnings.push(`${message} Release builds can continue, but Google sign-in will need a real client ID before publishing.`);
+    }
 } else {
     pushStatus('Google credential sign-in', 'configured');
 
@@ -225,7 +230,12 @@ if (isMissing(googleClientId) || !isGoogleClientId(googleClientId)) {
 const androidServerClientId = resolveEnvValue('NEXT_PUBLIC_GOOGLE_ANDROID_SERVER_CLIENT_ID');
 if (androidServerClientId) {
     if (!isGoogleClientId(androidServerClientId)) {
-        blockers.push('`NEXT_PUBLIC_GOOGLE_ANDROID_SERVER_CLIENT_ID` is set but malformed. It must be a valid Google OAuth client ID ending in `.apps.googleusercontent.com`.');
+        const message = '`NEXT_PUBLIC_GOOGLE_ANDROID_SERVER_CLIENT_ID` is set but malformed. It must be a valid Google OAuth client ID ending in `.apps.googleusercontent.com`.';
+        if (mode === 'launch') {
+            blockers.push(message);
+        } else {
+            warnings.push(`${message} Release builds can continue, but Android Google sign-in will need a valid client ID before publishing.`);
+        }
     } else {
         pushStatus('Android native Google server client', 'configured');
         const backendGoogleClientIds = resolveBackendGoogleClientIds();
