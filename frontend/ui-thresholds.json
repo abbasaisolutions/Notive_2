@@ -47,8 +47,8 @@
     },
     "src/components/portfolio/PortfolioWorkspace.tsx": {
       "linkElements": 6,
-      "buttonElements": 34,
-      "sectionElements": 0,
+      "buttonElements": 37,
+      "sectionElements": 2,
       "tinyTextUtilities": 0
     },
     "src/components/profile/ProfileClient.tsx": {
