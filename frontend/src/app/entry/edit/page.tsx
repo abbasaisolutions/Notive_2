@@ -90,6 +90,20 @@ function EditEntryContent() {
         }
         navigateBack();
     }, [handleSave, hasUnsavedChanges, navigateBack]);
+    const localSubjectSuggestion = suggestMemorySubject(contentHtml || '');
+    const autoSubjectRef = useRef('');
+
+    // Auto-populate subject from content when title is empty; stop once the
+    // user gives it their own wording (i.e. title differs from last auto value).
+    useEffect(() => {
+        if (!localSubjectSuggestion) return;
+        if (!title.trim() || title === autoSubjectRef.current) {
+            autoSubjectRef.current = localSubjectSuggestion;
+            if (title !== localSubjectSuggestion) {
+                setTitle(localSubjectSuggestion);
+            }
+        }
+    }, [localSubjectSuggestion, title, setTitle]);
 
     if (authLoading || isLoading) {
         return (
@@ -129,20 +143,6 @@ function EditEntryContent() {
         || typeof growthRatio === 'number'
         || storySignal
     );
-    const localSubjectSuggestion = suggestMemorySubject(contentHtml || '');
-    const autoSubjectRef = useRef('');
-
-    // Auto-populate subject from content when title is empty; stop once the
-    // user gives it their own wording (i.e. title differs from last auto value).
-    useEffect(() => {
-        if (!localSubjectSuggestion) return;
-        if (!title.trim() || title === autoSubjectRef.current) {
-            autoSubjectRef.current = localSubjectSuggestion;
-            if (title !== localSubjectSuggestion) {
-                setTitle(localSubjectSuggestion);
-            }
-        }
-    }, [localSubjectSuggestion, title, setTitle]);
 
     return (
         <div className="min-h-screen p-3 min-[430px]:p-4 md:p-6">
