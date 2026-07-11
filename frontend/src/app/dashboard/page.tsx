@@ -8,7 +8,7 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiBell, FiBookOpen, FiClock, FiEdit3, FiGrid, FiMic } from 'react-icons/fi';
+import { FiArrowRight, FiBell, FiBookOpen, FiClock, FiEdit3, FiGrid, FiMic } from 'react-icons/fi';
 import useApi from '@/hooks/use-api';
 import { useNotificationCount } from '@/hooks/use-notification-count';
 import { getSavedDraftWordCount } from '@/hooks/use-entry-draft';
@@ -1069,6 +1069,7 @@ export default function DashboardPage() {
                 <DashboardCalmerLayout
                     showCalmerLayout={showCalmerDashboard}
                     firstName={firstName}
+                    userId={user?.id ?? null}
                     avatarUrl={safeUser.avatarUrl}
                     todayLabel={todayLabel}
                     locationLabel={profileLocation}
@@ -1632,18 +1633,39 @@ export default function DashboardPage() {
                     </section>
                 )}
 
+                {/* ── Portfolio quick-access card ─────────────────────── */}
+                <Link
+                    href={portfolioHref}
+                    className="notebook-card block rounded-[1.75rem] p-5 hover:opacity-90 transition-opacity"
+                >
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                            <p className="section-label mb-1">Portfolio</p>
+                            <p className="text-sm font-semibold" style={{ color: 'rgb(var(--paper-ink, var(--text-strong)))' }}>
+                                Resume · Interview · Statement
+                            </p>
+                            {storyOverview && (
+                                <p className="notebook-muted text-xs mt-1">
+                                    {storyOverview.experiences.filter(e => Boolean(e.verified || e.completeness?.readyForExport)).length > 0
+                                        ? `${storyOverview.experiences.filter(e => Boolean(e.verified || e.completeness?.readyForExport)).length} stor${storyOverview.experiences.filter(e => Boolean(e.verified || e.completeness?.readyForExport)).length === 1 ? 'y' : 'ies'} ready to use`
+                                        : storyOverview.experiences.length > 0
+                                            ? `${storyOverview.experiences.length} stor${storyOverview.experiences.length === 1 ? 'y' : 'ies'} in progress`
+                                            : 'Turn memories into professional material'}
+                                </p>
+                            )}
+                        </div>
+                        <FiArrowRight size={18} className="notebook-muted shrink-0" aria-hidden="true" />
+                    </div>
+                </Link>
+
                 {/* ── Bottom nav links ────────────────────────────────── */}
-                <div className="flex items-center justify-center gap-5 pt-2 pb-1">
+                <div className="flex items-center justify-center gap-5 pt-1 pb-1">
                     <Link href={guideHref} className="notebook-muted text-sm hover:opacity-80 transition-opacity">
                         AskNotive
                     </Link>
                     <span className="notebook-muted text-xs opacity-40">·</span>
                     <Link href={timelineHref} className="notebook-muted text-sm hover:opacity-80 transition-opacity">
                         Memories
-                    </Link>
-                    <span className="notebook-muted text-xs opacity-40">·</span>
-                    <Link href={portfolioHref} className="notebook-muted text-sm hover:opacity-80 transition-opacity">
-                        Stories
                     </Link>
                 </div>
 

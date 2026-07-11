@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import useApi from '@/hooks/use-api';
 import { useZenMode } from '@/hooks/use-zen-mode';
@@ -60,6 +60,7 @@ import {
 } from '@/utils/voice-capture';
 import createVoiceCaptureMonitor from '@/utils/voice-capture-metrics';
 import { getStarterPrompt, getWritingSuggestions, polishEntryText, polishTitle } from '@/utils/writing-assistant';
+import { suggestMemorySubject } from '@/utils/memory-subject';
 import {
     GENTLE_REFLECTION_ID_PARAM,
     GENTLE_REFLECTION_SOURCE,
@@ -79,7 +80,7 @@ import {
     normalizeCategory,
     normalizeLifeArea,
 } from '@/constants/life-areas';
-import { readExceptionalUxPreferences } from '@/utils/exceptional-ux';
+
 import {
     checkPermission,
     hasSeenRuntimePermissionPrompt,
@@ -289,7 +290,10 @@ function NewEntryPageContent() {
 
     const [content, setContent] = useState('');
     const [contentHtml, setContentHtml] = useState('');
+    const localSubjectSuggestion = useMemo(() => suggestMemorySubject(content), [content]);
     const contentRef = useRef('');
+    const autoSubjectRef = useRef('');
+    const saveAfterVoiceRef = useRef(false);
     const [promptHint, setPromptHint] = useState<string | null>(null);
     const [threadContext, setThreadContext] = useState<string | null>(null);
     const [hasStartedPromptInput, setHasStartedPromptInput] = useState(false);
@@ -328,7 +332,7 @@ function NewEntryPageContent() {
     const [draftHistory, setDraftHistory] = useState<DraftHistorySnapshot[]>([]);
     const [saveCompletion, setSaveCompletion] = useState<SaveCompletionState | null>(null);
     const [hasShownSaveCompletion, setHasShownSaveCompletion] = useState(false);
-    const [excludeFromInsights, setExcludeFromInsights] = useState(false);
+
     const [entryLocation, setEntryLocation] = useState<EntryLocation | null>(null);
     const [deviceSnapshot, setDeviceSnapshot] = useState<DeviceSnapshot | null>(null);
     const [audioLevel, setAudioLevel] = useState(0);
@@ -346,6 +350,7 @@ function NewEntryPageContent() {
     const draftPersistTimeoutRef = useRef<NodeJS.Timeout>();
     const polishNoticeTimeoutRef = useRef<NodeJS.Timeout>();
     const draftInitRef = useRef(false);
+    const [isDraftReady, setIsDraftReady] = useState(false);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
@@ -388,15 +393,7 @@ function NewEntryPageContent() {
     });
 
     useEffect(() => {
-        setExcludeFromInsights(readExceptionalUxPreferences().privateEntryByDefault);
-
-        const handlePreferenceChange = (event: Event) => {
-            const detail = (event as CustomEvent).detail as { privateEntryByDefault?: boolean } | undefined;
-            if (typeof detail?.privateEntryByDefault === 'boolean') {
-                setExcludeFromInsights(detail.privateEntryByDefault);
-            }
-        };
-
+        const handlePreferenceChange = (_event: Event) => { /* reserved */ };
         window.addEventListener('notive:exceptional-ux-preferences-changed', handlePreferenceChange);
         return () => window.removeEventListener('notive:exceptional-ux-preferences-changed', handlePreferenceChange);
     }, []);
@@ -405,6 +402,19 @@ function NewEntryPageContent() {
     useEffect(() => {
         contentRef.current = content;
     }, [content]);
+
+    // Keep a useful subject in sync until the person gives it their own wording.
+    // A restored or typed subject differs from the last automatic suggestion, so
+    // it is never replaced by later writing.
+    useEffect(() => {
+        if (!localSubjectSuggestion) return;
+        if (!titleOverride.trim() || titleOverride === autoSubjectRef.current) {
+            autoSubjectRef.current = localSubjectSuggestion;
+            if (titleOverride !== localSubjectSuggestion) {
+                setTitleOverride(localSubjectSuggestion);
+            }
+        }
+    }, [localSubjectSuggestion, titleOverride]);
 
     const uploadEntryImageFile = useCallback(async (sourceFile: File): Promise<'uploaded' | 'queued'> => {
         let preparedFile: File | null = null;
@@ -837,6 +847,7 @@ function NewEntryPageContent() {
     useEffect(() => {
         if (!user || draftInitRef.current) return;
         draftInitRef.current = true;
+        setIsDraftReady(true);
 
         void (async () => {
             const stagedVoiceCapture = searchParams.get('voiceSession') ? takePendingVoiceCapture() : null;
@@ -1320,20 +1331,13 @@ function NewEntryPageContent() {
             }
             : null;
 
-        if (!baseAnalysis && !voiceAnalysis && !excludeFromInsights) return undefined;
+        if (!baseAnalysis && !voiceAnalysis) return undefined;
 
         return {
             ...(baseAnalysis || {}),
             ...(voiceAnalysis ? { voice: voiceAnalysis } : {}),
-            ...(excludeFromInsights ? {
-                privacy: {
-                    excludeFromInsights: true,
-                    reason: 'user_private_mode',
-                    setAt: new Date().toISOString(),
-                },
-            } : {}),
         };
-    }, [buildAnalysisPayload, excludeFromInsights, voiceCapture, voiceJob]);
+    }, [buildAnalysisPayload, voiceCapture, voiceJob]);
 
     const persistDraftSnapshot = useCallback((pendingSyncOverride: boolean) => {
         saveDraft({
@@ -1580,11 +1584,22 @@ function NewEntryPageContent() {
         void processVoiceCapture(null, null, null, recordingDurationMs);
     }, [cleanupVoiceCapture, processVoiceCapture, stopSpeechPreview]);
 
-    // Auto-start recording when navigated with autoRecord=1 (e.g. from dashboard voice button)
+    // When Stop & Save was requested, save as soon as voice processing finishes.
+    useEffect(() => {
+        if (isVoiceProcessing || !saveAfterVoiceRef.current) return;
+        saveAfterVoiceRef.current = false;
+        if (contentRef.current.trim()) void handleSave(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isVoiceProcessing]);
+
+    const stopRecordingAndSave = useCallback(() => {
+        saveAfterVoiceRef.current = true;
+        stopRecording();
+    }, [stopRecording]);
     const autoRecordTriggeredRef = useRef(false);
     useEffect(() => {
         if (autoRecordTriggeredRef.current) return;
-        if (!draftInitRef.current) return;
+        if (!isDraftReady) return;
         if (!shouldAutoRecord) return;
         if (!isVoiceSupported || isVoiceProcessing || isRecording) return;
 
@@ -1594,7 +1609,7 @@ function NewEntryPageContent() {
             startRecording();
         }, 150);
         return () => clearTimeout(timer);
-    }, [shouldAutoRecord, isVoiceSupported, isVoiceProcessing, isRecording, startRecording]);
+    }, [shouldAutoRecord, isVoiceSupported, isVoiceProcessing, isRecording, startRecording, isDraftReady]);
 
     // Elapsed recording timer
     useEffect(() => {
@@ -1745,7 +1760,9 @@ function NewEntryPageContent() {
         setIsSaving(true);
         if (!isAutoSave) setError('');
 
-        const finalTitle = titleOverride || extractedData?.title || null;
+        // A subject is intentionally opt-in. We only save one when the person
+        // typed it or explicitly accepted the local suggestion below.
+        const finalTitle = titleOverride.trim() || null;
         const finalMood = moodOverride || extractedData?.primaryEmotion?.emotion || null;
         const baseTags = tagsOverride.length > 0 ? tagsOverride : (extractedData?.suggestedTags || []);
         const finalTags = mergeUniqueTags(baseTags, isGentleReflectionEntry ? gentleReflectionTags : []);
@@ -1820,7 +1837,6 @@ function NewEntryPageContent() {
                         hasMood: Boolean(finalMood),
                         hasTags: finalTags.length > 0,
                         source: entrySource || null,
-                        excludeFromInsights,
                     },
                 });
                 if (voiceCapture) {
@@ -1949,7 +1965,6 @@ function NewEntryPageContent() {
         titleOverride,
         toast,
         trackEvent,
-        excludeFromInsights,
         user?.id,
         voiceCapture,
         voiceJob?.entryId,
@@ -2073,6 +2088,12 @@ function NewEntryPageContent() {
         setSaveCompletion(null);
     }, []);
 
+    const handleReviewSavedTranscript = useCallback(() => {
+        if (!saveCompletion) return;
+        setSaveCompletion(null);
+        router.push(appendReturnTo(`/entry/edit?id=${saveCompletion.entryId}`, `/entry/view?id=${saveCompletion.entryId}`));
+    }, [router, saveCompletion]);
+
     const handleTurnSavedEntryIntoStory = useCallback(() => {
         if (!saveCompletion) return;
         setSaveCompletion(null);
@@ -2181,7 +2202,6 @@ function NewEntryPageContent() {
                 value: isQuickMode ? 'quick' : 'full',
                 metadata: {
                     wordCount: content.trim() ? content.trim().split(/\s+/).length : 0,
-                    excludeFromInsights,
                     hasAudio: Boolean(audioUrl),
                     hasImages: recentUploads.length > 0,
                 },
@@ -2190,7 +2210,7 @@ function NewEntryPageContent() {
 
         document.addEventListener('visibilitychange', onVisibilityChange);
         return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-    }, [audioUrl, content, excludeFromInsights, hasBeenSaved, isQuickMode, recentUploads.length, trackEvent]);
+    }, [audioUrl, content, hasBeenSaved, isQuickMode, recentUploads.length, trackEvent]);
 
     if (authLoading) {
         return (
@@ -2202,7 +2222,7 @@ function NewEntryPageContent() {
 
     if (!isAuthenticated) return null;
 
-    const displayTitle = titleOverride || extractedData?.title || '';
+    const displayTitle = titleOverride || extractedData?.title || localSubjectSuggestion;
     const displayMood = moodOverride || extractedData?.primaryEmotion?.emotion || null;
     const displayTags = tagsOverride.length > 0 ? tagsOverride : (extractedData?.suggestedTags || []);
     const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
@@ -2308,36 +2328,7 @@ function NewEntryPageContent() {
                     onDelete={handleDeleteDraftSnapshot}
                 />
 
-                <div className={`mb-3 rounded-2xl border px-4 py-3 transition-colors ${
-                    excludeFromInsights
-                        ? 'border-[rgba(216,199,232,0.38)] bg-[rgba(216,199,232,0.12)]'
-                        : 'border-[rgba(var(--paper-border),0.72)] bg-[rgba(255,255,255,0.24)]'
-                }`}>
-                    <label className="flex cursor-pointer items-start gap-3">
-                        <input
-                            type="checkbox"
-                            checked={excludeFromInsights}
-                            onChange={(event) => {
-                                const next = event.target.checked;
-                                setExcludeFromInsights(next);
-                                void trackEvent({
-                                    eventType: 'entry_private_mode_toggled',
-                                    value: next ? 'on' : 'off',
-                                    metadata: { source: 'entry_new' },
-                                });
-                            }}
-                            className="mt-1 h-4 w-4 rounded border-[rgba(var(--paper-border),0.9)] accent-[rgb(var(--paper-sage))]"
-                        />
-                        <span className="min-w-0">
-                            <span className="block text-sm font-semibold text-[rgb(var(--text-primary))]">
-                                Keep this entry out of insights
-                            </span>
-                            <span className="mt-1 block text-xs leading-5 text-ink-secondary">
-                                Save it privately without using it for dashboard patterns, embeddings, or story suggestions.
-                            </span>
-                        </span>
-                    </label>
-                </div>
+
 
                 {showContextualPrompt && (
                     <div className="mb-4 rounded-[1.35rem] border border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.34)] px-4 py-4">
@@ -2377,6 +2368,8 @@ function NewEntryPageContent() {
                     onDismissUploaded={handleDismissUploadedImage}
                     audioUrl={audioUrl}
                     content={content}
+                    subject={titleOverride}
+                    onSubjectChange={setTitleOverride}
                     editorPlaceholder={editorPlaceholder}
                     onEditorChange={handleEditorChange}
                     autoFocus={isQuickMode || isWhisperMode}
@@ -2575,6 +2568,7 @@ function NewEntryPageContent() {
                     transcriptText={liveTranscriptText}
                     interimText={interimText}
                     onStop={stopRecording}
+                    onStopAndSave={stopRecordingAndSave}
                 />
             )}
 
@@ -2628,6 +2622,13 @@ function NewEntryPageContent() {
                 nextActions={
                     saveCompletion
                         ? [
+                            ...(voiceCapture
+                                ? [{
+                                    label: 'Review transcript',
+                                    description: 'Read through the saved words and make any small corrections.',
+                                    onSelect: handleReviewSavedTranscript,
+                                }]
+                                : []),
                             {
                                 label: 'Shape story seed',
                                 description: 'Fill in situation, action, lesson, result, and skills so the memory becomes reusable.',

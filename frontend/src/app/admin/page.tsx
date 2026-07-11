@@ -7,6 +7,7 @@ import { NOTIVE_VOICE } from '@/content/notive-voice';
 import useApi from '@/hooks/use-api';
 import { ActionBar, AppPanel, EmptyState, SectionHeader, StatTile, TagPill } from '@/components/ui/surface';
 import AdminPerformanceOverview, { type AdminPerformanceOverviewData } from '@/components/admin/AdminPerformanceOverview';
+import AdminCommandCenter, { type AdminCommandCenterData } from '@/components/admin/AdminCommandCenter';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import { FiAlertCircle, FiChevronDown, FiLock, FiSearch, FiShield, FiX } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
@@ -222,6 +223,7 @@ export default function AdminPage() {
     const [stats, setStats] = useState<Stats | null>(null);
     const [evidenceSummary, setEvidenceSummary] = useState<EvidenceSummary | null>(null);
     const [performanceOverview, setPerformanceOverview] = useState<PerformanceOverview | null>(null);
+    const [commandCenter, setCommandCenter] = useState<AdminCommandCenterData | null>(null);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -330,11 +332,20 @@ export default function AdminPage() {
         }
     }, [apiFetch]);
 
+    const fetchCommandCenter = useCallback(async () => {
+        try {
+            const response = await apiFetch('/admin/command-center');
+            if (response.ok) setCommandCenter(await response.json());
+        } catch (err) {
+            console.error('Failed to fetch admin command center:', err);
+        }
+    }, [apiFetch]);
+
     useEffect(() => {
         if (!user || authLoading) return;
 
-        Promise.all([fetchUsers(), fetchStats(), fetchPerformanceOverview()]).finally(() => setIsLoading(false));
-    }, [authLoading, fetchPerformanceOverview, fetchStats, fetchUsers, user]);
+        Promise.all([fetchUsers(), fetchStats(), fetchPerformanceOverview(), fetchCommandCenter()]).finally(() => setIsLoading(false));
+    }, [authLoading, fetchCommandCenter, fetchPerformanceOverview, fetchStats, fetchUsers, user]);
 
     useEffect(() => {
         if (isSuperAdmin) return;
@@ -593,6 +604,10 @@ export default function AdminPage() {
 
                 {performanceOverview && (
                     <AdminPerformanceOverview overview={performanceOverview} />
+                )}
+
+                {commandCenter && (
+                    <AdminCommandCenter data={commandCenter} onReviewUser={(userId) => void fetchUserDetails(userId)} />
                 )}
 
                 <AppPanel className="space-y-5">
@@ -1131,6 +1146,7 @@ export default function AdminPage() {
                                                 </div>
                                             </AppPanel>
 
+                                            {isSuperAdmin && (
                                             <AppPanel className="space-y-4">
                                                 <SectionHeader
                                                     kicker="Retrieval Debug"
@@ -1219,6 +1235,7 @@ export default function AdminPage() {
                                                     )}
                                                 </div>
                                             </AppPanel>
+                                            )}
 
                                             <AppPanel className="space-y-4">
                                                 <SectionHeader kicker="Recent App Activity" title="Telemetry trail" description="Helpful when a user says something broke but the issue may be the flow." />

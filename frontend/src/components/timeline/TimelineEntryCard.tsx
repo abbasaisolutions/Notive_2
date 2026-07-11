@@ -678,9 +678,15 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
 
                         {(entry.storySignal?.status === 'ready_to_export' || entry.storySignal?.status === 'verified') && (
                             <div className="mt-2 pt-2 border-t border-[rgba(141,123,105,0.14)]">
-                                <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(141,123,105,0.22)] px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.1em] text-[rgba(141,123,105,0.75)]">
-                                    {entry.storySignal.status === 'verified' ? 'Add to portfolio' : 'Export to…'}
-                                </span>
+                                <Link
+                                    href={appendReturnTo(
+                                        `/portfolio?view=evidence&filter=${entry.storySignal.status === 'verified' ? 'verified' : 'ready_to_export'}`,
+                                        currentReturnTo
+                                    )}
+                                    className="inline-flex items-center gap-1 rounded-full border border-[rgba(141,123,105,0.28)] bg-[rgba(141,123,105,0.08)] px-2.5 py-1 text-xs font-semibold text-[rgb(var(--paper-sage))] transition-colors hover:bg-[rgba(141,123,105,0.16)]"
+                                >
+                                    {entry.storySignal.status === 'verified' ? 'Use in portfolio' : 'Open in portfolio'}
+                                </Link>
                             </div>
                         )}
                     </div>

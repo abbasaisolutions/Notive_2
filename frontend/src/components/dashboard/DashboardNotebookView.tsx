@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import ActionBriefPanel from '@/components/action/ActionBriefPanel';
+import ContinueWorkspaceCard from '@/components/dashboard/ContinueWorkspaceCard';
 import DailyPathCard from '@/components/dashboard/DailyPathCard';
 import DailyCheckIn from '@/components/dashboard/DailyCheckIn';
 import ExperienceControlPanel from '@/components/ux/ExperienceControlPanel';
@@ -171,6 +172,7 @@ type DashboardSupportMap = {
 
 export type DashboardNotebookViewProps = {
     firstName: string;
+    userId?: string | null;
     avatarUrl?: string | null;
     todayLabel: string;
     locationLabel?: string | null;
@@ -611,6 +613,7 @@ export default function DashboardNotebookView(props: DashboardNotebookViewProps)
 
 function DashboardNotebookViewFull({
     firstName,
+    userId = null,
     avatarUrl,
     todayLabel,
     entries,
@@ -1128,7 +1131,7 @@ function DashboardNotebookViewFull({
             embedded
         />
     ) : (
-        <div className="space-y-4">
+            <div className="space-y-4">
             <div>
                 <p className="section-label">{focusCard.eyebrow}</p>
                 <h2 className="notebook-title mt-2 text-xl md:text-[1.55rem]">{focusCard.title}</h2>
@@ -1216,22 +1219,32 @@ function DashboardNotebookViewFull({
                     </div>
                 ))}
             </div>
-            {storyPipelineStages.length > 0 && (
-                <div className="rounded-[1.1rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.5)] px-3 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                            <p className="section-label">Use outside Notive</p>
-                            {storyPipelineCounts.leadSignal && (
-                                <p className="mt-1 text-[0.69rem] leading-5 text-[rgb(107,107,107)]">
-                                    Top material: {formatNotebookLabel(storyPipelineCounts.leadSignal)}
-                                </p>
-                            )}
-                        </div>
-                        <Link href={portfolioHref} className="text-[0.69rem] font-medium text-[rgb(138,154,111)] transition-opacity hover:opacity-80">
-                            Open stories
-                        </Link>
+            <ContinueWorkspaceCard userId={userId} entryHref={recommendedHref} portfolioHref={portfolioHref} />
+
+            <section className="rounded-[1.1rem] border border-[rgba(126,157,149,0.3)] bg-[rgba(255,255,255,0.58)] px-3 py-3">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="section-label">Portfolio</p>
+                        <p className="mt-1 text-sm font-semibold text-[rgb(var(--paper-ink))]">Resume, statement, and interview practice</p>
+                        <p className="mt-1 text-[0.69rem] leading-5 text-[rgb(107,107,107)]">
+                            Turn your saved memories into material you can review, rehearse, and download.
+                        </p>
                     </div>
-                    <div className="mt-3 grid grid-cols-4 gap-1.5 sm:gap-2">
+                    <Link
+                        href={portfolioHref}
+                        className="shrink-0 rounded-lg bg-[rgb(var(--paper-sage))] px-3 py-2 text-[0.69rem] font-semibold text-white transition-opacity hover:opacity-90"
+                    >
+                        Open portfolio
+                    </Link>
+                </div>
+                {storyPipelineStages.length > 0 && (
+                    <>
+                        {storyPipelineCounts.leadSignal && (
+                            <p className="mt-3 text-[0.69rem] leading-5 text-[rgb(107,107,107)]">
+                                Strongest material: {formatNotebookLabel(storyPipelineCounts.leadSignal)}
+                            </p>
+                        )}
+                        <div className="mt-3 grid grid-cols-4 gap-1.5 sm:gap-2">
                         {storyPipelineStages.map((stage) => (
                             <div
                                 key={stage.label}
@@ -1257,9 +1270,10 @@ function DashboardNotebookViewFull({
                                 </div>
                             </div>
                         ))}
-                    </div>
-                </div>
-            )}
+                        </div>
+                    </>
+                )}
+            </section>
         </div>
     ) : null;
     const welcomeNotebookBanner = entries.length === 0 ? (

@@ -336,39 +336,32 @@ function EntryDetailContent() {
     return (
         <div className="min-h-screen p-3 md:p-6">
             <div className="max-w-2xl mx-auto">
-                <header className="mb-4 flex flex-wrap items-center justify-between gap-2 min-[430px]:gap-3">
+                <header className="mb-4 flex items-center justify-between gap-2">
                     <button
                         type="button"
                         onClick={navigateBack}
                         aria-label={backLabel}
                         className="workspace-button-outline rounded-xl p-2 transition-all"
                     >
-                        <FiArrowLeft size={20} aria-hidden="true" />
+                        <FiArrowLeft size={18} aria-hidden="true" />
                     </button>
 
-                    <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+                    <div className="ml-auto flex min-w-0 items-center gap-2">
                         <Link
                             href={withCurrentReturnTo(`/entry/edit?id=${id}`)}
-                            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[rgba(107,143,113,0.28)] bg-[rgb(107,143,113)] px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_10px_24px_rgba(107,143,113,0.22)] transition-all hover:-translate-y-[1px] hover:bg-[rgb(96,131,102)] min-[430px]:px-3.5"
+                            className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[rgba(107,143,113,0.28)] bg-[rgb(107,143,113)] px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-white transition-all hover:bg-[rgb(96,131,102)]"
                         >
                             Edit memory
                         </Link>
-                        <button
-                            type="button"
-                            onClick={navigateBack}
-                            className="workspace-button-outline min-h-10 rounded-full px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.08em] min-[430px]:px-3.5"
-                        >
-                            Done
-                        </button>
                         <details className="relative">
                             <summary
-                                className="workspace-button-outline flex min-h-10 min-w-10 cursor-pointer list-none items-center justify-center rounded-full p-2 text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))] [&::-webkit-details-marker]:hidden"
+                                className="workspace-button-outline flex min-h-9 min-w-9 cursor-pointer list-none items-center justify-center rounded-full p-2 text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))] [&::-webkit-details-marker]:hidden"
                                 aria-label="More memory actions"
                                 title="More memory actions"
                             >
-                                <FiMoreHorizontal size={18} aria-hidden="true" />
+                                <FiMoreHorizontal size={16} aria-hidden="true" />
                             </summary>
-                            <div className="absolute right-0 top-11 z-30 w-44 rounded-2xl border border-[rgba(var(--paper-border),0.86)] bg-[rgb(var(--surface-1))] p-2 shadow-2xl">
+                            <div className="absolute right-0 top-10 z-30 w-44 rounded-2xl border border-[rgba(var(--paper-border),0.86)] bg-[rgb(var(--surface-1))] p-2 shadow-2xl">
                                 <button
                                     type="button"
                                     onClick={() => setShowShareSheet(true)}
@@ -407,10 +400,9 @@ function EntryDetailContent() {
                     />
                 )}
 
-                <div className="mb-5">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Saved memory</p>
-                    <h1 className="workspace-heading break-words text-[1.65rem] font-semibold leading-tight md:text-3xl">{entry.title || 'Untitled memory'}</h1>
-                    <p className="mt-2 text-sm text-ink-muted">
+                <div className="mb-4">
+                    <h1 className="workspace-heading break-words text-xl font-semibold leading-snug md:text-2xl">{entry.title || 'Untitled memory'}</h1>
+                    <p className="mt-1.5 text-xs text-ink-muted">
                         {createdAt.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                     </p>
                 </div>
@@ -435,10 +427,7 @@ function EntryDetailContent() {
                 {hasMemoryDetails && (
                     <details className="group mb-3 rounded-2xl border border-[rgba(var(--paper-border),0.78)] bg-[rgba(255,255,255,0.03)] px-4 py-3">
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
-                            <span>
-                                <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Memory details</span>
-                                <span className="mt-1 block text-sm text-ink-secondary">Mood, tags, attachments, and source stay tucked away from the writing.</span>
-                            </span>
+                            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Memory details</span>
                             <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.08em] text-primary">
                                 <span className="group-open:hidden">Open</span>
                                 <span className="hidden group-open:inline">Close</span>
@@ -506,14 +495,11 @@ function EntryDetailContent() {
 
                 {hasNotiveDetails && (
                     <details
-                        className="group mb-8 rounded-2xl border border-[rgba(var(--paper-border),0.8)] px-4 py-4"
+                        className="group mb-8 rounded-2xl border border-[rgba(var(--paper-border),0.8)] px-4 py-3"
                         onToggle={handleNotiveDetailsToggle}
                     >
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
-                            <span>
-                                <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">What Notive noticed</span>
-                                <span className="mt-1 block text-sm text-ink-secondary">Insights, story options, and related memories stay here until you want them.</span>
-                            </span>
+                            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">What Notive noticed</span>
                             <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.08em] text-primary">
                                 <span className="group-open:hidden">Open</span>
                                 <span className="hidden group-open:inline">Close</span>

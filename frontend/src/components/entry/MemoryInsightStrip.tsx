@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { AppPanel, TagPill } from '@/components/ui/surface';
 import { cn } from '@/utils/cn';
 import { formatStoryConfidence, storyFieldLabel, storyStatusClassName, storyStatusLabel } from '@/utils/story-engine';
@@ -72,6 +73,10 @@ export default function MemoryInsightStrip({
         .filter((emotion) => emotion?.emotion?.trim())
         .slice(0, 3);
     const nextStep = buildNextStep(storySignal);
+    const portfolioHref = storySignal?.status === 'verified'
+        ? '/portfolio?view=evidence&filter=verified'
+        : '/portfolio?view=evidence&filter=ready_to_export';
+    const canUseInPortfolio = storySignal?.status === 'verified' || storySignal?.status === 'ready_to_export';
 
     const hasContent = Boolean(
         trimmedAnalysisLine
@@ -116,13 +121,13 @@ export default function MemoryInsightStrip({
                 <div className="grid gap-3 sm:grid-cols-2">
                     {trimmedAnalysisLine && (
                         <div className="rounded-xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.02)] px-3.5 py-3">
-                            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-primary/70">Noticed</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary/70">Noticed</p>
                             <p className="mt-1 text-sm leading-6 text-[rgb(var(--text-primary))]">{trimmedAnalysisLine}</p>
                         </div>
                     )}
                     {trimmedTakeawayLine && (
                         <div className="rounded-xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.02)] px-3.5 py-3">
-                            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-accent/80">Carry forward</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent/80">Carry forward</p>
                             <p className="mt-1 text-sm leading-6 text-[rgb(var(--text-primary))]">{trimmedTakeawayLine}</p>
                         </div>
                     )}
@@ -131,11 +136,11 @@ export default function MemoryInsightStrip({
 
             {visibleInsights.length > 0 && (
                 <div className="space-y-2">
-                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">Notive noticed</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Notive noticed</p>
                     <div className="space-y-2">
                         {visibleInsights.map((insight, index) => (
                             <div key={`${insight.type}-${index}`} className="flex items-start gap-2 rounded-xl border border-[rgba(141,123,105,0.12)] px-3 py-2.5">
-                                <span className="mt-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                                <span className="mt-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">
                                     {insightTypeLabel[insight.type]}
                                 </span>
                                 <p className="text-sm leading-6 text-ink-secondary">{insight.text}</p>
@@ -147,7 +152,7 @@ export default function MemoryInsightStrip({
 
             {visibleTopEmotions.length > 0 && (
                 <div className="space-y-2">
-                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">Emotion cues</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Emotion cues</p>
                     <div className="flex flex-wrap gap-2">
                         {visibleTopEmotions.map((emotion) => (
                             <TagPill key={emotion.emotion} tone="primary">
@@ -160,8 +165,16 @@ export default function MemoryInsightStrip({
 
             {nextStep && (
                 <div className="rounded-xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.02)] px-3.5 py-3">
-                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">Next step</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Next step</p>
                     <p className="mt-1 text-sm leading-6 text-[rgb(var(--text-primary))]">{nextStep}</p>
+                    {canUseInPortfolio && (
+                        <Link
+                            href={portfolioHref}
+                            className="mt-3 inline-flex rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/16"
+                        >
+                            {storySignal.status === 'verified' ? 'Use in portfolio' : 'Open in portfolio'}
+                        </Link>
+                    )}
                 </div>
             )}
         </AppPanel>

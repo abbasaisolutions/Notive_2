@@ -40,6 +40,8 @@ type EntryEditorCardProps = {
     onDismissUploaded: (id: string) => void;
     audioUrl: string | null;
     content: string;
+    subject: string;
+    onSubjectChange: (subject: string) => void;
     editorPlaceholder: string;
     onEditorChange: (text: string, html: string) => void;
     autoFocus?: boolean;
@@ -68,6 +70,8 @@ export default function EntryEditorCard({
     voiceReviewRequired = false,
     voiceStatusMessage = null,
     content,
+    subject,
+    onSubjectChange,
     editorPlaceholder,
     onEditorChange,
     autoFocus = false,
@@ -117,7 +121,23 @@ export default function EntryEditorCard({
     const bodyTextClass = 'text-default';
 
     return (
-        <div className="mb-6 paper-page-turn-enter">
+        <div className="mb-4 paper-page-turn-enter">
+            <div className="mb-3 rounded-xl border border-[rgba(var(--paper-border),0.72)] bg-[rgba(255,255,255,0.28)] px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                    <label htmlFor="memory-subject" className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-ink-muted shrink-0">
+                        Subject
+                    </label>
+                    <input
+                        id="memory-subject"
+                        type="text"
+                        value={subject}
+                        onChange={(event) => onSubjectChange(event.target.value.slice(0, 180))}
+                        placeholder="Auto-suggested as you write…"
+                        maxLength={180}
+                        className="min-w-0 flex-1 bg-transparent text-sm font-semibold leading-tight text-[rgb(var(--text-primary))] placeholder:text-ink-muted/50 focus:outline-none"
+                    />
+                </div>
+            </div>
             {/* Editor — with quill watermark + typing glow */}
             <div className={`relative transition-all duration-700 ${justCaptured ? 'voice-capture-complete' : isRecording ? 'voice-active-glow voice-ripple-ring' : isTypingActive && !minimalEditor ? 'entry-typing-glow' : ''}`}>
                 {/* Quill watermark — faint ghost doodle, appears once user has written something */}

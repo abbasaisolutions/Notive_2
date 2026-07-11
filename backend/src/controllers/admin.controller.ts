@@ -590,6 +590,106 @@ export const getPlatformStats = async (req: Request, res: Response) => {
 };
 
 /**
+ * A deliberately small operating view: acquisition, activation, and the
+ * strongest current engagement signal. It avoids exposing memory contents.
+ */
+export const getAdminCommandCenter = async (req: Request, res: Response) => {
+    try {
+        const now = new Date();
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+        const [
+            recentSignups,
+            activatedNewUsers,
+            engagementRows,
+            unreadJoinAlerts,
+            recentJoinAlerts,
+        ] = await Promise.all([
+            prisma.user.findMany({
+                where: { createdAt: { gte: sevenDaysAgo }, role: 'USER' },
+                orderBy: { createdAt: 'desc' },
+                take: 6,
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    createdAt: true,
+                    _count: { select: { entries: { where: { deletedAt: null } } } },
+                },
+            }),
+            prisma.entry.groupBy({
+                by: ['userId'],
+                where: { deletedAt: null, createdAt: { gte: sevenDaysAgo } },
+                _count: { _all: true },
+            }),
+            prisma.entry.groupBy({
+                by: ['userId'],
+                where: { deletedAt: null, createdAt: { gte: thirtyDaysAgo } },
+                _count: { userId: true },
+                _max: { createdAt: true },
+                orderBy: { _count: { userId: 'desc' } },
+                take: 1,
+            }),
+            prisma.inAppNotification.count({
+                where: { userId: req.userId, type: 'admin_new_user', readAt: null },
+            }),
+            prisma.inAppNotification.findMany({
+                where: { userId: req.userId, type: 'admin_new_user' },
+                orderBy: { createdAt: 'desc' },
+                take: 4,
+                select: { id: true, title: true, body: true, data: true, createdAt: true, readAt: true },
+            }),
+        ]);
+
+        const leaderId = engagementRows[0]?.userId;
+        const engagementLeader = leaderId
+            ? await prisma.user.findUnique({
+                where: { id: leaderId },
+                select: { id: true, name: true, email: true },
+            })
+            : null;
+        const newUsersWithFirstMemory = recentSignups.filter((user) => user._count.entries > 0).length;
+        const recentSignupIds = new Set(recentSignups.map((user) => user.id));
+        const newUsersActiveThisWeek = activatedNewUsers.filter((row) => recentSignupIds.has(row.userId)).length;
+
+        return res.json({
+            generatedAt: now.toISOString(),
+            activation: {
+                newUsers7d: recentSignups.length,
+                firstMemoryUsers7d: newUsersWithFirstMemory,
+                firstMemoryRate7d: recentSignups.length > 0
+                    ? Math.round((newUsersWithFirstMemory / recentSignups.length) * 100)
+                    : 0,
+                activeNewUsers7d: newUsersActiveThisWeek,
+            },
+            engagementLeader: engagementLeader && engagementRows[0]
+                ? {
+                    ...engagementLeader,
+                    entries30d: engagementRows[0]._count.userId,
+                    lastMemoryAt: engagementRows[0]._max.createdAt,
+                }
+                : null,
+            recentSignups: recentSignups.map((user) => ({
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                createdAt: user.createdAt,
+                entryCount: user._count.entries,
+                state: user._count.entries > 0 ? 'activated' : 'needs_first_memory',
+            })),
+            joinAlerts: {
+                unreadCount: unreadJoinAlerts,
+                items: recentJoinAlerts,
+            },
+        });
+    } catch (error) {
+        console.error('Get admin command center error:', error);
+        return res.status(500).json({ message: 'Failed to fetch admin command center' });
+    }
+};
+
+/**
  * Get high-level app readiness and coverage metrics for admin operations.
  */
 export const getPerformanceOverview = async (req: Request, res: Response) => {

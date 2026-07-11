@@ -5,6 +5,7 @@ import { hashToken } from '../utils/token-security';
 import { verifyGoogleCredential } from '../utils/google-auth';
 import { setRefreshTokenCookie } from '../utils/refresh-token-cookie';
 import { emailService } from '../services/email.service';
+import { notifyAdminsOfNewUser } from '../services/admin-notification.service';
 
 const getRefreshTokenExpiry = (): Date => {
     const expiry = new Date();
@@ -116,6 +117,8 @@ export const googleSignIn = async (req: Request, res: Response) => {
 
             // Fire-and-forget welcome email
             emailService.sendWelcomeEmail(user).catch(() => {});
+            // Operational-only alert; failures must never interrupt sign-in.
+            notifyAdminsOfNewUser(user).catch(() => {});
         }
 
         // Generate tokens

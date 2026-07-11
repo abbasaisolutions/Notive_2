@@ -29,27 +29,16 @@ export default function DraftRecoveryPanel({
     if (snapshots.length === 0) return null;
 
     return (
-        <details className="group mb-4 rounded-2xl border border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.22)]">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
-                <span className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
-                        <FiClock size={16} aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0">
-                        <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">
-                            Draft history
-                        </span>
-                        <span className="mt-0.5 block truncate text-sm text-ink-secondary">
-                            Restore an earlier version if this draft changed the wrong way.
-                        </span>
+        <details className="group mb-3 rounded-xl border border-[rgba(var(--paper-border),0.72)] bg-[rgba(255,255,255,0.18)]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2">
+                <span className="flex min-w-0 items-center gap-2">
+                    <FiClock size={13} className="shrink-0 text-ink-muted" aria-hidden="true" />
+                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                        Draft history
                     </span>
                 </span>
-                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-muted group-open:hidden">
-                    Open
-                </span>
-                <span className="hidden text-xs font-semibold uppercase tracking-[0.1em] text-ink-muted group-open:inline">
-                    Hide
-                </span>
+                <span className="text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-ink-muted group-open:hidden">Open</span>
+                <span className="hidden text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-ink-muted group-open:inline">Hide</span>
             </summary>
 
             <div className="space-y-2 border-t border-[rgba(var(--paper-border),0.72)] px-3 pb-3 pt-3">

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useCallback } from 'react';
+import React, { Suspense, useCallback, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -19,6 +19,7 @@ import { ACCEPTED_IMAGE_UPLOAD_TYPES_ATTR } from '@/utils/image-upload';
 import { passthroughImageLoader } from '@/lib/image-loader';
 import { FiArrowLeft } from 'react-icons/fi';
 import { EDIT_PAGE_MOOD_OPTIONS } from '@/constants/mood-picker';
+import { suggestMemorySubject } from '@/utils/memory-subject';
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), {
     ssr: false,
@@ -128,6 +129,20 @@ function EditEntryContent() {
         || typeof growthRatio === 'number'
         || storySignal
     );
+    const localSubjectSuggestion = suggestMemorySubject(contentHtml || '');
+    const autoSubjectRef = useRef('');
+
+    // Auto-populate subject from content when title is empty; stop once the
+    // user gives it their own wording (i.e. title differs from last auto value).
+    useEffect(() => {
+        if (!localSubjectSuggestion) return;
+        if (!title.trim() || title === autoSubjectRef.current) {
+            autoSubjectRef.current = localSubjectSuggestion;
+            if (title !== localSubjectSuggestion) {
+                setTitle(localSubjectSuggestion);
+            }
+        }
+    }, [localSubjectSuggestion, title, setTitle]);
 
     return (
         <div className="min-h-screen p-3 min-[430px]:p-4 md:p-6">
@@ -167,14 +182,21 @@ function EditEntryContent() {
                     <p className="text-sm leading-6 text-ink-secondary">Keep the writing true to what happened. Tags, mood, and Notive signals are optional.</p>
                 </div>
 
-                <input
-                    type="text"
-                    placeholder="Memory title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="mb-5 w-full bg-transparent font-serif text-[1.65rem] font-bold leading-tight text-[rgb(var(--text-primary))] focus:outline-none md:text-3xl"
-                    aria-label="Memory title"
-                />
+                <div className="mb-5">
+                    <label htmlFor="memory-subject" className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                        Subject <span className="font-normal normal-case tracking-normal">(optional)</span>
+                    </label>
+                    <input
+                        id="memory-subject"
+                        type="text"
+                        placeholder="Give this memory a name"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value.slice(0, 180))}
+                        maxLength={180}
+                        className="w-full bg-transparent font-serif text-[1.65rem] font-bold leading-tight text-[rgb(var(--text-primary))] focus:outline-none md:text-3xl"
+                        aria-label="Memory subject"
+                    />
+                </div>
 
                 {/* ── Editor ── */}
                 <TiptapEditor
