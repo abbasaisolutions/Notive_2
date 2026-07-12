@@ -170,6 +170,17 @@ const isAndroidCredentialRetryableError = (error: unknown): boolean => {
     );
 };
 
+const isGoogleConnectionRefreshError = (error: unknown): boolean => {
+    const message = toErrorMessage(error);
+    const code = toErrorCode(error);
+
+    return (
+        code === 28444
+        || /developer console is not setup|developer console.*not configured|invalid audience/i.test(message)
+        || /account reauth failed|unable to get sync account/i.test(message)
+    );
+};
+
 const buildNativeGoogleLoginOptions = (style: NativeGoogleLoginStyle) => ({
     style,
     filterByAuthorizedAccounts: false,
@@ -230,6 +241,29 @@ export const signInWithNativeGoogleCredential = async (
         return response.result.idToken;
     } catch (error) {
         logger.warn('Native Google sign-in failed', serializeNativeGoogleError(error));
+
+        // Some Android devices return recoverable Google Play Services credential
+        // connection failures. Clear cached native auth state and retry once.
+        if (isGoogleConnectionRefreshError(error)) {
+            logger.warn('Attempting native Google connection refresh before final failure');
+            googleInitPromise = null;
+            await clearNativeGoogleCredentialState('after Google connection refresh error');
+
+            try {
+                await ensureNativeGoogleSsoInitialized();
+                const retryResponse = await loginWithNativeGoogle(intent);
+
+                if (retryResponse.result.responseType === 'online' && retryResponse.result.idToken) {
+                    return retryResponse.result.idToken;
+                }
+
+                throw new Error('Google sign-in retry did not return a usable identity token.');
+            } catch (retryError) {
+                logger.warn('Native Google sign-in retry failed', serializeNativeGoogleError(retryError));
+                throw normalizeNativeGoogleSsoError(retryError);
+            }
+        }
+
         throw normalizeNativeGoogleSsoError(error);
     }
 };
