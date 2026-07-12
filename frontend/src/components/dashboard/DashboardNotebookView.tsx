@@ -177,6 +177,7 @@ export type DashboardNotebookViewProps = {
     todayLabel: string;
     locationLabel?: string | null;
     profileTags?: string[];
+    outputGoals: string[];
     entries: Array<{
         id: string;
         title: string | null;
@@ -658,6 +659,7 @@ function DashboardNotebookViewFull({
     locationLabel,
     userBirthDate,
     profileTags = [],
+    outputGoals,
     homeTakeaway,
 }: Omit<DashboardNotebookViewProps, 'showCalmerLayout'> & { homeTakeaway: DashboardHomeTakeaway }) {
     const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
@@ -682,6 +684,33 @@ function DashboardNotebookViewFull({
     const latestEntry = entries[0] || null;
     const resurfacedMoment = resurfacedMoments[0] || null;
     const returningThemes = themeClusters.filter((cluster) => cluster.entryCount >= 2).length;
+    const portfolioPrompt = outputGoals.includes('college-statement')
+        ? {
+            question: 'Thinking about your college admission statement?',
+            title: 'Shape the moments that show where you are headed.',
+            body: 'Your saved reflections can become a personal narrative with real detail, growth, and direction.',
+            action: 'Draft a statement',
+        }
+        : outputGoals.includes('interview-examples')
+            ? {
+                question: 'Preparing for an interview?',
+                title: 'Practice answers rooted in things you have actually done.',
+                body: 'Turn a saved moment into a clear STAR story you can rehearse with confidence.',
+                action: 'Practice interview answers',
+            }
+            : outputGoals.includes('resume-stories')
+                ? {
+                    question: 'Thinking about building your resume?',
+                    title: 'Your everyday work already contains useful proof.',
+                    body: 'Pull skills, outcomes, and growth from saved moments into material you can reuse.',
+                    action: 'Build your resume',
+                }
+                : {
+                    question: 'What are you preparing for next?',
+                    title: 'Turn your saved moments into material you can use.',
+                    body: 'Build a resume, rehearse an interview story, or shape a statement from your own experience.',
+                    action: 'Explore your portfolio',
+                };
 
     const { currentStreak, bestStreak } = useMemo(() => {
         if (entries.length === 0) return { currentStreak: 0, bestStreak: 0 };
@@ -1224,17 +1253,17 @@ function DashboardNotebookViewFull({
             <section className="rounded-[1.1rem] border border-[rgba(126,157,149,0.3)] bg-[rgba(255,255,255,0.58)] px-3 py-3">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <p className="section-label">Portfolio</p>
-                        <p className="mt-1 text-sm font-semibold text-[rgb(var(--paper-ink))]">Resume, statement, and interview practice</p>
+                        <p className="section-label">{portfolioPrompt.question}</p>
+                        <p className="mt-1 text-sm font-semibold text-[rgb(var(--paper-ink))]">{portfolioPrompt.title}</p>
                         <p className="mt-1 text-[0.69rem] leading-5 text-[rgb(107,107,107)]">
-                            Turn your saved memories into material you can review, rehearse, and download.
+                            {portfolioPrompt.body}
                         </p>
                     </div>
                     <Link
                         href={portfolioHref}
                         className="shrink-0 rounded-lg bg-[rgb(var(--paper-sage))] px-3 py-2 text-[0.69rem] font-semibold text-white transition-opacity hover:opacity-90"
                     >
-                        Open portfolio
+                        {portfolioPrompt.action}
                     </Link>
                 </div>
                 {storyPipelineStages.length > 0 && (

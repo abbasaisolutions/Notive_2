@@ -278,7 +278,7 @@ export default function MobileNav() {
                                                 aria-current={isActive ? 'page' : undefined}
                                                 className={`type-label-md flex items-center gap-3 rounded-xl border p-3 transition-colors ${isActive
                                                     ? 'border-primary/25 bg-primary/14 text-strong'
-                                                    : 'border-white/10 text-soft hover:bg-white/10 hover:text-strong'
+                                                    : 'border-[rgba(var(--paper-border),0.18)] bg-[rgba(var(--paper-soft),0.46)] text-soft hover:bg-primary/10 hover:text-strong'
                                                     }`}
                                             >
                                                 <span className="relative">
@@ -296,14 +296,14 @@ export default function MobileNav() {
                                 </div>
                             </div>
                         ))}
-                        <div className="mt-3 border-t border-white/10 pt-3">
+                        <div className="mt-3 border-t border-[rgba(var(--paper-border),0.18)] pt-3">
                             <div className="type-overline px-2 pb-2 text-muted">
                                 Mood
                             </div>
                             <ThemeMoodToggle compact />
                         </div>
                         {user && (
-                            <div className="mt-3 border-t border-white/10 pt-3">
+                            <div className="mt-3 border-t border-[rgba(var(--paper-border),0.18)] pt-3">
                                 <div className="type-overline px-2 pb-2 text-muted">
                                     Session
                                 </div>
@@ -311,7 +311,7 @@ export default function MobileNav() {
                                     type="button"
                                     onClick={handleLogout}
                                     disabled={isLoggingOut}
-                                    className="type-label-md w-full rounded-xl border border-white/15 bg-white/[0.03] px-3 py-3 text-left text-soft disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="type-label-md w-full rounded-xl border border-[rgba(var(--paper-border),0.24)] bg-[rgba(var(--paper-soft),0.7)] px-3 py-3 text-left text-strong transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     {isLoggingOut ? 'Signing out...' : 'Sign out'}
                                 </button>

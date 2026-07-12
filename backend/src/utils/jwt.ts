@@ -4,6 +4,10 @@ const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 const ACCESS_EXPIRY = (process.env.ACCESS_TOKEN_EXPIRY || '15m') as string;
 const REFRESH_EXPIRY = (process.env.REFRESH_TOKEN_EXPIRY || '7d') as string;
+const MOBILE_REFRESH_TOKEN_DAYS = Math.max(
+    1,
+    Number.parseInt(process.env.MOBILE_REFRESH_TOKEN_DAYS || '180', 10) || 180
+);
 
 if (!ACCESS_SECRET || !REFRESH_SECRET) {
     throw new Error('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be configured');
@@ -24,9 +28,13 @@ export const generateAccessToken = (payload: TokenPayload): string => {
     return jwt.sign(payload, ACCESS_SECRET, { expiresIn: ACCESS_EXPIRY } as SignOptions);
 };
 
-export const generateRefreshToken = (payload: TokenPayload): string => {
-    return jwt.sign(payload, REFRESH_SECRET, { expiresIn: REFRESH_EXPIRY } as SignOptions);
+export const generateRefreshToken = (payload: TokenPayload, options: { persistent?: boolean } = {}): string => {
+    const expiresIn = options.persistent ? `${MOBILE_REFRESH_TOKEN_DAYS}d` : REFRESH_EXPIRY;
+    return jwt.sign(payload, REFRESH_SECRET, { expiresIn } as SignOptions);
 };
+
+export const getMobileRefreshTokenExpiry = (): Date =>
+    new Date(Date.now() + MOBILE_REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000);
 
 export const generateSensitiveActionToken = (payload: TokenPayload): string => {
     return jwt.sign(

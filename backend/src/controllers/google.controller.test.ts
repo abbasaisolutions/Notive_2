@@ -28,6 +28,7 @@ vi.mock('../utils/google-auth', () => ({
 vi.mock('../utils/jwt', () => ({
     generateAccessToken: vi.fn(() => 'access-token'),
     generateRefreshToken: vi.fn(() => 'refresh-token'),
+    getMobileRefreshTokenExpiry: vi.fn(() => new Date('2026-11-20T10:00:00Z')),
 }));
 
 vi.mock('../utils/token-security', () => ({

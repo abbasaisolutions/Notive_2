@@ -1,13 +1,15 @@
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
-import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
+import { generateAccessToken, generateRefreshToken, getMobileRefreshTokenExpiry } from '../utils/jwt';
 import { hashToken } from '../utils/token-security';
 import { verifyGoogleCredential } from '../utils/google-auth';
 import { setRefreshTokenCookie } from '../utils/refresh-token-cookie';
 import { emailService } from '../services/email.service';
 import { notifyAdminsOfNewUser } from '../services/admin-notification.service';
 
-const getRefreshTokenExpiry = (): Date => {
+const getRefreshTokenExpiry = (persistent = false): Date => {
+    if (persistent) return getMobileRefreshTokenExpiry();
+
     const expiry = new Date();
     expiry.setDate(expiry.getDate() + 7);
     return expiry;
@@ -123,11 +125,12 @@ export const googleSignIn = async (req: Request, res: Response) => {
 
         // Generate tokens
         const accessToken = generateAccessToken({ userId: user.id, email: user.email });
-        const refreshToken = generateRefreshToken({ userId: user.id, email: user.email });
+        const isMobile = isMobileClient(req);
+        const refreshToken = generateRefreshToken({ userId: user.id, email: user.email }, { persistent: isMobile });
         const refreshTokenHash = hashToken(refreshToken);
 
         // Save refresh token
-        const expiresAt = getRefreshTokenExpiry();
+        const expiresAt = getRefreshTokenExpiry(isMobile);
 
         await prisma.refreshToken.create({
             data: {
@@ -148,7 +151,7 @@ export const googleSignIn = async (req: Request, res: Response) => {
         return res.json({
             message: 'Login successful',
             accessToken,
-            ...(isMobileClient(req) ? { refreshToken } : {}),
+            ...(isMobile ? { refreshToken } : {}),
             user: {
                 id: userWithProfile?.id || user.id,
                 email: userWithProfile?.email || user.email,

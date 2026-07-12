@@ -105,6 +105,9 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
 
     const isVoiceSupported = canRecordAudio || isSpeechPreviewSupported;
     const previewText = [transcript.trim(), interimText.trim()].filter(Boolean).join(' ').trim();
+    const liveTranscriptPreview = previewText
+        ? previewText.split(/\s+/).slice(-30).join(' ')
+        : '';
 
     useEffect(() => {
         setHasMounted(true);
@@ -444,9 +447,15 @@ export default function FloatingVoiceButton({ onQuickCapture }: FloatingVoiceBut
                             </div>
                         )}
 
-                        <div className="workspace-soft-panel rounded-lg p-3 mb-3 min-h-[60px] max-h-[120px] overflow-y-auto">
-                            <p className="text-sm text-ink-secondary">
-                                {previewText || (isRecording ? 'Start speaking...' : 'Tap the mic to start')}
+                        <div
+                            className={`workspace-soft-panel relative mb-3 overflow-hidden rounded-lg p-3 ${isRecording ? 'min-h-[88px] max-h-[88px]' : 'min-h-[60px] max-h-[156px] overflow-y-auto'}`}
+                            aria-live="polite"
+                        >
+                            {isRecording && (
+                                <div className="pointer-events-none absolute inset-x-0 top-0 h-7 bg-gradient-to-b from-[rgb(var(--bg-elevated))] to-transparent" />
+                            )}
+                            <p className={`text-sm leading-6 text-ink-secondary ${isRecording ? 'absolute bottom-3 left-3 right-3 line-clamp-3 transition-all duration-300' : ''}`}>
+                                {isRecording ? (liveTranscriptPreview || 'Start speaking...') : (previewText || 'Tap the mic to start')}
                             </p>
                         </div>
                         {voiceError && (

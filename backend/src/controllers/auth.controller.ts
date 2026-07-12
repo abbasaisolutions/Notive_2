@@ -4,6 +4,7 @@ import prisma from '../config/prisma';
 import {
     generateAccessToken,
     generateRefreshToken,
+    getMobileRefreshTokenExpiry,
     verifyRefreshToken,
 } from '../utils/jwt';
 import crypto from 'crypto';
@@ -13,7 +14,9 @@ import { clearRefreshTokenCookie, setRefreshTokenCookie } from '../utils/refresh
 import { serverLogger } from '../utils/server-logger';
 
 // Calculate expiry date for refresh token (7 days)
-const getRefreshTokenExpiry = (): Date => {
+const getRefreshTokenExpiry = (persistent = false): Date => {
+    if (persistent) return getMobileRefreshTokenExpiry();
+
     const expiry = new Date();
     expiry.setDate(expiry.getDate() + 7);
     return expiry;
@@ -139,7 +142,8 @@ export const register = async (req: Request, res: Response) => {
 
         // Generate tokens
         const accessToken = generateAccessToken({ userId: user.id, email: user.email });
-        const refreshToken = generateRefreshToken({ userId: user.id, email: user.email });
+        const isMobile = isMobileClient(req);
+        const refreshToken = generateRefreshToken({ userId: user.id, email: user.email }, { persistent: isMobile });
         const refreshTokenHash = hashToken(refreshToken);
 
         // Store refresh token in DB
@@ -147,7 +151,7 @@ export const register = async (req: Request, res: Response) => {
             data: {
                 token: refreshTokenHash,
                 userId: user.id,
-                expiresAt: getRefreshTokenExpiry(),
+                expiresAt: getRefreshTokenExpiry(isMobile),
             },
         });
 
@@ -157,7 +161,7 @@ export const register = async (req: Request, res: Response) => {
         return res.status(201).json({
             message: 'User registered successfully',
             accessToken,
-            ...(isMobileClient(req) ? { refreshToken } : {}),
+            ...(isMobile ? { refreshToken } : {}),
             user: {
                 id: user.id,
                 email: user.email,
@@ -219,7 +223,8 @@ export const login = async (req: Request, res: Response) => {
 
         // Generate tokens
         const accessToken = generateAccessToken({ userId: user.id, email: user.email });
-        const refreshToken = generateRefreshToken({ userId: user.id, email: user.email });
+        const isMobile = isMobileClient(req);
+        const refreshToken = generateRefreshToken({ userId: user.id, email: user.email }, { persistent: isMobile });
         const refreshTokenHash = hashToken(refreshToken);
 
         // Store refresh token in DB
@@ -227,7 +232,7 @@ export const login = async (req: Request, res: Response) => {
             data: {
                 token: refreshTokenHash,
                 userId: user.id,
-                expiresAt: getRefreshTokenExpiry(),
+                expiresAt: getRefreshTokenExpiry(isMobile),
             },
         });
 
@@ -237,7 +242,7 @@ export const login = async (req: Request, res: Response) => {
         return res.status(200).json({
             message: 'Login successful',
             accessToken,
-            ...(isMobileClient(req) ? { refreshToken } : {}),
+            ...(isMobile ? { refreshToken } : {}),
             user: {
                 id: user.id,
                 email: user.email,
@@ -343,10 +348,11 @@ export const refresh = async (req: Request, res: Response) => {
 
         // Rotate refresh token: mark the old token revoked (retaining it for reuse detection)
         // and mint a fresh one in the same transaction.
+        const isMobile = isMobileClient(req);
         const newRefreshToken = generateRefreshToken({
             userId: storedToken.user.id,
             email: storedToken.user.email,
-        });
+        }, { persistent: isMobile });
         const newRefreshTokenHash = hashToken(newRefreshToken);
 
         let createdToken: { id: string };
@@ -356,7 +362,7 @@ export const refresh = async (req: Request, res: Response) => {
                 data: {
                     token: newRefreshTokenHash,
                     userId: storedToken.user.id,
-                    expiresAt: getRefreshTokenExpiry(),
+                    expiresAt: getRefreshTokenExpiry(isMobile),
                 },
             });
         } else {
@@ -369,7 +375,7 @@ export const refresh = async (req: Request, res: Response) => {
                     data: {
                         token: newRefreshTokenHash,
                         userId: storedToken.user.id,
-                        expiresAt: getRefreshTokenExpiry(),
+                        expiresAt: getRefreshTokenExpiry(isMobile),
                     },
                 }),
             ]);
@@ -392,7 +398,7 @@ export const refresh = async (req: Request, res: Response) => {
 
         return res.status(200).json({
             accessToken,
-            ...(isMobileClient(req) ? { refreshToken: newRefreshToken } : {}),
+            ...(isMobile ? { refreshToken: newRefreshToken } : {}),
             user: {
                 id: storedToken.user.id,
                 email: storedToken.user.email,

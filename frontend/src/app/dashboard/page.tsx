@@ -1075,6 +1075,7 @@ export default function DashboardPage() {
                     locationLabel={profileLocation}
                     userBirthDate={safeUser.profile?.birthDate ? String(safeUser.profile.birthDate) : null}
                     profileTags={profileTags}
+                    outputGoals={safeUser.profile?.outputGoals || []}
                     entries={entries}
                     themeClusters={themeClusters}
                     resurfacedMoments={resurfacedMoments}

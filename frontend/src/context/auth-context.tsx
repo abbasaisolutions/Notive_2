@@ -209,6 +209,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         initAuth();
     }, [performRefresh]);
 
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+
+        const refreshOnResume = () => {
+            if (document.visibilityState === 'visible') {
+                void performRefresh();
+            }
+        };
+
+        document.addEventListener('visibilitychange', refreshOnResume);
+        return () => document.removeEventListener('visibilitychange', refreshOnResume);
+    }, [performRefresh]);
+
     const login = useCallback(async (email: string, password: string): Promise<User> => {
         const fallback = 'We couldn’t sign you in. Check your email and password, then try again.';
 
