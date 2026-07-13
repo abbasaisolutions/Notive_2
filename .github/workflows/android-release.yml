@@ -13,7 +13,6 @@ jobs:
   android-release:
     runs-on: ubuntu-latest
     env:
-      HAS_GOOGLE_PLAY_PUBLISHING: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != '' }}
       NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL || 'https://notive.abbasaisolutions.com' }}
       NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://notive2-production.up.railway.app/api/v1' }}
       NEXT_PUBLIC_NATIVE_API_URL: ${{ vars.NEXT_PUBLIC_NATIVE_API_URL || 'https://notive2-production.up.railway.app/api/v1' }}
@@ -97,15 +96,3 @@ jobs:
             frontend/android/app/build/outputs/bundle/release/app-release.aab
             frontend/android/app/build/outputs/mapping/release/mapping.txt
           if-no-files-found: warn
-
-      - name: Upload to Google Play internal track
-        if: ${{ env.HAS_GOOGLE_PLAY_PUBLISHING == 'true' }}
-        uses: r0adkll/upload-google-play@v1.1.3
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: com.notive.app
-          releaseFiles: frontend/android/app/build/outputs/bundle/release/app-release.aab
-          mappingFile: frontend/android/app/build/outputs/mapping/release/mapping.txt
-          releaseName: Notive ${{ steps.version.outputs.versionName }} (${{ steps.version.outputs.versionCode }})
-          track: internal
-          status: completed
