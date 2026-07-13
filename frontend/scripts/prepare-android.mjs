@@ -24,6 +24,7 @@ const requiredAndroidFiles = [
 const socialLoginManifestPath = 'node_modules/@capgo/capacitor-social-login/android/src/main/AndroidManifest.xml';
 const legacyProguardGradlePaths = [
     'node_modules/@aparajita/capacitor-secure-storage/android/build.gradle',
+    'node_modules/@capacitor-community/speech-recognition/android/build.gradle',
     'node_modules/@capacitor/android/capacitor/build.gradle',
     'node_modules/@capgo/capacitor-social-login/android/build.gradle',
     'node_modules/@ebarooni/capacitor-calendar/android/build.gradle',
