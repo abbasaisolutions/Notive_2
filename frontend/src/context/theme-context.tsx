@@ -1,113 +1,51 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { usePathname } from 'next/navigation';
+import React, { createContext, useContext, useEffect } from 'react';
 
-type Theme = 'dark' | 'paper';
+/**
+ * Notive is paper-only. There is no dark theme.
+ *
+ * A dark theme used to be reachable from a toggle, and the choice persisted in
+ * localStorage — which then overrode the per-route theme on every screen. That
+ * put `data-theme="dark"` on <html>, which switches form controls to
+ * `color-scheme: dark` and made native Android dropdowns and date pickers render
+ * white text on the light paper sheet underneath.
+ *
+ * The type is kept as a single-member union so existing `theme === 'paper'`
+ * consumers keep working while the value can never be anything else.
+ */
+type Theme = 'paper';
 
-const defaultTheme: Theme = 'paper';
+const THEME: Theme = 'paper';
+const LEGACY_THEME_STORAGE_KEY = 'notive_theme';
 
-const PAPER_THEME_PREFIXES = [
-    '/dashboard',
-    '/entry',
-    '/timeline',
-    '/portfolio',
-    '/profile',
-    '/chapters',
-    '/import',
-    '/onboarding',
-    '/insights',
-    '/admin',
-    '/chat',
-] as const;
-
-const DARK_THEME_PREFIXES = [
-    '/share',
-] as const;
-
-const PAPER_THEME_EXACT_ROUTES = new Set([
-    '/',
-    '/login',
-    '/register',
-    '/forgot-password',
-    '/reset-password',
-    '/privacy',
-    '/terms',
-    '/account-deletion',
-]);
-
-const DARK_THEME_EXACT_ROUTES = new Set<string>([]);
-
-const matchesPrefix = (pathname: string, prefix: string) =>
-    pathname === prefix || pathname.startsWith(`${prefix}/`);
-
-const getRouteTheme = (pathname: string | null): Theme => {
-    if (!pathname) return defaultTheme;
-    if (PAPER_THEME_EXACT_ROUTES.has(pathname)) {
-        return 'paper';
-    }
-    if (PAPER_THEME_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix))) {
-        return 'paper';
-    }
-    if (DARK_THEME_EXACT_ROUTES.has(pathname)) {
-        return 'dark';
-    }
-    if (DARK_THEME_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix))) {
-        return 'dark';
-    }
-    return defaultTheme;
-};
-
-const getStoredTheme = (): Theme | null => {
-    if (typeof window === 'undefined') return null;
-    const stored = window.localStorage.getItem('notive_theme');
-    return stored === 'dark' || stored === 'paper' ? stored : null;
-};
-
-const applyTheme = (theme: Theme) => {
+const applyTheme = () => {
     if (typeof document === 'undefined') return;
 
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.style.colorScheme = theme === 'paper' ? 'light' : 'dark';
-    document.documentElement.classList.toggle('light', theme === 'paper');
+    document.documentElement.dataset.theme = THEME;
+    document.documentElement.style.colorScheme = 'light';
+    document.documentElement.classList.add('light');
 };
 
 interface ThemeContextType {
     theme: Theme;
-    toggleTheme: () => void;
-    setTheme: (theme: Theme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    const pathname = usePathname();
-    const [theme, setThemeState] = useState<Theme>(() => getStoredTheme() ?? getRouteTheme(pathname));
-
     useEffect(() => {
-        const nextTheme = getStoredTheme() ?? getRouteTheme(pathname);
-        setThemeState(nextTheme);
-
-        applyTheme(nextTheme);
-    }, [pathname]);
-
-    const setTheme = useCallback((newTheme: Theme) => {
-        const nextTheme = newTheme || defaultTheme;
-        setThemeState(nextTheme);
-
+        // Drop any persisted "dark" choice from the old toggle, otherwise a
+        // returning user stays stuck with unreadable form controls.
         if (typeof window !== 'undefined') {
-            localStorage.setItem('notive_theme', nextTheme);
+            window.localStorage.removeItem(LEGACY_THEME_STORAGE_KEY);
         }
 
-        applyTheme(nextTheme);
+        applyTheme();
     }, []);
 
-    const toggleTheme = useCallback(() => {
-        setTheme(theme === 'paper' ? 'dark' : 'paper');
-    }, [setTheme, theme]);
-
     return (
-        <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+        <ThemeContext.Provider value={{ theme: THEME }}>
             {children}
         </ThemeContext.Provider>
     );

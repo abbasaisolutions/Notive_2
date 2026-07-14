@@ -6,7 +6,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import Image from 'next/image';
 import Link from 'next/link';
 import ActionBriefPanel from '@/components/action/ActionBriefPanel';
 import ContinueWorkspaceCard from '@/components/dashboard/ContinueWorkspaceCard';
@@ -1084,7 +1083,8 @@ function DashboardNotebookViewFull({
             ? `Your last saved mood was ${formatNotebookLabel(latestEntry.mood)}.`
             : 'Write one private note and Notive will start reading the emotional weather gently.';
     const primaryThread = themeClusters[0] || null;
-    const secondaryThreadCount = Math.max(themeClusters.length - (primaryThread ? 1 : 0), 0);
+    // Only worth surfacing once there is a genuine repeating theme to point at.
+    const hasPatternToNotice = Boolean(primaryThread);
     const primaryThreadLabel = primaryThread
         ? formatNotebookLabel(primaryThread.label)
         : strongestEmotion
@@ -1097,19 +1097,20 @@ function DashboardNotebookViewFull({
         : strongestEmotion
             ? `${formatNotebookLabel(strongestEmotion.emotion)} is the clearest emotional signal Notive can read right now.`
             : entries.length > 0
-                ? 'Notive needs a few more notes before it can name a repeating thread clearly.'
+                ? 'Notive needs a few more notes before it can name a repeating pattern clearly.'
                 : 'Your first note gives Notive a private signal to hold and understand.';
     const todaysReadLine = primaryThread
-        ? `${primaryThreadLabel} is the thread showing up most clearly. ${innerWeatherBody}`
+        ? `${primaryThreadLabel} is the pattern showing up most clearly. ${innerWeatherBody}`
         : innerWeatherBody;
     const privateReflectionQuestion = todayBrief?.followUpPrompt
         || (primaryThread
             ? `What part of ${primaryThreadLabel.toLowerCase()} is actually yours to carry today?`
             : 'What do you need to admit to yourself before the day gets louder?');
     const threadWriteHref = `${recommendedHref}&prompt=${encodeURIComponent(privateReflectionQuestion)}&thread=${encodeURIComponent(primaryThreadLabel)}`;
-    const quietGrowthLine = growthLedgerItems[0]
-        || growthEvidence
-        || 'Notive will keep growth quiet until there is enough evidence to say something useful.';
+    const patternNotesHref = `/timeline?q=${encodeURIComponent(primaryThread?.label ?? '')}`;
+    // Empty when there is no real evidence yet — the card hides rather than
+    // filling space with a sentence that says nothing.
+    const quietGrowthLine = growthLedgerItems[0] || growthEvidence || '';
     const generatedMaterialCount = storyPipelineCounts.ready + storyPipelineCounts.verified;
     const generatedMaterialLine = generatedMaterialCount > 0
         ? `${generatedMaterialCount} generated ${generatedMaterialCount === 1 ? 'piece is' : 'pieces are'} ready when you want to use them.`
@@ -1306,26 +1307,20 @@ function DashboardNotebookViewFull({
         </div>
     ) : null;
     const welcomeNotebookBanner = entries.length === 0 ? (
-        <div className="app-paper-soft overflow-hidden rounded-[1.25rem]">
-            <div className="relative">
-                <Image
-                    src="/images/dashboard-welcome-banner.jpg"
-                    alt="Open notebook welcoming a new user into Notive before the first saved memory."
-                    width={1144}
-                    height={768}
-                    priority
-                    className="h-36 w-full object-cover object-center sm:h-44"
-                    sizes="(max-width: 767px) 100vw, 56rem"
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.06),rgba(38,34,30,0.48))]" />
-                <div className="absolute inset-x-0 bottom-0 p-4">
-                    <div className="max-w-lg rounded-[1rem] border border-[rgba(92,92,92,0.16)] bg-[rgba(255,251,245,0.82)] px-3 py-3 backdrop-blur-sm">
-                        <p className="section-label">Welcome to your notebook</p>
-                        <p className="mt-1 text-[0.82rem] leading-6 text-[rgb(var(--paper-ink))]">
-                            Capture what happened. Keep what matters.
-                        </p>
-                    </div>
+        <div className="app-paper-soft relative overflow-hidden rounded-[1.25rem] px-5 py-5">
+            <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 left-3 w-px"
+                style={{ background: 'rgba(138, 154, 111, 0.55)' }}
+            />
+            <div className="flex items-center justify-between gap-4 pl-3">
+                <div>
+                    <p className="section-label">Welcome to your notebook</p>
+                    <p className="mt-1.5 text-[0.95rem] font-semibold leading-6 text-[rgb(var(--paper-ink))]">
+                        Capture what happened. Keep what matters.
+                    </p>
                 </div>
+                <NotebookDoodle name="sprout" accent="sage" className="h-12 w-12 shrink-0 opacity-90" />
             </div>
         </div>
     ) : null;
@@ -1367,46 +1362,50 @@ function DashboardNotebookViewFull({
                         </div>
                     </div>
 
-                    <div className="rounded-[1.05rem] border border-[rgba(138,154,111,0.24)] bg-[rgba(138,154,111,0.08)] p-3">
-                        <p className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-[rgb(118,134,91)]">Thread to notice</p>
-                        <p className="mt-1 text-base font-semibold leading-tight text-[rgb(var(--paper-ink))]">{primaryThreadLabel}</p>
-                        <p className="mt-1.5 text-[0.75rem] leading-5 text-[rgb(107,107,107)]">{primaryThreadReason}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
+                    {/*
+                        "Pattern", not "thread": Threads is already the name of the
+                        /chapters surface, so calling a recurring theme a thread sent
+                        people looking for something else. One action, and only when
+                        there is an actual pattern — writing and opening the timeline
+                        are already one tap away in the bottom bar.
+                    */}
+                    {hasPatternToNotice && (
+                        <div className="rounded-[1.05rem] border border-[rgba(138,154,111,0.24)] bg-[rgba(138,154,111,0.08)] p-3">
+                            <p className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-[rgb(118,134,91)]">Pattern to notice</p>
+                            <p className="mt-1 text-base font-semibold leading-tight text-[rgb(var(--paper-ink))]">{primaryThreadLabel}</p>
+                            <p className="mt-1.5 text-[0.75rem] leading-5 text-[rgb(107,107,107)]">{primaryThreadReason}</p>
                             <Link
-                                href={threadWriteHref}
-                                className="inline-flex rounded-xl bg-[rgb(var(--paper-ink))] px-3 py-2 text-[0.74rem] font-semibold text-[rgb(var(--paper-bg))] transition-opacity hover:opacity-90"
+                                href={patternNotesHref}
+                                className="mt-3 inline-flex rounded-xl border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.42)] px-3 py-2 text-[0.74rem] font-semibold text-[rgb(var(--paper-ink))] transition-colors hover:bg-[rgba(255,255,255,0.7)]"
                             >
-                                Write into this thread
-                            </Link>
-                            <Link
-                                href={timelineHref}
-                                className="inline-flex rounded-xl border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.42)] px-3 py-2 text-[0.74rem] font-semibold text-[rgb(var(--paper-ink))] transition-colors hover:bg-[rgba(255,255,255,0.7)]"
-                            >
-                                {secondaryThreadCount > 0 ? `View ${secondaryThreadCount + 1} threads` : 'Open notebook'}
+                                See the {primaryThread?.entryCount ?? 0} notes behind this
                             </Link>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 <Link
                     href={threadWriteHref}
                     className="mt-3 block rounded-[1.05rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.38)] p-3 transition-all hover:-translate-y-0.5 hover:bg-[rgba(255,255,255,0.56)]"
                 >
-                    <p className="section-label">Private prompt</p>
+                    <p className="section-label">Prompt</p>
                     <p className="mt-1.5 text-[0.9rem] font-semibold leading-6 text-[rgb(var(--paper-ink))]">
                         {privateReflectionQuestion}
                     </p>
                     <p className="mt-2 text-[0.72rem] font-semibold text-[rgb(118,134,91)]">
-                        Write privately →
+                        Write &rarr;
                     </p>
                 </Link>
 
-                <div className="mt-3 rounded-[1.05rem] border border-[rgba(216,199,232,0.24)] bg-[rgba(216,199,232,0.1)] p-3">
-                    <p className="section-label">Notive noticed</p>
-                    <p className="mt-1.5 text-[0.78rem] leading-5 text-[rgb(var(--paper-ink))]">
-                        {quietGrowthLine}
-                    </p>
-                </div>
+                {/* Only when there is something actually noticed — the placeholder copy said nothing. */}
+                {quietGrowthLine && (
+                    <div className="mt-3 rounded-[1.05rem] border border-[rgba(216,199,232,0.24)] bg-[rgba(216,199,232,0.1)] p-3">
+                        <p className="section-label">Notive noticed</p>
+                        <p className="mt-1.5 text-[0.78rem] leading-5 text-[rgb(var(--paper-ink))]">
+                            {quietGrowthLine}
+                        </p>
+                    </div>
+                )}
 
                 {(resurfacedMoment || entries.length > 0) && (
                     <div className="mt-3 rounded-[1.05rem] border border-[rgba(192,160,100,0.22)] bg-[rgba(234,216,189,0.16)] p-3">
@@ -1433,9 +1432,6 @@ function DashboardNotebookViewFull({
                     </div>
                 )}
 
-                <p className="mt-3 text-[0.66rem] leading-5 text-[rgb(130,130,130)]">
-                    Private to you. Notive reads for patterns, not judgment.
-                </p>
             </section>
 
             <details id={DASHBOARD_QUICK_CHECKIN_ID} className="group scroll-mt-24 rounded-[1.25rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.3)]">
@@ -2554,22 +2550,20 @@ function DashboardNotebookViewFull({
                                         <span className="text-[rgba(107,107,107,0.55)]">•</span>
                                         <span className="sprout-accent line-clamp-1 min-w-0">{energyLine}</span>
                                     </p>
+                                    {/*
+                                        Plain text, not pills. These are read-only facts about
+                                        the profile; bordered and filled chips made them look
+                                        tappable, and nothing happened when people tapped them.
+                                    */}
                                     {(profileTags.length > 0 || zodiacSign) && (
-                                        <div className="chip-scroller -mx-1 mt-2 max-w-full px-1">
-                                            {profileTags.map((tag) => (
-                                                <span
-                                                    key={tag}
-                                                    className="shrink-0 rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.5)] px-2.5 py-1 text-[0.66rem] leading-none text-[rgb(107,107,107)]"
-                                                >
-                                                    {tag}
-                                                </span>
-                                            ))}
-                                            {zodiacSign && (
-                                                <span className="shrink-0 rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.5)] px-2.5 py-1 text-[0.66rem] leading-none text-[rgb(107,107,107)]">
-                                                    {zodiacSign.symbol} {zodiacSign.sign}
-                                                </span>
-                                            )}
-                                        </div>
+                                        <p className="mt-1.5 truncate text-[0.68rem] leading-5 text-[rgba(107,107,107,0.85)]">
+                                            {[
+                                                ...profileTags,
+                                                zodiacSign ? `${zodiacSign.symbol} ${zodiacSign.sign}` : null,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' · ')}
+                                        </p>
                                     )}
                                 </div>
                             </div>

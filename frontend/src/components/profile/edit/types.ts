@@ -17,7 +17,7 @@ export const PRIMARY_GOAL_OPTIONS = [
 
 export const FOCUS_AREA_OPTIONS = [
     { value: 'life', label: 'Life' },
-    { value: 'career', label: 'School / Work' },
+    { value: 'career', label: 'Study / Work' },
     { value: 'both', label: 'Both' },
 ];
 

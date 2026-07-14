@@ -229,21 +229,18 @@ export default function ProfileClient() {
                             <p className="mt-3 max-w-2xl text-xl font-serif italic leading-8 text-white md:text-2xl md:leading-9">
                                 &ldquo;{favoriteLine}&rdquo;
                             </p>
-                            <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                                <span className="rounded-full border border-white/40 bg-white/20 px-3 py-1.5 font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.18)] backdrop-blur-sm">
-                                    {reflectedMonthsLabel}
-                                </span>
-                                {stats && (
-                                    <span className="rounded-full border border-white/40 bg-white/20 px-3 py-1.5 font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.18)] backdrop-blur-sm">
-                                        {stats.totalEntries || 0} saved
-                                    </span>
-                                )}
-                                {latestEntry && (
-                                    <span className="rounded-full border border-white/40 bg-white/20 px-3 py-1.5 font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.18)] backdrop-blur-sm">
-                                        Last note {new Date(latestEntry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                    </span>
-                                )}
-                            </div>
+                            {/* Read-only facts, so plain text — bordered pills read as tappable. */}
+                            <p className="mt-4 text-xs font-medium text-white/90">
+                                {[
+                                    reflectedMonthsLabel,
+                                    stats ? `${stats.totalEntries || 0} saved` : null,
+                                    latestEntry
+                                        ? `Last note ${new Date(latestEntry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                                        : null,
+                                ]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                            </p>
                         </div>
                     </div>
 
@@ -411,13 +408,9 @@ export default function ProfileClient() {
                                 </div>
                             )}
                             {highlights.length > 0 && (
-                                <div className="mt-4 flex flex-wrap gap-2">
-                                    {highlights.map((item) => (
-                                        <span key={item} className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs text-primary">
-                                            {item}
-                                        </span>
-                                    ))}
-                                </div>
+                                <p className="mt-4 text-xs leading-5 text-ink-muted">
+                                    {highlights.join(' · ')}
+                                </p>
                             )}
                             {latestEntry && (
                                 <p className="mt-4 text-xs uppercase tracking-[0.12em] text-ink-muted">

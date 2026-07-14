@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import Image from 'next/image';
 import NotiveLogo from '@/components/ui/NotiveLogo';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -26,13 +25,6 @@ import {
     type GenderPersonalizationValue,
 } from '@/utils/gender-personalization';
 import { Spinner } from '@/components/ui';
-
-const SETUP_PROGRESS_STEPS = [
-    { label: 'Google verified', status: 'done' },
-    { label: 'Basics', status: 'active' },
-    { label: 'Setup', status: 'upcoming' },
-    { label: 'First note', status: 'upcoming' },
-] as const;
 
 const asRecord = (value: unknown): Record<string, unknown> =>
     value && typeof value === 'object' && !Array.isArray(value)
@@ -195,10 +187,9 @@ export default function CompleteProfilePage() {
             <FadeIn className="mx-auto w-full max-w-6xl">
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
                     <QuietNotebookAuthIllustration
-                        src="/images/hero-2.jpg"
-                        alt="Teen reviewing saved notes in Notive while finishing profile setup."
                         eyebrow="One quick detail"
                         body={NOTIVE_VOICE.auth.profileBody}
+                        doodle="quill"
                     />
 
                     <motion.div
@@ -230,33 +221,19 @@ export default function CompleteProfilePage() {
                             </p>
                         </div>
 
-                        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Setup progress">
-                            {SETUP_PROGRESS_STEPS.map((item) => (
-                                <div
-                                    key={item.label}
-                                    className={`rounded-[1rem] border px-3 py-2 text-xs font-semibold ${
-                                        item.status === 'done'
-                                            ? 'border-[rgba(65,93,76,0.28)] bg-[rgba(202,221,208,0.28)] text-[rgb(65,93,76)]'
-                                            : item.status === 'active'
-                                                ? 'border-[rgba(92,92,92,0.26)] bg-[rgba(255,251,245,0.9)] text-strong'
-                                                : 'border-[rgba(92,92,92,0.12)] bg-[rgba(255,251,245,0.54)] text-muted'
-                                    }`}
-                                >
-                                    {item.label}
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="app-paper-soft mt-6 overflow-hidden rounded-[1.5rem] lg:hidden">
-                            <Image
-                                src="/images/hero-2.jpg"
-                                alt="Teen reviewing saved notes in Notive while finishing profile setup."
-                                width={1144}
-                                height={768}
-                                className="h-52 w-full object-cover object-center"
-                                sizes="100vw"
-                                priority
-                            />
+                        {/* A bar, not inert pills that read as buttons. */}
+                        <div
+                            className="mt-5 max-w-sm"
+                            role="progressbar"
+                            aria-valuenow={2}
+                            aria-valuemin={1}
+                            aria-valuemax={4}
+                            aria-valuetext="Step 2 of 4: Basics"
+                        >
+                            <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(92,92,92,0.12)]">
+                                <div className="h-full w-1/2 rounded-full bg-[rgb(138,154,111)]" />
+                            </div>
+                            <p className="mt-2 text-xs text-muted">Step 2 of 4 &middot; Basics</p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="mt-6 space-y-5">

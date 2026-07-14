@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import NotiveLogo from '@/components/ui/NotiveLogo';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
@@ -22,19 +21,26 @@ import { resolvePostAuthDestination } from '@/utils/auth-routing';
 import { isNativeCapacitorPlatform } from '@/utils/sso';
 import useHasMounted from '@/hooks/use-has-mounted';
 
-const SIGNUP_VALUE_POINTS = [
-    'Capture a real moment while it is still fresh',
-    'Keep memories, lessons, and useful signals in one place',
-    'Turn saved notes into stories and evidence you can use later',
-];
-const REGISTER_PHRASES = [
-    'Opening your notebook\u2026',
-    'Taking you to your home dashboard\u2026',
-    'Getting everything ready\u2026',
+const SETUP_STEPS = [
+    {
+        title: 'Continue with Google',
+        detail: 'No new password to invent. Notive never posts anything to your Google account.',
+    },
+    {
+        title: 'Tell us your stage of life',
+        detail: 'One quick detail so prompts and examples match your context. Your birthday stays private.',
+    },
+    {
+        title: 'Save your first moment',
+        detail: 'Write it, speak it, or import it. From there Notive helps you find what it holds.',
+    },
 ];
 
-const REGISTER_HERO = '/images/auth-register-hero.jpg';
-const AUTH_SIDE_STRIP = '/images/auth-side-strip.jpg';
+const REGISTER_PHRASES = [
+    'Opening your notebook…',
+    'Taking you to your home dashboard…',
+    'Getting everything ready…',
+];
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -80,14 +86,14 @@ export default function RegisterPage() {
             clearOnboardingState(registeredUser.id);
             router.replace(resolvePostAuthRoute(registeredUser));
         } catch (err: any) {
-            setError(err.message || 'Google sign-up didn\u2019t go through. Please try again.');
+            setError(err.message || 'Google sign-up didn’t go through. Please try again.');
         } finally {
             setIsLoading(false);
         }
     }, [loginWithSsoCredential, resolvePostAuthRoute, router]);
 
     const handleGoogleError = useCallback(() => {
-        setError('Google sign-up didn\u2019t finish. Please try again.');
+        setError('Google sign-up didn’t finish. Please try again.');
     }, []);
 
     if (hasMounted && isNativeCapacitorPlatform() && (authLoading || !!user)) {
@@ -99,193 +105,103 @@ export default function RegisterPage() {
     }
 
     return (
-        <div className="page-paper-canvas min-h-screen px-3 py-3 md:px-5 md:py-5" style={quietNotebookPageStyle}>
-            <FadeIn className="mx-auto w-full max-w-[88rem]">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.84fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_320px]">
-                    <div className="space-y-4">
-                        <div
-                            className="paper-card app-paper overflow-hidden rounded-[2rem] lg:hidden"
-                            style={quietNotebookPanelStyle}
-                        >
-                            <div className="relative h-[19rem] sm:h-[21rem]">
-                                <Image
-                                    src={REGISTER_HERO}
-                                    alt="Teen writing a first Notive note on a phone while starting a private diary account."
-                                    fill
-                                    priority
-                                    sizes="(max-width: 1023px) calc(100vw - 1.5rem), 0px"
-                                    className="object-cover object-center"
-                                />
-                                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.52))]" />
-                                <div className="absolute inset-x-0 top-0 p-4">
-                                    <div className="inline-flex rounded-[1rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.84)] px-3 py-2">
-                                        <NotiveLogo href="/" size="xs" />
-                                    </div>
-                                </div>
-                                <div className="absolute inset-x-0 bottom-0 p-4">
-                                    <div className="rounded-[1.4rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-4 backdrop-blur-sm">
-                                        <p className="type-overline text-muted">
-                                            Create account
-                                        </p>
-                                        <h2 className="mt-2 text-2xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong">
-                                            {NOTIVE_VOICE.auth.registerHeroTitle}
-                                        </h2>
-                                        <p className="mt-2 text-sm leading-6 text-default">
-                                            {NOTIVE_VOICE.auth.registerHeroBody}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+        <div
+            className="page-paper-canvas flex min-h-screen items-center px-3 py-6 md:px-5 md:py-10"
+            style={quietNotebookPageStyle}
+        >
+            <FadeIn className="mx-auto w-full max-w-2xl">
+                <motion.div
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.42, ease: 'easeOut' }}
+                    className="paper-card app-paper relative overflow-hidden rounded-[2rem] p-5 sm:p-8"
+                    style={quietNotebookPanelStyle}
+                >
+                    <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-x-0 top-0 h-1.5"
+                        style={{ background: 'rgb(138, 154, 111)' }}
+                    />
 
-                        <div
-                            className="paper-card app-paper relative hidden overflow-hidden rounded-[2rem] lg:flex lg:min-h-[42rem]"
-                            style={quietNotebookPanelStyle}
-                        >
-                            <Image
-                                src={REGISTER_HERO}
-                                alt="Teen writing a first Notive note on a phone while starting a private diary account."
-                                fill
-                                priority
-                                sizes="(min-width: 1280px) 32vw, 44vw"
-                                className="object-cover object-center"
-                            />
-                            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.5))]" />
-                            <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5">
-                                <div className="rounded-[1rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.84)] px-3 py-2 backdrop-blur-sm">
-                                    <NotiveLogo href="/" size="xs" />
-                                </div>
-                                <NotebookDoodle name="sprout" accent="sage" className="h-8 w-8 opacity-90" />
-                            </div>
-                            <div className="absolute inset-x-0 bottom-0 p-6">
-                                <div className="max-w-md rounded-[1.6rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-5 backdrop-blur-sm">
-                                    <p className="type-overline text-muted">
-                                        Private notebook
-                                    </p>
-                                    <h2 className="mt-3 text-[2rem] font-semibold leading-[1.05] tracking-[-0.04em] text-strong">
-                                        {NOTIVE_VOICE.auth.registerHeroTitle}
-                                    </h2>
-                                    <p className="mt-3 text-sm leading-7 text-default">
-                                        {NOTIVE_VOICE.auth.registerHeroBody}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                    <div className="flex items-start justify-between gap-4">
+                        <NotiveLogo href="/" size="sm" />
+                        <NotebookDoodle name="quill" accent="sage" className="h-10 w-10 shrink-0 opacity-90" />
                     </div>
 
-                    <motion.div
-                        initial={{ opacity: 0, y: 18 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.42, ease: 'easeOut' }}
-                        className="paper-card app-paper relative rounded-[2rem] p-5 sm:p-8"
-                        style={quietNotebookPanelStyle}
-                    >
-                        <div className="absolute right-5 top-5">
-                            <NotebookDoodle name="sprout" accent="sage" className="h-9 w-9 opacity-90" />
-                        </div>
+                    <p className="type-overline mt-4 text-muted">
+                        Create account &middot; Step 1 of 3
+                    </p>
+                    <h1 className="mt-3 text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong md:text-[2.6rem]">
+                        {NOTIVE_VOICE.auth.registerHeading}
+                    </h1>
+                    <p className="mt-4 text-sm leading-7 text-default md:text-base">
+                        {NOTIVE_VOICE.auth.registerBody}
+                    </p>
 
-                        <div className="pr-12">
-                            <NotiveLogo href="/" size="sm" />
-                            <p className="type-overline text-muted">
-                                Create account
-                            </p>
-                            <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong md:text-[3rem]">
-                                {NOTIVE_VOICE.auth.registerHeading}
-                            </h1>
-                            <p className="mt-4 max-w-xl text-sm leading-7 text-default md:text-base">
-                                {NOTIVE_VOICE.auth.registerBody}
-                            </p>
-                        </div>
-
-                        <div
-                            className="app-paper-soft mt-5 rounded-[1.4rem] px-4 py-4"
-                            style={{
-                                background: 'linear-gradient(180deg, rgba(255,255,255,0.84), rgba(255,251,245,0.72))',
-                                border: '1.5px solid rgba(92,92,92,0.18)',
-                            }}
-                        >
-                            <div className="space-y-3">
-                                {SIGNUP_VALUE_POINTS.map((point) => (
-                                    <div key={point} className="flex items-start gap-3 text-sm leading-6 text-default">
-                                        <span className="mt-2 inline-block h-1.5 w-1.5 rounded-full bg-[rgb(var(--paper-ink-soft))]" />
-                                        <span>{point}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {error && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                role="alert"
-                                aria-live="assertive"
-                                className="mt-5 px-4 py-3 rounded-xl text-sm bg-[rgba(var(--paper-apricot),0.32)] border border-[rgba(var(--paper-border),0.14)] text-strong"
+                    <ol className="mt-6 space-y-3">
+                        {SETUP_STEPS.map((step, index) => (
+                            <li
+                                key={step.title}
+                                className="flex items-start gap-3 rounded-[1.2rem] border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.55)] px-4 py-3"
                             >
-                                {error}
-                            </motion.div>
-                        )}
+                                <span
+                                    aria-hidden="true"
+                                    className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                                    style={{
+                                        background: index === 0 ? 'rgb(138, 154, 111)' : 'rgba(138, 154, 111, 0.16)',
+                                        color: index === 0 ? 'rgb(255,251,245)' : 'rgb(96,110,74)',
+                                    }}
+                                >
+                                    {index + 1}
+                                </span>
+                                <span>
+                                    <span className="block text-sm font-semibold text-strong">
+                                        {step.title}
+                                    </span>
+                                    <span className="mt-1 block text-sm leading-6 text-default">
+                                        {step.detail}
+                                    </span>
+                                </span>
+                            </li>
+                        ))}
+                    </ol>
 
-                        <SlideUp delay={0.1} className="mt-6">
-                            <GoogleSsoPanel
-                                mode="register"
-                                isLoading={isLoading}
-                                onSuccess={handleGoogleSuccess}
-                                onError={handleGoogleError}
-                            />
-                            <p className="mt-3 text-center text-xs leading-5 text-muted">
-                                If Google does not share your birthday, we will ask for it right after sign-up.
-                            </p>
-                        </SlideUp>
+                    {error && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            role="alert"
+                            aria-live="assertive"
+                            className="mt-5 px-4 py-3 rounded-xl text-sm bg-[rgba(var(--paper-apricot),0.32)] border border-[rgba(var(--paper-border),0.14)] text-strong"
+                        >
+                            {error}
+                        </motion.div>
+                    )}
 
-                        <SlideUp delay={0.2}>
-                            <div className="flex items-center justify-center gap-6 py-4 text-xs text-ink-muted">
-                                <span className="flex items-center gap-1.5"><span>🔒</span> Encrypted &amp; secure</span>
-                                <span className="flex items-center gap-1.5"><span>🚫</span> Never sold or shared</span>
-                                <span className="flex items-center gap-1.5"><span>👁️</span> Only you see your notes</span>
-                            </div>
-                        </SlideUp>
-
-                        <SlideUp delay={0.3}>
-                            <p className="text-center mt-2 text-sm text-soft">
-                                Already have an account?{' '}
-                                <Link href={loginHref} className="font-semibold text-strong transition-colors hover:opacity-70">
-                                    Sign in
-                                </Link>
-                            </p>
-                            <p className="mt-3 text-center text-xs leading-6 text-muted">
-                                By continuing, you agree to our{' '}
-                                <Link href="/terms" className="underline text-soft transition-colors hover:opacity-70">Terms</Link>
-                                {' '}and{' '}
-                                <Link href="/privacy" className="underline text-soft transition-colors hover:opacity-70">Privacy Policy</Link>.
-                            </p>
-                        </SlideUp>
-                    </motion.div>
-
-                    <aside
-                        className="paper-card app-paper relative hidden overflow-hidden rounded-[2rem] xl:flex"
-                        style={quietNotebookPanelStyle}
-                    >
-                        <Image
-                            src={AUTH_SIDE_STRIP}
-                            alt="Vertical notebook strip reinforcing that Notive keeps private memories and turns them into something useful later."
-                            fill
-                            sizes="320px"
-                            className="object-cover object-center"
+                    <SlideUp delay={0.1} className="mt-6">
+                        <GoogleSsoPanel
+                            mode="register"
+                            isLoading={isLoading}
+                            onSuccess={handleGoogleSuccess}
+                            onError={handleGoogleError}
                         />
-                        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.42))]" />
-                        <div className="absolute inset-x-0 bottom-0 p-5">
-                            <div className="rounded-[1.35rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-4 backdrop-blur-sm">
-                                <p className="type-overline text-muted">
-                                    {NOTIVE_VOICE.auth.sideTitle}
-                                </p>
-                                <p className="mt-2 text-sm leading-7 text-default">
-                                    {NOTIVE_VOICE.auth.sideBody}
-                                </p>
-                            </div>
-                        </div>
-                    </aside>
-                </div>
+                    </SlideUp>
+
+                    <SlideUp delay={0.3}>
+                        <p className="mt-6 text-center text-sm text-soft">
+                            Already have a diary?{' '}
+                            <Link href={loginHref} className="font-semibold text-strong transition-colors hover:opacity-70">
+                                Sign in
+                            </Link>
+                        </p>
+                        <p className="mt-3 text-center text-xs leading-6 text-muted">
+                            By continuing, you agree to our{' '}
+                            <Link href="/terms" className="underline text-soft transition-colors hover:opacity-70">Terms</Link>
+                            {' '}and{' '}
+                            <Link href="/privacy" className="underline text-soft transition-colors hover:opacity-70">Privacy Policy</Link>.
+                        </p>
+                    </SlideUp>
+                </motion.div>
             </FadeIn>
         </div>
     );

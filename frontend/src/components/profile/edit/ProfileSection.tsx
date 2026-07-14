@@ -67,11 +67,11 @@ export function ProfileSection({
                             placeholder="City, State"
                         />
                         <TextField
-                            label="School or work"
+                            label="Study or work"
                             value={draft.occupation}
                             onChange={(value) => onChange((current) => ({ ...current, occupation: value }))}
-                            placeholder="Student, designer, engineer..."
-                            helper="Helps us tailor guidance for your school, work, or life focus."
+                            placeholder="Student, apprentice, designer, engineer..."
+                            helper="Helps us tailor guidance for your study, work, or life focus."
                         />
                         <TextField
                             label="Date of birth"

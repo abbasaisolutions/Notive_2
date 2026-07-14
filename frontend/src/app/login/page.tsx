@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import NotiveLogo from '@/components/ui/NotiveLogo';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
@@ -13,6 +12,7 @@ import { motion } from 'framer-motion';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
 import NotiveLoadingScreen from '@/components/ui/NotiveLoadingScreen';
 import {
+    QuietNotebookAuthIllustration,
     quietNotebookPageStyle,
     quietNotebookPanelStyle,
 } from '@/components/marketing/NotiveShowcase';
@@ -27,8 +27,6 @@ type LoginFieldErrors = {
     password?: string;
 };
 
-const TRUST_POINTS = NOTIVE_VOICE.auth.trustPoints;
-
 const LOGIN_PHRASES = [
     'Welcome back\u2026',
     'Opening your notebook\u2026',
@@ -36,10 +34,6 @@ const LOGIN_PHRASES = [
     'Reconnecting your story\u2026',
     'Almost there\u2026',
 ];
-
-const SIGNIN_DESKTOP_HERO = '/images/auth-signin-desktop.jpg';
-const SIGNIN_MOBILE_HERO = '/images/auth-signin-mobile.jpg';
-const AUTH_SIDE_STRIP = '/images/auth-side-strip.jpg';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -166,78 +160,13 @@ export default function LoginPage() {
 
     return (
         <div className="page-paper-canvas min-h-screen px-3 py-3 md:px-5 md:py-5" style={quietNotebookPageStyle}>
-            <FadeIn className="mx-auto w-full max-w-[88rem]">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.84fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_320px]">
-                    <div className="space-y-4">
-                        <div
-                            className="paper-card app-paper overflow-hidden rounded-[2rem] lg:hidden"
-                            style={quietNotebookPanelStyle}
-                        >
-                            <div className="relative h-[18rem] sm:h-[20rem]">
-                                <Image
-                                    src={SIGNIN_MOBILE_HERO}
-                                    alt="Phone mockup of the Notive sign-in screen with welcome-back form fields, showing the notebook-inspired interface people return to on mobile."
-                                    fill
-                                    priority
-                                    sizes="(max-width: 1023px) calc(100vw - 1.5rem), 0px"
-                                    className="object-cover object-center"
-                                />
-                                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.5))]" />
-                                <div className="absolute inset-x-0 top-0 p-4">
-                                    <div className="inline-flex rounded-[1rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.84)] px-3 py-2">
-                                        <NotiveLogo href="/" size="xs" />
-                                    </div>
-                                </div>
-                                <div className="absolute inset-x-0 bottom-0 p-4">
-                                    <div className="rounded-[1.4rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-4 backdrop-blur-sm">
-                                        <p className="type-overline text-muted">
-                                            Sign in
-                                        </p>
-                                        <h2 className="mt-2 text-2xl font-semibold leading-[1.08] tracking-[-0.04em] text-strong">
-                                            {NOTIVE_VOICE.auth.signInHeroTitle}
-                                        </h2>
-                                        <p className="mt-2 text-sm leading-6 text-default">
-                                            {NOTIVE_VOICE.auth.signInHeroBody}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div
-                            className="paper-card app-paper relative hidden overflow-hidden rounded-[2rem] lg:flex lg:min-h-[42rem]"
-                            style={quietNotebookPanelStyle}
-                        >
-                            <Image
-                                src={SIGNIN_DESKTOP_HERO}
-                                alt="Phone mockup showing a young person opening Notive sign-in with an Action Brief notebook scene, signaling a return to their notebook before signing in."
-                                fill
-                                priority
-                                sizes="(min-width: 1280px) 32vw, 44vw"
-                                className="object-cover object-center"
-                            />
-                            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.56))]" />
-                            <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5">
-                                <div className="rounded-[1rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.84)] px-3 py-2 backdrop-blur-sm">
-                                    <NotiveLogo href="/" size="xs" />
-                                </div>
-                                <NotebookDoodle name="sprout" accent="sage" className="h-8 w-8 opacity-90" />
-                            </div>
-                            <div className="absolute inset-x-0 bottom-0 p-6">
-                                <div className="max-w-md rounded-[1.6rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-5 backdrop-blur-sm">
-                                    <p className="type-overline text-muted">
-                                        Welcome back
-                                    </p>
-                                    <h2 className="mt-3 text-[2rem] font-semibold leading-[1.05] tracking-[-0.04em] text-strong">
-                                        {NOTIVE_VOICE.auth.signInHeroTitle}
-                                    </h2>
-                                    <p className="mt-3 text-sm leading-7 text-default">
-                                        {NOTIVE_VOICE.auth.signInHeroBody}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <FadeIn className="mx-auto w-full max-w-6xl">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)]">
+                    <QuietNotebookAuthIllustration
+                        eyebrow="Welcome back"
+                        body={NOTIVE_VOICE.auth.signInHeroBody}
+                        doodle="compass"
+                    />
 
                     <motion.div
                         initial={{ opacity: 0, y: 18 }}
@@ -261,23 +190,6 @@ export default function LoginPage() {
                             <p className="mt-4 max-w-xl text-sm leading-7 text-default md:text-base">
                                 {NOTIVE_VOICE.auth.signInBody}
                             </p>
-                        </div>
-
-                        <div
-                            className="app-paper-soft mt-5 rounded-[1.4rem] px-4 py-4"
-                            style={{
-                                background: 'linear-gradient(180deg, rgba(255,255,255,0.84), rgba(255,251,245,0.72))',
-                                border: '1.5px solid rgba(92,92,92,0.18)',
-                            }}
-                        >
-                            <div className="space-y-3">
-                                {TRUST_POINTS.map((point) => (
-                                    <div key={point} className="flex items-start gap-3 text-sm leading-6 text-default">
-                                        <span className="mt-2 inline-block h-1.5 w-1.5 rounded-full bg-[rgb(var(--paper-ink-soft))]" />
-                                        <span>{point}</span>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
 
                         {notice && (
@@ -379,12 +291,12 @@ export default function LoginPage() {
 
                         <SlideUp delay={0.7}>
                             <p className="text-center mt-6 text-sm text-soft">
-                                Don&apos;t have an account?{' '}
+                                New to Notive?{' '}
                                 <Link
                                     href={registerHref}
                                     className="font-semibold text-strong transition-colors hover:opacity-70"
                                 >
-                                    Sign up with Google
+                                    Create a diary
                                 </Link>
                             </p>
                             <p className="mt-3 text-center text-xs leading-6 text-muted">
@@ -395,30 +307,6 @@ export default function LoginPage() {
                             </p>
                         </SlideUp>
                     </motion.div>
-
-                    <aside
-                        className="paper-card app-paper relative hidden overflow-hidden rounded-[2rem] xl:flex"
-                        style={quietNotebookPanelStyle}
-                    >
-                        <Image
-                            src={AUTH_SIDE_STRIP}
-                            alt="Vertical notebook reflection strip about a student's journey, reinforcing that Notive sign-in is part of reflection and growth."
-                            fill
-                            sizes="320px"
-                            className="object-cover object-center"
-                        />
-                        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(38,34,30,0.08),rgba(38,34,30,0.42))]" />
-                        <div className="absolute inset-x-0 bottom-0 p-5">
-                            <div className="rounded-[1.35rem] border border-[rgba(92,92,92,0.18)] bg-[rgba(255,251,245,0.82)] p-4 backdrop-blur-sm">
-                                <p className="type-overline text-muted">
-                                    {NOTIVE_VOICE.auth.sideTitle}
-                                </p>
-                                <p className="mt-2 text-sm leading-7 text-default">
-                                    {NOTIVE_VOICE.auth.sideBody}
-                                </p>
-                            </div>
-                        </div>
-                    </aside>
                 </div>
             </FadeIn>
         </div>

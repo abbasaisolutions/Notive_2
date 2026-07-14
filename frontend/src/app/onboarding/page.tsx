@@ -5,7 +5,7 @@ import Link from 'next/link';
 import NotiveLogo from '@/components/ui/NotiveLogo';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiCamera, FiCpu, FiTrendingUp, FiZap } from 'react-icons/fi';
+import { FiCamera, FiCpu, FiLock, FiTrendingUp, FiZap } from 'react-icons/fi';
 import type { IconType } from 'react-icons';
 import { NotebookDoodle, type NotebookDoodleName } from '@/components/dashboard/NotebookDoodles';
 import { Button } from '@/components/ui/form-elements';
@@ -34,8 +34,8 @@ const GOALS: Array<{ id: OnboardingGoal; icon: IconType; doodle: NotebookDoodleN
 
 const TRACKS: Array<{ id: OnboardingTrack; label: string; desc: string }> = [
     { id: 'life', label: 'Life', desc: 'Relationships, health, home, and everyday moments.' },
-    { id: 'career', label: 'School and work', desc: 'Projects, learning, tasks, and future opportunities.' },
-    { id: 'both', label: 'Both', desc: 'A mix of life, school, and work.' },
+    { id: 'career', label: 'Study and work', desc: 'Projects, learning, tasks, and future opportunities.' },
+    { id: 'both', label: 'Both', desc: 'A mix of life, study, and work.' },
 ];
 
 const EXPERIENCE_LEVELS: Array<{ id: OnboardingExperienceLevel; label: string }> = [
@@ -53,10 +53,10 @@ const WRITING_PREFERENCES: Array<{ id: OnboardingWritingPreference; label: strin
 
 const OUTPUT_GOALS: Array<{ id: OnboardingOutputGoal; label: string }> = [
     { id: 'self-growth', label: 'Know myself better' },
-    { id: 'college-statement', label: 'School statement' },
+    { id: 'college-statement', label: 'Personal statement' },
     { id: 'resume-stories', label: 'Resume stories' },
     { id: 'interview-examples', label: 'Interview stories' },
-    { id: 'portfolio', label: 'Stories for school or work' },
+    { id: 'portfolio', label: 'Stories for study or work' },
 ];
 
 const STARTER_PROMPTS: Record<OnboardingGoal, Record<OnboardingTrack, string[]>> = {
@@ -77,15 +77,15 @@ const STARTER_PROMPTS: Record<OnboardingGoal, Record<OnboardingTrack, string[]>>
     memory: {
         life: [
             'What moment from today do I want to remember?',
-            'What detail from today do I not want to lose?',
+            'Who was there, and what did they say or do?',
         ],
         career: [
-            'What project or task today is worth saving for later?',
-            'What did I make, learn, or improve today that I may want later?',
+            'What did I make, learn, or improve today?',
+            'What was hard about it, and how did I get through?',
         ],
         both: [
             'What happened today that shaped both my life and future?',
-            'What talk or experience today do I want to keep?',
+            'How did today actually feel while I was in it?',
         ],
     },
     growth: {
@@ -105,31 +105,26 @@ const STARTER_PROMPTS: Record<OnboardingGoal, Record<OnboardingTrack, string[]>>
     productivity: {
         life: [
             'What from today might become useful later?',
-            'What part of today would be worth turning into a reusable note?',
+            'What would I tell someone facing the same day tomorrow?',
         ],
         career: [
-            'What did I do today that could become evidence later?',
-            'What project, task, or result from today is worth saving for future use?',
+            'What did I do today that I could point to as evidence?',
+            'What would I do differently if I ran today again?',
         ],
         both: [
             'What from today could be useful again in another context?',
-            'Which moment today could turn into a story, lesson, or proof point later?',
+            'If today became one sentence in my story, what would it say?',
         ],
     },
 };
 
-const ONBOARDING_STEPS = [
-    { id: 1, label: 'Goal' },
-    { id: 2, label: 'Context' },
-    { id: 3, label: 'Starter' },
-];
+const TOTAL_STEPS = 3;
 
-const SETUP_PROGRESS_STEPS = [
-    { label: 'Google verified', status: 'done' },
-    { label: 'Basics', status: 'done' },
-    { label: 'Setup', status: 'active' },
-    { label: 'First note', status: 'upcoming' },
-] as const;
+const STEP_NAMES: Record<number, string> = {
+    1: 'Your goal',
+    2: 'Your focus',
+    3: 'Your first question',
+};
 
 type ProfileSnapshot = {
     birthDate?: string | null;
@@ -269,28 +264,10 @@ function OnboardingPageContent() {
             : 'Basics saved. Now choose how Notive should help you first.');
     }, [ageSuggestsStudent, arrivedFromProfileBasics]);
 
-    const isCompletedProfile = hasCompletedOnboardingFromProfile(user?.profile);
-    const firstIncompleteStep = useMemo(() => {
-        if (isCompletedProfile) return null;
-        if (!goal) return 1;
-        if (!track) return 2;
-        if (selectedPrompt === null) return 3;
-        return null;
-    }, [goal, isCompletedProfile, selectedPrompt, track]);
-
     const canContinue =
         (step === 1 && !!goal) ||
         (step === 2 && !!track) ||
         (step === 3 && selectedPrompt !== null);
-    const maxReachableStep = firstIncompleteStep ?? 3;
-    const hasPartialOnboarding = !isCompletedProfile && Boolean(goal || track || selectedPrompt !== null);
-    const setupResumeLabel = firstIncompleteStep === null
-        ? 'Finish setup'
-        : firstIncompleteStep === 2
-        ? 'Add your focus area'
-        : firstIncompleteStep === 3
-            ? 'Choose your first prompt'
-            : 'Choose your goal';
 
     const buildStepPayload = (currentStep: number): Record<string, unknown> => {
         const payload: Record<string, unknown> = {};
@@ -421,16 +398,6 @@ function OnboardingPageContent() {
         }
     };
 
-    const jumpToStep = (nextStep: number) => {
-        if (isSubmitting || isProgressSaving) return;
-        if (nextStep === step) return;
-        if (nextStep < step || nextStep <= maxReachableStep) {
-            setSubmitError('');
-            setSavedNotice('');
-            setStep(nextStep);
-        }
-    };
-
     const handleSaveForLater = async () => {
         if (isSubmitting || isProgressSaving) return;
         setSubmitError('');
@@ -463,7 +430,15 @@ function OnboardingPageContent() {
     if (!isAuthenticated) return null;
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden page-paper-canvas">
+        <div
+            className="page-paper-canvas relative flex min-h-screen items-center justify-center overflow-hidden px-4"
+            style={{
+                // Keep content clear of the status bar and the Android gesture/nav
+                // bar — the step used to run right under both.
+                paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)',
+                paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)',
+            }}
+        >
             {/* Ruled-line paper texture — matches auth page aesthetic */}
             <div className="pointer-events-none absolute inset-0" style={{
                 backgroundImage: 'repeating-linear-gradient(transparent, transparent 27px, rgba(141,123,105,0.07) 27px, rgba(141,123,105,0.07) 28px)',
@@ -483,50 +458,36 @@ function OnboardingPageContent() {
                     </button>
                 </div>
 
-                <div className="mb-4 text-center">
-                    <div className="type-overline text-muted">Setup {step}/3</div>
-                    <h1 className="type-display-lg mt-2 text-strong">Choose how Notive should help you first.</h1>
+                <div className="mb-5 text-center">
+                    <h1 className="type-display-lg text-strong">Choose how Notive should help you first.</h1>
                     <p className="type-body-sm mx-auto mt-3 max-w-2xl text-default">
                         Pick your goal, choose the part of life to focus on, and start with one easy first question for your first note.
                     </p>
-                    <div className="mx-auto mt-4 grid max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Setup progress">
-                        {SETUP_PROGRESS_STEPS.map((item) => (
-                            <div
-                                key={item.label}
-                                className={`rounded-[1rem] border px-3 py-2 text-xs font-semibold ${
-                                    item.status === 'done'
-                                        ? 'border-[rgba(65,93,76,0.28)] bg-[rgba(202,221,208,0.28)] text-[rgb(65,93,76)]'
-                                        : item.status === 'active'
-                                            ? 'border-primary/35 bg-primary/15 text-strong'
-                                            : 'workspace-pill-muted text-muted'
-                                }`}
-                            >
-                                {item.label}
-                            </div>
-                        ))}
-                    </div>
-                    <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                        {ONBOARDING_STEPS.map((item) => {
-                            const isActive = item.id === step;
-                            const isAvailable = item.id <= maxReachableStep || item.id <= step;
-                            return (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    onClick={() => jumpToStep(item.id)}
-                                    disabled={!isAvailable || isSubmitting || isProgressSaving}
-                                    className={`type-label-sm rounded-xl border px-3 py-1.5 transition-colors ${
-                                        isActive
-                                            ? 'border-primary/40 bg-primary/15 text-strong'
-                                            : isAvailable
-                                                ? 'workspace-button-outline text-soft'
-                                                : 'workspace-pill-muted cursor-not-allowed text-disabled'
-                                    }`}
-                                >
-                                    {item.label}
-                                </button>
-                            );
-                        })}
+
+                    {/*
+                        A bar, not chips. The previous step indicators were styled with
+                        borders and fills that read as buttons while being inert (or
+                        disabled), so the screen looked full of dead controls.
+                    */}
+                    <div
+                        className="mx-auto mt-5 max-w-sm"
+                        role="progressbar"
+                        aria-valuenow={step}
+                        aria-valuemin={1}
+                        aria-valuemax={TOTAL_STEPS}
+                        aria-valuetext={`Step ${step} of ${TOTAL_STEPS}: ${STEP_NAMES[step]}`}
+                    >
+                        <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(92,92,92,0.12)]">
+                            <motion.div
+                                className="h-full rounded-full bg-primary"
+                                initial={false}
+                                animate={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
+                                transition={{ duration: 0.35, ease: 'easeOut' }}
+                            />
+                        </div>
+                        <p className="type-micro mt-2 text-muted">
+                            Step {step} of {TOTAL_STEPS} &middot; {STEP_NAMES[step]}
+                        </p>
                     </div>
                 </div>
 
@@ -540,30 +501,6 @@ function OnboardingPageContent() {
                 {savedNotice && (
                     <div role="status" className="type-body-sm mb-4 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-accent">
                         {savedNotice}
-                    </div>
-                )}
-
-                {hasPartialOnboarding && (
-                    <div className="workspace-soft-panel mb-4 rounded-2xl border border-primary/20 px-4 py-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <p className="type-overline text-muted">Resume setup</p>
-                                <h2 className="type-card-title mt-1 text-strong">{setupResumeLabel}</h2>
-                                <p className="type-body-sm mt-1 text-default">
-                                    Finishing setup gives Notive better prompts, cleaner story extraction, and reminder timing that fits how you write.
-                                </p>
-                            </div>
-                            {firstIncompleteStep && (
-                                <button
-                                    type="button"
-                                    onClick={() => jumpToStep(firstIncompleteStep)}
-                                    disabled={isSubmitting || isProgressSaving}
-                                    className="workspace-button-primary type-label-sm rounded-xl px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    Continue setup
-                                </button>
-                            )}
-                        </div>
                     </div>
                 )}
 
@@ -792,37 +729,20 @@ function OnboardingPageContent() {
                                 Start with a blank note
                             </button>
 
-                            <div className="workspace-soft-panel type-body-sm mt-5 rounded-2xl border border-primary/15 p-4 text-default">
-                                <p className="type-overline text-muted">First note preview</p>
-                                <p className="mt-2 text-strong">
-                                    {selectedPrompt
-                                        ? selectedPrompt
-                                        : 'You will start with a blank note.'}
-                                </p>
-                            </div>
-
-                            <div className="workspace-soft-panel type-micro mt-6 rounded-xl p-4 text-default">
-                                You can bring in old posts, files, and memories later in Me after your first note is saved.
-                            </div>
-
-                            <div className="workspace-soft-panel type-micro mt-3 rounded-xl p-4 text-default space-y-1.5">
-                                <p className="font-semibold text-xs">Your journal stays private with us</p>
-                                <p className="text-xs opacity-80">
-                                    Notes are stored securely and encrypted. We never sell or share what you write.
-                                    Only you can see your entries.
-                                </p>
-                            </div>
-
-                            <div className="workspace-soft-panel type-micro mt-3 rounded-xl p-4 text-default space-y-1.5">
-                                <p className="font-semibold text-xs">Notive builds useful context as you write</p>
-                                <p className="text-xs opacity-80">
-                                    Notive privately tracks themes, lessons, vocabulary, and story signals
-                                    so your diary becomes more useful over time.
-                                </p>
-                                <p className="text-xs opacity-60">
-                                    Android may ask for notifications when you first open Notive. Mic, location, and calendar access are requested only when a feature needs them.
-                                </p>
-                            </div>
+                            {/*
+                                One line, not three panels. Privacy is already stated on the
+                                landing and register screens; repeating it in full on every
+                                surface crowded the step and read as an ad.
+                            */}
+                            <p className="type-micro mt-6 flex items-start gap-2 text-muted">
+                                <FiLock className="mt-0.5 shrink-0" size={13} aria-hidden="true" />
+                                <span>
+                                    Notes are encrypted and private to you.{' '}
+                                    <Link href="/privacy" className="underline transition-opacity hover:opacity-70">
+                                        How Notive uses what you write
+                                    </Link>
+                                </span>
+                            </p>
                         </motion.div>
                     )}
                 </AnimatePresence>

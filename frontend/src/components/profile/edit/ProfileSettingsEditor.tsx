@@ -493,7 +493,7 @@ export function ProfileSettingsEditor() {
                 id: 'focus',
                 label: 'Choose a focus area',
                 done: Boolean(preferencesDraft.focusArea),
-                hint: 'This tells us to focus on life, school, work, or both.',
+                hint: 'This tells us to focus on life, study, work, or both.',
             },
             {
                 id: 'experience',

@@ -68,7 +68,7 @@ export function PreferencesSection({
                             value={draft.focusArea}
                             onChange={(value) => onChange((current) => ({ ...current, focusArea: value }))}
                             options={FOCUS_AREA_OPTIONS}
-                            helper="Choose whether Notive should focus on life, school, work, or both."
+                            helper="Choose whether Notive should focus on life, study, work, or both."
                         />
                         <SelectField
                             label="Where you are now"
@@ -143,24 +143,22 @@ export function PreferencesSection({
                             <p className="text-xs uppercase tracking-[0.16em] text-ink-muted font-bold">What Notive Will Focus On</p>
                             <h3 className="workspace-heading mt-2 text-xl font-serif">How Notive is set right now</h3>
                         </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="workspace-soft-panel rounded-2xl p-4">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Setup</p>
-                                <p className="workspace-heading mt-1 capitalize">{profileContext.stage.replace('_', ' ')}</p>
-                            </div>
-                            <div className="workspace-soft-panel rounded-2xl p-4">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Focus</p>
-                                <p className="workspace-heading mt-1 capitalize">{profileContext.track}</p>
-                            </div>
-                            <div className="workspace-soft-panel rounded-2xl p-4">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Self Growth</p>
-                                <p className="workspace-heading mt-1">{profileContext.personalGrowthScore}%</p>
-                            </div>
-                            <div className="workspace-soft-panel rounded-2xl p-4">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">School / Work Ready</p>
-                                <p className="workspace-heading mt-1">{profileContext.professionalReadinessScore}%</p>
-                            </div>
-                        </div>
+                        {/* A list, not four card-shaped panels — none of these are tappable. */}
+                        <dl className="divide-y divide-[rgba(92,92,92,0.1)]">
+                            {[
+                                { term: 'Setup', value: profileContext.stage.replace('_', ' '), capitalize: true },
+                                { term: 'Focus', value: profileContext.track, capitalize: true },
+                                { term: 'Self growth', value: `${profileContext.personalGrowthScore}%` },
+                                { term: 'Study / work ready', value: `${profileContext.professionalReadinessScore}%` },
+                            ].map((row) => (
+                                <div key={row.term} className="flex items-baseline justify-between gap-4 py-2.5">
+                                    <dt className="text-sm text-ink-secondary">{row.term}</dt>
+                                    <dd className={`workspace-heading text-sm ${row.capitalize ? 'capitalize' : ''}`}>
+                                        {row.value}
+                                    </dd>
+                                </div>
+                            ))}
+                        </dl>
                     </section>
                 </div>
             </section>

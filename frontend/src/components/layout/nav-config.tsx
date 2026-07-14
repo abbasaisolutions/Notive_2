@@ -81,7 +81,7 @@ const icons = {
 
 const homeNavItem: NavItem = { href: '/dashboard', label: NOTIVE_VOICE.surfaces.homeBase, shortLabel: 'Today', icon: icons.home, matchPrefixes: ['/dashboard'] };
 const writeNavItem: NavItem = { href: '/entry/new', label: 'Write', shortLabel: 'Write', icon: icons.write, isMain: true, matchPrefixes: ['/entry/new', '/entry/edit'] };
-const memoriesNavItem: NavItem = { href: '/timeline', label: NOTIVE_VOICE.surfaces.memoryAtlas, shortLabel: 'Notebook', icon: icons.memories, matchPrefixes: ['/timeline'] };
+const memoriesNavItem: NavItem = { href: '/timeline', label: NOTIVE_VOICE.surfaces.memoryAtlas, shortLabel: 'Timeline', icon: icons.memories, matchPrefixes: ['/timeline'] };
 const notificationsNavItem: NavItem = { href: '/notifications', label: 'Notifications', shortLabel: 'Alerts', icon: icons.notifications, matchPrefixes: ['/notifications'] };
 const guideNavItem: NavItem = { href: '/chat', label: NOTIVE_VOICE.surfaces.reflectionCoach, shortLabel: 'Ask', icon: icons.guide, matchPrefixes: ['/chat'] };
 const groupsNavItem: NavItem = { href: '/chapters', label: NOTIVE_VOICE.surfaces.storyCollections, shortLabel: 'Threads', icon: icons.chapters, matchPrefixes: ['/chapters'] };
@@ -184,7 +184,7 @@ export const getMobileMainNavItems = (maturity: WorkspaceMaturity): NavItem[] =>
 
 export const getMobileMoreNavSections = (_maturity: WorkspaceMaturity): NavSection[] => {
     // Only admin items remain in the More drawer.
-    // Regular users see Today, Notebook, +Write, AskNotive, Me in the bottom bar.
+    // Regular users see Today, Timeline, +Write, AskNotive, Me in the bottom bar.
     return [
         {
             id: 'admin',
@@ -226,7 +226,7 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
             description: 'Review recent reminders, shared-memory activity, and inbox updates in one place.',
             section: 'Account',
             breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Notifications' }],
-            primaryAction: { label: 'Open Notebook', shortLabel: 'Notebook', href: '/timeline?view=shared' },
+            primaryAction: { label: 'Open Timeline', shortLabel: 'Timeline', href: '/timeline?view=shared' },
             secondaryAction: { label: 'Edit Alerts', shortLabel: 'Settings', href: '/profile/edit?tab=reminders' },
             visibleInfo: ['Unread items', 'Recent activity', 'Notification settings'],
             journeyStage: 'account',
@@ -241,7 +241,7 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
             section: 'Main',
             breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Today' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
-            secondaryAction: { label: 'Open Notebook', shortLabel: 'Notebook', href: '/timeline' },
+            secondaryAction: { label: 'Open Timeline', shortLabel: 'Timeline', href: '/timeline' },
             visibleInfo: ['Inner weather', 'Active threads', 'Memory echo'],
             journeyStage: 'capture',
             headerMode: 'none',
@@ -250,10 +250,10 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
     {
         prefix: '/timeline',
         meta: {
-            title: 'Notebook',
+            title: 'Timeline',
             description: 'Look back at your private notes in order and reopen old moments quickly.',
             section: 'Main',
-            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Notebook' }],
+            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Timeline' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new?mode=quick' },
             secondaryAction: { label: 'Open Threads', shortLabel: 'Threads', href: '/chapters' },
             visibleInfo: ['Dates', 'Search', 'Threads'],
@@ -267,9 +267,9 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
             title: 'Memory',
             description: 'Read one memory with its feeling, tags, and details.',
             section: 'Main',
-            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Notebook', href: '/timeline' }, { label: 'Memory' }],
+            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Timeline', href: '/timeline' }, { label: 'Memory' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
-            secondaryAction: { label: 'Open Notebook', shortLabel: 'Notebook', href: '/timeline' },
+            secondaryAction: { label: 'Open Timeline', shortLabel: 'Timeline', href: '/timeline' },
             visibleInfo: ['Memory text', 'Feeling', 'Related memories'],
             journeyStage: 'capture',
             headerMode: 'none',
@@ -281,8 +281,8 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
             title: 'Shared memory',
             description: 'Review a bundle someone sent you, react to it, and decide what you want to carry forward.',
             section: 'Main',
-            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Notebook', href: '/timeline' }, { label: 'Shared memory' }],
-            primaryAction: { label: 'Open Notebook', shortLabel: 'Notebook', href: '/timeline' },
+            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Timeline', href: '/timeline' }, { label: 'Shared memory' }],
+            primaryAction: { label: 'Open Timeline', shortLabel: 'Timeline', href: '/timeline' },
             secondaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
             visibleInfo: ['Sender', 'Shared memories', 'Reaction'],
             journeyStage: 'capture',
@@ -297,7 +297,7 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
             section: 'Organize',
             breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Threads' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
-            secondaryAction: { label: 'Open Notebook', shortLabel: 'Notebook', href: '/timeline' },
+            secondaryAction: { label: 'Open Timeline', shortLabel: 'Timeline', href: '/timeline' },
             visibleInfo: ['Threads', 'Memory counts', 'Topics'],
             journeyStage: 'organize',
             headerMode: 'none',
@@ -310,7 +310,7 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
             description: 'Bring old posts, notes, and files into Notive so they can become useful memories, lessons, and stories.',
             section: 'Organize',
             breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Bring In' }],
-            primaryAction: { label: 'Open Notebook', shortLabel: 'Notebook', href: '/timeline' },
+            primaryAction: { label: 'Open Timeline', shortLabel: 'Timeline', href: '/timeline' },
             secondaryAction: { label: 'Open Story Seeds', shortLabel: 'Seeds', href: '/portfolio?view=evidence' },
             visibleInfo: ['Connected apps', 'Import queue', 'Ready items'],
             journeyStage: 'organize',
@@ -324,7 +324,7 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
             description: 'Ask better questions, understand your notes, and trace the threads underneath them.',
             section: 'Reflect',
             breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'AskNotive' }],
-            primaryAction: { label: 'Open Notebook', shortLabel: 'Notebook', href: '/timeline' },
+            primaryAction: { label: 'Open Timeline', shortLabel: 'Timeline', href: '/timeline' },
             secondaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
             visibleInfo: ['Notes', 'Threads', 'Questions'],
             journeyStage: 'reflect',

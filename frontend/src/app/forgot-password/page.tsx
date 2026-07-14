@@ -59,8 +59,6 @@ export default function ForgotPasswordPage() {
             <FadeIn className="mx-auto w-full max-w-6xl">
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
                     <QuietNotebookAuthIllustration
-                        src="/images/hero-5.jpg"
-                        alt="Teen checking Notive on a phone before returning to their private diary."
                         eyebrow="Password help"
                         body={NOTIVE_VOICE.auth.forgotBody}
                     />

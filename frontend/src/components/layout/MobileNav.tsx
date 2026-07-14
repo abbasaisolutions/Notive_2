@@ -13,7 +13,6 @@ import { FiEdit3, FiMic, FiMoreHorizontal } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import useHasMounted from '@/hooks/use-has-mounted';
 import UserAvatar from '@/components/ui/UserAvatar';
-import ThemeMoodToggle from '@/components/layout/ThemeMoodToggle';
 import {
     filterNavItemsByRole,
     filterNavSectionsByRole,
@@ -296,12 +295,6 @@ export default function MobileNav() {
                                 </div>
                             </div>
                         ))}
-                        <div className="mt-3 border-t border-[rgba(var(--paper-border),0.18)] pt-3">
-                            <div className="type-overline px-2 pb-2 text-muted">
-                                Mood
-                            </div>
-                            <ThemeMoodToggle compact />
-                        </div>
                         {user && (
                             <div className="mt-3 border-t border-[rgba(var(--paper-border),0.18)] pt-3">
                                 <div className="type-overline px-2 pb-2 text-muted">
