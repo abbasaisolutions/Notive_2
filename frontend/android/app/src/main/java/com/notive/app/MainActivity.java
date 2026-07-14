@@ -5,6 +5,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 
+import androidx.appcompat.app.AppCompatDelegate;
+
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.PluginHandle;
 
@@ -14,6 +16,16 @@ import ee.forgr.capacitor.social.login.SocialLoginPlugin;
 public class MainActivity extends BridgeActivity implements ModifiedMainActivityForSocialLoginPlugin {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Notive is paper-only: there is no dark theme. Pin the app to light so that
+        // AppCompat's DayNight dialogs — the date picker in particular — paint dark
+        // text instead of white text on the light paper sheet beneath them.
+        //
+        // This is deliberately done here rather than by changing AppTheme.NoActionBar's
+        // parent from Theme.AppCompat.DayNight to .Light. That change was tried and it
+        // broke Google SSO and email sign-in outright, so the theme hierarchy the
+        // social-login plugin resolves against must be left alone.
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+
         registerPlugin(NotificationSettingsPlugin.class);
         registerPlugin(SharedContentPlugin.class);
         rewriteShareIntent(getIntent());
