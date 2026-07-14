@@ -82,7 +82,7 @@ export default function WritingVoiceCard({ writingVoice, emotionalRange }: Writi
         <motion.section
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="notebook-card rounded-[1.75rem] p-5"
+            className="notebook-card rounded-card-175 p-5"
         >
             <div className="flex items-center justify-between mb-3">
                 <p
@@ -109,7 +109,7 @@ export default function WritingVoiceCard({ writingVoice, emotionalRange }: Writi
                 </p>
                 <div className="mt-3 space-y-2.5">
                     {tenseOrder.map((tense, index) => (
-                        <div key={tense} className="rounded-[1rem] bg-[rgba(var(--paper-border),0.08)] px-3 py-2.5">
+                        <div key={tense} className="rounded-2xl bg-[rgba(var(--paper-border),0.08)] px-3 py-2.5">
                             <div className="mb-1.5 flex items-center justify-between gap-3">
                                 <div className="min-w-0">
                                     <p className="text-[0.72rem] font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>

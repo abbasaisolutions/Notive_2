@@ -286,7 +286,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                 <div className="flex min-w-0 items-center gap-2">
                     {entry.mood && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: MOOD_COLORS[entry.mood] || '#94A3B8' }} />}
                     <span className="truncate text-[0.78rem] font-medium text-[rgb(var(--paper-ink))]">{entry.title || 'Untitled'}</span>
-                    <span className="ml-auto shrink-0 text-[0.65rem] text-[rgb(107,107,107)]">
+                    <span className="ml-auto shrink-0 text-[0.65rem] text-[rgb(var(--text-soft))]">
                         {new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                 </div>
@@ -479,7 +479,7 @@ export default function ShareMemorySheet({ initialEntry, allEntries, onClose }: 
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: '100%' }}
                 transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                className="fixed inset-x-0 bottom-0 z-[100] max-h-[88vh] overflow-hidden rounded-t-[1.5rem] border-t border-[rgba(92,92,92,0.12)] bg-[rgb(var(--paper-bg))] shadow-xl md:inset-x-auto md:inset-y-0 md:m-auto md:max-h-[560px] md:max-w-lg md:rounded-[1.5rem] md:border"
+                className="fixed inset-x-0 bottom-0 z-[100] max-h-[88vh] overflow-hidden rounded-t-3xl border-t border-[rgba(92,92,92,0.12)] bg-[rgb(var(--paper-bg))] shadow-xl md:inset-x-auto md:inset-y-0 md:m-auto md:max-h-[560px] md:max-w-lg md:rounded-3xl md:border"
                 style={{ bottom: 'var(--app-bottom-clearance, 0px)' }}
                 onClick={(event) => event.stopPropagation()}
                 role="dialog"

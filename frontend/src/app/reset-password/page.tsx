@@ -103,7 +103,7 @@ function ResetPasswordPageContent() {
                         initial={{ opacity: 0, y: 18 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.42, ease: 'easeOut' }}
-                        className="paper-card app-paper relative rounded-[2rem] p-5 sm:p-8"
+                        className="paper-card app-paper relative rounded-card-200 p-5 sm:p-8"
                         style={quietNotebookPanelStyle}
                     >
                         <div className="absolute right-5 top-5">
@@ -125,7 +125,7 @@ function ResetPasswordPageContent() {
 
                         {!isSuccess ? (
                             <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-                                <div className="app-paper-soft rounded-[1.4rem] p-4 text-center">
+                                <div className="app-paper-soft rounded-card-140 p-4 text-center">
                                     <span className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-[rgba(var(--paper-border),0.18)] bg-white/72 text-strong">
                                         <FiKey size={24} aria-hidden="true" />
                                     </span>
@@ -192,7 +192,7 @@ function ResetPasswordPageContent() {
                                 animate={{ opacity: 1, scale: 1 }}
                                 className="mt-8 text-center"
                             >
-                                <div className="app-paper-soft rounded-[1.5rem] p-6">
+                                <div className="app-paper-soft rounded-3xl p-6">
                                     <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(var(--paper-border),0.18)] bg-white/72 text-strong">
                                         <FiCheckCircle size={34} aria-hidden="true" />
                                     </div>

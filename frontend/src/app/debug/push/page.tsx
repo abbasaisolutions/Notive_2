@@ -413,7 +413,7 @@ export default function PushDebugPage() {
             <section style={{ marginBottom: 20, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
                     onClick={checkNativePermission}
-                    style={{ ...buttonStyle, background: '#8A9A6F' }}
+                    style={{ ...buttonStyle, background: 'rgb(var(--brand))' }}
                 >
                     1. Check native permission
                 </button>

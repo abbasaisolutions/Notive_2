@@ -205,7 +205,7 @@ export const buildGentleReflectionDraft = (input: {
 
         return {
             id: promptId,
-            title: resurfacedMoment ? 'This thread is still here' : 'A calm thread is forming',
+            title: resurfacedMoment ? 'This pattern is still here' : 'A pattern is forming',
             body: resurfacedMoment
                 ? `Recent notes keep circling ${theme.toLowerCase()}, and it echoes something older you already wrote.`
                 : `Recent notes keep circling ${theme.toLowerCase()}. That may be worth one more line today.`,

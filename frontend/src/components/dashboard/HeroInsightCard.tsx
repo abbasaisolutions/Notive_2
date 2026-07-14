@@ -149,7 +149,7 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
 
     if (loading) {
         return (
-            <div className="notebook-card rounded-[1.75rem] p-5 animate-pulse">
+            <div className="notebook-card rounded-card-175 p-5 animate-pulse">
                 <div className="mb-3 h-3 w-24 rounded-full" style={{ backgroundColor: 'rgba(var(--paper-border), 0.3)' }} />
                 <div className="mb-2 h-4 w-3/4 rounded-full" style={{ backgroundColor: 'rgba(var(--paper-border), 0.2)' }} />
                 <div className="h-4 w-1/2 rounded-full" style={{ backgroundColor: 'rgba(var(--paper-border), 0.15)' }} />
@@ -172,7 +172,7 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
-            className="notebook-card overflow-hidden rounded-[1.75rem]"
+            className="notebook-card overflow-hidden rounded-card-175"
             style={{ backgroundColor: accent.bg }}
         >
             <div className="p-5">
@@ -214,7 +214,7 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
                     )}
                 </p>
 
-                <div className="mt-4 rounded-[1.1rem] border border-[rgba(var(--paper-border),0.28)] bg-white/35 p-3">
+                <div className="mt-4 rounded-card-110 border border-[rgba(var(--paper-border),0.28)] bg-white/35 p-3">
                     <p
                         className="text-[0.66rem] font-semibold uppercase tracking-[0.12em]"
                         style={{ color: 'rgb(var(--paper-ink-muted))' }}

@@ -25,7 +25,7 @@ export default function Skeleton({ className = '', variant = 'rectangular' }: Sk
 // Skeleton card for entry previews
 export function SkeletonCard() {
   return (
-    <div className="workspace-panel rounded-[2rem] p-8">
+    <div className="workspace-panel rounded-card-200 p-8">
       <div className="flex justify-between items-start mb-4">
         <Skeleton className="h-6 w-32" />
         <Skeleton variant="circular" className="h-8 w-8" />
@@ -45,7 +45,7 @@ export function SkeletonCard() {
 // Skeleton for stat card
 export function SkeletonStat() {
   return (
-    <div className="workspace-panel rounded-[2rem] p-6">
+    <div className="workspace-panel rounded-card-200 p-6">
       <Skeleton variant="circular" className="h-10 w-10 mb-3" />
       <Skeleton className="h-8 w-16 mb-2" />
       <Skeleton className="h-4 w-24" />

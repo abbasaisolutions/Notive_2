@@ -75,7 +75,7 @@ export function SecuritySection({
     return (
         <div className="space-y-6">
             <section className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
-                <div className="workspace-panel rounded-[2rem] p-8 space-y-6">
+                <div className="workspace-panel rounded-card-200 p-8 space-y-6">
                     <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Security</p>
                         <h2 className="workspace-heading mt-2 text-2xl font-serif">Check your account before big changes</h2>
@@ -84,7 +84,7 @@ export function SecuritySection({
                         </p>
                     </div>
 
-                    <div className="workspace-soft-panel rounded-[1.6rem] p-5 space-y-4">
+                    <div className="workspace-soft-panel rounded-card-160 p-5 space-y-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                                 <p className="workspace-heading text-sm font-semibold">Locked actions</p>
@@ -117,7 +117,7 @@ export function SecuritySection({
                                     type="button"
                                     onClick={onUnlockWithPassword}
                                     disabled={isUnlockingSecurity}
-                                    className="workspace-button-outline inline-flex items-center justify-center gap-3 rounded-[1.3rem] px-6 py-4 text-sm font-semibold transition-all disabled:opacity-50"
+                                    className="workspace-button-outline inline-flex items-center justify-center gap-3 rounded-card-130 px-6 py-4 text-sm font-semibold transition-all disabled:opacity-50"
                                 >
                                     {isUnlockingSecurity ? (
                                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -144,7 +144,7 @@ export function SecuritySection({
                     </div>
                 </div>
 
-                <section className="workspace-panel rounded-[2rem] p-6 space-y-4">
+                <section className="workspace-panel rounded-card-200 p-6 space-y-4">
                     <div className="flex items-start gap-3">
                         <div className="mt-1 rounded-xl bg-primary/10 p-2 text-primary">
                             <FiShield size={16} aria-hidden="true" />
@@ -171,7 +171,7 @@ export function SecuritySection({
             </section>
 
             <section className="grid gap-6 xl:grid-cols-[1fr,1fr]">
-                <div className="workspace-panel rounded-[2rem] p-8 space-y-6">
+                <div className="workspace-panel rounded-card-200 p-8 space-y-6">
                     <div className="flex items-start gap-3">
                         <div className="mt-1 rounded-xl bg-primary/10 p-2 text-primary">
                             <FiMail size={16} aria-hidden="true" />
@@ -211,7 +211,7 @@ export function SecuritySection({
                         type="button"
                         onClick={onUpdateEmail}
                         disabled={!isSensitiveUnlocked || isUpdatingEmail}
-                        className="workspace-button-primary inline-flex items-center justify-center gap-3 rounded-[1.3rem] px-6 py-4 text-sm font-semibold transition-all disabled:opacity-50"
+                        className="workspace-button-primary inline-flex items-center justify-center gap-3 rounded-card-130 px-6 py-4 text-sm font-semibold transition-all disabled:opacity-50"
                     >
                         {isUpdatingEmail ? (
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -222,7 +222,7 @@ export function SecuritySection({
                     </button>
                 </div>
 
-                <div className="workspace-panel rounded-[2rem] p-8 space-y-6">
+                <div className="workspace-panel rounded-card-200 p-8 space-y-6">
                     <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Password</p>
                         <h3 className="workspace-heading mt-2 text-xl font-serif">
@@ -257,7 +257,7 @@ export function SecuritySection({
                         type="button"
                         onClick={onChangePassword}
                         disabled={!isSensitiveUnlocked || isChangingPassword}
-                        className="workspace-button-primary inline-flex items-center justify-center gap-3 rounded-[1.3rem] px-6 py-4 text-sm font-semibold transition-all disabled:opacity-50"
+                        className="workspace-button-primary inline-flex items-center justify-center gap-3 rounded-card-130 px-6 py-4 text-sm font-semibold transition-all disabled:opacity-50"
                     >
                         {isChangingPassword ? (
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -271,7 +271,7 @@ export function SecuritySection({
 
             <section
                 id="delete-account"
-                className="rounded-[2rem] border p-8 space-y-6"
+                className="rounded-card-200 border p-8 space-y-6"
                 style={{
                     background: 'linear-gradient(180deg, rgba(255,255,255,0.82), rgba(246,236,226,0.92))',
                     borderColor: 'rgba(214, 185, 149, 0.5)',
@@ -304,7 +304,7 @@ export function SecuritySection({
                     type="button"
                     onClick={() => setShowDeleteConfirm(true)}
                     disabled={!isSensitiveUnlocked || isDeletingAccount || deleteConfirmText !== currentEmail}
-                    className="inline-flex items-center justify-center gap-3 rounded-[1.3rem] border border-[rgba(214,185,149,0.44)] bg-[rgba(214,185,149,0.12)] px-6 py-4 text-sm font-semibold text-[rgb(var(--text-primary))] transition-all hover:bg-[rgba(214,185,149,0.18)] disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-3 rounded-card-130 border border-[rgba(214,185,149,0.44)] bg-[rgba(214,185,149,0.12)] px-6 py-4 text-sm font-semibold text-[rgb(var(--text-primary))] transition-all hover:bg-[rgba(214,185,149,0.18)] disabled:opacity-50"
                 >
                     {isDeletingAccount ? (
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />

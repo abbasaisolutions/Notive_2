@@ -50,8 +50,8 @@ export default function FallbackSupportCallout({
     return (
         <div className={cn(
             isNotebook
-                ? 'notebook-card-soft rounded-[1.5rem] p-4'
-                : 'rounded-[1.5rem] border border-amber-300/20 bg-[linear-gradient(145deg,rgba(120,84,22,0.18),rgba(8,12,22,0.78))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
+                ? 'notebook-card-soft rounded-3xl p-4'
+                : 'rounded-3xl border border-amber-300/20 bg-[linear-gradient(145deg,rgba(120,84,22,0.18),rgba(8,12,22,0.78))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
             className
         )}>
             <div className="flex flex-wrap items-center gap-2">
@@ -100,7 +100,7 @@ export default function FallbackSupportCallout({
                 )}
             </div>
             {fallback.supportMemory && (
-                <div className={isNotebook ? 'notebook-card mt-3 rounded-[1.25rem] p-3' : 'mt-3 rounded-xl border border-white/10 bg-black/20 p-3'}>
+                <div className={isNotebook ? 'notebook-card mt-3 rounded-card-125 p-3' : 'mt-3 rounded-xl border border-white/10 bg-black/20 p-3'}>
                     <p className={isNotebook ? 'notebook-kicker' : 'text-xs uppercase tracking-[0.12em] text-ink-muted'}>Why this backup is visible</p>
                     <p className={isNotebook ? 'notebook-copy mt-2 text-sm leading-7' : 'mt-2 text-sm leading-7 text-white/90'}>{fallback.supportMemory.summary}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -130,7 +130,7 @@ export default function FallbackSupportCallout({
                 </div>
             )}
             {fallback.draftStarter && (
-                <div className={isNotebook ? 'notebook-card mt-3 rounded-[1.25rem] p-3' : 'mt-3 rounded-xl border border-white/10 bg-black/20 p-3'}>
+                <div className={isNotebook ? 'notebook-card mt-3 rounded-card-125 p-3' : 'mt-3 rounded-xl border border-white/10 bg-black/20 p-3'}>
                     <p className={isNotebook ? 'notebook-kicker' : 'text-xs uppercase tracking-[0.12em] text-ink-muted'}>What to say next</p>
                     <p className={isNotebook ? 'notebook-copy mt-2 text-sm leading-7' : 'mt-2 text-sm leading-7 text-white/90'}>{fallback.draftStarter}</p>
                     {fallback.mode === 'alternate_contact' && (

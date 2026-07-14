@@ -72,7 +72,7 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
                     transition={{ duration: 0.25 }}
-                    className="notebook-card-soft rounded-[1.75rem] px-5 py-4 flex items-start gap-4"
+                    className="notebook-card-soft rounded-card-175 px-5 py-4 flex items-start gap-4"
                     aria-label="Calendar permission required"
                 >
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[rgba(var(--paper-sage),0.12)]">
@@ -122,7 +122,7 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
                     transition={{ duration: 0.25 }}
-                    className="notebook-card-soft rounded-[1.75rem] px-5 py-3.5 flex items-center gap-3"
+                    className="notebook-card-soft rounded-card-175 px-5 py-3.5 flex items-center gap-3"
                     aria-label="Calendar opt-in reminder"
                 >
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(var(--paper-sage),0.10)]">
@@ -166,7 +166,7 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.3, ease: [0.22, 0.61, 0.36, 1] }}
-                className="notebook-card-soft rounded-[1.75rem] px-5 py-5"
+                className="notebook-card-soft rounded-card-175 px-5 py-5"
                 aria-label="Connect your calendar"
             >
                 <div className="flex items-start gap-4">

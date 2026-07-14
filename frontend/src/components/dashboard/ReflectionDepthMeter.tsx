@@ -30,7 +30,7 @@ export default function ReflectionDepthMeter({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.14, duration: 0.28 }}
-            className="notebook-card-soft rounded-[1.75rem] p-5"
+            className="notebook-card-soft rounded-card-175 p-5"
         >
             <p
                 className="section-label mb-3"

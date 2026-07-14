@@ -166,7 +166,7 @@ const buildBody = (input: {
 
     if (scenario === 'conflict') {
         return joinSentences(
-            'A relationship thread is taking up a lot of room.',
+            'A relationship pattern is taking up a lot of room.',
             nextMoveDescription || 'Draft the first honest lines before you reply or try to solve the whole thing.'
         );
     }

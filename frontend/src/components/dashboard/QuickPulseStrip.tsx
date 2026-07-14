@@ -151,7 +151,7 @@ export default function QuickPulseStrip({ entries, streak, totalWords }: QuickPu
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, ease: 'easeOut' }}
-            className="notebook-card rounded-[1.75rem] p-5"
+            className="notebook-card rounded-card-175 p-5"
         >
             <div className="flex items-center justify-between gap-3">
                 <div>
@@ -160,7 +160,7 @@ export default function QuickPulseStrip({ entries, streak, totalWords }: QuickPu
                         Momentum reads faster as signals.
                     </h3>
                 </div>
-                <span className="rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(248,244,237,0.9)] px-2.5 py-1 text-[0.68rem] text-[rgb(107,107,107)]">
+                <span className="rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(248,244,237,0.9)] px-2.5 py-1 text-[0.68rem] text-[rgb(var(--text-soft))]">
                     {entries.length > 0 ? `${entries.length} saved` : 'Ready'}
                 </span>
             </div>
@@ -172,7 +172,7 @@ export default function QuickPulseStrip({ entries, streak, totalWords }: QuickPu
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.05 * i, duration: 0.24 }}
-                        className="notebook-card-soft rounded-[1.3rem] px-4 py-3"
+                        className="notebook-card-soft rounded-card-130 px-4 py-3"
                         title={pill.detail}
                     >
                         <div className="flex items-start justify-between gap-2">
@@ -194,7 +194,7 @@ export default function QuickPulseStrip({ entries, streak, totalWords }: QuickPu
                         </p>
                         {pill.delta && (
                             <p className="mt-1.5 text-[0.6rem] leading-4 font-medium"
-                               style={{ color: pill.delta.positive ? 'rgb(138,154,111)' : 'rgb(180,120,80)' }}>
+                               style={{ color: pill.delta.positive ? 'rgb(var(--brand))' : 'rgb(180,120,80)' }}>
                                 {pill.delta.text}
                             </p>
                         )}

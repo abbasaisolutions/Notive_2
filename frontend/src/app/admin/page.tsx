@@ -555,7 +555,7 @@ export default function AdminPage() {
             <div className="admin-stage page-paper-canvas min-h-screen px-4 py-10">
                 <div className="mx-auto max-w-2xl">
                     <AppPanel className="space-y-5 text-center">
-                        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[2rem] workspace-soft-panel">
+                        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-card-200 workspace-soft-panel">
                             <FiLock size={32} className="text-ink-secondary" aria-hidden="true" />
                         </div>
                         <SectionHeader kicker="Admin" title="Access denied" description="You need admin access to open this page." className="justify-center text-center" />
@@ -827,7 +827,7 @@ export default function AdminPage() {
                             role="dialog"
                             aria-modal="true"
                             aria-label="User detail"
-                            className="w-full max-w-4xl overflow-hidden rounded-[2rem] workspace-panel shadow-2xl shadow-black/30"
+                            className="w-full max-w-4xl overflow-hidden rounded-card-200 workspace-panel shadow-2xl shadow-black/30"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="flex items-start justify-between gap-4 border-b border-ink-muted/15 px-5 py-5 md:px-6">

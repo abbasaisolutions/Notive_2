@@ -151,7 +151,7 @@ export default function BridgeCard({
                 </div>
             )}
 
-            <div className={isNotebook ? 'notebook-card-soft rounded-[1.5rem] p-4' : 'rounded-2xl border border-white/10 bg-black/20 p-4'}>
+            <div className={isNotebook ? 'notebook-card-soft rounded-3xl p-4' : 'rounded-2xl border border-white/10 bg-black/20 p-4'}>
                 <p className={isNotebook ? 'section-label' : 'text-xs uppercase tracking-[0.14em] text-ink-muted'}>What to say</p>
                 <p
                     className={isNotebook ? 'mt-2 text-[0.98rem] leading-7 text-[rgb(var(--paper-ink))]' : 'mt-2 text-sm leading-7 text-white'}
@@ -196,7 +196,7 @@ export default function BridgeCard({
                 />
             )}
 
-            <div className={isNotebook ? 'notebook-card rounded-[1.5rem] p-4' : 'rounded-2xl border border-white/10 bg-white/[0.03] p-4'}>
+            <div className={isNotebook ? 'notebook-card rounded-3xl p-4' : 'rounded-2xl border border-white/10 bg-white/[0.03] p-4'}>
                 <p className={isNotebook ? 'section-label' : 'text-xs uppercase tracking-[0.14em] text-ink-muted'}>Talk track</p>
                 <div className="mt-2 space-y-2">
                     {bridge.talkTrack.map((item, index) => (
@@ -210,7 +210,7 @@ export default function BridgeCard({
                 </div>
             </div>
 
-            <div className={isNotebook ? 'notebook-card rounded-[1.5rem] p-4' : 'rounded-2xl border border-white/10 bg-white/[0.03] p-4'}>
+            <div className={isNotebook ? 'notebook-card rounded-3xl p-4' : 'rounded-2xl border border-white/10 bg-white/[0.03] p-4'}>
                 <p className={isNotebook ? 'section-label' : 'text-xs uppercase tracking-[0.14em] text-ink-muted'}>Why this fits</p>
                 <p
                     className={isNotebook ? 'notebook-copy mt-2 text-[0.95rem] leading-7' : 'mt-2 text-sm leading-7 text-ink-secondary'}
@@ -234,7 +234,7 @@ export default function BridgeCard({
 
     if (isNotebook) {
         return (
-            <section className="notebook-card space-y-4 rounded-[1.75rem] p-5 md:p-6">
+            <section className="notebook-card space-y-4 rounded-card-175 p-5 md:p-6">
                 {content}
             </section>
         );

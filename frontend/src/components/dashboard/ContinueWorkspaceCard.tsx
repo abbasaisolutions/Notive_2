@@ -60,7 +60,7 @@ export default function ContinueWorkspaceCard({ userId, entryHref, portfolioHref
     return (
         <Link
             href={item.href}
-            className="block rounded-[1.1rem] border border-[rgba(126,157,149,0.32)] bg-[rgba(255,255,255,0.58)] px-4 py-3 transition-colors hover:bg-[rgba(255,255,255,0.76)]"
+            className="block rounded-card-110 border border-[rgba(126,157,149,0.32)] bg-[rgba(255,255,255,0.58)] px-4 py-3 transition-colors hover:bg-[rgba(255,255,255,0.76)]"
         >
             <div className="flex items-center justify-between gap-3">
                 <span className="min-w-0">

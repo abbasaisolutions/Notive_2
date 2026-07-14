@@ -183,7 +183,7 @@ export default function JournalIntelligenceSection({ intel }: Props) {
         <motion.section
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="notebook-card rounded-[1.75rem] p-5"
+            className="notebook-card rounded-card-175 p-5"
         >
             <p
                 className="section-label mb-3"

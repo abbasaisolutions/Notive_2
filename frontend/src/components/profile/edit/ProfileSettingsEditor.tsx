@@ -1496,7 +1496,7 @@ export function ProfileSettingsEditor() {
                             </p>
                         </div>
                     </div>
-                    <div className="workspace-soft-panel rounded-[1.6rem] px-4 py-3 text-sm text-ink-secondary">
+                    <div className="workspace-soft-panel rounded-card-160 px-4 py-3 text-sm text-ink-secondary">
                         <div className="workspace-heading flex items-center gap-2 font-semibold">
                             <FiClock size={16} aria-hidden="true" />
                             Last synced
@@ -1507,7 +1507,7 @@ export function ProfileSettingsEditor() {
 
                 {notice && <NoticeBanner notice={notice} />}
 
-                <SlideUp className="workspace-panel rounded-[1.6rem] p-5">
+                <SlideUp className="workspace-panel rounded-card-160 p-5">
                     <div className="flex flex-col gap-4">
                         <div className="flex items-start gap-4">
                             <div className="workspace-icon-badge flex h-12 w-12 items-center justify-center rounded-2xl">
@@ -1549,7 +1549,7 @@ export function ProfileSettingsEditor() {
                                     role="tab"
                                     aria-selected={isActive}
                                     onClick={() => handleTabChange(tab.id)}
-                                    className={`flex items-center gap-2 rounded-[1.2rem] px-4 py-3 text-sm font-semibold transition-all ${
+                                    className={`flex items-center gap-2 rounded-card-120 px-4 py-3 text-sm font-semibold transition-all ${
                                         isActive
                                             ? 'workspace-button-primary shadow-lg shadow-primary/20'
                                             : 'workspace-button-ghost'
@@ -1704,7 +1704,7 @@ export function ProfileSettingsEditor() {
                     className="fixed inset-x-0 z-40 px-4"
                     style={{ bottom: 'calc(var(--app-bottom-clearance, 1rem) + 0.5rem)' }}
                 >
-                    <div className="workspace-panel mx-auto max-w-5xl rounded-[1.6rem] px-5 py-4 shadow-2xl">
+                    <div className="workspace-panel mx-auto max-w-5xl rounded-card-160 px-5 py-4 shadow-2xl">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="space-y-1">
                                 <p className="workspace-heading text-sm font-semibold">

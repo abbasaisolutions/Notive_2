@@ -1457,7 +1457,7 @@ export default function PortfolioWorkspace() {
                                         onClick={() => {
                                             void loadExportPreview(type);
                                         }}
-                                        className={`rounded-[26px] border p-4 text-left transition-colors ${
+                                        className={`rounded-card-163 border p-4 text-left transition-colors ${
                                             isActive
                                                 ? 'border-primary/35 bg-primary/12'
                                                 : 'workspace-soft-panel'
@@ -1505,7 +1505,7 @@ export default function PortfolioWorkspace() {
                             </div>
 
                             {selectedExportType === 'statement' && (
-                                <div className="workspace-panel mt-4 rounded-[26px] p-4">
+                                <div className="workspace-panel mt-4 rounded-card-163 p-4">
                                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                         <div className="max-w-xl">
                                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Statement angle</p>
@@ -1581,7 +1581,7 @@ export default function PortfolioWorkspace() {
                     </div>
                 </div>
 
-                <div className="paper-preview-shell overflow-hidden rounded-[32px] border border-[rgba(var(--paper-border),0.92)] shadow-xl">
+                <div className="paper-preview-shell overflow-hidden rounded-card-200 border border-[rgba(var(--paper-border),0.92)] shadow-xl">
                     <div className="paper-preview-topbar flex items-center justify-between gap-3 px-4 py-3">
                         <div>
                             <p className="paper-preview-kicker">Preview file</p>
@@ -1629,7 +1629,7 @@ export default function PortfolioWorkspace() {
                     </div>
                 </div>
 
-                    <div id="portfolio-export-actions" className="workspace-panel space-y-3 rounded-[28px] p-4">
+                    <div id="portfolio-export-actions" className="workspace-panel space-y-3 rounded-card-175 p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="min-w-0">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Export</p>
@@ -1850,7 +1850,7 @@ export default function PortfolioWorkspace() {
                         return (
                             <article
                                 key={experience.entryId}
-                                className="workspace-soft-panel rounded-[28px] p-4 transition-colors"
+                                className="workspace-soft-panel rounded-card-175 p-4 transition-colors"
                             >
                                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                     <div className="min-w-0 space-y-3">
@@ -2055,7 +2055,7 @@ export default function PortfolioWorkspace() {
                         description="Keep one story in focus. Open the rest only when you want to switch."
                     />
 
-                    <div className="workspace-soft-panel rounded-[28px] p-4">
+                    <div className="workspace-soft-panel rounded-card-175 p-4">
                         <div className="flex flex-wrap gap-2">
                             <TagPill>{storyCountLabel}</TagPill>
                             <TagPill tone={experience?.verified ? 'primary' : 'default'}>
@@ -2088,7 +2088,7 @@ export default function PortfolioWorkspace() {
 
                     {showInterviewTools && (
                         <div id="portfolio-interview-tools" className="space-y-4">
-                            <div className="workspace-panel rounded-[26px] p-4">
+                            <div className="workspace-panel rounded-card-163 p-4">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Switch story</p>
                                 <div className="mt-3 space-y-2">
                                     {stories.map((item, index) => (
@@ -2119,7 +2119,7 @@ export default function PortfolioWorkspace() {
                                 </div>
                             </div>
 
-                            <div className="workspace-panel rounded-[26px] p-4">
+                            <div className="workspace-panel rounded-card-163 p-4">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Practice controls</p>
                                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                                     <button
@@ -2181,7 +2181,7 @@ export default function PortfolioWorkspace() {
                                 </ActionBar>
                             </div>
 
-                            <div className="workspace-panel rounded-[26px] p-4">
+                            <div className="workspace-panel rounded-card-163 p-4">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Export prep sheet</p>
                                 <p className="mt-1 text-sm text-ink-secondary">
                                     Download or print all {stories.length} interview stor{stories.length === 1 ? 'y' : 'ies'} as a formatted prep document.
@@ -2271,7 +2271,7 @@ export default function PortfolioWorkspace() {
 
                     <AppPanel className="space-y-4">
                         {practiceMode && !practiceReveal ? (
-                            <div className="workspace-panel rounded-[28px] p-6 text-center">
+                            <div className="workspace-panel rounded-card-175 p-6 text-center">
                                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/30 bg-primary/12 text-primary">
                                     <FiMessageSquare size={20} aria-hidden="true" />
                                 </div>
@@ -2296,7 +2296,7 @@ export default function PortfolioWorkspace() {
                                     { label: 'Action', value: story.action },
                                     { label: 'Result', value: story.result },
                                 ].map((section) => (
-                                    <div key={section.label} className="workspace-soft-panel rounded-[26px] p-4">
+                                    <div key={section.label} className="workspace-soft-panel rounded-card-163 p-4">
                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">{section.label}</p>
                                     <p className="mt-3 text-sm leading-7 text-ink-secondary">
                                         {section.value || `This ${section.label.toLowerCase()} is missing from the memory. Add it when you want this story to rehearse cleanly.`}
@@ -2671,7 +2671,7 @@ export default function PortfolioWorkspace() {
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="portfolio-evidence-editor-title"
-                        className="workspace-panel flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[32px] shadow-2xl md:ml-auto md:h-[calc(100vh-2rem)] md:max-w-2xl md:rounded-[32px]"
+                        className="workspace-panel flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-card-200 shadow-2xl md:ml-auto md:h-[calc(100vh-2rem)] md:max-w-2xl md:rounded-card-200"
                         initial={reduceMotion ? { opacity: 1 } : { y: 32, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={reduceMotion ? { opacity: 1 } : { y: 24, opacity: 0 }}
@@ -2699,7 +2699,7 @@ export default function PortfolioWorkspace() {
                         </div>
 
                         <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5 md:px-6">
-                            <div className="rounded-[24px] border border-primary/25 bg-primary/12 p-4">
+                            <div className="rounded-3xl border border-primary/25 bg-primary/12 p-4">
                                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                     <div className="min-w-0">
                                         <p className="text-xs uppercase tracking-[0.12em] text-primary/80">Start here</p>
@@ -2710,7 +2710,7 @@ export default function PortfolioWorkspace() {
                                 </div>
                             </div>
 
-                            <div className="workspace-panel rounded-[24px] p-4">
+                            <div className="workspace-panel rounded-3xl p-4">
                                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                     <div className="min-w-0">
                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Tune for</p>
@@ -2737,7 +2737,7 @@ export default function PortfolioWorkspace() {
                                 </div>
                             </div>
 
-                            <div className="workspace-panel space-y-4 rounded-[24px] p-4">
+                            <div className="workspace-panel space-y-4 rounded-3xl p-4">
                                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                     <div className="min-w-0">
                                         <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Story draft</p>
@@ -2796,7 +2796,7 @@ export default function PortfolioWorkspace() {
                                 {showEditingDetails && (
                                     <div id="portfolio-evidence-editor-details" className="space-y-4 px-1 pb-1">
                                         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
-                                            <div className="rounded-[24px] border border-[rgba(141,123,105,0.14)] p-4">
+                                            <div className="rounded-3xl border border-[rgba(141,123,105,0.14)] p-4">
                                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Readiness</p>
                                                 <p className="workspace-heading mt-2 text-lg font-semibold">{draftCompleteness.score}% complete</p>
                                                 <div className="mt-3 h-2 rounded-full bg-[rgba(var(--paper-border),0.62)]">
@@ -2811,7 +2811,7 @@ export default function PortfolioWorkspace() {
                                                 </div>
                                             </div>
 
-                                            <div className="rounded-[24px] border border-[rgba(141,123,105,0.14)] p-4">
+                                            <div className="rounded-3xl border border-[rgba(141,123,105,0.14)] p-4">
                                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Source</p>
                                                 <p className="workspace-heading mt-2 text-sm font-semibold">
                                                     {editingExperience.verified ? 'Saved story' : 'Story needs review'}

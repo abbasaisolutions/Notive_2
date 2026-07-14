@@ -48,7 +48,7 @@ export default function ActionBriefPanel({
                 }
                 : null;
 
-    const cardPad = isEntry ? 'rounded-xl p-3' : 'rounded-[1.25rem] p-4';
+    const cardPad = isEntry ? 'rounded-xl p-3' : 'rounded-card-125 p-4';
 
     const content = (
         <div className={isCompactDashboard || isEntry ? 'space-y-2.5' : 'space-y-4'}>
@@ -63,7 +63,7 @@ export default function ActionBriefPanel({
             </div>
 
             {isCompactDashboard && compactSupportCard && (
-                <div className="app-paper-soft rounded-[1.25rem] p-4">
+                <div className="app-paper-soft rounded-card-125 p-4">
                     <p className="section-label">{compactSupportCard.label}</p>
                     <p className="notebook-title mt-2 text-[0.96rem] leading-6">{compactSupportCard.title}</p>
                     <p className="notebook-copy mt-2 text-[0.8rem] leading-6">{compactSupportCard.body}</p>

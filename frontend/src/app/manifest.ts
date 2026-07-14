@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
         description: NOTIVE_VOICE.longSummary,
         start_url: '/',
         display: 'standalone',
-        background_color: '#f8f4ed',
-        theme_color: '#64748b',
+        background_color: '#F8F4ED',
+        theme_color: '#8A9A6F',
         icons: [
             {
                 src: '/icon-192.png',

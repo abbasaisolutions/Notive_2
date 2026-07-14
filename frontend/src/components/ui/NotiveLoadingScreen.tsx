@@ -39,7 +39,7 @@ function FeatherLogo({ size }: { size: number }) {
             <defs>
                 <linearGradient id="fl-sage" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#7E9D95" />
-                    <stop offset="100%" stopColor="#8A9A6F" />
+                    <stop offset="100%" stopColor="rgb(var(--brand))" />
                 </linearGradient>
                 <linearGradient id="fl-coral" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#D8A896" />
@@ -90,7 +90,7 @@ function FeatherLogo({ size }: { size: number }) {
             <path d="M65 149 Q63 146 62 148" stroke="rgba(255,255,255,0.25)" strokeWidth="0.6" fill="none" />
 
             {/* ── Ink dot at tip ── */}
-            <circle cx="60" cy="172" r="1.8" fill="#8A9A6F" opacity="0.7" />
+            <circle cx="60" cy="172" r="1.8" fill="rgb(var(--brand))" opacity="0.7" />
         </svg>
     );
 }
@@ -257,7 +257,7 @@ function LoadingStepRail({
                         <span className="relative flex h-1.5 w-1.5">
                             {isActive && !prefersReducedMotion && (
                                 <motion.span
-                                    className="absolute inline-flex h-full w-full rounded-full bg-[rgb(138,154,111)] opacity-50"
+                                    className="absolute inline-flex h-full w-full rounded-full bg-[rgb(var(--brand))] opacity-50"
                                     animate={{ scale: [1, 2.2], opacity: [0.45, 0] }}
                                     transition={{ duration: 1.5, ease: 'easeOut', repeat: Infinity }}
                                 />
@@ -265,7 +265,7 @@ function LoadingStepRail({
                             <span
                                 className={cn(
                                     'relative inline-flex h-1.5 w-1.5 rounded-full',
-                                    isActive ? 'bg-[rgb(138,154,111)]' : 'bg-[rgba(126,117,103,0.38)]',
+                                    isActive ? 'bg-[rgb(var(--brand))]' : 'bg-[rgba(126,117,103,0.38)]',
                                 )}
                             />
                         </span>
@@ -320,7 +320,7 @@ export default function NotiveLoadingScreen({
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: 'easeOut' }}
                     className={cn(
-                        'app-paper-soft relative overflow-hidden rounded-[2rem] border border-[rgba(92,92,92,0.16)] shadow-[0_18px_44px_rgba(92,92,92,0.08)]',
+                        'app-paper-soft relative overflow-hidden rounded-card-200 border border-[rgba(92,92,92,0.16)] shadow-[0_18px_44px_rgba(92,92,92,0.08)]',
                         isInline ? 'px-4 py-4 sm:px-5 sm:py-5' : 'px-6 py-8 sm:px-7 sm:py-9',
                     )}>
                     <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.62),transparent_44%)]" />
@@ -347,14 +347,14 @@ export default function NotiveLoadingScreen({
 
                             <div className={cn('relative mt-3 overflow-hidden', isInline ? 'h-10 w-full' : 'h-12 w-64 sm:w-72')}>
                                 {prefersReducedMotion ? (
-                                    <p className="absolute inset-0 text-center text-[0.82rem] font-medium leading-6 text-[rgb(107,107,107)]">
+                                    <p className="absolute inset-0 text-center text-[0.82rem] font-medium leading-6 text-[rgb(var(--text-soft))]">
                                         {phrases[phraseIndex]}
                                     </p>
                                 ) : (
                                     <AnimatePresence mode="wait">
                                         <motion.p
                                             key={phraseIndex}
-                                            className="absolute inset-0 text-center text-[0.82rem] font-medium leading-6 text-[rgb(107,107,107)]"
+                                            className="absolute inset-0 text-center text-[0.82rem] font-medium leading-6 text-[rgb(var(--text-soft))]"
                                             initial={{ opacity: 0, y: 12 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0, y: -12 }}

@@ -372,7 +372,7 @@ export function SmartSearch({ autoFocus = false, onResultClick }: SmartSearchPro
                                 key={result.id}
                                 href={`/entry/view?id=${result.id}`}
                                 onClick={() => { setShowResults(false); onResultClick?.(); }}
-                                className="group block rounded-[1.1rem] border border-[rgba(var(--paper-border),0.16)] bg-white/45 p-3 transition-all hover:bg-white/65 sm:p-4"
+                                className="group block rounded-card-110 border border-[rgba(var(--paper-border),0.16)] bg-white/45 p-3 transition-all hover:bg-white/65 sm:p-4"
                             >
                                 <div className="flex items-start gap-3">
                                     <span className="workspace-icon-badge flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl text-lg">

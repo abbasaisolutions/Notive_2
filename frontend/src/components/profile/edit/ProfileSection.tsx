@@ -28,7 +28,7 @@ export function ProfileSection({
     return (
         <div className="space-y-6">
             <section className="grid gap-6 lg:grid-cols-[1.6fr,1fr]">
-                <div className="workspace-panel p-8 space-y-6 rounded-[2rem]">
+                <div className="workspace-panel p-8 space-y-6 rounded-card-200">
                     <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">About</p>
                         <h2 className="workspace-heading mt-2 text-2xl font-serif">Basic details</h2>
@@ -106,7 +106,7 @@ export function ProfileSection({
                 </div>
 
                 <div className="space-y-6">
-                    <section className="workspace-panel p-6 space-y-4 rounded-[2rem]">
+                    <section className="workspace-panel p-6 space-y-4 rounded-card-200">
                         <div>
                             <p className="text-xs uppercase tracking-[0.18em] text-ink-muted font-bold">Quick View</p>
                             <h3 className="workspace-heading mt-2 text-xl font-serif">What the app uses</h3>
@@ -136,7 +136,7 @@ export function ProfileSection({
                         </div>
                     </section>
 
-                    <section className="workspace-panel p-6 space-y-4 rounded-[2rem]">
+                    <section className="workspace-panel p-6 space-y-4 rounded-card-200">
                         <div className="flex items-start gap-3">
                             <div className="mt-1 rounded-xl bg-primary/10 p-2 text-primary">
                                 <FiInfo size={16} aria-hidden="true" />

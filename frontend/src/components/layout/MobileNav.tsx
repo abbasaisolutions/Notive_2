@@ -336,7 +336,7 @@ export default function MobileNav() {
                 style={{ bottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
                 aria-label="Mobile navigation"
             >
-                <div className="glass-nav relative flex items-center justify-around rounded-[2rem] px-2.5 py-2 shadow-2xl">
+                <div className="glass-nav relative flex items-center justify-around rounded-card-200 px-2.5 py-2 shadow-2xl">
                     <div className="absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-secondary/10 pointer-events-none" />
 
                     {mainNavItems.map((item) => {
@@ -355,7 +355,7 @@ export default function MobileNav() {
                                         className="capture-fab relative flex h-[3.85rem] w-[3.85rem] items-center justify-center rounded-[1.55rem]"
                                     >
                                         {/* Multi-layer background for depth */}
-                                        <div className="absolute inset-0 rounded-[inherit] bg-gradient-to-br from-[#A3B87F] via-[#8A9A6F] to-[#6B7D52] shadow-[0_8px_28px_rgba(107,125,82,0.45),inset_0_1px_1px_rgba(255,255,255,0.25)]" />
+                                        <div className="absolute inset-0 rounded-[inherit] bg-gradient-to-br from-[#A3B87F] via-[rgb(var(--brand))] to-[#6B7D52] shadow-[0_8px_28px_rgba(107,125,82,0.45),inset_0_1px_1px_rgba(255,255,255,0.25)]" />
                                         {/* Glass highlight on top-left */}
                                         <div className="absolute inset-0 rounded-[inherit] bg-gradient-to-br from-white/30 via-transparent to-transparent opacity-80" />
                                         {/* Subtle inner ring */}
@@ -363,7 +363,7 @@ export default function MobileNav() {
                                         {/* Breathing glow ring */}
                                         {!prefersReducedMotion && (
                                             <motion.div
-                                                className="absolute -inset-1 rounded-[2rem] border-2 border-[#A3B87F]/40"
+                                                className="absolute -inset-1 rounded-card-200 border-2 border-[#A3B87F]/40"
                                                 animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0.15, 0.5] }}
                                                 transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                                             />

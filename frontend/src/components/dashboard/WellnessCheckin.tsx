@@ -83,7 +83,7 @@ export default function WellnessCheckin({ onSubmit, submitted }: WellnessCheckin
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="notebook-card-soft rounded-[1.75rem] p-4 text-center"
+                className="notebook-card-soft rounded-card-175 p-4 text-center"
             >
                 <p className="text-sm" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
                     Check-in saved. This helps your insights get smarter.
@@ -96,7 +96,7 @@ export default function WellnessCheckin({ onSubmit, submitted }: WellnessCheckin
         <motion.section
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="notebook-card rounded-[1.75rem] p-5"
+            className="notebook-card rounded-card-175 p-5"
         >
             <button
                 onClick={() => setExpanded(!expanded)}

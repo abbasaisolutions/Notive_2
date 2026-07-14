@@ -60,7 +60,7 @@ function FocusActionButton({
     const className = cn(
         subtle
             ? 'notebook-tertiary-cta inline-flex items-center gap-1 transition-colors'
-            : 'inline-flex items-center justify-center rounded-[1rem] px-4 py-3 text-sm font-semibold transition-colors',
+            : 'inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition-colors',
         subtle ? '' : action.tone === 'secondary' ? 'notebook-secondary-cta' : 'notebook-primary-cta'
     );
 
@@ -127,7 +127,7 @@ export default function DashboardFocusCard({
             animate={{ opacity: 1, y: 0, rotate: 0 }}
             transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
             className={cn(
-                'notebook-card notebook-focus-shadow relative overflow-hidden rounded-[2rem] p-6 md:p-7',
+                'notebook-card notebook-focus-shadow relative overflow-hidden rounded-card-200 p-6 md:p-7',
                 className
             )}
         >

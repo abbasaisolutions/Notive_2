@@ -99,7 +99,7 @@ export default function DailyGentleReflectionCard({
                 </p>
             </div>
 
-            <div className="app-paper-soft rounded-[1.25rem] p-4">
+            <div className="app-paper-soft rounded-card-125 p-4">
                 <p className="section-label">Why this showed up</p>
                 <p className={`notebook-copy mt-2 ${isCompactDashboard ? 'text-[0.82rem] leading-6' : 'text-[0.875rem] leading-7'}`}>
                     {reflection.evidence}
@@ -154,7 +154,7 @@ export default function DailyGentleReflectionCard({
                 </div>
             </div>
 
-            <div className="app-paper-soft rounded-[1.25rem] p-4">
+            <div className="app-paper-soft rounded-card-125 p-4">
                 <p className="section-label">Suggested use</p>
                 <p className={`notebook-title mt-2 ${isCompactDashboard ? 'text-[1rem] leading-6' : 'text-lg'}`}>Start a draft</p>
                 <p className={`notebook-copy mt-2 ${isCompactDashboard ? 'text-[0.82rem] leading-6' : 'text-[0.875rem] leading-7'}`}>

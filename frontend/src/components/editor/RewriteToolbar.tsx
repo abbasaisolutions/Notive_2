@@ -56,7 +56,7 @@ export default function RewriteToolbar({ content, onRewrite, disabled }: Rewrite
 
     const handleRewrite = async (style: RewriteStyle) => {
         if (!content.trim() || !accessToken) {
-            setError('Please write some content first');
+            setError('Please write something before rewriting.');
             return;
         }
 

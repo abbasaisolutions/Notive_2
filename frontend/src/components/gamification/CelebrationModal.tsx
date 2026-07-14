@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGamification } from '@/context/gamification-context';
 import { FiAward, FiTrendingUp } from 'react-icons/fi';
+import { Modal } from '@/components/ui/modal';
 
 const Confetti = () => {
     const [particles, setParticles] = useState<Array<{ id: number; x: number; color: string; delay: number }>>([]);
@@ -37,61 +38,19 @@ const Confetti = () => {
 
 export default function CelebrationModal() {
     const { showCelebration, celebrationType, newBadge, dismissCelebration, stats } = useGamification();
-    const dialogRef = useRef<HTMLDivElement>(null);
-    const previousFocusRef = useRef<HTMLElement | null>(null);
-
-    const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-            dismissCelebration();
-            return;
-        }
-        if (e.key !== 'Tab' || !dialogRef.current) return;
-        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-            'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
-        }
-    }, [dismissCelebration]);
-
-    useEffect(() => {
-        if (!showCelebration) return;
-        previousFocusRef.current = document.activeElement as HTMLElement;
-        document.addEventListener('keydown', handleKeyDown);
-        const timer = setTimeout(() => {
-            dialogRef.current?.querySelector<HTMLElement>('button')?.focus();
-        }, 50);
-        return () => {
-            document.removeEventListener('keydown', handleKeyDown);
-            clearTimeout(timer);
-            previousFocusRef.current?.focus();
-        };
-    }, [showCelebration, handleKeyDown]);
-
-    if (!showCelebration) return null;
 
     return (
         <>
-            <Confetti />
-            <div
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-                onClick={dismissCelebration}
+            {showCelebration && <Confetti />}
+            <Modal
+                open={showCelebration}
+                onClose={dismissCelebration}
+                maxWidth="sm"
+                labelledBy="celebration-title"
+                backdropClassName="bg-black/60"
+                className="!rounded-3xl p-8 text-center animate-celebration"
             >
-                <div
-                    ref={dialogRef}
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label="Celebration"
-                    className="workspace-panel p-8 rounded-3xl text-center max-w-sm animate-celebration"
-                    onClick={(e) => e.stopPropagation()}
-                >
+                <div aria-label="Celebration">
                     {celebrationType === 'badge' && newBadge && (
                         <>
                             <div className="mb-4 flex items-center justify-center text-primary animate-bounce">
@@ -100,7 +59,7 @@ export default function CelebrationModal() {
                                     return <BadgeIcon size={56} aria-hidden="true" />;
                                 })()}
                             </div>
-                            <h2 className="text-2xl font-bold text-ink mb-2">Badge Unlocked!</h2>
+                            <h2 id="celebration-title" className="text-2xl font-bold text-ink mb-2">Badge Unlocked!</h2>
                             <p className="text-xl text-primary mb-2">{newBadge.name}</p>
                             <p className="text-ink-secondary mb-6">{newBadge.description}</p>
                         </>
@@ -111,7 +70,7 @@ export default function CelebrationModal() {
                             <div className="mb-4 flex items-center justify-center text-primary">
                                 <FiAward size={56} aria-hidden="true" />
                             </div>
-                            <h2 className="text-2xl font-bold text-ink mb-2">Level Up!</h2>
+                            <h2 id="celebration-title" className="text-2xl font-bold text-ink mb-2">Level Up!</h2>
                             <p className="text-5xl font-bold text-primary mb-2">{stats?.level}</p>
                             <p className="text-ink-secondary mb-6">You&apos;re building a deeper memory-and-signal practice.</p>
                         </>
@@ -122,7 +81,7 @@ export default function CelebrationModal() {
                             <div className="mb-4 flex items-center justify-center text-primary">
                                 <FiTrendingUp size={56} aria-hidden="true" />
                             </div>
-                            <h2 className="text-2xl font-bold text-ink mb-2">Streak Milestone!</h2>
+                            <h2 id="celebration-title" className="text-2xl font-bold text-ink mb-2">Streak Milestone!</h2>
                             <p className="text-5xl font-bold text-primary mb-2">{stats?.currentStreak} Days</p>
                             <p className="text-ink-secondary mb-6">Keep the momentum going!</p>
                         </>
@@ -135,7 +94,7 @@ export default function CelebrationModal() {
                         Awesome
                     </button>
                 </div>
-            </div>
+            </Modal>
         </>
     );
 }

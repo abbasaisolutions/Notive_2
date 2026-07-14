@@ -99,7 +99,7 @@ export default function AccountDeletionPage() {
                 </p>
             )}
 
-            <form onSubmit={handleSubmit} className="app-paper-soft mt-8 space-y-5 rounded-[1.6rem] p-5 md:p-6">
+            <form onSubmit={handleSubmit} className="app-paper-soft mt-8 space-y-5 rounded-card-160 p-5 md:p-6">
                 <div className="space-y-2">
                     <label htmlFor="deletion-email" className="text-sm font-semibold text-[rgb(var(--paper-ink))]">
                         Account email

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from 'react';
 import * as Sentry from '@sentry/react';
-import ErrorState from '@/components/error/ErrorState';
+import RouteErrorScreen from '@/components/error/RouteErrorScreen';
 import { classifyNetworkError, extractStatus } from '@/utils/network-errors';
 
 type RouteErrorStateProps = {
@@ -43,7 +43,7 @@ export default function RouteErrorState({
     const resolvedMessage = useRouteCopy && message ? message : copy.description;
 
     return (
-        <ErrorState
+        <RouteErrorScreen
             title={resolvedTitle}
             message={resolvedMessage}
             onRetry={copy.retryable ? reset : undefined}

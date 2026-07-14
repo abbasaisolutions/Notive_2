@@ -144,7 +144,7 @@ export default function SupportOutcomeStrip({
     };
 
     return (
-        <div className={isNotebook ? 'notebook-card-soft rounded-[1.5rem] p-4' : 'rounded-2xl border border-white/10 bg-black/20 p-4'}>
+        <div className={isNotebook ? 'notebook-card-soft rounded-3xl p-4' : 'rounded-2xl border border-white/10 bg-black/20 p-4'}>
             <p className={isNotebook ? 'notebook-kicker' : 'text-xs uppercase tracking-[0.14em] text-ink-muted'}>Support Loop</p>
             <p className={isNotebook ? 'notebook-title mt-2 text-xl' : 'mt-2 text-sm font-semibold text-white'}>{headline}</p>
 

@@ -122,7 +122,7 @@ export function QuietNotebookHero({
                                 onClick={onPrimaryCtaClick}
                                 className="radius-ui-lg inline-flex min-h-[3.25rem] items-center justify-center px-6 py-3 text-sm font-semibold transition-transform hover:-translate-y-0.5"
                                 style={{
-                                    background: 'rgb(138, 154, 111)',
+                                    background: 'rgb(var(--brand))',
                                     border: '1.5px solid rgba(122,112,98,0.34)',
                                     color: 'rgb(255,251,245)',
                                 }}

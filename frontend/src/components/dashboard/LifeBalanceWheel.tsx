@@ -90,7 +90,7 @@ export default function LifeBalanceWheel({ lifeBalance }: LifeBalanceWheelProps)
         <motion.section
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="notebook-card rounded-[1.75rem] p-5"
+            className="notebook-card rounded-card-175 p-5"
         >
             <div className="flex items-center justify-between mb-2">
                 <p

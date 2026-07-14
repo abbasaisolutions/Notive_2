@@ -114,13 +114,13 @@ export default function RegisterPage() {
                     initial={{ opacity: 0, y: 18 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.42, ease: 'easeOut' }}
-                    className="paper-card app-paper relative overflow-hidden rounded-[2rem] p-5 sm:p-8"
+                    className="paper-card app-paper relative overflow-hidden rounded-card-200 p-5 sm:p-8"
                     style={quietNotebookPanelStyle}
                 >
                     <span
                         aria-hidden="true"
                         className="pointer-events-none absolute inset-x-0 top-0 h-1.5"
-                        style={{ background: 'rgb(138, 154, 111)' }}
+                        style={{ background: 'rgb(var(--brand))' }}
                     />
 
                     <div className="flex items-start justify-between gap-4">
@@ -142,13 +142,13 @@ export default function RegisterPage() {
                         {SETUP_STEPS.map((step, index) => (
                             <li
                                 key={step.title}
-                                className="flex items-start gap-3 rounded-[1.2rem] border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.55)] px-4 py-3"
+                                className="flex items-start gap-3 rounded-card-120 border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.55)] px-4 py-3"
                             >
                                 <span
                                     aria-hidden="true"
                                     className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
                                     style={{
-                                        background: index === 0 ? 'rgb(138, 154, 111)' : 'rgba(138, 154, 111, 0.16)',
+                                        background: index === 0 ? 'rgb(var(--brand))' : 'rgba(138, 154, 111, 0.16)',
                                         color: index === 0 ? 'rgb(255,251,245)' : 'rgb(96,110,74)',
                                     }}
                                 >

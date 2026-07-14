@@ -196,7 +196,7 @@ export default function CompleteProfilePage() {
                         initial={{ opacity: 0, y: 18 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.42, ease: 'easeOut' }}
-                        className="paper-card app-paper relative rounded-[2rem] p-5 sm:p-8"
+                        className="paper-card app-paper relative rounded-card-200 p-5 sm:p-8"
                         style={quietNotebookPanelStyle}
                     >
                         <div className="absolute right-5 top-5">
@@ -231,7 +231,7 @@ export default function CompleteProfilePage() {
                             aria-valuetext="Step 2 of 4: Basics"
                         >
                             <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(92,92,92,0.12)]">
-                                <div className="h-full w-1/2 rounded-full bg-[rgb(138,154,111)]" />
+                                <div className="h-full w-1/2 rounded-full bg-[rgb(var(--brand))]" />
                             </div>
                             <p className="mt-2 text-xs text-muted">Step 2 of 4 &middot; Basics</p>
                         </div>
@@ -250,7 +250,7 @@ export default function CompleteProfilePage() {
                             )}
 
                             <section
-                                className="app-paper-soft space-y-5 rounded-[1.5rem] px-4 py-4"
+                                className="app-paper-soft space-y-5 rounded-3xl px-4 py-4"
                                 aria-labelledby="profile-basics-heading"
                             >
                                 <div className="space-y-1">
@@ -292,7 +292,7 @@ export default function CompleteProfilePage() {
                                                 key={option.value}
                                                 type="button"
                                                 onClick={() => setGender(option.value)}
-                                                className={`rounded-[1rem] border px-4 py-3 text-left transition-all ${
+                                                className={`rounded-2xl border px-4 py-3 text-left transition-all ${
                                                     gender === option.value
                                                         ? 'border-[rgba(65,93,76,0.46)] bg-[rgba(202,221,208,0.42)] text-strong'
                                                         : 'border-[rgba(92,92,92,0.16)] bg-[rgba(255,251,245,0.72)] text-default hover:bg-[rgba(255,251,245,0.94)]'
@@ -326,7 +326,7 @@ export default function CompleteProfilePage() {
                             </section>
 
                             <div
-                                className="app-paper-soft rounded-[1.4rem] px-4 py-4 text-sm leading-7 text-default"
+                                className="app-paper-soft rounded-card-140 px-4 py-4 text-sm leading-7 text-default"
                                 style={{
                                     background: 'linear-gradient(180deg, rgba(255,255,255,0.84), rgba(255,251,245,0.72))',
                                     border: '1.5px solid rgba(92,92,92,0.18)',

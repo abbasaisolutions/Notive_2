@@ -25,7 +25,7 @@ export default function LegalPaperShell({
     return (
         <main className="page-paper-canvas min-h-screen px-4 py-4 md:px-6 md:py-6">
             <div className="mx-auto max-w-4xl">
-                <section className="app-paper rounded-[2rem] p-6 md:p-10">
+                <section className="app-paper rounded-card-200 p-6 md:p-10">
                     <div className="flex items-start justify-between gap-4">
                         <div className="max-w-2xl">
                             <NotiveLogo href="/" size="sm" />

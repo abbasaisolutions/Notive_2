@@ -265,7 +265,7 @@ export default function ChaptersPage() {
                             return (
                                 <article
                                     key={chapter.id}
-                                    className="overflow-hidden rounded-[28px] workspace-soft-panel transition-colors hover:border-white/20"
+                                    className="overflow-hidden rounded-card-175 workspace-soft-panel transition-colors hover:border-white/20"
                                 >
                                     <div className="relative h-32 overflow-hidden bg-surface-1">
                                         <div className="absolute inset-0 opacity-20" style={{ backgroundColor: chapter.color }} />

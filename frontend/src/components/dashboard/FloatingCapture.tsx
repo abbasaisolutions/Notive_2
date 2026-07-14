@@ -15,7 +15,7 @@ type FloatingCaptureProps = {
 export default function FloatingCapture({ writeHref, voiceHref }: FloatingCaptureProps) {
     return (
         <div
-            className="app-paper fixed z-40 flex items-center gap-2 rounded-[1.2rem] px-2.5 py-2 shadow-lg lg:hidden"
+            className="app-paper fixed z-40 flex items-center gap-2 rounded-card-120 px-2.5 py-2 shadow-lg lg:hidden"
             style={{
                 bottom: 'max(calc(var(--app-bottom-clearance, 0px) + 0.625rem), calc(env(safe-area-inset-bottom, 0px) + 4.25rem))',
                 right: '1.25rem',

@@ -24,7 +24,7 @@ export default function GlobalError({
         <html lang="en">
             <body className="bg-[rgb(var(--bg-canvas))]">
                 <div className="flex min-h-screen items-center justify-center px-6 py-10">
-                    <div className="w-full max-w-md rounded-[2rem] border border-[rgba(var(--paper-border),0.92)] bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(255,250,244,0.96))] p-8 text-center shadow-[0_20px_60px_rgba(92,92,92,0.12)]">
+                    <div className="w-full max-w-md rounded-card-200 border border-[rgba(var(--paper-border),0.92)] bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(255,250,244,0.96))] p-8 text-center shadow-[0_20px_60px_rgba(92,92,92,0.12)]">
                         <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[rgb(var(--paper-sage))]">
                             Notive
                         </p>

@@ -199,7 +199,7 @@ export default function TiptapEditor({
         ? 'prose prose-sm sm:prose-base max-w-none focus:outline-none min-h-[280px] px-5 py-6 text-[rgb(var(--paper-ink-soft))]'
         : 'prose prose-invert prose-sm sm:prose-base max-w-none focus:outline-none min-h-[400px] p-5 text-ink-secondary';
     const shellClass = isPaper
-        ? 'entry-paper entry-paper-shell entry-paper-ruled rounded-[1.75rem] overflow-hidden'
+        ? 'entry-paper entry-paper-shell entry-paper-ruled rounded-card-175 overflow-hidden'
         : 'workspace-panel rounded-2xl overflow-hidden';
 
     const extensions = [

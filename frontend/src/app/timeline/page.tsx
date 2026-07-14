@@ -412,7 +412,7 @@ function StoryArcMomentCard({
     return (
         <Link
             href={appendReturnTo(`/entry/view?id=${moment.id}`, currentReturnTo)}
-            className="workspace-soft-panel block rounded-[1.4rem] p-4 transition hover:opacity-95"
+            className="workspace-soft-panel block rounded-card-140 p-4 transition hover:opacity-95"
         >
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">{label}</p>
             <div className="mt-2 flex items-center gap-2 text-xs text-ink-secondary">
@@ -497,7 +497,7 @@ function SharedWithMeList({ bundles, loading, onRefresh, allowEmptyState = true 
     if (loading) {
         return (
             <div className="workspace-soft-panel density-feature mx-auto my-4 max-w-md text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[1.2rem] bg-[rgba(138,154,111,0.1)] text-[rgb(107,143,113)]">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-card-120 bg-[rgba(138,154,111,0.1)] text-[rgb(107,143,113)]">
                     <NotebookDoodle name="reach-someone" accent="sage" className="h-8 w-8" />
                 </div>
                 <p className="mt-3 text-sm font-semibold text-strong">Opening Shared...</p>
@@ -2439,7 +2439,7 @@ function TimelinePageContent() {
                         </div>
                     </div>
 
-                    <div className="workspace-soft-panel rounded-[1.4rem] p-2 md:p-4">
+                    <div className="workspace-soft-panel rounded-card-140 p-2 md:p-4">
                         {!isControlDeckOpen ? (
                             <div className="flex items-center gap-2">
                                 <button
@@ -2529,7 +2529,7 @@ function TimelinePageContent() {
                                             value={query}
                                             onChange={(e) => updateQuery(e.target.value)}
                                             placeholder="Search notes, topics, or tags"
-                                            className="workspace-input w-full rounded-[1.2rem] py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/45"
+                                            className="workspace-input w-full rounded-card-120 py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/45"
                                         />
                                     </label>
 
@@ -2753,7 +2753,7 @@ function TimelinePageContent() {
                     </div>
 
                     {isQuickJumpOpen && activeQuickJumpMode && (
-                        <div id="timeline-quick-jump" className="workspace-soft-panel mt-2 rounded-[1.2rem] p-3">
+                        <div id="timeline-quick-jump" className="workspace-soft-panel mt-2 rounded-card-120 p-3">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                                 <div>
                                     <span className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-muted">
@@ -2843,7 +2843,7 @@ function TimelinePageContent() {
                     )}
 
                     {activeStoryArc && (
-                        <details className="group mt-4 rounded-[1.8rem] border border-primary/20 bg-primary/[0.08]">
+                        <details className="group mt-4 rounded-card-180 border border-primary/20 bg-primary/[0.08]">
                             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 md:px-6 [&::-webkit-details-marker]:hidden">
                                 <span>
                                     <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-primary">Story arc available</span>
@@ -2897,7 +2897,7 @@ function TimelinePageContent() {
                             </div>
 
                             <div className="mt-5 grid gap-4 md:grid-cols-2">
-                                <div className="workspace-panel rounded-[1.4rem] p-4">
+                                <div className="workspace-panel rounded-card-140 p-4">
                                     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">What stayed with you</p>
                                     <div className="mt-3 flex flex-wrap gap-2">
                                         {activeStoryArc.carriedThemes.length > 0 ? (
@@ -2909,7 +2909,7 @@ function TimelinePageContent() {
                                         )}
                                     </div>
                                 </div>
-                                <div className="workspace-panel rounded-[1.4rem] p-4">
+                                <div className="workspace-panel rounded-card-140 p-4">
                                     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">What changed</p>
                                     <div className="mt-3 flex flex-wrap gap-2">
                                         {activeStoryArc.emergingThemes.length > 0 ? (

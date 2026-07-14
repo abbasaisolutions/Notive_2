@@ -28,7 +28,7 @@ export default function SafetyAlertsToggle() {
     };
 
     return (
-        <div className="workspace-soft-panel rounded-[1.4rem] p-5">
+        <div className="workspace-soft-panel rounded-card-140 p-5">
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Post-save safety prompts</p>

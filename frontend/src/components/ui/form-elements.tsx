@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, HTMLMotionProps, AnimatePresence } from 'framer-motion';
@@ -60,36 +61,71 @@ export function Input({ label, error, className, id, ...props }: InputProps) {
     );
 }
 
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+type ButtonSize = 'sm' | 'md' | 'lg';
+type ButtonShape = 'rounded' | 'pill';
+
+const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
+    primary: 'workspace-button-primary hover:brightness-105',
+    secondary: 'workspace-button-secondary hover:brightness-[1.02]',
+    outline: 'workspace-button-outline',
+    ghost: 'workspace-button-ghost bg-transparent',
+    danger: 'bg-danger text-white hover:bg-danger/90',
+};
+
+const BUTTON_SIZES: Record<ButtonSize, string> = {
+    sm: 'px-3 py-2 text-xs gap-1.5',
+    // No text-size utility: matches the original Button's behavior before `size`
+    // existed, so the many callers that don't pass `size` render unchanged.
+    md: 'px-6 py-3 gap-2',
+    lg: 'px-6 py-3.5 text-base gap-2',
+};
+
+const BUTTON_SHAPES: Record<ButtonShape, string> = {
+    rounded: 'rounded-xl',
+    pill: 'rounded-full',
+};
+
+const BUTTON_BASE_STYLES =
+    'font-semibold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200';
+
 interface ButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
-    variant?: 'primary' | 'secondary' | 'ghost';
+    variant?: ButtonVariant;
+    size?: ButtonSize;
+    shape?: ButtonShape;
     isLoading?: boolean;
+    /** Renders as a Next.js Link styled like a button instead of a <button>. */
+    href?: string;
     children: React.ReactNode;
 }
 
 export function Button({
     children,
     variant = 'primary',
+    size = 'md',
+    shape = 'rounded',
     isLoading,
+    href,
     className,
     disabled,
     ...props
 }: ButtonProps) {
-    const baseStyles =
-        'px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200';
+    const classes = cn(BUTTON_BASE_STYLES, BUTTON_SIZES[size], BUTTON_SHAPES[shape], BUTTON_VARIANTS[variant], className);
 
-    const variants = {
-        primary:
-            'workspace-button-primary hover:brightness-105',
-        secondary:
-            'workspace-button-secondary hover:brightness-[1.02]',
-        ghost: 'workspace-button-ghost bg-transparent',
-    };
+    if (href) {
+        return (
+            <Link href={href} className={classes}>
+                {isLoading && <FiLoader className="animate-spin h-5 w-5" aria-hidden="true" />}
+                {children}
+            </Link>
+        );
+    }
 
     return (
         <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className={cn(baseStyles, variants[variant], className)}
+            className={classes}
             disabled={disabled || isLoading}
             {...props}
         >

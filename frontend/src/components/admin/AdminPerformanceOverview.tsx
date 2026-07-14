@@ -183,7 +183,7 @@ export default function AdminPerformanceOverview({
             </div>
 
             <div className="relative grid gap-4 xl:grid-cols-[1.15fr_0.95fr_0.9fr]">
-                <div className="rounded-[1.75rem] workspace-soft-panel p-5">
+                <div className="rounded-card-175 workspace-soft-panel p-5">
                     <div className="flex items-start justify-between gap-3">
                         <div>
                             <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Dashboard Readiness</p>
@@ -208,7 +208,7 @@ export default function AdminPerformanceOverview({
                     </div>
                 </div>
 
-                <div className="rounded-[1.75rem] workspace-soft-panel p-5">
+                <div className="rounded-card-175 workspace-soft-panel p-5">
                     <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Coverage</p>
                     <p className="mt-1 text-lg font-semibold workspace-heading">How complete is the note layer?</p>
                     <div className="mt-5 space-y-4">
@@ -239,7 +239,7 @@ export default function AdminPerformanceOverview({
                     </div>
                 </div>
 
-                <div className="rounded-[1.75rem] workspace-soft-panel p-5">
+                <div className="rounded-card-175 workspace-soft-panel p-5">
                     <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Voice + Activity</p>
                     <p className="mt-1 text-lg font-semibold workspace-heading">Recent pipeline and usage pulse</p>
                     <div className="mt-5 grid grid-cols-2 gap-3">

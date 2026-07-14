@@ -172,7 +172,7 @@ export default function LoginPage() {
                         initial={{ opacity: 0, y: 18 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.42, ease: 'easeOut' }}
-                        className="paper-card app-paper relative rounded-[2rem] p-5 sm:p-8"
+                        className="paper-card app-paper relative rounded-card-200 p-5 sm:p-8"
                         style={quietNotebookPanelStyle}
                     >
                         <div className="absolute right-5 top-5">

@@ -198,7 +198,7 @@ export default function OfflineBanner() {
                     style={{ bottom: 'calc(var(--app-bottom-clearance, 1rem) + 0.5rem)' }}
                 >
                     <div className="mx-auto max-w-xl">
-                        <div className="workspace-panel overflow-hidden rounded-[1.6rem] shadow-2xl">
+                        <div className="workspace-panel overflow-hidden rounded-card-160 shadow-2xl">
                             <button
                                 type="button"
                                 onClick={() => setExpanded((current) => !current)}
@@ -226,7 +226,7 @@ export default function OfflineBanner() {
                                 <div className="border-t border-[rgba(var(--paper-border),0.72)] px-4 pb-4 pt-3">
                                     <div className="space-y-3">
                                         {hasPendingDraft && snapshot.draft && (
-                                            <div className="workspace-soft-panel rounded-[1.3rem] p-4">
+                                            <div className="workspace-soft-panel rounded-card-130 p-4">
                                                 <div className="flex items-start justify-between gap-4">
                                                     <div className="flex min-w-0 items-start gap-3">
                                                         <div className="workspace-icon-badge mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl">
@@ -254,7 +254,7 @@ export default function OfflineBanner() {
                                         )}
 
                                         {hasQueuedUploads && (
-                                            <div className="workspace-soft-panel rounded-[1.3rem] p-4">
+                                            <div className="workspace-soft-panel rounded-card-130 p-4">
                                                 <div className="flex items-start gap-3">
                                                     <div className="workspace-icon-badge mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl">
                                                         <FiUploadCloud size={16} aria-hidden="true" />
@@ -279,7 +279,7 @@ export default function OfflineBanner() {
                                         )}
 
                                         {snapshot.lastSyncIssue && (
-                                            <div className="rounded-[1.3rem] border border-amber-500/30 bg-amber-500/10 p-4">
+                                            <div className="rounded-card-130 border border-amber-500/30 bg-amber-500/10 p-4">
                                                 <div className="flex items-start gap-3">
                                                     <FiAlertCircle size={18} className="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
                                                     <div>
@@ -295,7 +295,7 @@ export default function OfflineBanner() {
                                             </div>
                                         )}
 
-                                        <div className="workspace-soft-panel rounded-[1.3rem] p-4">
+                                        <div className="workspace-soft-panel rounded-card-130 p-4">
                                             <div className="flex items-start gap-3">
                                                 <div className="workspace-icon-badge mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl">
                                                     {snapshot.lastSuccessfulSyncAt ? (

@@ -84,7 +84,7 @@ function SharedBundleViewContent() {
 
     useEffect(() => {
         if (authLoading || !isAuthenticated) return;
-        if (!bundleId) { setError('No bundle ID'); setLoading(false); return; }
+        if (!bundleId) { setError('Couldn’t find this shared memory.'); setLoading(false); return; }
         (async () => {
             try {
                 const r = await apiFetch(`/memory-share/bundles/${bundleId}`);

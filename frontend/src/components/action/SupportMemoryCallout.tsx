@@ -30,8 +30,8 @@ export default function SupportMemoryCallout({
     return (
         <div className={cn(
             isNotebook
-                ? 'notebook-card-soft rounded-[1.5rem] p-4'
-                : 'rounded-[1.5rem] border border-emerald-300/20 bg-[linear-gradient(145deg,rgba(24,99,85,0.18),rgba(8,12,22,0.78))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
+                ? 'notebook-card-soft rounded-3xl p-4'
+                : 'rounded-3xl border border-emerald-300/20 bg-[linear-gradient(145deg,rgba(24,99,85,0.18),rgba(8,12,22,0.78))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
             className
         )}>
             <div className="flex flex-wrap items-center justify-between gap-2">

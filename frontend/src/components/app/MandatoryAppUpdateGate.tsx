@@ -157,11 +157,11 @@ export default function MandatoryAppUpdateGate({
                 initial={{ opacity: 0, y: 16, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.2 }}
-                className="w-full max-w-md rounded-[1.75rem] border border-[rgba(122,112,98,0.2)] bg-[rgb(248,244,237)] p-6 shadow-2xl"
+                className="w-full max-w-md rounded-card-175 border border-[rgba(122,112,98,0.2)] bg-[rgb(248,244,237)] p-6 shadow-2xl"
             >
                 <div className="flex items-start justify-between gap-3">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[rgb(138,154,111)]">
+                        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[rgb(var(--brand))]">
                             Update required
                         </p>
                         <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-[rgb(39,35,31)]">
@@ -174,7 +174,7 @@ export default function MandatoryAppUpdateGate({
                     This version is no longer supported. Update now to keep using Notive with the latest fixes and the smoothest experience.
                 </p>
 
-                <div className="mt-6 rounded-[1.25rem] border border-[rgba(122,112,98,0.16)] bg-white/70 p-4">
+                <div className="mt-6 rounded-card-125 border border-[rgba(122,112,98,0.16)] bg-white/70 p-4">
                     <p className="text-sm font-semibold text-[rgb(39,35,31)]">What happens next</p>
                     <ul className="mt-2 space-y-2 text-sm leading-6 text-[rgb(76,70,62)]">
                         <li>• You’ll be taken to the Play Store to install the latest version.</li>
@@ -186,7 +186,7 @@ export default function MandatoryAppUpdateGate({
                     type="button"
                     onClick={handleUpdate}
                     disabled={isLaunching}
-                    className="mt-6 inline-flex w-full items-center justify-center rounded-[1.2rem] bg-[rgb(138,154,111)] px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+                    className="mt-6 inline-flex w-full items-center justify-center rounded-card-120 bg-[rgb(var(--brand))] px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                     {isLaunching ? 'Opening Play Store…' : 'Update now'}
                 </button>

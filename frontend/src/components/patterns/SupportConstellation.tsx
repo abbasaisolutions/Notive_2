@@ -111,7 +111,7 @@ export default function SupportConstellation({
                     title="Support anchors will form here"
                     description="Once a few notes show who or what helps, Notive will turn them into a visible support map."
                 />
-                <div className="workspace-soft-panel rounded-[1.8rem] p-5 text-sm leading-7 text-ink-secondary">
+                <div className="workspace-soft-panel rounded-card-180 p-5 text-sm leading-7 text-ink-secondary">
                     People, places, and routines do not need to be perfect to matter. Notive will start surfacing them when the pattern gets strong enough.
                 </div>
             </AppPanel>
@@ -133,7 +133,7 @@ export default function SupportConstellation({
             </div>
 
             <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)]">
-                <div className="workspace-soft-panel relative overflow-hidden rounded-[2rem] p-5">
+                <div className="workspace-soft-panel relative overflow-hidden rounded-card-200 p-5">
                     <div className="pointer-events-none absolute inset-0 opacity-40">
                         <div className="absolute left-[-8%] top-[18%] h-36 w-36 rounded-full border border-[rgba(var(--paper-border),0.76)]" />
                         <div className="absolute right-[4%] top-[10%] h-24 w-24 rounded-full border border-[rgba(var(--paper-border),0.76)]" />
@@ -151,7 +151,7 @@ export default function SupportConstellation({
                                     key={anchor.id}
                                     type="button"
                                     onClick={() => handleSelect(anchor)}
-                                    className={`rounded-[1.8rem] border px-4 py-3 text-left transition-all ${TYPE_STYLES[anchor.type]} ${
+                                    className={`rounded-card-180 border px-4 py-3 text-left transition-all ${TYPE_STYLES[anchor.type]} ${
                                         isActive
                                             ? 'scale-[1.02] shadow-[0_16px_40px_rgba(0,0,0,0.28)]'
                                             : 'opacity-90 hover:opacity-100'
@@ -172,7 +172,7 @@ export default function SupportConstellation({
 
                 {activeAnchor && (
                     <div className="space-y-4">
-                        <div className="workspace-panel rounded-[1.8rem] p-5">
+                        <div className="workspace-panel rounded-card-180 p-5">
                             <div className="flex flex-wrap items-center gap-2">
                                 <TagPill tone="primary">{TYPE_LABELS[activeAnchor.type]}</TagPill>
                                 <TagPill>{Math.round(activeAnchor.strength * 100)}% strength</TagPill>
@@ -197,7 +197,7 @@ export default function SupportConstellation({
                         </div>
 
                         {activeAnchor.outcomeMemory && (
-                            <div className="rounded-[1.8rem] border border-emerald-300/20 bg-emerald-300/[0.06] p-5">
+                            <div className="rounded-card-180 border border-emerald-300/20 bg-emerald-300/[0.06] p-5">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">After reach-outs</p>
                                 <p className="mt-2 text-sm leading-7 text-[rgb(var(--text-primary))]">
                                     {formatOutcomeMemoryLine(activeAnchor)}
@@ -225,7 +225,7 @@ export default function SupportConstellation({
                             </div>
                         )}
 
-                        <div className="rounded-[1.8rem] border border-amber-300/20 bg-amber-200/[0.06] p-5">
+                        <div className="rounded-card-180 border border-amber-300/20 bg-amber-200/[0.06] p-5">
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Reconnect move</p>
                             <p className="mt-2 text-sm leading-7 text-[rgb(var(--text-primary))]">{activeAnchor.reconnectSuggestion}</p>
                             {activeAnchor.messageStarter && (
@@ -243,7 +243,7 @@ export default function SupportConstellation({
                             )}
                         </div>
 
-                        <div className="workspace-soft-panel rounded-[1.8rem] p-5">
+                        <div className="workspace-soft-panel rounded-card-180 p-5">
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Grounding notes</p>
                             {activeAnchor.evidence.length === 0 ? (
                                 <div className="workspace-muted-panel mt-4 rounded-2xl border-dashed p-4 text-sm leading-7 text-ink-secondary">

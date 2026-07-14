@@ -76,7 +76,7 @@ export function WhatsComingCard({ entryCount }: { entryCount: number }) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15, duration: 0.3 }}
-            className="notebook-card-soft rounded-[1.75rem] p-5"
+            className="notebook-card-soft rounded-card-175 p-5"
         >
             <p
                 className="section-label mb-3"
@@ -180,7 +180,7 @@ export function FirstReadCard({ mood, tags, entities, topics, lessons, skills, c
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.3 }}
-            className="notebook-card-soft rounded-[1.75rem] p-5"
+            className="notebook-card-soft rounded-card-175 p-5"
             aria-live="polite"
         >
             <div className="mb-3 flex items-center gap-2">
@@ -305,7 +305,7 @@ export function EmptyDashboard({ writeHref }: { writeHref: string }) {
             </p>
             <a
                 href={writeHref}
-                className="notebook-primary-cta mt-5 inline-flex items-center justify-center rounded-[1rem] px-5 py-3 text-sm font-semibold"
+                className="notebook-primary-cta mt-5 inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold"
             >
                 Write your first note
             </a>

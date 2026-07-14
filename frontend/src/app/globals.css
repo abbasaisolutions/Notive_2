@@ -16,7 +16,7 @@
   --text-default: 90 90 90;
   --text-soft: 107 107 107;
   --text-muted: 100 100 100;
-  --text-disabled: 140 140 140;
+  --text-disabled: 125 125 125;
   --text-accent: 58 58 58;
   --text-success: 138 154 111;
   --text-warning: 163 125 71;
@@ -56,6 +56,17 @@
   --radius-2xl: 2.25rem;
   --shadow-soft: 0 8px 24px rgba(92, 92, 92, 0.08);
   --shadow-strong: 0 18px 42px rgba(92, 92, 92, 0.14);
+
+  /*
+    Motion timing tokens. --ease-notive is the "settle" curve used for
+    entrances/exits across CSS keyframes and framer-motion transitions alike
+    (matches the values already hand-rolled at most framer-motion call sites);
+    --duration-* give a common scale for one-shot UI transitions.
+  */
+  --ease-notive: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 160ms;
+  --duration-base: 280ms;
+  --duration-slow: 420ms;
 
   /* Legacy aliases used by current components */
   --foreground: 58 58 58;
@@ -100,69 +111,13 @@
   }
 }
 
-html[data-theme='dark'] {
-  --bg-canvas: 20 22 20;
-  --bg-elevated: 31 34 31;
-  --bg-warm: 38 39 35;
-
-  --surface-1: 25 28 25;
-  --surface-2: 35 38 34;
-  --surface-3: 43 46 41;
-
-  --text-strong: 244 239 229;
-  --text-default: 218 212 200;
-  --text-soft: 190 183 170;
-  --text-muted: 157 151 139;
-  --text-disabled: 105 101 94;
-  --text-accent: 229 221 204;
-  --text-inverse: 22 24 22;
-  --text-primary: var(--text-strong);
-  --text-secondary: var(--text-default);
-  --foreground: var(--text-strong);
-  --background-start: 20 22 20;
-  --background-end: 17 19 17;
-
-  --paper-bg: 20 22 20;
-  --paper-base: 20 22 20;
-  --paper-surface: 35 38 34;
-  --paper-soft: 31 34 31;
-  --paper-warm: 38 39 35;
-  --paper-border: 214 204 184;
-  --paper-ink: 244 239 229;
-  --paper-ink-soft: 218 212 200;
-  --paper-ink-muted: 157 151 139;
-
-  --glass-bg: rgba(31, 34, 31, 0.88);
-  --glass-border: rgba(244, 239, 229, 0.14);
-  --glass-nav-bg: linear-gradient(180deg, rgba(31, 34, 31, 0.94), rgba(20, 22, 20, 0.96));
-  --glass-card-bg: linear-gradient(180deg, rgba(35, 38, 34, 0.92), rgba(25, 28, 25, 0.96));
-  --app-body-background:
-    radial-gradient(42rem 26rem at 12% 0%, rgba(138, 154, 111, 0.14), transparent 52%),
-    radial-gradient(38rem 24rem at 100% 8%, rgba(240, 205, 184, 0.08), transparent 44%),
-    linear-gradient(180deg, #181a18 0%, #111311 100%);
-  --app-shell-background:
-    radial-gradient(circle at 14% 12%, rgba(138, 154, 111, 0.12) 0%, transparent 30%),
-    radial-gradient(circle at 86% 18%, rgba(240, 205, 184, 0.08) 0%, transparent 30%);
-  --workspace-footer-color: rgba(218, 212, 200, 0.72);
-  --workspace-footer-hover: rgb(var(--paper-ink));
-  --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.22);
-  --shadow-strong: 0 18px 42px rgba(0, 0, 0, 0.34);
-}
-
-html[data-theme='dark'] body {
-  color: rgb(var(--text-strong));
-  background: var(--app-body-background);
-  background-color: rgb(var(--paper-bg));
-}
-
 /*
   Notive is paper-only. `color-scheme` is pinned to light so native form
   controls — Android's <select> popup and date picker in particular — always
   paint dark text. Under `color-scheme: dark` they painted white text onto the
   light paper sheet and became unreadable.
 */
-html,
-html[data-theme='dark'] {
+html {
   color-scheme: light;
 }
 
@@ -684,8 +639,9 @@ html[data-theme='dark'] {
 
   .workspace-field-label {
     color: rgb(var(--paper-ink-muted));
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
+    line-height: 1.3;
     letter-spacing: 0.14em;
     text-transform: uppercase;
   }
@@ -766,120 +722,6 @@ html[data-theme='dark'] {
     background: rgba(255, 255, 255, 0.76);
     border: 1px solid rgba(var(--paper-border), 0.92);
     color: rgb(var(--paper-ink));
-  }
-
-  html[data-theme='dark'] .app-paper,
-  html[data-theme='dark'] .app-paper-soft,
-  html[data-theme='dark'] .app-paper-hero,
-  html[data-theme='dark'] .workspace-panel,
-  html[data-theme='dark'] .workspace-soft-panel,
-  html[data-theme='dark'] .workspace-muted-panel,
-  html[data-theme='dark'] .workspace-actionbar,
-  html[data-theme='dark'] .notebook-shell,
-  html[data-theme='dark'] .notebook-card,
-  html[data-theme='dark'] .notebook-card-warm,
-  html[data-theme='dark'] .notebook-card-soft,
-  html[data-theme='dark'] .entry-paper-shell,
-  html[data-theme='dark'] .entry-paper-canvas {
-    background:
-      linear-gradient(180deg, rgba(43, 47, 41, 0.94), rgba(23, 26, 23, 0.96)),
-      radial-gradient(circle at 1px 1px, rgba(244, 239, 229, 0.045) 0.6px, transparent 0.6px);
-    background-size: auto, 24px 24px;
-    border-color: rgba(244, 239, 229, 0.14);
-    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
-    color: rgb(var(--text-strong));
-  }
-
-  html[data-theme='dark'] .app-paper::before,
-  html[data-theme='dark'] .app-paper-soft::before,
-  html[data-theme='dark'] .app-paper-hero::before {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 48%),
-      radial-gradient(circle at 20% 18%, rgba(138, 154, 111, 0.1), transparent 30%);
-    opacity: 0.58;
-  }
-
-  /*
-    The dark form-control overrides that used to live here are deleted, not just
-    unreachable. They set `color-scheme: dark` on inputs and selects, which is
-    what made Android's native dropdown and date picker paint white text onto the
-    light paper sheet. Form controls stay light on every surface.
-  */
-
-  html[data-theme='dark'] .workspace-pill,
-  html[data-theme='dark'] .workspace-pill-muted,
-  html[data-theme='dark'] .notebook-chip,
-  html[data-theme='dark'] .workspace-button-secondary,
-  html[data-theme='dark'] .workspace-button-outline,
-  html[data-theme='dark'] .ghost-cta,
-  html[data-theme='dark'] .panel-soft,
-  html[data-theme='dark'] .workspace-icon-badge {
-    background: rgba(255, 255, 255, 0.055);
-    border-color: rgba(244, 239, 229, 0.14);
-    color: rgb(var(--text-default));
-  }
-
-  html[data-theme='dark'] .workspace-button-outline:hover,
-  html[data-theme='dark'] .workspace-button-secondary:hover,
-  html[data-theme='dark'] .ghost-cta:hover,
-  html[data-theme='dark'] .workspace-button-ghost:hover,
-  html[data-theme='dark'] .notebook-secondary-cta:hover {
-    background: rgba(255, 255, 255, 0.09);
-    border-color: rgba(244, 239, 229, 0.22);
-    color: rgb(var(--text-strong));
-  }
-
-  html[data-theme='dark'] .notebook-secondary-cta {
-    background: rgba(255, 255, 255, 0.055);
-    border-color: rgba(244, 239, 229, 0.14);
-    color: rgb(var(--text-default));
-  }
-
-  html[data-theme='dark'] .notebook-muted,
-  html[data-theme='dark'] .paper-preview-copy {
-    color: rgb(var(--text-muted));
-  }
-
-  html[data-theme='dark'] .entry-paper .ProseMirror,
-  html[data-theme='dark'] .entry-paper .ProseMirror h1,
-  html[data-theme='dark'] .entry-paper .ProseMirror h2,
-  html[data-theme='dark'] .entry-paper .ProseMirror h3,
-  html[data-theme='dark'] .ink-title-input {
-    color: rgb(var(--text-strong));
-  }
-
-  html[data-theme='dark'] .entry-paper .ProseMirror p,
-  html[data-theme='dark'] .entry-studio .ProseMirror p {
-    color: rgb(var(--text-default));
-  }
-
-  html[data-theme='dark'] .ink-title-input {
-    background-image: linear-gradient(90deg, rgba(244, 239, 229, 0.18), rgba(244, 239, 229, 0.08));
-  }
-
-  html[data-theme='dark'] .bg-white\/40,
-  html[data-theme='dark'] .bg-white\/45,
-  html[data-theme='dark'] .bg-white\/50,
-  html[data-theme='dark'] .bg-white\/55,
-  html[data-theme='dark'] .bg-white\/60,
-  html[data-theme='dark'] .bg-white\/70,
-  html[data-theme='dark'] .bg-white\/80 {
-    background-color: rgba(255, 255, 255, 0.07) !important;
-  }
-
-  html[data-theme='dark'] .bg-white\/5,
-  html[data-theme='dark'] .bg-white\/10,
-  html[data-theme='dark'] .bg-white\/12,
-  html[data-theme='dark'] .bg-white\/15,
-  html[data-theme='dark'] .bg-white\/20 {
-    background-color: rgba(255, 255, 255, 0.055) !important;
-  }
-
-  html[data-theme='dark'] .border-white\/10,
-  html[data-theme='dark'] .border-white\/12,
-  html[data-theme='dark'] .border-white\/15,
-  html[data-theme='dark'] .border-white\/20 {
-    border-color: rgba(244, 239, 229, 0.14) !important;
   }
 
   .admin-stage {
@@ -1008,8 +850,9 @@ html[data-theme='dark'] {
 
   .health-kicker {
     color: rgba(var(--paper-ink-muted), 0.92);
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.3;
     letter-spacing: 0.14em;
     text-transform: uppercase;
   }
@@ -1070,38 +913,38 @@ html[data-theme='dark'] {
   }
 
   .paper-preview-shell {
-    background: rgb(243, 239, 230);
-    color: rgb(30, 41, 59);
+    background: rgb(var(--paper-surface));
+    color: rgb(var(--text-strong));
   }
 
   .paper-preview-topbar {
     background: rgba(255, 255, 255, 0.82);
-    border-bottom: 1px solid rgba(203, 213, 225, 0.8);
+    border-bottom: 1px solid rgba(var(--paper-border), 0.3);
   }
 
   .paper-preview-kicker {
-    color: rgb(100, 116, 139);
+    color: rgb(var(--paper-ink-muted));
     font-size: 0.75rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
   }
 
   .paper-preview-title {
-    color: rgb(17, 24, 39);
+    color: rgb(var(--text-strong));
   }
 
   .paper-preview-badge {
-    background: rgb(248, 250, 252);
-    border: 1px solid rgba(203, 213, 225, 0.9);
-    color: rgb(71, 85, 105);
+    background: rgb(var(--paper-soft));
+    border: 1px solid rgba(var(--paper-border), 0.32);
+    color: rgb(var(--paper-ink-muted));
   }
 
   .paper-preview-canvas {
-    background: rgb(248, 246, 241);
+    background: rgb(var(--paper-bg));
   }
 
   .paper-preview-overlay {
-    background: rgba(248, 246, 241, 0.82);
+    background: rgba(var(--paper-bg), 0.82);
   }
 
   .paper-preview-spinner {
@@ -1111,12 +954,12 @@ html[data-theme='dark'] {
 
   .paper-preview-empty-card {
     background: rgba(255, 255, 255, 0.92);
-    border: 1px solid rgba(203, 213, 225, 0.9);
-    color: rgb(71, 85, 105);
+    border: 1px solid rgba(var(--paper-border), 0.32);
+    color: rgb(var(--paper-ink-muted));
   }
 
   .paper-preview-copy {
-    color: rgb(75, 85, 99);
+    color: rgb(var(--text-default));
   }
 
   .notebook-shell {
@@ -1202,10 +1045,11 @@ html[data-theme='dark'] {
   }
 
   .notebook-kicker {
-    color: rgb(182 170 150);
-    font-size: 0.74rem;
-    font-weight: 600;
-    letter-spacing: 0.15em;
+    color: rgb(var(--text-soft));
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
   }
 
@@ -1213,8 +1057,8 @@ html[data-theme='dark'] {
     color: rgb(var(--paper-ink-soft));
     font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 0.16em;
-    line-height: 1.35;
+    letter-spacing: 0.14em;
+    line-height: 1.3;
     text-transform: uppercase;
   }
 
@@ -1424,23 +1268,32 @@ html[data-theme='dark'] {
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* Timeline card scroll-focus highlight — subtle breathing sage ring */
+  /*
+    Timeline card scroll-focus highlight — subtle breathing sage ring.
+    The pulse animates a pseudo-element's opacity over a static box-shadow
+    rather than animating box-shadow itself, so scrolling through a focused
+    card doesn't repaint it every frame.
+  */
   .timeline-card-focused {
-    animation: timeline-focus-breathe 2.4s ease-in-out infinite;
+    position: relative;
     transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(92, 92, 92, 0.12), 0 0 0 1.5px rgba(138, 154, 111, 0.12);
   }
 
-  @keyframes timeline-focus-breathe {
-    0%, 100% {
-      box-shadow:
-        0 8px 24px rgba(92, 92, 92, 0.12),
-        0 0 0 1.5px rgba(138, 154, 111, 0.12);
-    }
-    50% {
-      box-shadow:
-        0 8px 24px rgba(92, 92, 92, 0.12),
-        0 0 0 1.5px rgba(138, 154, 111, 0.28);
-    }
+  .timeline-card-focused::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 8px 24px rgba(92, 92, 92, 0.12), 0 0 0 1.5px rgba(138, 154, 111, 0.28);
+    opacity: 0;
+    animation: timeline-focus-breathe-pulse 2.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes timeline-focus-breathe-pulse {
+    0%, 100% { opacity: 0; }
+    50%      { opacity: 1; }
   }
   .stagger-child {
     animation: stagger-in 280ms ease-out both;
@@ -1532,14 +1385,31 @@ html[data-theme='dark'] {
     background: rgba(138, 154, 111, 0.04) !important;
   }
 
-  /* Subtle sage typing glow on editor wrapper */
-  @keyframes entry-typing-glow {
-    from { box-shadow: 0 0 0 2px rgba(138,154,111,0.12), 0 4px 28px rgba(138,154,111,0.06); }
-    to   { box-shadow: 0 0 0 2px rgba(138,154,111,0.20), 0 4px 28px rgba(138,154,111,0.12); }
+  /*
+    Subtle sage typing glow on editor wrapper. The pulse animates a pseudo-
+    element's opacity (composited, cheap) layered over a static box-shadow,
+    instead of animating box-shadow directly — box-shadow is a paint property,
+    so animating it every frame while the user is actively typing repainted
+    the whole card on every tick.
+  */
+  @keyframes entry-typing-glow-pulse {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
   .entry-typing-glow {
-    animation: entry-typing-glow 1.4s ease-in-out infinite alternate;
+    position: relative;
     border-radius: 1.75rem;
+    box-shadow: 0 0 0 2px rgba(138, 154, 111, 0.12), 0 4px 28px rgba(138, 154, 111, 0.06);
+  }
+  .entry-typing-glow::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 0 2px rgba(138, 154, 111, 0.20), 0 4px 28px rgba(138, 154, 111, 0.12);
+    opacity: 0;
+    animation: entry-typing-glow-pulse 1.4s ease-in-out infinite alternate;
+    pointer-events: none;
   }
 
   /* Ink-flow border — animated gradient border during active writing */
@@ -1565,15 +1435,6 @@ html[data-theme='dark'] {
     z-index: 0;
   }
 
-  /* Editor card entrance */
-  @keyframes editor-card-enter {
-    from { opacity: 0; transform: translateY(12px) scale(0.99); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  .editor-card-enter {
-    animation: editor-card-enter 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
   /* Paper page-turn entrance — entry card flips in like a notebook page */
   @keyframes paper-page-turn {
     0% {
@@ -1592,7 +1453,7 @@ html[data-theme='dark'] {
   }
   .paper-page-turn-enter {
     transform-origin: left center;
-    animation: paper-page-turn 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: paper-page-turn 0.42s var(--ease-notive) both;
     will-change: transform, opacity;
     backface-visibility: hidden;
   }
@@ -1604,16 +1465,6 @@ html[data-theme='dark'] {
   }
   .ProseMirror .is-empty::before {
     animation: placeholder-shimmer 3s ease-in-out infinite;
-  }
-
-  /* Word count milestone — micro celebration pulse */
-  @keyframes milestone-pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.12); }
-    100% { transform: scale(1); }
-  }
-  .milestone-celebrate {
-    animation: milestone-pulse 400ms ease-out;
   }
 
   /* Recording button arc container */
@@ -1639,7 +1490,7 @@ html[data-theme='dark'] {
     to { transform: translateY(0); opacity: 1; }
   }
   .voice-record-bar-enter {
-    animation: voice-record-bar-enter 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: voice-record-bar-enter 300ms var(--ease-notive) both;
   }
 
   /* Voice-active editor glow — sage breathing border during recording */
@@ -1661,17 +1512,6 @@ html[data-theme='dark'] {
   .voice-capture-complete {
     animation: voice-capture-complete 600ms ease-out both;
     border-radius: 1.75rem;
-  }
-
-  /* Word write-in — typewriter-inspired appearance for voice-to-text */
-  @keyframes word-write-in {
-    0% { opacity: 0; transform: translateY(3px) scale(0.95); filter: blur(2px); }
-    60% { opacity: 1; transform: translateY(-1px) scale(1.02); filter: blur(0); }
-    100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-  }
-  .word-write-in {
-    display: inline-block;
-    animation: word-write-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   /* Voice ripple — subtle ring emanating from editor during recording */
@@ -1753,44 +1593,10 @@ html[data-theme='dark'] {
     50% { box-shadow: 0 0 0 6px rgba(138,154,111,0.08), 0 2px 20px rgba(138,154,111,0.25); }
   }
 
-  /* Studio tools pill — animated icon pair */
-  .studio-tools-pill {
-    backdrop-filter: blur(8px);
-  }
-  .studio-tools-pill::before {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg, rgba(138,154,111,0.0), rgba(138,154,111,0.35), rgba(138,154,111,0.0));
-    background-size: 200% 200%;
-    animation: studio-pill-shimmer 4s ease-in-out infinite;
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    pointer-events: none;
-  }
-  @keyframes studio-pill-shimmer {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
-  .studio-tool-mic {
-    animation: studio-icon-glow 2.4s ease-in-out infinite;
-  }
-  .studio-tool-pen {
-    animation: studio-icon-glow 2.4s ease-in-out 1.2s infinite;
-  }
-  @keyframes studio-icon-glow {
-    0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 0 transparent); }
-    50% { opacity: 1; filter: drop-shadow(0 0 4px rgba(138,154,111,0.5)); }
-  }
-
   /* Capture FAB — elevated floating action button */
   .capture-fab {
     transform: translateY(-6px);
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.25s var(--ease-notive);
   }
   .capture-fab:hover {
     transform: translateY(-9px);

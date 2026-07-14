@@ -236,7 +236,7 @@ function TriggerRow({
             <span className="text-xs truncate flex-1" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
                 {item.entity}
             </span>
-            <span className="text-[0.62rem] text-[rgb(107,107,107)]">
+            <span className="text-[0.62rem] text-[rgb(var(--text-soft))]">
                 {item.occurrences}x
             </span>
             <button
@@ -405,7 +405,7 @@ export default function PatternDiscoveryFeed({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15, duration: 0.3 }}
-            className="notebook-card rounded-[1.75rem] p-5"
+            className="notebook-card rounded-card-175 p-5"
         >
             <p
                 className="section-label mb-3"

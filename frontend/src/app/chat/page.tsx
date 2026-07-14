@@ -466,7 +466,7 @@ export default function ChatPage() {
                                                 key={suggestion}
                                                 type="button"
                                                 onClick={() => handleStarterSelection(suggestion, 'starter_deck')}
-                                                className="workspace-soft-panel rounded-[1.4rem] p-5 text-left transition-colors hover:brightness-[1.04]"
+                                                className="workspace-soft-panel rounded-card-140 p-5 text-left transition-colors hover:brightness-[1.04]"
                                             >
                                                 <p className="text-base font-semibold leading-7 workspace-heading">{suggestion}</p>
                                                 <FiArrowRight size={14} className="mt-3 text-[rgb(var(--text-muted))]" aria-hidden="true" />

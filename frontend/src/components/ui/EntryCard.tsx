@@ -76,7 +76,7 @@ export default function EntryCard({ entry, delay = 0 }: EntryCardProps) {
         >
             <Link
                 href={appendReturnTo(`/entry/view?id=${entry.id}`, currentReturnTo)}
-                className="workspace-panel rounded-[2rem] group flex h-full flex-col overflow-hidden relative"
+                className="workspace-panel rounded-card-200 group flex h-full flex-col overflow-hidden relative"
             >
                 {/* Image Section */}
                 {entry.coverImage && (

@@ -310,7 +310,7 @@ function GoogleSsoPanelComponent({
                     <div className={`flex w-full flex-col gap-3 ${ALIGNMENT[align]}`}>
                         <div
                             aria-hidden="true"
-                            className="h-10 w-full max-w-[320px] rounded-[1.2rem] border border-[rgba(92,92,92,0.14)] bg-[rgba(255,251,245,0.72)]"
+                            className="h-10 w-full max-w-[320px] rounded-card-120 border border-[rgba(92,92,92,0.14)] bg-[rgba(255,251,245,0.72)]"
                         />
                         <p className="text-xs text-ink-muted">{copy.supportText}</p>
                     </div>
@@ -321,7 +321,7 @@ function GoogleSsoPanelComponent({
                                 type="button"
                                 onClick={handleNativeSignIn}
                                 disabled={isInteractionDisabled}
-                                className="inline-flex w-full max-w-[320px] items-center justify-center gap-3 rounded-[1.2rem] border border-[rgba(92,92,92,0.22)] bg-[rgba(255,251,245,0.9)] px-4 py-3 text-sm font-semibold text-[rgb(58,58,58)] transition-all hover:bg-[rgba(255,251,245,0.96)] disabled:cursor-not-allowed disabled:opacity-60"
+                                className="inline-flex w-full max-w-[320px] items-center justify-center gap-3 rounded-card-120 border border-[rgba(92,92,92,0.22)] bg-[rgba(255,251,245,0.9)] px-4 py-3 text-sm font-semibold text-[rgb(var(--text-strong))] transition-all hover:bg-[rgba(255,251,245,0.96)] disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 {nativeLoading ? (
                                     <FiLoader className="h-4 w-4 animate-spin" aria-hidden="true" />

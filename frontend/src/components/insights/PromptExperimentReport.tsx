@@ -165,7 +165,7 @@ export default function PromptExperimentReport() {
                     {report.experiments.map((experiment) => {
                         const labels = SURFACE_LABELS[experiment.surface];
                         return (
-                            <div key={`${experiment.surface}-${experiment.experimentId}`} className="workspace-soft-panel rounded-[1.75rem] p-5">
+                            <div key={`${experiment.surface}-${experiment.experimentId}`} className="workspace-soft-panel rounded-card-175 p-5">
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div className="space-y-2">
                                         <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">{labels.title}</p>

@@ -136,7 +136,7 @@ export default function EntrySaveCompletionSheet({
             }
         }
         if (!summary.threadConnection && summary.topics && summary.topics.length > 0) {
-            next.push({ key: 'topics', label: 'Thread', value: summary.topics[0] });
+            next.push({ key: 'topics', label: 'Pattern', value: summary.topics[0] });
         }
         if (summary.phrase?.trim()) {
             next.push({ key: 'phrase', label: 'Phrase', value: `You kept returning to "${summary.phrase.trim()}"` });
@@ -208,7 +208,7 @@ export default function EntrySaveCompletionSheet({
                     aria-modal="true"
                     aria-labelledby="entry-save-completion-title"
                     aria-describedby="entry-save-completion-description"
-                    className="workspace-soft-panel w-full max-w-xl rounded-[1.75rem] p-5 shadow-2xl md:p-6"
+                    className="workspace-soft-panel w-full max-w-xl rounded-card-175 p-5 shadow-2xl md:p-6"
                     onClick={(event) => event.stopPropagation()}
                 >
                     <div className="flex items-start justify-between gap-4">

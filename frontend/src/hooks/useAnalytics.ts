@@ -224,7 +224,7 @@ export function useAnalytics(period: 'week' | 'month' | 'year' = 'week') {
                 await fetchSummary();
             } catch (err) {
                 console.error('Analytics fetch error:', err);
-                setError('Network error');
+                setError('Couldn’t load your analytics. Try again.');
             } finally {
                 setIsLoading(false);
             }

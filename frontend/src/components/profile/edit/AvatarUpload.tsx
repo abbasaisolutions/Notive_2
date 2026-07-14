@@ -122,7 +122,7 @@ export default function AvatarUpload({ avatarUrl, name, onAvatarChange }: Avatar
                 {/* Avatar preview */}
                 <div className="relative h-20 w-20 shrink-0">
                     <div
-                        className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[1.3rem] text-2xl font-serif border-2 border-[rgba(var(--paper-border),0.3)]"
+                        className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-card-130 text-2xl font-serif border-2 border-[rgba(var(--paper-border),0.3)]"
                         style={{ background: 'rgb(var(--paper-soft))', color: 'rgb(var(--paper-ink))' }}
                     >
                         {showAvatarImage ? (

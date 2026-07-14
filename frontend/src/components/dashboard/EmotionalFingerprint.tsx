@@ -82,7 +82,7 @@ export default function EmotionalFingerprint({ axes, summary }: EmotionalFingerp
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.3 }}
-            className="notebook-card rounded-[1.75rem] p-5"
+            className="notebook-card rounded-card-175 p-5"
         >
             <p
                 className="section-label mb-1"

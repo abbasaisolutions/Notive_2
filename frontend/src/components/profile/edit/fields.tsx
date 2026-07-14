@@ -24,7 +24,7 @@ export function TagInput({
     return (
         <div className="space-y-2">
             <label className="workspace-field-label ml-1">{label}</label>
-            <div className="workspace-soft-panel w-full rounded-[1.2rem] px-3 py-3 space-y-3">
+            <div className="workspace-soft-panel w-full rounded-card-120 px-3 py-3 space-y-3">
                 {values.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                         {values.map((item) => (
@@ -82,7 +82,7 @@ export function TextField({
                 type={type}
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
-                className="workspace-input w-full rounded-[1.2rem] px-5 py-4 focus:outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all"
+                className="workspace-input w-full rounded-card-120 px-5 py-4 focus:outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all"
                 placeholder={placeholder}
             />
             {helper && <p className="workspace-field-helper ml-1">{helper}</p>}
@@ -111,7 +111,7 @@ export function TextAreaField({
             <textarea
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
-                className="workspace-input w-full resize-none rounded-[1.2rem] px-5 py-4 focus:outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all"
+                className="workspace-input w-full resize-none rounded-card-120 px-5 py-4 focus:outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all"
                 placeholder={placeholder}
                 style={{ minHeight }}
             />
@@ -141,7 +141,7 @@ export function SelectField({
             <select
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
-                className="workspace-input w-full rounded-[1.2rem] px-4 py-4 focus:outline-none focus:border-primary/40"
+                className="workspace-input w-full rounded-card-120 px-4 py-4 focus:outline-none focus:border-primary/40"
             >
                 <option value="">{emptyLabel}</option>
                 {options.map((option) => (
@@ -158,7 +158,7 @@ export function SelectField({
 export function NoticeBanner({ notice }: { notice: Notice }) {
     return (
         <div
-            className={`rounded-[1.4rem] border px-5 py-4 ${
+            className={`rounded-card-140 border px-5 py-4 ${
                 notice.type === 'success'
                     ? 'border-primary/25 bg-primary/10 text-[rgb(var(--text-primary))]'
                     : 'workspace-soft-panel text-[rgb(var(--text-primary))]'

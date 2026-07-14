@@ -78,9 +78,9 @@ export default function DailyCheckIn({ hasCheckedInToday, todayMood = null, onSu
             <motion.div
                 initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="rounded-[1.25rem] border border-[rgba(138,154,111,0.2)] bg-[rgba(138,154,111,0.06)] px-4 py-3 text-center"
+                className="rounded-card-125 border border-[rgba(138,154,111,0.2)] bg-[rgba(138,154,111,0.06)] px-4 py-3 text-center"
             >
-                <p className="text-[0.78rem] font-medium text-[rgb(138,154,111)]">
+                <p className="text-[0.78rem] font-medium text-[rgb(var(--brand))]">
                     ✓ Checked in today{moodLabel ? ` — feeling ${moodLabel} ${MOOD_EMOJIS[moodLabel] ?? ''}` : ''}
                 </p>
             </motion.div>
@@ -88,11 +88,11 @@ export default function DailyCheckIn({ hasCheckedInToday, todayMood = null, onSu
     }
 
     return (
-        <div className="rounded-[1.25rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(248,244,237,0.94)] px-4 py-4">
+        <div className="rounded-card-125 border border-[rgba(92,92,92,0.12)] bg-[rgba(248,244,237,0.94)] px-4 py-4">
             {/* Header */}
             <div className="flex items-center justify-between gap-2">
                 <p className="section-label">Quick check-in</p>
-                <p className="text-[0.62rem] text-[rgb(107,107,107)]">Counts toward your streak</p>
+                <p className="text-[0.62rem] text-[rgb(var(--text-soft))]">Counts toward your streak</p>
             </div>
 
             {/* Mood emoji row — horizontal scroll, most common first, swipe left for more */}
@@ -124,7 +124,7 @@ export default function DailyCheckIn({ hasCheckedInToday, todayMood = null, onSu
                                 {MOOD_EMOJIS[mood] ?? '😐'}
                             </span>
                             <span className={`text-[0.55rem] capitalize leading-none ${
-                                isSelected ? 'font-semibold text-[rgb(138,154,111)]' : 'text-[rgb(140,140,140)]'
+                                isSelected ? 'font-semibold text-[rgb(var(--brand))]' : 'text-[rgb(140,140,140)]'
                             }`}>
                                 {mood}
                             </span>

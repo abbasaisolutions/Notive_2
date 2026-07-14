@@ -26,7 +26,7 @@ const toneStyles: Record<DashboardTakeawayTone, {
         border: 'border-[rgba(138,154,111,0.28)]',
         text: 'text-[rgb(104,124,80)]',
         soft: 'bg-[rgba(138,154,111,0.08)]',
-        dot: 'bg-[rgb(138,154,111)]',
+        dot: 'bg-[rgb(var(--brand))]',
     },
     apricot: {
         bg: 'bg-[rgba(234,216,189,0.52)]',
@@ -140,7 +140,7 @@ export default function DashboardTakeawayCard({ takeaway, compact = false }: Das
 
     return (
         <section
-            className={`relative overflow-hidden rounded-[1.25rem] border ${styles.border} bg-[rgba(255,251,245,0.72)] ${compact ? 'px-3.5 py-3.5 md:px-5 md:py-5' : 'px-4 py-4 md:px-5 md:py-5'} shadow-[0_12px_28px_rgba(92,92,92,0.07)] md:rounded-[1.65rem]`}
+            className={`relative overflow-hidden rounded-card-125 border ${styles.border} bg-[rgba(255,251,245,0.72)] ${compact ? 'px-3.5 py-3.5 md:px-5 md:py-5' : 'px-4 py-4 md:px-5 md:py-5'} shadow-[0_12px_28px_rgba(92,92,92,0.07)] md:rounded-[1.65rem]`}
             aria-label="Dashboard takeaway"
         >
             <div className={`absolute inset-y-4 left-0 w-1 rounded-r-full ${styles.dot}`} aria-hidden="true" />
@@ -165,7 +165,7 @@ export default function DashboardTakeawayCard({ takeaway, compact = false }: Das
                 </div>
             </div>
 
-            <div className={`${compact ? 'mt-3' : 'mt-4'} flex flex-col gap-3 rounded-[1rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.38)] px-3 py-3 md:flex-row md:items-center md:justify-between`}>
+            <div className={`${compact ? 'mt-3' : 'mt-4'} flex flex-col gap-3 rounded-2xl border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.38)] px-3 py-3 md:flex-row md:items-center md:justify-between`}>
                 <div className="min-w-0">
                     <p className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-[rgb(var(--paper-ink-soft))]">
                         Next
@@ -198,7 +198,7 @@ export default function DashboardTakeawayCard({ takeaway, compact = false }: Das
                 <TakeawayAction action={takeaway.secondaryAction} variant="secondary" />
             </div>
 
-            <details className="group mt-3 rounded-[0.95rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.28)]">
+            <details className="group mt-3 rounded-card-95 border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.28)]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">
                     <span className="text-[0.68rem] font-semibold text-[rgb(var(--paper-ink-soft))]">
                         Why this takeaway?

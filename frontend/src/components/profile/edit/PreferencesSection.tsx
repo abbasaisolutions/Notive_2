@@ -37,7 +37,7 @@ export function PreferencesSection({
     return (
         <div className="space-y-6">
             <section className="grid gap-6 xl:grid-cols-[1.4fr,1fr]">
-                <div className="workspace-panel p-8 space-y-6 rounded-[2rem]">
+                <div className="workspace-panel p-8 space-y-6 rounded-card-200">
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                         <div>
                             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Goals & Style</p>
@@ -46,7 +46,7 @@ export function PreferencesSection({
                                 These settings help Notive ask better questions, show better patterns, and build stories you can use.
                             </p>
                         </div>
-                        <div className="rounded-[1.4rem] border border-primary/20 bg-primary/10 px-4 py-3 min-w-[180px]">
+                        <div className="rounded-card-140 border border-primary/20 bg-primary/10 px-4 py-3 min-w-[180px]">
                             <p className="text-xs uppercase tracking-[0.14em] text-primary font-bold">Setup</p>
                             <p className="mt-2 text-3xl font-serif text-[rgb(var(--text-primary))]">{profileContext.completionScore}%</p>
                             <p className="mt-1 text-xs text-ink-secondary">
@@ -116,7 +116,7 @@ export function PreferencesSection({
                 </div>
 
                 <div className="space-y-6">
-                    <section className="workspace-panel p-6 space-y-4 rounded-[2rem]">
+                    <section className="workspace-panel p-6 space-y-4 rounded-card-200">
                         <div>
                             <p className="text-xs uppercase tracking-[0.16em] text-ink-muted font-bold">Setup Checklist</p>
                             <h3 className="workspace-heading mt-2 text-xl font-serif">You can change this anytime</h3>
@@ -138,7 +138,7 @@ export function PreferencesSection({
                         </div>
                     </section>
 
-                    <section className="workspace-panel p-6 space-y-4 rounded-[2rem]">
+                    <section className="workspace-panel p-6 space-y-4 rounded-card-200">
                         <div>
                             <p className="text-xs uppercase tracking-[0.16em] text-ink-muted font-bold">What Notive Will Focus On</p>
                             <h3 className="workspace-heading mt-2 text-xl font-serif">How Notive is set right now</h3>

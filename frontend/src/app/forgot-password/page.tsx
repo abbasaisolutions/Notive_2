@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
                         initial={{ opacity: 0, y: 18 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.42, ease: 'easeOut' }}
-                        className="paper-card app-paper relative rounded-[2rem] p-5 sm:p-8"
+                        className="paper-card app-paper relative rounded-card-200 p-5 sm:p-8"
                         style={quietNotebookPanelStyle}
                     >
                         <div className="absolute right-5 top-5">
@@ -89,7 +89,7 @@ export default function ForgotPasswordPage() {
 
                         {!isSubmitted ? (
                             <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-                                <div className="app-paper-soft rounded-[1.4rem] p-4 text-center">
+                                <div className="app-paper-soft rounded-card-140 p-4 text-center">
                                     <span className="mb-3 inline-flex rounded-full border border-[rgba(var(--paper-border),0.18)] bg-white/70 p-3 text-strong">
                                         <FiLock size={24} aria-hidden="true" />
                                     </span>
@@ -143,7 +143,7 @@ export default function ForgotPasswordPage() {
                                 animate={{ opacity: 1, scale: 1 }}
                                 className="mt-8 space-y-6 text-center"
                             >
-                                <div className="app-paper-soft rounded-[1.5rem] p-6">
+                                <div className="app-paper-soft rounded-3xl p-6">
                                     <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(var(--paper-border),0.18)] bg-white/72 text-strong">
                                         <FiMail size={32} aria-hidden="true" />
                                     </div>
@@ -153,7 +153,7 @@ export default function ForgotPasswordPage() {
                                     </p>
                                 </div>
 
-                                <div className="app-paper-soft rounded-[1.2rem] p-4 text-left text-xs leading-6 text-soft">
+                                <div className="app-paper-soft rounded-card-120 p-4 text-left text-xs leading-6 text-soft">
                                     <p><strong className="text-strong">Local setup:</strong> if email is mocked, check backend logs for the reset link.</p>
                                 </div>
 

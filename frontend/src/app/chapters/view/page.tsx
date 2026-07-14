@@ -239,7 +239,7 @@ function ChapterDetailContent() {
                                 <Link
                                     key={entry.id}
                                     href={entryHref}
-                                    className="overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] transition-colors hover:border-white/15 hover:bg-white/[0.05]"
+                                    className="overflow-hidden rounded-card-175 border border-white/10 bg-white/[0.03] transition-colors hover:border-white/15 hover:bg-white/[0.05]"
                                 >
                                     {entry.coverImage && (
                                         <div className="relative h-48 w-full overflow-hidden">

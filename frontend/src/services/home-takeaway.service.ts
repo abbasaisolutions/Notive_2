@@ -193,7 +193,7 @@ const getStoryCounts = (storyOverview: DashboardHomeTakeawayInput['storyOverview
 const getPatternSignal = (input: DashboardHomeTakeawayInput, repeatedMood: { mood: string; count: number } | null) => {
     if (repeatedMood) {
         return {
-            label: 'Mood thread',
+            label: 'Mood pattern',
             value: `${toTitleCase(repeatedMood.mood)} x${repeatedMood.count}`,
             sentence: `${toTitleCase(repeatedMood.mood)} has shown up more than once lately, which makes it worth naming before the day moves on.`,
         };
@@ -325,7 +325,7 @@ export const buildDashboardHomeTakeaway = (input: DashboardHomeTakeawayInput): D
             personaLabel: 'Done for now',
             eyebrow: 'Today is kept',
             headline: moodLabel
-                ? `${moodLabel} is part of today's thread now.`
+                ? `${moodLabel} is part of today's picture now.`
                 : "You've kept enough for today.",
             body: input.hasCheckedInToday
                 ? "You can stop here. Add one sentence only if there's something else worth keeping."
@@ -384,12 +384,12 @@ export const buildDashboardHomeTakeaway = (input: DashboardHomeTakeawayInput): D
             persona: 'story_ready',
             personaLabel: 'Quiet output',
             eyebrow: 'What Notive noticed',
-            headline: 'Your notebook has a reusable thread, but reflection stays first.',
+            headline: 'Your notebook has a reusable pattern, but reflection stays first.',
             body: storyLeadSignal
                 ? `${toTitleCase(storyLeadSignal)} is showing up as material you may want later. For now, start with what it means to you.`
                 : 'Your memories have enough shape to become something useful outside the notebook. The private read still comes first.',
             why: 'Stories, lessons, and resume notes are outputs from the diary. Home keeps the diary itself as the center.',
-            nextStep: 'Write privately about the thread',
+            nextStep: 'Write privately about the pattern',
             primaryAction: makeHrefAction('Write privately', input.recommendedHref),
             secondaryAction: makeHrefAction(`View ${readyText}`, input.portfolioHref),
             signals: baseSignals(input, [{ label: 'Generated', value: String(storyCounts.ready), tone: 'lilac' }]),
@@ -455,7 +455,7 @@ export const buildDashboardHomeTakeaway = (input: DashboardHomeTakeawayInput): D
             personaLabel: 'Logged today',
             eyebrow: 'Today is connected',
             headline: input.todayCheckInMood
-                ? `${toTitleCase(input.todayCheckInMood)} is part of today's thread now.`
+                ? `${toTitleCase(input.todayCheckInMood)} is part of today's picture now.`
                 : 'Today has a signal attached now.',
             body: 'You can leave it there, or add one sentence if something is worth keeping.',
             why: 'A check-in is enough to help future patterns read the day with more context.',

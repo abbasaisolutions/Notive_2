@@ -104,7 +104,7 @@ export default function FirstVisitWalkthrough() {
                             >
                                 <Link
                                     href={step.href}
-                                    className="group flex flex-col gap-2 rounded-[1.4rem] border border-[rgba(141,123,105,0.14)] bg-[rgba(255,255,255,0.54)] p-4 transition-all hover:border-[rgba(141,123,105,0.28)] hover:bg-[rgba(255,255,255,0.76)] hover:shadow-sm"
+                                    className="group flex flex-col gap-2 rounded-card-140 border border-[rgba(141,123,105,0.14)] bg-[rgba(255,255,255,0.54)] p-4 transition-all hover:border-[rgba(141,123,105,0.28)] hover:bg-[rgba(255,255,255,0.76)] hover:shadow-sm"
                                 >
                                     <div className="flex items-center gap-2">
                                         <div className="w-6 h-6 shrink-0 opacity-70">

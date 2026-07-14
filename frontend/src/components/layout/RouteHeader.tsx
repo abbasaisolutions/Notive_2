@@ -23,7 +23,7 @@ export default function RouteHeader() {
 
     return (
         <header className="px-4 pt-3 md:px-8 md:pt-4" aria-label="Page context">
-            <div className="mx-auto max-w-6xl border-b border-white/8 px-1 pb-3 md:px-0 md:pb-4">
+            <div className="mx-auto max-w-6xl border-b border-[rgba(92,92,92,0.12)] px-1 pb-3 md:px-0 md:pb-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div className="min-w-0 flex-1">
                         <nav aria-label="Breadcrumb" className="min-w-0">
@@ -60,7 +60,7 @@ export default function RouteHeader() {
                         {routeMeta.secondaryAction && (
                             <Link
                                 href={appendReturnTo(routeMeta.secondaryAction.href, currentReturnTo)}
-                                className="type-label-sm rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-soft transition-colors hover:bg-white/[0.08] hover:text-strong"
+                                className="type-label-sm rounded-full border border-[rgba(92,92,92,0.18)] bg-[rgba(92,92,92,0.03)] px-3 py-1.5 text-soft transition-colors hover:bg-[rgba(92,92,92,0.08)] hover:text-strong"
                             >
                                 {routeMeta.secondaryAction.shortLabel || routeMeta.secondaryAction.label}
                             </Link>
@@ -77,7 +77,7 @@ export default function RouteHeader() {
                 </div>
 
                 {routeMeta.showResumeCard && (
-                    <WorkspaceResumeCard currentReturnTo={currentReturnTo} pathname={pathname} className="mt-3 max-w-sm border-white/8 bg-white/[0.02]" />
+                    <WorkspaceResumeCard currentReturnTo={currentReturnTo} pathname={pathname} className="mt-3 max-w-sm border-[rgba(92,92,92,0.12)] bg-[rgba(92,92,92,0.02)]" />
                 )}
             </div>
         </header>

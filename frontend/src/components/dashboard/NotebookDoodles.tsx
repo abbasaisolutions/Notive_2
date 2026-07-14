@@ -23,7 +23,7 @@ const accentStrokeClasses: Record<NotebookAccentName, string> = {
 };
 
 const accentSolidColors: Record<NotebookAccentName, string> = {
-    sage: '#8A9A6F',
+    sage: 'rgb(var(--brand))',
     lilac: '#B89FC7',
     apricot: '#D8A48B',
     sky: '#8CAEBB',

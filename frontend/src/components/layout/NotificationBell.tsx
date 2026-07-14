@@ -68,7 +68,7 @@ export default function NotificationBell() {
                             animate={{ scale: 1, opacity: 1 }}
                             exit={prefersReducedMotion ? { opacity: 0 } : { scale: 0, opacity: 0 }}
                             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                            className="absolute -top-0.5 -right-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-[rgb(107,143,113)] px-1 py-0.5 text-xs font-bold leading-none text-white shadow-sm ring-2 ring-[#F8F4ED]"
+                            className="absolute -top-0.5 -right-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-[rgb(107,143,113)] px-1 py-0.5 text-xs font-bold leading-none text-white shadow-sm ring-2 ring-[rgb(var(--paper-bg))]"
                         >
                             {unreadCount > 99 ? '99+' : unreadCount}
                         </motion.span>

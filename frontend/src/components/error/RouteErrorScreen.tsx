@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { FiAlertTriangle, FiRefreshCw, FiWifiOff, FiClock, FiLogIn, FiServer } from 'react-icons/fi';
 import type { NetworkErrorKind } from '@/utils/network-errors';
 
-interface ErrorStateProps {
+interface RouteErrorScreenProps {
     title?: string;
     message?: string;
     onRetry?: () => void;
@@ -24,7 +24,9 @@ const ICON_BY_KIND: Record<NetworkErrorKind, typeof FiAlertTriangle> = {
     unknown: FiAlertTriangle,
 };
 
-export default function ErrorState({
+// Full-page route-boundary crash screen (used by app/**/error.tsx via RouteErrorState).
+// Distinct from the inline/section error card at @/components/ui/error-state.
+export default function RouteErrorScreen({
     title = 'Something went sideways',
     message = "The page stumbled on the way in. Your notes are safe — try again in a moment.",
     onRetry,
@@ -32,12 +34,12 @@ export default function ErrorState({
     kind = 'unknown',
     actionHref,
     actionLabel,
-}: ErrorStateProps) {
+}: RouteErrorScreenProps) {
     const Icon = ICON_BY_KIND[kind] ?? FiAlertTriangle;
 
     return (
         <div className="min-h-[60vh] flex items-center justify-center px-6 py-12">
-            <div className="workspace-panel max-w-md w-full rounded-[2rem] p-8 text-center">
+            <div className="workspace-panel max-w-md w-full rounded-card-200 p-8 text-center">
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
                     <Icon className="h-6 w-6 text-amber-700" aria-hidden="true" />
                 </div>

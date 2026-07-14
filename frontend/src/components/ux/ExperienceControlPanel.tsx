@@ -41,18 +41,18 @@ export default function ExperienceControlPanel({ compact = false }: { compact?: 
     };
 
     return (
-        <section className={`rounded-[1.25rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.36)] ${compact ? 'p-3' : 'p-4'}`}>
+        <section className={`rounded-card-125 border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.36)] ${compact ? 'p-3' : 'p-4'}`}>
             <div>
                 <p className="section-label">Notive style</p>
                 <h3 className="notebook-title mt-1 text-[1rem] leading-tight">Tune how the app responds.</h3>
-                <p className="mt-1.5 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                <p className="mt-1.5 text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">
                     These controls stay on this device and shape the UX tone, insight posture, and private capture default.
                 </p>
             </div>
 
             <div className="mt-3 space-y-3">
                 <div>
-                    <p className="mb-1.5 text-[0.58rem] font-bold uppercase tracking-[0.1em] text-[rgb(107,107,107)]">AI tone</p>
+                    <p className="mb-1.5 text-[0.58rem] font-bold uppercase tracking-[0.1em] text-[rgb(var(--text-soft))]">AI tone</p>
                     <div className="grid grid-cols-4 gap-1.5">
                         {TONE_OPTIONS.map((option) => (
                             <button
@@ -62,14 +62,14 @@ export default function ExperienceControlPanel({ compact = false }: { compact?: 
                                 aria-pressed={preferences.aiTone === option.value}
                                 className={`rounded-[0.8rem] border px-2 py-2 text-[0.66rem] font-semibold transition-colors ${preferences.aiTone === option.value
                                     ? 'border-[rgba(138,154,111,0.44)] bg-[rgba(138,154,111,0.16)] text-[rgb(118,134,91)]'
-                                    : 'border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.38)] text-[rgb(107,107,107)] hover:bg-[rgba(255,255,255,0.62)]'
+                                    : 'border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.38)] text-[rgb(var(--text-soft))] hover:bg-[rgba(255,255,255,0.62)]'
                                 }`}
                             >
                                 {option.label}
                             </button>
                         ))}
                     </div>
-                    <p className="mt-1.5 text-[0.68rem] leading-5 text-[rgb(107,107,107)]">{getToneMicrocopy(preferences.aiTone)}</p>
+                    <p className="mt-1.5 text-[0.68rem] leading-5 text-[rgb(var(--text-soft))]">{getToneMicrocopy(preferences.aiTone)}</p>
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-3">
@@ -85,12 +85,12 @@ export default function ExperienceControlPanel({ compact = false }: { compact?: 
                             }`}
                         >
                             <span className="block text-[0.7rem] font-semibold text-[rgb(var(--paper-ink))]">{option.label}</span>
-                            <span className="mt-0.5 block text-[0.62rem] leading-4 text-[rgb(107,107,107)]">{option.helper}</span>
+                            <span className="mt-0.5 block text-[0.62rem] leading-4 text-[rgb(var(--text-soft))]">{option.helper}</span>
                         </button>
                     ))}
                 </div>
 
-                <label className="flex cursor-pointer items-start gap-3 rounded-[0.95rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.34)] px-3 py-2.5">
+                <label className="flex cursor-pointer items-start gap-3 rounded-card-95 border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.34)] px-3 py-2.5">
                     <input
                         type="checkbox"
                         checked={preferences.privateEntryByDefault}
@@ -99,7 +99,7 @@ export default function ExperienceControlPanel({ compact = false }: { compact?: 
                     />
                     <span>
                         <span className="block text-[0.74rem] font-semibold text-[rgb(var(--paper-ink))]">Private capture by default</span>
-                        <span className="mt-0.5 block text-[0.66rem] leading-5 text-[rgb(107,107,107)]">
+                        <span className="mt-0.5 block text-[0.66rem] leading-5 text-[rgb(var(--text-soft))]">
                             New entries start in “keep out of insights” mode until you turn it off.
                         </span>
                     </span>

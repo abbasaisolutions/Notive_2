@@ -92,47 +92,6 @@ const storiesNavItem: NavItem = { href: '/portfolio', label: NOTIVE_VOICE.surfac
 const profileNavItem: NavItem = { href: '/profile', label: NOTIVE_VOICE.surfaces.profileStudio, shortLabel: 'Me', icon: icons.profile, matchPrefixes: ['/profile'] };
 const adminNavItem: NavItem = { href: '/admin', label: 'Admin', shortLabel: 'Admin', icon: icons.admin, matchPrefixes: ['/admin'], allowedRoles: ['ADMIN', 'SUPERADMIN'] };
 
-export const primaryNavItems: NavItem[] = [
-    homeNavItem,
-    writeNavItem,
-    memoriesNavItem,
-    guideNavItem,
-];
-
-export const secondaryNavItems: NavItem[] = [
-    notificationsNavItem,
-    groupsNavItem,
-    importsNavItem,
-    storiesNavItem,
-    profileNavItem,
-    adminNavItem,
-];
-
-export const desktopNavSections: NavSection[] = [
-    { id: 'capture', label: 'Main', items: primaryNavItems },
-    { id: 'organize', label: 'More', items: secondaryNavItems },
-];
-
-export const mobileMainNavItems: NavItem[] = [
-    primaryNavItems[0],
-    primaryNavItems[2],
-    primaryNavItems[1],
-    primaryNavItems[3],
-];
-
-export const mobileMoreNavSections: NavSection[] = [
-    {
-        id: 'organize',
-        label: 'More',
-        items: secondaryNavItems.filter((item) => item.href === '/chapters' || item.href === '/import' || item.href === '/portfolio'),
-    },
-    {
-        id: 'account',
-        label: 'Account',
-        items: secondaryNavItems.filter((item) => item.href === '/profile' || item.href === '/admin'),
-    },
-];
-
 export const getWorkspaceMaturity = ({
     role,
     profile,
@@ -192,22 +151,6 @@ export const getMobileMoreNavSections = (_maturity: WorkspaceMaturity): NavSecti
             items: [adminNavItem],
         },
     ];
-};
-
-export const getProfileReadinessAction = (completionScore: number): RouteAction => {
-    if (completionScore < 100) {
-        return {
-            label: 'Continue Setup',
-            shortLabel: 'Continue',
-            href: '/onboarding',
-        };
-    }
-
-    return {
-        label: 'Refine Profile',
-        shortLabel: 'Me',
-        href: '/profile/edit',
-    };
 };
 
 export const journeyStages: JourneyStage[] = [

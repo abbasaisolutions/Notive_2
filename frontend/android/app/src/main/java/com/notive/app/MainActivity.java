@@ -6,6 +6,8 @@ import android.os.Bundle;
 import android.text.TextUtils;
 
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.webkit.WebSettingsCompat;
+import androidx.webkit.WebViewFeature;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.PluginHandle;
@@ -30,6 +32,18 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         registerPlugin(SharedContentPlugin.class);
         rewriteShareIntent(getIntent());
         super.onCreate(savedInstanceState);
+
+        // MODE_NIGHT_NO above pins the *native* Activity theme to light, but the
+        // WebView's own algorithmic "force dark" recoloring is a separate Android
+        // setting that isn't governed by it. On a device with system dark mode on,
+        // some WebView versions still recolor the page despite its CSS declaring
+        // `color-scheme: light` only — light-mode-only decorative colors (e.g. the
+        // sage margin rule on the landing page) shift toward yellow/olive. Disable
+        // it explicitly so the WebView always renders Notive's own paper palette.
+        if (bridge != null && bridge.getWebView() != null
+                && WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
+            WebSettingsCompat.setAlgorithmicDarkeningAllowed(bridge.getWebView().getSettings(), false);
+        }
     }
 
     @Override

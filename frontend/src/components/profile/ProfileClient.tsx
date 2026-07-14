@@ -201,8 +201,8 @@ export default function ProfileClient() {
     return (
         <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
             <div className="mx-auto max-w-3xl space-y-6">
-                <section className="workspace-panel rounded-[2rem] p-4 md:p-5">
-                    <div className="relative overflow-hidden rounded-[1.6rem] border border-white/12">
+                <section className="workspace-panel rounded-card-200 p-4 md:p-5">
+                    <div className="relative overflow-hidden rounded-card-160 border border-white/12">
                         {profileHighlights.coverImage ? (
                             <Image
                                 src={profileHighlights.coverImage}
@@ -245,9 +245,9 @@ export default function ProfileClient() {
                     </div>
 
                     <div className="mt-5 flex items-center gap-5">
-                        <div className="h-20 w-20 rounded-[1.5rem] bg-gradient-to-br from-primary via-accent to-secondary p-1 shrink-0">
+                        <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-primary via-accent to-secondary p-1 shrink-0">
                             <div
-                                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[1.3rem] text-2xl font-serif"
+                                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-card-130 text-2xl font-serif"
                                 style={{ background: 'rgb(var(--paper-soft))', color: 'rgb(var(--paper-ink))' }}
                             >
                                 {showAvatarImage ? (
@@ -302,7 +302,7 @@ export default function ProfileClient() {
                 {activeTab === 'about' ? (
                     <>
                         <section className="grid gap-3 md:grid-cols-[1.15fr_0.85fr]">
-                            <div className="workspace-panel rounded-[2rem] p-6">
+                            <div className="workspace-panel rounded-card-200 p-6">
                                 <p className="type-overline text-muted">Favorite line you&rsquo;ve written</p>
                                 <p className="mt-4 text-lg font-serif italic leading-8 text-strong">
                                     &ldquo;{favoriteLine}&rdquo;
@@ -315,7 +315,7 @@ export default function ProfileClient() {
                                 </Link>
                             </div>
 
-                            <div className="workspace-panel rounded-[2rem] p-6">
+                            <div className="workspace-panel rounded-card-200 p-6">
                                 <p className="type-overline text-muted">With Notive</p>
                                 <div className="mt-4 grid grid-cols-2 gap-3">
                                     <div className="workspace-muted-panel rounded-2xl p-4">
@@ -333,7 +333,7 @@ export default function ProfileClient() {
                             </div>
                         </section>
 
-                        <section className="workspace-panel rounded-[2rem] p-6">
+                        <section className="workspace-panel rounded-card-200 p-6">
                             <div className="flex items-center justify-between gap-3">
                                 <div>
                                     <h2 className="workspace-heading text-lg font-semibold">Settings</h2>
@@ -396,7 +396,7 @@ export default function ProfileClient() {
                             </div>
                         </section>
 
-                        <section className="workspace-panel rounded-[2rem] p-6">
+                        <section className="workspace-panel rounded-card-200 p-6">
                             <p className="text-sm leading-7 text-ink-secondary">
                                 {safeUser.profile?.bio || 'No bio yet. Tell us a bit about yourself.'}
                             </p>
@@ -427,7 +427,7 @@ export default function ProfileClient() {
                             )}
                         </section>
 
-                        <section className="workspace-panel rounded-[2rem] p-6">
+                        <section className="workspace-panel rounded-card-200 p-6">
                             <div className="flex items-center justify-between">
                                 <h2 className="workspace-heading text-lg font-semibold">My people</h2>
                                 <Link href="/profile/edit?tab=privacy" className="text-xs text-ink-muted transition-colors hover:text-[rgb(var(--text-primary))]">
@@ -454,7 +454,7 @@ export default function ProfileClient() {
                         </section>
 
                         {(safeUser.profile?.lifeGoals?.length ?? 0) > 0 && (
-                            <section className="workspace-panel rounded-[2rem] p-6">
+                            <section className="workspace-panel rounded-card-200 p-6">
                                 <h2 className="workspace-heading text-lg font-semibold">Goals</h2>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {safeUser.profile?.lifeGoals?.map((goal: string) => (
@@ -468,7 +468,7 @@ export default function ProfileClient() {
                     </>
                 ) : (
                     <>
-                        <section className="workspace-panel rounded-[2rem] p-6 space-y-3">
+                        <section className="workspace-panel rounded-card-200 p-6 space-y-3">
                             <h2 className="workspace-heading text-lg font-semibold">Privacy & Permissions</h2>
                             <div className="grid gap-3">
                                 <Link
@@ -497,7 +497,7 @@ export default function ProfileClient() {
                             </div>
                         </section>
 
-                        <section className="workspace-panel rounded-[2rem] p-6 space-y-3">
+                        <section className="workspace-panel rounded-card-200 p-6 space-y-3">
                             <h2 className="workspace-heading text-lg font-semibold">Device Permissions</h2>
                             <div className="workspace-muted-panel flex items-start gap-4 rounded-2xl p-4">
                                 <FiBell size={18} className="text-ink-muted mt-0.5 shrink-0" aria-hidden="true" />
@@ -571,7 +571,7 @@ export default function ProfileClient() {
                             </div>
                         </section>
 
-                        <section className="workspace-panel rounded-[2rem] p-6 space-y-3">
+                        <section className="workspace-panel rounded-card-200 p-6 space-y-3">
                             <h2 className="workspace-heading text-lg font-semibold">Security & Account</h2>
                             <div className="grid gap-3">
                                 <Link
@@ -589,7 +589,7 @@ export default function ProfileClient() {
                             </div>
                         </section>
 
-                        <section className="workspace-panel rounded-[2rem] p-6">
+                        <section className="workspace-panel rounded-card-200 p-6">
                             <h2 className="workspace-heading text-lg font-semibold">Bring in old posts</h2>
                             <p className="mt-2 text-sm text-ink-secondary">
                                 Import notes from other apps so Notive can find patterns across everything.
@@ -604,7 +604,7 @@ export default function ProfileClient() {
                     </>
                 )}
 
-                <section className="workspace-panel rounded-[2rem] p-6">
+                <section className="workspace-panel rounded-card-200 p-6">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 text-sm text-ink-secondary">
                             <a

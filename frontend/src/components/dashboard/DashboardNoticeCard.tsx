@@ -20,7 +20,7 @@ export default function DashboardNoticeCard({
         <motion.section
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`notebook-card-soft rounded-[1.5rem] border border-dashed ${
+            className={`notebook-card-soft rounded-3xl border border-dashed ${
                 compact ? 'px-4 py-3' : 'px-5 py-4'
             }`}
             style={{ borderColor: 'rgba(var(--paper-border), 0.45)' }}

@@ -28,7 +28,7 @@ export default function CompassCard({
             : 'bg-white/35 shadow-[0_0_14px_rgba(255,255,255,0.12)]';
 
     return (
-        <div className={cn('signal-lines rounded-[1.6rem] border p-5 md:p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]', accentClass)}>
+        <div className={cn('signal-lines rounded-card-160 border p-5 md:p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]', accentClass)}>
             <div className="flex items-center justify-between gap-3">
                 <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">{kicker}</p>
                 <span className={cn('h-2.5 w-2.5 rounded-full', accentDotClass)} aria-hidden="true" />

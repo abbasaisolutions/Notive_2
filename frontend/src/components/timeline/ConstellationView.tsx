@@ -61,7 +61,7 @@ export default function ConstellationView({ model, totalEntries, currentReturnTo
                     </ActionBar>
                 </div>
 
-                <div className="relative mt-5 overflow-hidden rounded-[2rem] border border-[rgba(92,92,92,0.14)] bg-[radial-gradient(circle_at_center,rgba(110,140,200,0.12),transparent_55%),linear-gradient(180deg,rgba(248,244,237,0.9),rgba(240,236,228,0.8))] min-h-[440px]">
+                <div className="relative mt-5 overflow-hidden rounded-card-200 border border-[rgba(92,92,92,0.14)] bg-[radial-gradient(circle_at_center,rgba(110,140,200,0.12),transparent_55%),linear-gradient(180deg,rgba(248,244,237,0.9),rgba(240,236,228,0.8))] min-h-[440px]">
                     <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                         {model.links.map((link) => {
                             const source = model.nodes.find((node) => node.id === link.sourceId);

@@ -53,7 +53,7 @@ export default function CropModal({ imageUrl, onConfirm, onCancel }: CropModalPr
                 onClick={onCancel}
             >
                 <div
-                    className="relative flex h-[min(92vh,760px)] w-[min(100%,520px)] flex-col overflow-hidden rounded-[1.8rem] shadow-2xl"
+                    className="relative flex h-[min(92vh,760px)] w-[min(100%,520px)] flex-col overflow-hidden rounded-card-180 shadow-2xl"
                     style={{ background: 'rgb(var(--paper-bg))' }}
                     onClick={(event) => event.stopPropagation()}
                 >

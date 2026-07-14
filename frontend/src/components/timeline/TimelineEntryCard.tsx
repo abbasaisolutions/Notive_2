@@ -435,7 +435,7 @@ function TimelineEntryCardInner({ entry, onShareEntry, isFocused, shareStat, cur
             <div className="min-w-0 flex-1 pl-10 min-[376px]:pl-11 md:w-1/2 md:pl-0">
                 <div className="group block">
                     <div
-                        className={`workspace-panel min-w-0 overflow-visible rounded-[1.25rem] border-l-[3px] p-3 transition-all duration-300 min-[376px]:p-3.5 sm:p-4 group-active:scale-[0.985] group-active:shadow-[0_14px_32px_rgba(92,92,92,0.12)]${isFocused ? ' timeline-card-focused' : ''}`}
+                        className={`workspace-panel min-w-0 overflow-visible rounded-card-125 border-l-[3px] p-3 transition-all duration-300 min-[376px]:p-3.5 sm:p-4 group-active:scale-[0.985] group-active:shadow-[0_14px_32px_rgba(92,92,92,0.12)]${isFocused ? ' timeline-card-focused' : ''}`}
                         style={{ borderLeftColor: moodColor || 'rgba(141,123,105,0.2)' }}
                     >
                         <div className="mb-2 flex items-start justify-between gap-2">

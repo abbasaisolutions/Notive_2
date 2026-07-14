@@ -775,7 +775,7 @@ function DashboardNotebookViewFull({
     const supportSummary = hasDeviceSignals && deviceSignals?.wellness
         ? `Your last check-in showed energy at ${deviceSignals.wellness.energyLevel}/10 and stress at ${deviceSignals.wellness.stressLevel}/10. Let that be context, not pressure.`
         : wellnessSubmitted
-            ? 'Your last check-in is already part of the thread here. You do not need to explain the whole day again.'
+            ? 'Your last check-in is already part of the picture here. You do not need to explain the whole day again.'
             : 'If today feels noisy, a quick check-in or short chat can give the next memory more context.';
     const weeklyDigestSnippet = weeklyDigest?.spotlightLine
         ? `"${compactText(weeklyDigest.spotlightLine, 150)}"`
@@ -969,8 +969,10 @@ function DashboardNotebookViewFull({
             badge: writingDays > 0 ? `${writingDays}d active` : null,
         },
         {
+            // "Patterns", not "Threads": Threads is the name of the /chapters surface.
+            // A recurring theme is a pattern everywhere in the product.
             key: 'threads',
-            label: 'Threads',
+            label: 'Patterns',
             value: String(Math.max(returningThemes, themeClusters.length > 0 ? 1 : 0)),
             note: themeClusters[0]?.label ? formatNotebookLabel(themeClusters[0].label) : 'Forming',
             accent: 'rgba(216,199,232,0.95)',
@@ -1015,7 +1017,7 @@ function DashboardNotebookViewFull({
     ] : [];
     const noticedItems = [
         themeClusters[0]
-            ? `Your "${themeClusters[0].label}" thread has shown up in ${themeClusters[0].entryCount} recent ${themeClusters[0].entryCount === 1 ? 'memory' : 'memories'}. ${todayBrief?.whatHelpedBefore?.summary ? compactText(todayBrief.whatHelpedBefore.summary, 92) : 'That is worth naming directly today.'}`
+            ? `"${themeClusters[0].label}" has shown up in ${themeClusters[0].entryCount} recent ${themeClusters[0].entryCount === 1 ? 'memory' : 'memories'}. ${todayBrief?.whatHelpedBefore?.summary ? compactText(todayBrief.whatHelpedBefore.summary, 92) : 'That is worth naming directly today.'}`
             : null,
         strongestEmotion
             ? `You named "${String(strongestEmotion.emotion).toLowerCase()}" ${strongestEmotion.entryCount} ${strongestEmotion.entryCount === 1 ? 'time' : 'times'} recently - that looks like the strongest emotional pattern right now.`
@@ -1040,7 +1042,7 @@ function DashboardNotebookViewFull({
         themeClusters[0]
             ? {
                 title: 'Self-awareness',
-                body: `${toTitleCase(themeClusters[0].label)} kept returning, which means you are noticing a real thread in your own words.`,
+                body: `${toTitleCase(themeClusters[0].label)} kept returning, which means you are noticing a real pattern in your own words.`,
             }
             : null,
         strongestEmotion
@@ -1065,7 +1067,7 @@ function DashboardNotebookViewFull({
     const evidenceLedger = smallEvidenceItems.length > 0
         ? smallEvidenceItems
         : [{
-            title: 'First thread',
+            title: 'First pattern',
             body: 'A few more memories will give Notive enough evidence to sketch this page more clearly.',
         }];
     const innerWeatherMood = strongestEmotion?.emotion
@@ -1169,7 +1171,7 @@ function DashboardNotebookViewFull({
             </div>
 
             {(focusCard.evidence || focusCard.evidenceFallback) && (
-                <div className="app-paper-soft rounded-[1.25rem] p-4">
+                <div className="app-paper-soft rounded-card-125 p-4">
                     <p className="section-label">{hasSafetyFocus ? 'Why this matters now' : NOTIVE_VOICE.dashboard.evidenceLabel}</p>
                     <p className="notebook-copy mt-2 text-[0.875rem] leading-7">{focusCard.evidence || focusCard.evidenceFallback}</p>
                 </div>
@@ -1178,7 +1180,7 @@ function DashboardNotebookViewFull({
             {focusCard.panels && focusCard.panels.length > 0 && (
                 <div className="grid gap-3 md:grid-cols-2">
                     {focusCard.panels.map((panel) => (
-                        <div key={panel.label} className="app-paper-soft rounded-[1.25rem] p-4">
+                        <div key={panel.label} className="app-paper-soft rounded-card-125 p-4">
                             <p className="section-label">{panel.label}</p>
                             <p className="notebook-copy mt-2 text-[0.875rem] leading-7">{panel.value}</p>
                         </div>
@@ -1186,7 +1188,7 @@ function DashboardNotebookViewFull({
                 </div>
             )}
 
-            <div className="app-paper-soft rounded-[1.25rem] p-4">
+            <div className="app-paper-soft rounded-card-125 p-4">
                 <p className="section-label">{NOTIVE_VOICE.dashboard.actionLabel}</p>
                 <p className="notebook-title mt-2 text-lg">{focusCard.primaryAction?.label || 'Draft the first lines'}</p>
                 <p className="notebook-copy mt-2 text-[0.875rem] leading-7">{focusCard.panels?.[0]?.value || focusCard.body}</p>
@@ -1201,9 +1203,9 @@ function DashboardNotebookViewFull({
 
     const glanceStrip = entries.length > 0 ? (
         <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3 rounded-[1.1rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.5)] px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3 rounded-card-110 border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.5)] px-3 py-2.5">
                 <p className="section-label">At a glance</p>
-                <p className="text-[0.69rem] leading-5 text-[rgb(107,107,107)]">
+                <p className="text-[0.69rem] leading-5 text-[rgb(var(--text-soft))]">
                     {atAGlanceLine}
                 </p>
             </div>
@@ -1211,7 +1213,7 @@ function DashboardNotebookViewFull({
                 {glanceSignals.map((signal) => (
                     <div
                         key={signal.key}
-                        className="rounded-[0.85rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(248,244,237,0.94)] px-2 py-2 sm:rounded-[1.05rem] sm:px-3 sm:py-3"
+                        className="rounded-[0.85rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(248,244,237,0.94)] px-2 py-2 sm:rounded-card-105 sm:px-3 sm:py-3"
                     >
                         <div className="flex items-start justify-between gap-1 sm:gap-2">
                             <div className="min-w-0">
@@ -1229,7 +1231,7 @@ function DashboardNotebookViewFull({
                                 </span>
                             )}
                         </div>
-                        <p className="mt-1 text-[0.52rem] leading-4 text-[rgb(107,107,107)] sm:mt-1.5 sm:text-[0.62rem] sm:leading-5">
+                        <p className="mt-1 text-[0.52rem] leading-4 text-[rgb(var(--text-soft))] sm:mt-1.5 sm:text-[0.62rem] sm:leading-5">
                             {signal.note}
                         </p>
                         <div className="mt-1.5 hidden items-end gap-1.5 sm:flex">
@@ -1251,12 +1253,12 @@ function DashboardNotebookViewFull({
             </div>
             <ContinueWorkspaceCard userId={userId} entryHref={recommendedHref} portfolioHref={portfolioHref} />
 
-            <section className="rounded-[1.1rem] border border-[rgba(126,157,149,0.3)] bg-[rgba(255,255,255,0.58)] px-3 py-3">
+            <section className="rounded-card-110 border border-[rgba(126,157,149,0.3)] bg-[rgba(255,255,255,0.58)] px-3 py-3">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                         <p className="section-label">{portfolioPrompt.question}</p>
                         <p className="mt-1 text-sm font-semibold text-[rgb(var(--paper-ink))]">{portfolioPrompt.title}</p>
-                        <p className="mt-1 text-[0.69rem] leading-5 text-[rgb(107,107,107)]">
+                        <p className="mt-1 text-[0.69rem] leading-5 text-[rgb(var(--text-soft))]">
                             {portfolioPrompt.body}
                         </p>
                     </div>
@@ -1270,7 +1272,7 @@ function DashboardNotebookViewFull({
                 {storyPipelineStages.length > 0 && (
                     <>
                         {storyPipelineCounts.leadSignal && (
-                            <p className="mt-3 text-[0.69rem] leading-5 text-[rgb(107,107,107)]">
+                            <p className="mt-3 text-[0.69rem] leading-5 text-[rgb(var(--text-soft))]">
                                 Strongest material: {formatNotebookLabel(storyPipelineCounts.leadSignal)}
                             </p>
                         )}
@@ -1278,14 +1280,14 @@ function DashboardNotebookViewFull({
                         {storyPipelineStages.map((stage) => (
                             <div
                                 key={stage.label}
-                                className="rounded-[0.75rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(248,244,237,0.94)] px-2 py-2 sm:rounded-[1rem] sm:px-3 sm:py-2.5"
+                                className="rounded-xl border border-[rgba(92,92,92,0.1)] bg-[rgba(248,244,237,0.94)] px-2 py-2 sm:rounded-2xl sm:px-3 sm:py-2.5"
                             >
                                 <div className="flex items-center gap-1 sm:gap-2">
                                     <span
                                         className="h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5"
                                         style={{ backgroundColor: stage.accent }}
                                     />
-                                    <p className="truncate text-[0.56rem] font-semibold uppercase tracking-[0.06em] text-[rgb(107,107,107)] sm:text-[0.64rem] sm:tracking-[0.08em]">
+                                    <p className="truncate text-[0.56rem] font-semibold uppercase tracking-[0.06em] text-[rgb(var(--text-soft))] sm:text-[0.64rem] sm:tracking-[0.08em]">
                                         {stage.label}
                                     </p>
                                 </div>
@@ -1307,7 +1309,7 @@ function DashboardNotebookViewFull({
         </div>
     ) : null;
     const welcomeNotebookBanner = entries.length === 0 ? (
-        <div className="app-paper-soft relative overflow-hidden rounded-[1.25rem] px-5 py-5">
+        <div className="app-paper-soft relative overflow-hidden rounded-card-125 px-5 py-5">
             <span
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-y-0 left-3 w-px"
@@ -1340,7 +1342,7 @@ function DashboardNotebookViewFull({
                         <h2 className="notebook-title mt-1 text-[1.1rem] leading-tight sm:text-[1.35rem]">
                             {primaryThread ? `${primaryThreadLabel} is worth noticing.` : 'Start with one honest signal.'}
                         </h2>
-                        <p className="mt-2 max-w-2xl text-[0.82rem] leading-6 text-[rgb(107,107,107)]">
+                        <p className="mt-2 max-w-2xl text-[0.82rem] leading-6 text-[rgb(var(--text-soft))]">
                             {todaysReadLine}
                         </p>
                     </div>
@@ -1348,16 +1350,16 @@ function DashboardNotebookViewFull({
                 </div>
 
                 <div className="mt-3 grid gap-2 sm:grid-cols-[0.85fr_1.15fr]">
-                    <div className="rounded-[1.05rem] border border-[rgba(140,174,187,0.24)] bg-[rgba(255,255,255,0.46)] p-3">
+                    <div className="rounded-card-105 border border-[rgba(140,174,187,0.24)] bg-[rgba(255,255,255,0.46)] p-3">
                         <div className="flex items-start gap-3">
                             <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[rgba(140,174,187,0.28)] bg-[rgba(191,214,221,0.22)]">
                                 <span className="absolute h-10 w-10 rounded-full border border-[rgba(140,174,187,0.28)]" aria-hidden="true" />
                                 <span className="text-xl" aria-hidden="true">{innerWeatherMood ? moodEmojiFor(innerWeatherMood) : '✦'}</span>
                             </div>
                             <div className="min-w-0">
-                                <p className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-[rgb(107,107,107)]">Inner weather</p>
+                                <p className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-[rgb(var(--text-soft))]">Inner weather</p>
                                 <p className="mt-1 text-base font-semibold leading-tight text-[rgb(var(--paper-ink))]">{innerWeatherLabel}</p>
-                                <p className="mt-1.5 text-[0.75rem] leading-5 text-[rgb(107,107,107)]">{innerWeatherBody}</p>
+                                <p className="mt-1.5 text-[0.75rem] leading-5 text-[rgb(var(--text-soft))]">{innerWeatherBody}</p>
                             </div>
                         </div>
                     </div>
@@ -1370,10 +1372,10 @@ function DashboardNotebookViewFull({
                         are already one tap away in the bottom bar.
                     */}
                     {hasPatternToNotice && (
-                        <div className="rounded-[1.05rem] border border-[rgba(138,154,111,0.24)] bg-[rgba(138,154,111,0.08)] p-3">
+                        <div className="rounded-card-105 border border-[rgba(138,154,111,0.24)] bg-[rgba(138,154,111,0.08)] p-3">
                             <p className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-[rgb(118,134,91)]">Pattern to notice</p>
                             <p className="mt-1 text-base font-semibold leading-tight text-[rgb(var(--paper-ink))]">{primaryThreadLabel}</p>
-                            <p className="mt-1.5 text-[0.75rem] leading-5 text-[rgb(107,107,107)]">{primaryThreadReason}</p>
+                            <p className="mt-1.5 text-[0.75rem] leading-5 text-[rgb(var(--text-soft))]">{primaryThreadReason}</p>
                             <Link
                                 href={patternNotesHref}
                                 className="mt-3 inline-flex rounded-xl border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.42)] px-3 py-2 text-[0.74rem] font-semibold text-[rgb(var(--paper-ink))] transition-colors hover:bg-[rgba(255,255,255,0.7)]"
@@ -1386,7 +1388,7 @@ function DashboardNotebookViewFull({
 
                 <Link
                     href={threadWriteHref}
-                    className="mt-3 block rounded-[1.05rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.38)] p-3 transition-all hover:-translate-y-0.5 hover:bg-[rgba(255,255,255,0.56)]"
+                    className="mt-3 block rounded-card-105 border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.38)] p-3 transition-all hover:-translate-y-0.5 hover:bg-[rgba(255,255,255,0.56)]"
                 >
                     <p className="section-label">Prompt</p>
                     <p className="mt-1.5 text-[0.9rem] font-semibold leading-6 text-[rgb(var(--paper-ink))]">
@@ -1399,7 +1401,7 @@ function DashboardNotebookViewFull({
 
                 {/* Only when there is something actually noticed — the placeholder copy said nothing. */}
                 {quietGrowthLine && (
-                    <div className="mt-3 rounded-[1.05rem] border border-[rgba(216,199,232,0.24)] bg-[rgba(216,199,232,0.1)] p-3">
+                    <div className="mt-3 rounded-card-105 border border-[rgba(216,199,232,0.24)] bg-[rgba(216,199,232,0.1)] p-3">
                         <p className="section-label">Notive noticed</p>
                         <p className="mt-1.5 text-[0.78rem] leading-5 text-[rgb(var(--paper-ink))]">
                             {quietGrowthLine}
@@ -1408,14 +1410,14 @@ function DashboardNotebookViewFull({
                 )}
 
                 {(resurfacedMoment || entries.length > 0) && (
-                    <div className="mt-3 rounded-[1.05rem] border border-[rgba(192,160,100,0.22)] bg-[rgba(234,216,189,0.16)] p-3">
+                    <div className="mt-3 rounded-card-105 border border-[rgba(192,160,100,0.22)] bg-[rgba(234,216,189,0.16)] p-3">
                         <p className="section-label">{resurfacedMoment ? 'Continue from a memory echo' : 'Continue from last time'}</p>
                         {resurfacedMoment ? (
                             <Link href={openDashboardEntryHref(resurfacedMoment.matchedEntry.id)} className="mt-1.5 block transition-opacity hover:opacity-80">
                                 <p className="text-[0.8rem] font-semibold leading-5 text-[rgb(var(--paper-ink))]">
                                     {resurfacedMoment.matchedEntry.title || 'An older note is echoing'}
                                 </p>
-                                <p className="mt-1 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                                <p className="mt-1 text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">
                                     {compactText(resurfacedMoment.matchedEntry.contentPreview, 132)}
                                 </p>
                             </Link>
@@ -1424,7 +1426,7 @@ function DashboardNotebookViewFull({
                                 <p className="text-[0.8rem] font-semibold leading-5 text-[rgb(var(--paper-ink))]">
                                     {latestEntry.title || 'Your latest note'}
                                 </p>
-                                <p className="mt-1 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                                <p className="mt-1 text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">
                                     {compactText(latestEntry.content, 132)}
                                 </p>
                             </Link>
@@ -1434,18 +1436,18 @@ function DashboardNotebookViewFull({
 
             </section>
 
-            <details id={DASHBOARD_QUICK_CHECKIN_ID} className="group scroll-mt-24 rounded-[1.25rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.3)]">
+            <details id={DASHBOARD_QUICK_CHECKIN_ID} className="group scroll-mt-24 rounded-card-125 border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.3)]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
                     <span>
                         <span className="section-label block">Quick check-in</span>
-                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">
                             Add today&apos;s mood only if it helps the notebook read the day better.
                         </span>
                     </span>
-                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:hidden">
+                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(var(--text-soft))] group-open:hidden">
                         Open
                     </span>
-                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:inline">
+                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(var(--text-soft))] group-open:inline">
                         Hide
                     </span>
                 </summary>
@@ -1458,18 +1460,18 @@ function DashboardNotebookViewFull({
                 </div>
             </details>
 
-            <details className="group rounded-[1.25rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.38)]">
+            <details className="group rounded-card-125 border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.38)]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
                     <span>
                         <span className="section-label block">Suggested focus</span>
-                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">
                             Extra guidance for the day, tucked away from the main summary.
                         </span>
                     </span>
-                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:hidden">
+                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(var(--text-soft))] group-open:hidden">
                         Open
                     </span>
-                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:inline">
+                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(var(--text-soft))] group-open:inline">
                         Hide
                     </span>
                 </summary>
@@ -1478,18 +1480,18 @@ function DashboardNotebookViewFull({
                 </div>
             </details>
 
-            <details className="group rounded-[1.25rem] border border-[rgba(216,199,232,0.22)] bg-[rgba(255,255,255,0.34)]">
+            <details className="group rounded-card-125 border border-[rgba(216,199,232,0.22)] bg-[rgba(255,255,255,0.34)]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
                     <span>
                         <span className="section-label block">Use outside Notive</span>
-                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">
                             Story, resume, lesson, and skill signals stay behind the diary until you need them.
                         </span>
                     </span>
-                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:hidden">
+                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(var(--text-soft))] group-open:hidden">
                         Open
                     </span>
-                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:inline">
+                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(var(--text-soft))] group-open:inline">
                         Hide
                     </span>
                 </summary>
@@ -1503,11 +1505,11 @@ function DashboardNotebookViewFull({
                             <div className="mt-3 grid grid-cols-4 gap-1.5">
                                 {storyPipelineStages.length > 0 ? storyPipelineStages.map((stage) => (
                                     <div key={stage.label} className="rounded-[0.8rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.42)] px-2 py-2">
-                                        <p className="truncate text-[0.54rem] font-semibold uppercase tracking-[0.06em] text-[rgb(107,107,107)]">{stage.label}</p>
+                                        <p className="truncate text-[0.54rem] font-semibold uppercase tracking-[0.06em] text-[rgb(var(--text-soft))]">{stage.label}</p>
                                         <p className="mt-1 text-[0.9rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">{stage.value}</p>
                                     </div>
                                 )) : (
-                                    <div className="col-span-4 rounded-[0.8rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.42)] px-3 py-2 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                                    <div className="col-span-4 rounded-[0.8rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.42)] px-3 py-2 text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">
                                         Keep writing privately. Useful outside material appears after the notebook has enough context.
                                     </div>
                                 )}
@@ -1530,18 +1532,18 @@ function DashboardNotebookViewFull({
                 />
             )}
 
-            <details className="group rounded-[1.25rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.3)]">
+            <details className="group rounded-card-125 border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.3)]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
                     <span>
                         <span className="section-label block">Experience controls</span>
-                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">
                             Adjust tone, insight posture, and private capture defaults.
                         </span>
                     </span>
-                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:hidden">
+                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(var(--text-soft))] group-open:hidden">
                         Open
                     </span>
-                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:inline">
+                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(var(--text-soft))] group-open:inline">
                         Hide
                     </span>
                 </summary>
@@ -1550,18 +1552,18 @@ function DashboardNotebookViewFull({
                 </div>
             </details>
 
-            <details className="group rounded-[1.25rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.42)]">
+            <details className="group rounded-card-125 border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.42)]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3">
                     <span>
                         <span className="section-label block">Advanced insights</span>
-                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                        <span className="mt-1 block text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">
                             Stats and pattern details stay tucked away until you want a deeper read.
                         </span>
                     </span>
-                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:hidden">
+                    <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(var(--text-soft))] group-open:hidden">
                         Open
                     </span>
-                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(107,107,107)] group-open:inline">
+                    <span className="hidden text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[rgb(var(--text-soft))] group-open:inline">
                         Hide
                     </span>
                 </summary>
@@ -1574,43 +1576,43 @@ function DashboardNotebookViewFull({
 
                 {/* Row 1 — Mood Micro-Shift + Writing Energy */}
                 <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-[0.95rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.52)] px-2.5 py-2">
-                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(107,107,107)]">Mood shift</p>
+                    <div className="rounded-card-95 border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.52)] px-2.5 py-2">
+                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(var(--text-soft))]">Mood shift</p>
                         {moodShift ? (
                             moodShift.type === 'shift' ? (
                                 <p className="mt-0.5 text-[0.73rem] leading-5 text-[rgb(var(--paper-ink))]">
                                     {moodEmojiFor(moodShift.from)} → {moodEmojiFor(moodShift.to)}
-                                    <span className="block text-[0.65rem] text-[rgb(107,107,107)]">{toTitleCase(moodShift.from)} → {toTitleCase(moodShift.to)}</span>
+                                    <span className="block text-[0.65rem] text-[rgb(var(--text-soft))]">{toTitleCase(moodShift.from)} → {toTitleCase(moodShift.to)}</span>
                                 </p>
                             ) : (
                                 <p className="mt-0.5 text-[0.73rem] leading-5 text-[rgb(var(--paper-ink))]">
                                     {moodEmojiFor(moodShift.mood)} {toTitleCase(moodShift.mood)}
-                                    <span className="block text-[0.65rem] text-[rgb(107,107,107)]">{moodShift.streak}× in a row</span>
+                                    <span className="block text-[0.65rem] text-[rgb(var(--text-soft))]">{moodShift.streak}× in a row</span>
                                 </p>
                             )
                         ) : (
-                            <p className="mt-0.5 text-[0.65rem] leading-4 text-[rgb(107,107,107)]">Save two memories to see a shift.</p>
+                            <p className="mt-0.5 text-[0.65rem] leading-4 text-[rgb(var(--text-soft))]">Save two memories to see a shift.</p>
                         )}
                     </div>
-                    <div className="rounded-[0.95rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.52)] px-2.5 py-2">
-                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(107,107,107)]">Writing energy</p>
+                    <div className="rounded-card-95 border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.52)] px-2.5 py-2">
+                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(var(--text-soft))]">Writing energy</p>
                         {writingEnergy ? (
                             <p className="mt-0.5 text-[0.73rem] leading-5 text-[rgb(var(--paper-ink))]">
-                                <span className={writingEnergy.trend === 'up' ? 'sprout-accent' : writingEnergy.trend === 'down' ? 'text-[rgb(180,120,80)]' : 'text-[rgb(107,107,107)]'}>
+                                <span className={writingEnergy.trend === 'up' ? 'sprout-accent' : writingEnergy.trend === 'down' ? 'text-[rgb(180,120,80)]' : 'text-[rgb(var(--text-soft))]'}>
                                     {writingEnergy.trend === 'up' ? '↑' : writingEnergy.trend === 'down' ? '↓' : '→'} {writingEnergy.thisWeek.toLocaleString()}w
                                 </span>
-                                <span className="block text-[0.65rem] text-[rgb(107,107,107)]">vs {writingEnergy.lastWeek.toLocaleString()}w last week</span>
+                                <span className="block text-[0.65rem] text-[rgb(var(--text-soft))]">vs {writingEnergy.lastWeek.toLocaleString()}w last week</span>
                             </p>
                         ) : (
-                            <p className="mt-0.5 text-[0.65rem] leading-4 text-[rgb(107,107,107)]">Write this week to see energy.</p>
+                            <p className="mt-0.5 text-[0.65rem] leading-4 text-[rgb(var(--text-soft))]">Write this week to see energy.</p>
                         )}
                     </div>
                 </div>
 
                 {/* Row 2 — Contradiction Spotlight OR Memory Echo */}
                 {dashboardInsights?.contradictions[0] ? (
-                    <div className="rounded-[0.95rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.52)] px-2.5 py-2">
-                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(107,107,107)]">Notive noticed a gap</p>
+                    <div className="rounded-card-95 border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.52)] px-2.5 py-2">
+                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(var(--text-soft))]">Notive noticed a gap</p>
                         <p className="mt-0.5 text-[0.73rem] leading-5 text-[rgb(var(--paper-ink))]">
                             {compactText(dashboardInsights.contradictions[0].description, 110)}
                         </p>
@@ -1618,26 +1620,26 @@ function DashboardNotebookViewFull({
                 ) : resurfacedMoment ? (
                     <Link
                         href={openDashboardEntryHref(resurfacedMoment.matchedEntry.id)}
-                        className="block rounded-[0.95rem] border border-[rgba(138,154,111,0.25)] bg-[rgba(138,154,111,0.06)] px-2.5 py-2 transition-opacity hover:opacity-80"
+                        className="block rounded-card-95 border border-[rgba(138,154,111,0.25)] bg-[rgba(138,154,111,0.06)] px-2.5 py-2 transition-opacity hover:opacity-80"
                     >
                         <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] sprout-accent">Echo from the past</p>
                         <p className="mt-0.5 text-[0.73rem] leading-5 text-[rgb(var(--paper-ink))]">
                             {compactText(resurfacedMoment.matchedEntry.contentPreview, 100)}
                         </p>
-                        <p className="mt-0.5 text-[0.6rem] text-[rgb(107,107,107)]">
+                        <p className="mt-0.5 text-[0.6rem] text-[rgb(var(--text-soft))]">
                             {new Date(resurfacedMoment.matchedEntry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · Tap to revisit →
                         </p>
                     </Link>
                 ) : heroInsight?.body ? (
-                    <div className="rounded-[0.95rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.52)] px-2.5 py-2">
-                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(107,107,107)]">Pattern insight</p>
+                    <div className="rounded-card-95 border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.52)] px-2.5 py-2">
+                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(var(--text-soft))]">Pattern insight</p>
                         <p className="mt-0.5 text-[0.73rem] leading-5 text-[rgb(var(--paper-ink))]">
                             {compactText(heroInsight.body, 120)}
                         </p>
                     </div>
                 ) : noticedItems[0] ? (
-                    <div className="rounded-[0.95rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.52)] px-2.5 py-2">
-                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(107,107,107)]">Recurring thread</p>
+                    <div className="rounded-card-95 border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.52)] px-2.5 py-2">
+                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(var(--text-soft))]">Recurring pattern</p>
                         <p className="mt-0.5 text-[0.73rem] leading-5 text-[rgb(var(--paper-ink))]">{noticedItems[0]}</p>
                     </div>
                 ) : null}
@@ -1646,9 +1648,9 @@ function DashboardNotebookViewFull({
                 {todayBrief?.followUpPrompt && (
                     <Link
                         href={`${recommendedHref}&prompt=${encodeURIComponent(todayBrief.followUpPrompt)}`}
-                        className="block rounded-[0.95rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.52)] px-2.5 py-2 transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(92,92,92,0.08)]"
+                        className="block rounded-card-95 border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.52)] px-2.5 py-2 transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(92,92,92,0.08)]"
                     >
-                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(107,107,107)]">One question for today</p>
+                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.08em] text-[rgb(var(--text-soft))]">One question for today</p>
                         <p className="mt-0.5 text-[0.73rem] leading-5 text-[rgb(var(--paper-ink))]">
                             {compactText(todayBrief.followUpPrompt, 100)} →
                         </p>
@@ -1689,7 +1691,7 @@ function DashboardNotebookViewFull({
                     type="button"
                     data-print-hide
                     onClick={() => { if (typeof window !== 'undefined') window.print(); }}
-                    className="shrink-0 rounded-full border border-[rgba(92,92,92,0.15)] bg-[rgba(255,255,255,0.6)] px-2.5 py-1 text-[0.6rem] font-medium text-[rgb(107,107,107)] transition-colors hover:bg-[rgba(138,154,111,0.1)] hover:text-[rgb(118,134,91)]"
+                    className="shrink-0 rounded-full border border-[rgba(92,92,92,0.15)] bg-[rgba(255,255,255,0.6)] px-2.5 py-1 text-[0.6rem] font-medium text-[rgb(var(--text-soft))] transition-colors hover:bg-[rgba(138,154,111,0.1)] hover:text-[rgb(118,134,91)]"
                     aria-label="Save Growth snapshot as PDF"
                 >
                     ⤓ Save snapshot
@@ -1698,7 +1700,7 @@ function DashboardNotebookViewFull({
 
             {/* Period comparison — this month vs last month */}
             {periodDelta.hasSignal ? (
-                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                <div className="app-paper-soft rounded-card-110 px-3 pt-2.5 pb-2">
                     <div className="flex items-baseline justify-between">
                         <p className="section-label">This month vs {periodDelta.periodLabel}</p>
                         {periodDelta.currentTopMood && (
@@ -1776,7 +1778,7 @@ function DashboardNotebookViewFull({
                     )}
                 </div>
             ) : entries.length > 0 ? (
-                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2 pb-1.5">
+                <div className="app-paper-soft rounded-card-110 px-3 pt-2 pb-1.5">
                     <p className="section-label">Month-over-month</p>
                     <p className="mt-0.5 text-[0.6rem] leading-4 text-[rgb(150,150,150)]">
                         Your first month-over-month comparison unlocks once last month has a few memories to compare against.
@@ -1785,7 +1787,7 @@ function DashboardNotebookViewFull({
             ) : null}
 
             {/* Core growth signals — 3 gauge rings */}
-            <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+            <div className="app-paper-soft rounded-card-110 px-3 pt-2.5 pb-2">
                 <div className="grid grid-cols-3 divide-x divide-[rgba(92,92,92,0.06)]">
                     {/* Reflection Depth */}
                     {(() => {
@@ -1797,7 +1799,7 @@ function DashboardNotebookViewFull({
                                 <div className="relative h-9 w-9">
                                     <svg viewBox="0 0 32 32" className="h-9 w-9 -rotate-90">
                                         <circle cx="16" cy="16" r="13" fill="none" stroke="rgba(92,92,92,0.06)" strokeWidth="2.5" />
-                                        <circle cx="16" cy="16" r="13" fill="none" stroke="rgb(138,154,111)" strokeWidth="2.5" strokeLinecap="round"
+                                        <circle cx="16" cy="16" r="13" fill="none" stroke="rgb(var(--brand))" strokeWidth="2.5" strokeLinecap="round"
                                             strokeDasharray={`${(score / 100) * 81.7} 81.7`} />
                                     </svg>
                                     <span className="absolute inset-0 flex items-center justify-center text-[0.6rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">L{level}</span>
@@ -1817,7 +1819,7 @@ function DashboardNotebookViewFull({
                                 <div className="relative h-9 w-9">
                                     <svg viewBox="0 0 32 32" className="h-9 w-9 -rotate-90">
                                         <circle cx="16" cy="16" r="13" fill="none" stroke="rgba(92,92,92,0.06)" strokeWidth="2.5" />
-                                        <circle cx="16" cy="16" r="13" fill="none" stroke={ratio >= 0.6 ? 'rgb(138,154,111)' : 'rgb(192,160,100)'} strokeWidth="2.5" strokeLinecap="round"
+                                        <circle cx="16" cy="16" r="13" fill="none" stroke={ratio >= 0.6 ? 'rgb(var(--brand))' : 'rgb(192,160,100)'} strokeWidth="2.5" strokeLinecap="round"
                                             strokeDasharray={`${ratio * 81.7} 81.7`} />
                                     </svg>
                                     <span className="absolute inset-0 flex items-center justify-center text-[0.55rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">{pct}%</span>
@@ -1853,7 +1855,7 @@ function DashboardNotebookViewFull({
             {/* Growth metrics — 2×2 grid */}
             <div className="grid grid-cols-2 gap-2">
                 {/* Vocabulary */}
-                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                <div className="app-paper-soft rounded-card-110 px-3 pt-2.5 pb-2">
                     <p className="section-label">Vocabulary</p>
                     <div className="mt-1 flex items-baseline gap-1.5">
                         <span className="text-lg font-bold tabular-nums text-[rgb(var(--paper-ink))]">
@@ -1869,12 +1871,12 @@ function DashboardNotebookViewFull({
                     <div className="mt-1.5 flex items-center gap-1.5">
                         <span className="text-[0.46rem] text-[rgb(150,150,150)]">Richness</span>
                         <div className="flex-1 h-[3px] rounded-full bg-[rgba(92,92,92,0.06)] overflow-hidden">
-                            <div className="h-full rounded-full bg-[rgb(138,154,111)]" style={{ width: `${Math.min(100, Math.round((journalIntel?.vocabulary.richness ?? 0) * 100))}%` }} />
+                            <div className="h-full rounded-full bg-[rgb(var(--brand))]" style={{ width: `${Math.min(100, Math.round((journalIntel?.vocabulary.richness ?? 0) * 100))}%` }} />
                         </div>
                     </div>
                 </div>
                 {/* Gratitude */}
-                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                <div className="app-paper-soft rounded-card-110 px-3 pt-2.5 pb-2">
                     <p className="section-label">Gratitude</p>
                     <div className="mt-1 flex items-baseline gap-1.5">
                         <span className="text-lg font-bold tabular-nums text-[rgb(var(--paper-ink))]">
@@ -1890,19 +1892,19 @@ function DashboardNotebookViewFull({
                     <div className="mt-1.5 flex items-center gap-1.5">
                         <span className="text-[0.46rem] text-[rgb(150,150,150)]">Depth</span>
                         <div className="flex-1 h-[3px] rounded-full bg-[rgba(92,92,92,0.06)] overflow-hidden">
-                            <div className="h-full rounded-full bg-[rgb(138,154,111)]" style={{ width: `${Math.min(100, Math.max(0, Math.round(journalIntel?.gratitude.depthScore ?? 0)))}%` }} />
+                            <div className="h-full rounded-full bg-[rgb(var(--brand))]" style={{ width: `${Math.min(100, Math.max(0, Math.round(journalIntel?.gratitude.depthScore ?? 0)))}%` }} />
                         </div>
                     </div>
                 </div>
                 {/* Life Balance */}
-                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                <div className="app-paper-soft rounded-card-110 px-3 pt-2.5 pb-2">
                     <p className="section-label">Life balance</p>
                     <div className="mt-1.5 space-y-[3px]">
                         {visibleLifeBalanceAreas.slice(0, 4).map((area) => (
                             <div key={area.area} className="flex items-center gap-1.5">
                                 <span className="w-[2.8rem] text-[0.46rem] text-[rgb(140,140,140)] truncate">{formatNotebookLabel(area.area)}</span>
                                 <div className="flex-1 h-[3px] rounded-full bg-[rgba(92,92,92,0.05)] overflow-hidden">
-                                    <div className="h-full rounded-full bg-[rgb(138,154,111)]" style={{ width: `${Math.min(100, Math.round(area.score * 100))}%` }} />
+                                    <div className="h-full rounded-full bg-[rgb(var(--brand))]" style={{ width: `${Math.min(100, Math.round(area.score * 100))}%` }} />
                                 </div>
                             </div>
                         ))}
@@ -1912,7 +1914,7 @@ function DashboardNotebookViewFull({
                     )}
                 </div>
                 {/* Writing Voice */}
-                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                <div className="app-paper-soft rounded-card-110 px-3 pt-2.5 pb-2">
                     <p className="section-label">Writing voice</p>
                     {(() => {
                         const voice = journalIntel?.writingVoice;
@@ -1921,7 +1923,7 @@ function DashboardNotebookViewFull({
                             <>
                                 <div className="mt-1.5 flex h-[3px] rounded-full overflow-hidden">
                                     <div className="h-full bg-[rgba(160,140,200,0.6)]" style={{ width: `${tense.past}%` }} />
-                                    <div className="h-full bg-[rgb(138,154,111)]" style={{ width: `${tense.present}%` }} />
+                                    <div className="h-full bg-[rgb(var(--brand))]" style={{ width: `${tense.present}%` }} />
                                     <div className="h-full bg-[rgba(120,170,200,0.7)]" style={{ width: `${tense.future}%` }} />
                                 </div>
                                 <div className="mt-1 flex justify-between text-[0.42rem] text-[rgb(150,150,150)]">
@@ -1943,12 +1945,12 @@ function DashboardNotebookViewFull({
 
             {/* Growth thread + Story material — compact 2-col */}
             <div className="grid gap-2 sm:grid-cols-2">
-                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
-                    <p className="section-label">{weeklyDigest ? 'Week in one line' : 'Growth thread'}</p>
+                <div className="app-paper-soft rounded-card-110 px-3 pt-2.5 pb-2">
+                    <p className="section-label">{weeklyDigest ? 'Week in one line' : 'Growth so far'}</p>
                     <p className="mt-1 text-[0.78rem] font-semibold leading-5 text-[rgb(var(--paper-ink))]">
                         {weeklyDigest?.title || growthSummary}
                     </p>
-                    <p className="mt-1 text-[0.68rem] leading-[1.35] text-[rgb(107,107,107)]">
+                    <p className="mt-1 text-[0.68rem] leading-[1.35] text-[rgb(var(--text-soft))]">
                         {weeklyDigestSnippet || growthEvidence}
                     </p>
                     {typeof weeklyDigest?.entryCount === 'number' && weeklyDigest.entryCount > 0 && (
@@ -1959,20 +1961,20 @@ function DashboardNotebookViewFull({
                     {weeklyDigestHighlights.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
                             {weeklyDigestHighlights.map((item) => (
-                                <span key={`${item.category}-${item.insight}`} className="rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.54)] px-2 py-0.5 text-[0.52rem] text-[rgb(107,107,107)]">
+                                <span key={`${item.category}-${item.insight}`} className="rounded-full border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.54)] px-2 py-0.5 text-[0.52rem] text-[rgb(var(--text-soft))]">
                                     {item.category}
                                 </span>
                             ))}
                         </div>
                     )}
                 </div>
-                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+                <div className="app-paper-soft rounded-card-110 px-3 pt-2.5 pb-2">
                     <p className="section-label">Story material</p>
                     <div className="mt-1 space-y-1">
                         {(growthLedgerItems.length > 0 ? growthLedgerItems : [threadSentence]).slice(0, 3).map((item) => (
                             <div key={item} className="flex items-start gap-1.5">
-                                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[rgb(138,154,111)]" />
-                                <p className="text-[0.65rem] leading-4 text-[rgb(107,107,107)]">{item}</p>
+                                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[rgb(var(--brand))]" />
+                                <p className="text-[0.65rem] leading-4 text-[rgb(var(--text-soft))]">{item}</p>
                             </div>
                         ))}
                     </div>
@@ -1980,15 +1982,15 @@ function DashboardNotebookViewFull({
             </div>
 
             {/* Carry this forward — compact */}
-            <div className="app-paper-soft rounded-[1.1rem] px-3 pt-2.5 pb-2">
+            <div className="app-paper-soft rounded-card-110 px-3 pt-2.5 pb-2">
                 <p className="section-label">Carry this forward</p>
-                <p className="mt-1 text-[0.68rem] leading-[1.35] text-[rgb(107,107,107)]">
+                <p className="mt-1 text-[0.68rem] leading-[1.35] text-[rgb(var(--text-soft))]">
                     {resurfacedMoment
                         ? 'An older memory is echoing this week. Growth often looks like noticing the same moment sooner.'
                         : 'Keep saving real moments. They become evidence for school, work, and your own story.'}
                 </p>
                 <div className="mt-1.5 flex items-center gap-3">
-                    <Link href={portfolioHref} className="text-[0.68rem] font-medium text-[rgb(138,154,111)] transition-opacity hover:opacity-80">
+                    <Link href={portfolioHref} className="text-[0.68rem] font-medium text-[rgb(var(--brand))] transition-opacity hover:opacity-80">
                         See this as a story for college/apps →
                     </Link>
                 </div>
@@ -1996,9 +1998,9 @@ function DashboardNotebookViewFull({
         </div>
     ) : entries.length < 3 ? (
         <div className="space-y-2.5">
-            <div className="app-paper-soft rounded-[1.1rem] px-3 pt-4 pb-3.5 text-center">
+            <div className="app-paper-soft rounded-card-110 px-3 pt-4 pb-3.5 text-center">
                 <p className="section-label">Patterns</p>
-                <p className="mt-2 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                <p className="mt-2 text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">
                     Your rhythms, moods and anchors will show up here once you have a few memories to compare.
                 </p>
                 <p className="mt-1 text-[0.62rem] leading-4 text-[rgb(150,150,150)]">
@@ -2008,10 +2010,10 @@ function DashboardNotebookViewFull({
         </div>
     ) : (
         <div className="space-y-2.5">
-            {/* ── Emotional thread — hero visualization ── */}
-            <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+            {/* ── Mood over time — hero visualization ── */}
+            <div className="app-paper-soft rounded-card-110 px-3 pt-3 pb-2.5">
                 <div className="flex items-baseline justify-between">
-                    <p className="section-label">Emotional thread</p>
+                    <p className="section-label">Mood over time</p>
                     {moodShift && (
                         <span className={`rounded-full px-2 py-0.5 text-[0.55rem] font-medium tracking-wide ${
                             moodShift.type === 'shift'
@@ -2022,7 +2024,7 @@ function DashboardNotebookViewFull({
                         </span>
                     )}
                 </div>
-                <div className="mt-1.5 rounded-[0.75rem] bg-[rgba(255,255,255,0.5)] px-1 pt-1 pb-0.5">
+                <div className="mt-1.5 rounded-xl bg-[rgba(255,255,255,0.5)] px-1 pt-1 pb-0.5">
                     <svg
                         viewBox="0 0 440 120"
                         className="h-[7.5rem] w-full"
@@ -2030,16 +2032,16 @@ function DashboardNotebookViewFull({
                         aria-label={
                             moodShift
                                 ? moodShift.type === 'shift'
-                                    ? `Emotional thread across recent entries, shifting from ${moodShift.from} toward ${moodShift.to}.`
-                                    : `Emotional thread across recent entries, stable around ${moodShift.mood}.`
-                                : 'Emotional thread showing mood changes over recent entries.'
+                                    ? `Mood across recent entries, shifting from ${moodShift.from} toward ${moodShift.to}.`
+                                    : `Mood across recent entries, stable around ${moodShift.mood}.`
+                                : 'Mood changes across recent entries.'
                         }
                     >
                         {/* Gradient fill under curve */}
                         <defs>
                             <linearGradient id="moodFill" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#8A9A6F" stopOpacity="0.18" />
-                                <stop offset="100%" stopColor="#8A9A6F" stopOpacity="0.02" />
+                                <stop offset="0%" stopColor="rgb(var(--brand))" stopOpacity="0.18" />
+                                <stop offset="100%" stopColor="rgb(var(--brand))" stopOpacity="0.02" />
                             </linearGradient>
                         </defs>
 
@@ -2067,19 +2069,19 @@ function DashboardNotebookViewFull({
                         )}
 
                         {/* The mood curve */}
-                        <path d={emotionalThreadPath} fill="none" stroke="#8A9A6F" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d={emotionalThreadPath} fill="none" stroke="rgb(var(--brand))" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
 
                         {/* Data points */}
                         {emotionalThreadPoints.map((point) => (
                             <g key={`pt-${point.x}-${point.label}`}>
-                                <circle cx={point.x} cy={point.y} r="6" fill="#8A9A6F" opacity="0.08" />
-                                <circle cx={point.x} cy={point.y} r="3.2" fill="#F8F4ED" stroke="#5C5C5C" strokeWidth="1.3" />
+                                <circle cx={point.x} cy={point.y} r="6" fill="rgb(var(--brand))" opacity="0.08" />
+                                <circle cx={point.x} cy={point.y} r="3.2" fill="rgb(var(--paper-bg))" stroke="rgb(var(--paper-border))" strokeWidth="1.3" />
                                 {point.mood && (
                                     <text x={point.x} y={Math.max(14, point.y - 9)} textAnchor="middle" fontSize="8.5">
                                         {moodEmojiFor(point.mood)}
                                     </text>
                                 )}
-                                <text x={point.x} y="103" textAnchor="middle" fontSize="7" fontWeight="500" fill="#5C5C5C">{point.label}</text>
+                                <text x={point.x} y="103" textAnchor="middle" fontSize="7" fontWeight="500" fill="rgb(var(--paper-border))">{point.label}</text>
                                 {point.mood && (
                                     <text x={point.x} y="112" textAnchor="middle" fontSize="5.5" fill="#9A9A9A">{point.mood}</text>
                                 )}
@@ -2087,12 +2089,12 @@ function DashboardNotebookViewFull({
                         ))}
                     </svg>
                 </div>
-                <p className="mt-1.5 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">{emotionalThreadLine}</p>
+                <p className="mt-1.5 text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">{emotionalThreadLine}</p>
             </div>
 
             {/* ── Activity heatmap — macro rhythm view ── */}
             {entries.length >= 5 ? (
-                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                <div className="app-paper-soft rounded-card-110 px-3 pt-3 pb-2.5">
                     <div className="flex items-baseline justify-between">
                         <p className="section-label">Writing rhythm</p>
                         <span className="text-[0.58rem] text-[rgb(140,140,140)] tabular-nums">
@@ -2180,7 +2182,7 @@ function DashboardNotebookViewFull({
                     </div>
                 </div>
             ) : (
-                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                <div className="app-paper-soft rounded-card-110 px-3 pt-3 pb-2.5">
                     <p className="section-label">Writing rhythm</p>
                     <p className="mt-1 text-[0.65rem] leading-4 text-[rgb(150,150,150)]">
                         Your rhythm appears after a few more entries.
@@ -2189,7 +2191,7 @@ function DashboardNotebookViewFull({
             )}
 
             {/* ── When you write (days + windows merged) ── */}
-            <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+            <div className="app-paper-soft rounded-card-110 px-3 pt-3 pb-2.5">
                 <div className="flex items-baseline justify-between">
                     <p className="section-label">When you write</p>
                     <span className="text-[0.52rem] text-[rgb(170,170,170)] uppercase tracking-wider">days · windows</span>
@@ -2208,7 +2210,7 @@ function DashboardNotebookViewFull({
                                     {day.count}
                                 </span>
                                 <div
-                                    className={`w-full max-w-[18px] rounded-t-[3px] ${isActive ? 'bg-[rgb(138,154,111)]' : 'bg-[rgba(92,92,92,0.07)]'}`}
+                                    className={`w-full max-w-[18px] rounded-t-[3px] ${isActive ? 'bg-[rgb(var(--brand))]' : 'bg-[rgba(92,92,92,0.07)]'}`}
                                     style={{ height: `${barH}px` }}
                                 />
                                 <span className={`text-[0.55rem] ${isActive ? 'font-medium text-[rgb(var(--paper-ink))]' : 'text-[rgb(170,170,170)]'}`}>
@@ -2249,7 +2251,7 @@ function DashboardNotebookViewFull({
                                 </span>
                                 <div className="flex-1 h-[0.4rem] rounded-full bg-[rgba(92,92,92,0.05)] overflow-hidden">
                                     <div
-                                        className={`h-full rounded-full ${isTop ? 'bg-[rgb(138,154,111)]' : 'bg-[rgba(138,154,111,0.4)]'}`}
+                                        className={`h-full rounded-full ${isTop ? 'bg-[rgb(var(--brand))]' : 'bg-[rgba(138,154,111,0.4)]'}`}
                                         style={{ width: `${pct}%` }}
                                     />
                                 </div>
@@ -2262,7 +2264,7 @@ function DashboardNotebookViewFull({
                             <Link
                                 key={bucket.label}
                                 href={`/timeline?dayPart=${encodeURIComponent(bucket.phrase)}`}
-                                className="flex items-center gap-2 rounded-[0.5rem] -mx-1 px-1 py-0.5 transition-colors hover:bg-[rgba(138,154,111,0.06)]"
+                                className="flex items-center gap-2 rounded-lg -mx-1 px-1 py-0.5 transition-colors hover:bg-[rgba(138,154,111,0.06)]"
                             >
                                 {row}
                             </Link>
@@ -2275,15 +2277,15 @@ function DashboardNotebookViewFull({
                 </div>
 
                 {/* Combined footer: insight + nudge */}
-                <p className="mt-2.5 text-[0.68rem] leading-4 text-[rgb(107,107,107)]">{writingRhythmLine}</p>
+                <p className="mt-2.5 text-[0.68rem] leading-4 text-[rgb(var(--text-soft))]">{writingRhythmLine}</p>
                 {writingRhythmPrompt && writingRhythmPrompt !== writingRhythmLine && (
-                    <p className="mt-1 text-[0.62rem] leading-4 text-[rgb(138,154,111)]">{writingRhythmPrompt}</p>
+                    <p className="mt-1 text-[0.62rem] leading-4 text-[rgb(var(--brand))]">{writingRhythmPrompt}</p>
                 )}
             </div>
 
             {/* ── Emotional fingerprint — ranked bars ── */}
             {dashboardInsights?.emotionalFingerprint && dashboardInsights.emotionalFingerprint.axes.length > 0 && (
-                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                <div className="app-paper-soft rounded-card-110 px-3 pt-3 pb-2.5">
                     <div className="flex items-baseline justify-between">
                         <p className="section-label">Emotional fingerprint</p>
                         <span className="text-[0.52rem] text-[rgb(170,170,170)] uppercase tracking-wider">frequency</span>
@@ -2300,7 +2302,7 @@ function DashboardNotebookViewFull({
                                     <Link
                                         key={axis.emotion}
                                         href={`/timeline?mood=${encodeURIComponent(emotionKey)}`}
-                                        className="flex items-center gap-1.5 rounded-[0.5rem] -mx-1 px-1 py-0.5 transition-colors hover:bg-[rgba(138,154,111,0.06)]"
+                                        className="flex items-center gap-1.5 rounded-lg -mx-1 px-1 py-0.5 transition-colors hover:bg-[rgba(138,154,111,0.06)]"
                                     >
                                         <span className="w-[1.1rem] text-center text-[0.72rem] leading-none">{moodEmojiFor(emotionKey)}</span>
                                         <span className={`w-[3.5rem] text-[0.6rem] truncate ${isTop ? 'font-semibold text-[rgb(var(--paper-ink))]' : 'text-[rgb(130,130,130)]'}`}>
@@ -2311,7 +2313,7 @@ function DashboardNotebookViewFull({
                                                 className="h-full rounded-full"
                                                 style={{
                                                     width: `${barWidth}%`,
-                                                    backgroundColor: isTop ? 'rgb(138,154,111)' : 'rgba(138,154,111,0.45)',
+                                                    backgroundColor: isTop ? 'rgb(var(--brand))' : 'rgba(138,154,111,0.45)',
                                                 }}
                                             />
                                         </div>
@@ -2323,7 +2325,7 @@ function DashboardNotebookViewFull({
                             });
                         })()}
                     </div>
-                    <p className="mt-2 text-[0.65rem] leading-4 text-[rgb(107,107,107)]">
+                    <p className="mt-2 text-[0.65rem] leading-4 text-[rgb(var(--text-soft))]">
                         {dashboardInsights.emotionalFingerprint.summary}
                     </p>
                 </div>
@@ -2333,7 +2335,7 @@ function DashboardNotebookViewFull({
             {(hasLifeBalanceSignal || dashboardInsights?.resilience) && (
                 <div className="grid gap-2 sm:grid-cols-2">
                     {hasLifeBalanceSignal && journalIntel?.lifeBalance && (
-                        <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                        <div className="app-paper-soft rounded-card-110 px-3 pt-3 pb-2.5">
                             <p className="section-label">Life balance</p>
                             <div className="mt-2 flex items-center gap-3">
                                 <div className="relative h-11 w-11 shrink-0">
@@ -2346,7 +2348,7 @@ function DashboardNotebookViewFull({
                                         <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(92,92,92,0.06)" strokeWidth="3.5" />
                                         <circle
                                             cx="18" cy="18" r="15" fill="none"
-                                            stroke="rgb(138,154,111)" strokeWidth="3.5" strokeLinecap="round"
+                                            stroke="rgb(var(--brand))" strokeWidth="3.5" strokeLinecap="round"
                                             strokeDasharray={`${lifeBalanceRingFill} ${LIFE_BALANCE_RING_CIRCUMFERENCE}`}
                                         />
                                     </svg>
@@ -2375,9 +2377,9 @@ function DashboardNotebookViewFull({
                     )}
 
                     {dashboardInsights?.resilience && (
-                        <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                        <div className="app-paper-soft rounded-card-110 px-3 pt-3 pb-2.5">
                             <p className="section-label">Resilience</p>
-                            <p className="mt-1.5 text-[0.68rem] leading-[1.55] text-[rgb(107,107,107)]">
+                            <p className="mt-1.5 text-[0.68rem] leading-[1.55] text-[rgb(var(--text-soft))]">
                                 {dashboardInsights.resilience.narrative}
                             </p>
                         </div>
@@ -2389,7 +2391,7 @@ function DashboardNotebookViewFull({
             {(supportAnchorCards.length > 0 || (dashboardInsights && (dashboardInsights.correlations.length > 0 || dashboardInsights.triggerMap.length > 0))) && (
                 <div className="grid gap-2 sm:grid-cols-2">
                     {(supportAnchorCards.length > 0 || supportivePeople.length > 0 || groundingAnchors.length > 0) && (
-                        <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                        <div className="app-paper-soft rounded-card-110 px-3 pt-3 pb-2.5">
                             <p className="section-label">Who steadies you</p>
                             {supportMap?.summary && (
                                 <p className="mt-1 text-[0.62rem] leading-4 text-[rgb(130,130,130)]">
@@ -2412,7 +2414,7 @@ function DashboardNotebookViewFull({
                                                     )}
                                                 </div>
                                                 {anchor.whyItHelps && (
-                                                    <p className="mt-0.5 text-[0.6rem] leading-4 text-[rgb(125,125,125)]">
+                                                    <p className="mt-0.5 text-[0.6rem] leading-4 text-[rgb(var(--text-disabled))]">
                                                         {compactText(anchor.whyItHelps, 95)}
                                                     </p>
                                                 )}
@@ -2448,14 +2450,14 @@ function DashboardNotebookViewFull({
                         const items = merged.sort((a, b) => b.magnitude - a.magnitude).slice(0, 4);
                         if (items.length === 0) return null;
                         return (
-                            <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                            <div className="app-paper-soft rounded-card-110 px-3 pt-3 pb-2.5">
                                 <p className="section-label">What lifts &amp; drains</p>
                                 <div className="mt-2 space-y-1.5">
                                     {items.map((item) => (
                                         <Link
                                             key={item.key}
                                             href={`/timeline?theme=${encodeURIComponent(item.topic)}`}
-                                            className="flex items-center gap-2 rounded-[0.5rem] -mx-1 px-1 py-0.5 transition-colors hover:bg-[rgba(138,154,111,0.06)]"
+                                            className="flex items-center gap-2 rounded-lg -mx-1 px-1 py-0.5 transition-colors hover:bg-[rgba(138,154,111,0.06)]"
                                         >
                                             <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.55rem] ${
                                                 item.isLift ? 'bg-[rgba(138,154,111,0.12)] text-[rgb(118,134,91)]' : 'bg-[rgba(192,134,90,0.12)] text-[rgb(170,120,70)]'
@@ -2477,13 +2479,13 @@ function DashboardNotebookViewFull({
 
             {/* ── Worth noticing (contradictions) ── */}
             {dashboardInsights && dashboardInsights.contradictions.length > 0 && (
-                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5 border-l-[3px] border-[rgba(192,160,100,0.35)]">
+                <div className="app-paper-soft rounded-card-110 px-3 pt-3 pb-2.5 border-l-[3px] border-[rgba(192,160,100,0.35)]">
                     <p className="section-label">Worth noticing</p>
                     <div className="mt-1.5 space-y-1.5">
                         {dashboardInsights.contradictions.slice(0, 2).map((c, i) => (
                             <div key={i} className="flex items-start gap-2">
                                 <span className="mt-0.5 text-[0.65rem]">🪞</span>
-                                <p className="text-[0.68rem] leading-[1.55] text-[rgb(107,107,107)]">{c.description}</p>
+                                <p className="text-[0.68rem] leading-[1.55] text-[rgb(var(--text-soft))]">{c.description}</p>
                             </div>
                         ))}
                     </div>
@@ -2492,12 +2494,12 @@ function DashboardNotebookViewFull({
 
             {/* ── Small evidence ── */}
             {evidenceLedger.length > 0 && (
-                <div className="app-paper-soft rounded-[1.1rem] px-3 pt-3 pb-2.5">
+                <div className="app-paper-soft rounded-card-110 px-3 pt-3 pb-2.5">
                     <p className="section-label">Small evidence</p>
                     <div className="mt-1.5 space-y-1.5">
                         {evidenceLedger.slice(0, 3).map((item) => (
                             <div key={item.title} className="flex items-start gap-2">
-                                <span className="mt-[0.35rem] h-[5px] w-[5px] shrink-0 rounded-full bg-[rgb(138,154,111)]" />
+                                <span className="mt-[0.35rem] h-[5px] w-[5px] shrink-0 rounded-full bg-[rgb(var(--brand))]" />
                                 <div>
                                     <span className="text-[0.7rem] font-semibold text-[rgb(var(--paper-ink))]">{item.title}</span>
                                     <span className="ml-1 text-[0.65rem] text-[rgb(130,130,130)]">{item.body}</span>
@@ -2541,11 +2543,11 @@ function DashboardNotebookViewFull({
                                 <div className="min-w-0 flex-1">
                                     <h1 className="notive-logo flex min-w-0 flex-wrap items-baseline gap-x-1 text-[1.35rem] font-semibold leading-tight md:text-3xl">
                                         <span className="truncate">Hey {firstName}</span>
-                                        <span className="min-w-0 truncate text-[0.72rem] font-normal text-[rgb(107,107,107)] md:text-sm">
+                                        <span className="min-w-0 truncate text-[0.72rem] font-normal text-[rgb(var(--text-soft))] md:text-sm">
                                             {greetingLocation}
                                         </span>
                                     </h1>
-                                    <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.72rem] leading-5 text-[rgb(107,107,107)]">
+                                    <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">
                                         {todayLabel}
                                         <span className="text-[rgba(107,107,107,0.55)]">•</span>
                                         <span className="sprout-accent line-clamp-1 min-w-0">{energyLine}</span>
@@ -2569,7 +2571,7 @@ function DashboardNotebookViewFull({
                             </div>
 
                             <div className="overflow-x-auto scrollbar-hide">
-                                <div role="tablist" aria-label="Dashboard pages" className="inline-flex min-w-full gap-1 rounded-[1.2rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(237,228,216,0.72)] p-0.5 min-[430px]:rounded-[1.5rem] min-[430px]:p-1">
+                                <div role="tablist" aria-label="Dashboard pages" className="inline-flex min-w-full gap-1 rounded-card-120 border border-[rgba(92,92,92,0.12)] bg-[rgba(237,228,216,0.72)] p-0.5 min-[430px]:rounded-3xl min-[430px]:p-1">
                                     {TAB_ORDER.map((tab) => (
                                         <button
                                             key={tab}
@@ -2578,10 +2580,10 @@ function DashboardNotebookViewFull({
                                             aria-selected={activeTab === tab}
                                             aria-controls={`dashboard-page-${tab}`}
                                             onClick={() => setActiveTab(tab)}
-                                            className={`flex-1 whitespace-nowrap rounded-[0.95rem] px-2 py-1.5 text-[0.74rem] font-medium transition-all min-[430px]:rounded-[1.1rem] min-[430px]:px-2.5 min-[430px]:py-2 min-[430px]:text-[0.8rem] ${
+                                            className={`flex-1 whitespace-nowrap rounded-card-95 px-2 py-1.5 text-[0.74rem] font-medium transition-all min-[430px]:rounded-card-110 min-[430px]:px-2.5 min-[430px]:py-2 min-[430px]:text-[0.8rem] ${
                                                 activeTab === tab
                                                     ? 'bg-[rgba(248,244,237,0.98)] text-[rgb(41,38,34)] shadow-[0_2px_8px_rgba(92,92,92,0.08)]'
-                                                    : 'text-[rgb(107,107,107)] hover:bg-[rgba(255,255,255,0.5)]'
+                                                    : 'text-[rgb(var(--text-soft))] hover:bg-[rgba(255,255,255,0.5)]'
                                             }`}
                                         >
                                             <span className="flex items-center justify-center gap-1">
@@ -2623,7 +2625,7 @@ function DashboardNotebookViewFull({
                                         <Link
                                             key={entry.id}
                                             href={openDashboardEntryHref(entry.id)}
-                                            className="app-paper-soft block rounded-[1.25rem] p-4 transition-opacity hover:opacity-80"
+                                            className="app-paper-soft block rounded-card-125 p-4 transition-opacity hover:opacity-80"
                                         >
                                             <div className="flex items-start gap-3">
                                                 <span className="mt-0.5 text-sm" aria-hidden="true">
@@ -2634,11 +2636,11 @@ function DashboardNotebookViewFull({
                                                         <p className="truncate text-sm font-semibold text-[rgb(var(--paper-ink))]">
                                                             {entry.title || 'Untitled'}
                                                         </p>
-                                                        <span className="text-xs text-[rgb(107,107,107)]">
+                                                        <span className="text-xs text-[rgb(var(--text-soft))]">
                                                             {new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                                         </span>
                                                     </div>
-                                                    <p className="mt-2 text-[0.875rem] leading-7 text-[rgb(107,107,107)]">
+                                                    <p className="mt-2 text-[0.875rem] leading-7 text-[rgb(var(--text-soft))]">
                                                         {compactText(entry.content, 105)}
                                                     </p>
                                                 </div>
@@ -2648,7 +2650,7 @@ function DashboardNotebookViewFull({
                                 </div>
                                 {entries.length > 3 && (
                                     <div className="mt-3">
-                                        <Link href={timelineHref} className="text-[0.75rem] text-[rgb(138,154,111)] hover:opacity-75">
+                                        <Link href={timelineHref} className="text-[0.75rem] text-[rgb(var(--brand))] hover:opacity-75">
                                             See all {entries.length} memories →
                                         </Link>
                                     </div>

@@ -92,7 +92,7 @@ describe('buildDashboardHomeTakeaway', () => {
         });
 
         expect(takeaway.persona).toBe('done_today');
-        expect(takeaway.headline).toContain("Calm is part of today's thread");
+        expect(takeaway.headline).toContain("Calm is part of today's picture");
         expect(takeaway.primaryAction.kind).toBe('none');
         expect(takeaway.secondaryAction?.href).toBe('/portfolio?view=growth');
     });
@@ -136,6 +136,6 @@ describe('buildDashboardHomeTakeaway', () => {
 
         expect(takeaway.persona).toBe('pattern');
         expect(takeaway.headline).toContain('Happy');
-        expect(takeaway.signals[0]).toMatchObject({ label: 'Mood thread', value: 'Happy x2' });
+        expect(takeaway.signals[0]).toMatchObject({ label: 'Mood pattern', value: 'Happy x2' });
     });
 });

@@ -120,7 +120,7 @@ export function PrivacySection({
     return (
         <div className="space-y-6">
             <section className="grid gap-6 xl:grid-cols-[1.35fr,1fr]">
-                <div className="workspace-panel rounded-[2rem] p-8 space-y-6">
+                <div className="workspace-panel rounded-card-200 p-8 space-y-6">
                     <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Data</p>
                         <h2 className="workspace-heading mt-2 text-2xl font-serif">See and control saved answers</h2>
@@ -138,7 +138,7 @@ export function PrivacySection({
                             emptyLabel="Normal"
                             helper="This changes how often Notive asks short setup questions."
                         />
-                        <div className="workspace-soft-panel rounded-[1.4rem] p-5">
+                        <div className="workspace-soft-panel rounded-card-140 p-5">
                             <div className="flex items-start justify-between gap-4">
                                 <div>
                                     <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Daily Gentle Reflections</p>
@@ -167,7 +167,7 @@ export function PrivacySection({
                                 Cover images and media are stored privately and never shared.
                             </p>
                         </div>
-                        <div className="workspace-soft-panel rounded-[1.4rem] p-5">
+                        <div className="workspace-soft-panel rounded-card-140 p-5">
                             <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Saved Answers</p>
                             <p className="workspace-heading mt-2 text-3xl font-serif">{signalEntries.length}</p>
                             <p className="mt-1 text-sm text-ink-secondary">
@@ -176,7 +176,7 @@ export function PrivacySection({
                         </div>
                     </div>
 
-                    <div className="workspace-soft-panel rounded-[1.6rem] p-5">
+                    <div className="workspace-soft-panel rounded-card-160 p-5">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div className="max-w-xl">
                                 <p className="text-xs uppercase tracking-[0.16em] text-ink-muted font-bold">Bridge Fallback</p>
@@ -185,7 +185,7 @@ export function PrivacySection({
                                     Pin the people you trust, choose how you usually reach them, and keep the routines that steady you close. When a note feels vague or overwhelmed, Notive can lean on these anchors instead of guessing.
                                 </p>
                             </div>
-                            <div className="workspace-soft-panel rounded-[1.3rem] px-4 py-4">
+                            <div className="workspace-soft-panel rounded-card-130 px-4 py-4">
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Pinned Anchors</p>
                                 <p className="workspace-heading mt-2 text-3xl font-serif">{pinnedCount}</p>
                                 <p className="mt-1 text-sm text-ink-secondary">
@@ -218,7 +218,7 @@ export function PrivacySection({
                         </div>
 
                         <div className="mt-5 grid gap-5 xl:grid-cols-[1.1fr,0.9fr]">
-                            <div className="workspace-soft-panel rounded-[1.5rem] p-5 space-y-4">
+                            <div className="workspace-soft-panel rounded-3xl p-5 space-y-4">
                                 <div>
                                     <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Trusted Contacts</p>
                                     <h4 className="workspace-heading mt-2 text-lg font-serif">Save the person and the channel</h4>
@@ -289,7 +289,7 @@ export function PrivacySection({
                                 </button>
                             </div>
 
-                            <div className="workspace-soft-panel rounded-[1.5rem] p-5 space-y-4">
+                            <div className="workspace-soft-panel rounded-3xl p-5 space-y-4">
                                 <div>
                                     <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Safety Region</p>
                                     <h4 className="workspace-heading mt-2 text-lg font-serif">Choose which crisis guidance to show</h4>
@@ -325,13 +325,13 @@ export function PrivacySection({
                             </div>
 
                             {trustedContacts.length === 0 ? (
-                                <div className="workspace-muted-panel rounded-[1.4rem] border-dashed px-5 py-6 text-sm text-ink-secondary">
+                                <div className="workspace-muted-panel rounded-card-140 border-dashed px-5 py-6 text-sm text-ink-secondary">
                                     No trusted contacts saved yet.
                                 </div>
                             ) : (
                                 <div className="grid gap-3">
                                     {trustedContacts.map((contact) => (
-                                        <div key={contact.id} className="workspace-muted-panel rounded-[1.4rem] px-4 py-4">
+                                        <div key={contact.id} className="workspace-muted-panel rounded-card-140 px-4 py-4">
                                             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                                 <div className="space-y-2">
                                                     <div className="flex flex-wrap gap-2">
@@ -415,7 +415,7 @@ export function PrivacySection({
                         </div>
                     </div>
 
-                    <div className="workspace-soft-panel flex flex-wrap items-center justify-between gap-3 rounded-[1.4rem] px-4 py-4">
+                    <div className="workspace-soft-panel flex flex-wrap items-center justify-between gap-3 rounded-card-140 px-4 py-4">
                         <div>
                             <p className="workspace-heading text-sm font-semibold">Clear saved answers</p>
                             <p className="mt-1 text-xs text-ink-secondary">
@@ -441,7 +441,7 @@ export function PrivacySection({
                         </div>
 
                         {signalEntries.length === 0 ? (
-                            <div className="workspace-muted-panel rounded-[1.4rem] border-dashed px-5 py-8 text-sm text-ink-secondary">
+                            <div className="workspace-muted-panel rounded-card-140 border-dashed px-5 py-8 text-sm text-ink-secondary">
                                 No saved answers right now.
                             </div>
                         ) : (
@@ -449,7 +449,7 @@ export function PrivacySection({
                                 {signalEntries.map((entry) => (
                                     <div
                                         key={`${entry.key}-${entry.answeredAt}`}
-                                        className="workspace-muted-panel rounded-[1.4rem] px-4 py-4"
+                                        className="workspace-muted-panel rounded-card-140 px-4 py-4"
                                     >
                                         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                                             <div className="space-y-2">
@@ -486,7 +486,7 @@ export function PrivacySection({
                 </div>
 
                 <div className="space-y-6">
-                    <section className="workspace-panel rounded-[2rem] p-6 space-y-4">
+                    <section className="workspace-panel rounded-card-200 p-6 space-y-4">
                         <div>
                             <p className="text-xs uppercase tracking-[0.16em] text-ink-muted font-bold">What Notive Saves</p>
                             <h3 className="workspace-heading mt-2 text-xl font-serif">Easy to review</h3>
@@ -507,7 +507,7 @@ export function PrivacySection({
                         </div>
                     </section>
 
-                    <section className="workspace-panel rounded-[2rem] p-6 space-y-4">
+                    <section className="workspace-panel rounded-card-200 p-6 space-y-4">
                         <div className="flex items-start justify-between gap-4">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.16em] text-ink-muted font-bold">Voice Spellings</p>
@@ -584,17 +584,17 @@ export function PrivacySection({
                         )}
 
                         {isLoadingVoiceLexicon ? (
-                            <div className="workspace-muted-panel rounded-[1.4rem] border-dashed px-5 py-6 text-sm text-ink-secondary">
+                            <div className="workspace-muted-panel rounded-card-140 border-dashed px-5 py-6 text-sm text-ink-secondary">
                                 Loading saved voice spellings...
                             </div>
                         ) : voiceLexiconItems.length === 0 ? (
-                            <div className="workspace-muted-panel rounded-[1.4rem] border-dashed px-5 py-6 text-sm text-ink-secondary">
+                            <div className="workspace-muted-panel rounded-card-140 border-dashed px-5 py-6 text-sm text-ink-secondary">
                                 No custom spellings saved yet.
                             </div>
                         ) : (
                             <div className="space-y-3">
                                 {voiceLexiconItems.map((item) => (
-                                    <div key={item.id} className="workspace-muted-panel rounded-[1.4rem] px-4 py-4">
+                                    <div key={item.id} className="workspace-muted-panel rounded-card-140 px-4 py-4">
                                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                             <div className="space-y-2">
                                                 <div className="flex flex-wrap gap-2">
@@ -634,7 +634,7 @@ export function PrivacySection({
                         )}
                     </section>
 
-                    <section className="workspace-panel rounded-[2rem] p-6 space-y-4">
+                    <section className="workspace-panel rounded-card-200 p-6 space-y-4">
                         <div>
                             <p className="text-xs uppercase tracking-[0.16em] text-ink-muted font-bold">Data Tools</p>
                             <h3 className="workspace-heading mt-2 text-xl font-serif">Download or manage your data</h3>
@@ -698,7 +698,7 @@ export function PrivacySection({
             </section>
 
             {/* ── Device Preferences ── */}
-            <section className="workspace-panel rounded-[2rem] p-8 space-y-6">
+            <section className="workspace-panel rounded-card-200 p-8 space-y-6">
                 <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Device Context</p>
                     <h2 className="workspace-heading mt-2 text-2xl font-serif">What Notive notices</h2>
