@@ -201,6 +201,63 @@ const resolveAndroidVersionConfig = () => {
 
 resolveAndroidVersionConfig();
 
+// ── Sign-in safety invariants ───────────────────────────────────────────────
+// Google SSO and email sign-in have been broken twice by well-intentioned
+// theme/night-mode changes (versionCodes 10104 and 10107; 1.1.106 and 1.1.108
+// device-verified working). The social-login plugin depends on the DayNight
+// theme hierarchy and on MainActivity's lifecycle staying stable through
+// onCreate. These checks fail the build when either invariant is violated.
+const stripJavaComments = (source) => source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '');
+
+const verifySignInSafetyInvariants = () => {
+    const mainActivityPath = path.join(appRoot, 'src', 'main', 'java', 'com', 'notive', 'app', 'MainActivity.java');
+    const stylesPath = path.join(appRoot, 'src', 'main', 'res', 'values', 'styles.xml');
+
+    if (!fs.existsSync(mainActivityPath) || !fs.existsSync(stylesPath)) {
+        blockers.push('Sign-in safety check could not find MainActivity.java or styles.xml. If they moved, update `scripts/android-readiness.mjs`.');
+        return;
+    }
+
+    const mainActivityCode = stripJavaComments(fs.readFileSync(mainActivityPath, 'utf8'));
+    const stylesXml = fs.readFileSync(stylesPath, 'utf8');
+    const blockersBefore = blockers.length;
+
+    // Invariant 1: AppTheme.NoActionBar must inherit Theme.AppCompat.DayNight.
+    // Switching it to .Light broke Google SSO and email sign-in on device
+    // (versionCode 10104). Fix dialog theming at the dialog level instead.
+    const themeParentMatch = stylesXml.match(/name="AppTheme\.NoActionBar"\s+parent="([^"]+)"/);
+    if (!themeParentMatch || themeParentMatch[1] !== 'Theme.AppCompat.DayNight.NoActionBar') {
+        blockers.push(`\`AppTheme.NoActionBar\` must keep parent \`Theme.AppCompat.DayNight.NoActionBar\` (found \`${themeParentMatch ? themeParentMatch[1] : 'no match'}\`). Changing it broke Google SSO and email sign-in on device. See MainActivity.java's onCreate comment.`);
+    }
+
+    // Invariant 2: no AppCompatDelegate.setDefaultNightMode() in MainActivity.
+    // Calling it (especially before super.onCreate) can recreate the Activity
+    // mid-creation, tearing down the Capacitor bridge and the social-login
+    // plugin's onActivityResult wiring (versionCode 10107).
+    if (/setDefaultNightMode\s*\(/.test(mainActivityCode)) {
+        blockers.push('`MainActivity.java` calls `AppCompatDelegate.setDefaultNightMode()`. This recreated the Activity mid-onCreate and broke Google SSO and email sign-in on device. Remove it; scope any dialog theming to the dialog itself.');
+    }
+
+    // Invariant 3: the social-login plugin's Activity wiring must stay intact.
+    const socialLoginWiring = [
+        ['implements ModifiedMainActivityForSocialLoginPlugin', 'MainActivity must implement `ModifiedMainActivityForSocialLoginPlugin`.'],
+        ['handleGoogleLoginIntent', 'MainActivity.onActivityResult must forward results via `handleGoogleLoginIntent`.'],
+    ];
+    for (const [needle, message] of socialLoginWiring) {
+        if (!mainActivityCode.includes(needle)) {
+            blockers.push(`${message} Removing it breaks Google SSO on Android.`);
+        }
+    }
+
+    if (blockers.length === blockersBefore) {
+        pushStatus('Sign-in safety invariants', 'DayNight theme parent, no setDefaultNightMode, social-login wiring intact');
+    }
+};
+
+verifySignInSafetyInvariants();
+
 const googleClientId = resolveEnvValue('NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID')
     || resolveEnvValue('NEXT_PUBLIC_GOOGLE_CLIENT_ID');
 if (isMissing(googleClientId) || !isGoogleClientId(googleClientId)) {

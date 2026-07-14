@@ -5,7 +5,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 
-import androidx.appcompat.app.AppCompatDelegate;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
 
@@ -18,28 +17,29 @@ import ee.forgr.capacitor.social.login.SocialLoginPlugin;
 public class MainActivity extends BridgeActivity implements ModifiedMainActivityForSocialLoginPlugin {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // Notive is paper-only: there is no dark theme. Pin the app to light so that
-        // AppCompat's DayNight dialogs — the date picker in particular — paint dark
-        // text instead of white text on the light paper sheet beneath them.
+        // Do not call AppCompatDelegate.setDefaultNightMode() here, and do not change
+        // AppTheme.NoActionBar's parent away from Theme.AppCompat.DayNight. Both were
+        // tried to fix the white-on-white date picker, and both broke Google SSO and
+        // email sign-in on device: setDefaultNightMode() applies day/night immediately
+        // and can recreate the Activity mid-onCreate, which tears down the Capacitor
+        // bridge and the social-login plugin's onActivityResult wiring.
         //
-        // This is deliberately done here rather than by changing AppTheme.NoActionBar's
-        // parent from Theme.AppCompat.DayNight to .Light. That change was tried and it
-        // broke Google SSO and email sign-in outright, so the theme hierarchy the
-        // social-login plugin resolves against must be left alone.
-        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
-
+        // The date picker needs a fix scoped to the dialog itself, not to the Activity
+        // or the app theme.
         registerPlugin(NotificationSettingsPlugin.class);
         registerPlugin(SharedContentPlugin.class);
         rewriteShareIntent(getIntent());
         super.onCreate(savedInstanceState);
 
-        // MODE_NIGHT_NO above pins the *native* Activity theme to light, but the
-        // WebView's own algorithmic "force dark" recoloring is a separate Android
-        // setting that isn't governed by it. On a device with system dark mode on,
-        // some WebView versions still recolor the page despite its CSS declaring
-        // `color-scheme: light` only — light-mode-only decorative colors (e.g. the
-        // sage margin rule on the landing page) shift toward yellow/olive. Disable
-        // it explicitly so the WebView always renders Notive's own paper palette.
+        // The WebView's algorithmic "force dark" recoloring is its own Android setting,
+        // independent of the Activity theme. On a device with system dark mode on, some
+        // WebView versions recolor the page despite its CSS declaring `color-scheme:
+        // light` only — light-mode-only decorative colors (e.g. the sage margin rule on
+        // the landing page) shift toward yellow/olive. Disable it explicitly so the
+        // WebView always renders Notive's own paper palette.
+        //
+        // This is a WebView setting applied after super.onCreate(), so unlike the theme
+        // and night-mode approaches above it does not touch the Activity lifecycle.
         if (bridge != null && bridge.getWebView() != null
                 && WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
             WebSettingsCompat.setAlgorithmicDarkeningAllowed(bridge.getWebView().getSettings(), false);
