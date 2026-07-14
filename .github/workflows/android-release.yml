@@ -6,8 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+# contents: write so a successful build can tag the released versionCode. That tag
+# is the durable record of "this version has shipped", and the guard below reads it.
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   android-release:
@@ -30,6 +32,10 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
+        with:
+          # Tags are the released-version ledger the guard below checks.
+          fetch-tags: true
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -72,15 +78,31 @@ jobs:
           echo "Missing signing keystore secret and no checked-in keystore was found." >&2
           exit 1
 
-      - name: Resolve unique Android release version
+      # The version comes from frontend/android/gradle.properties and nowhere else,
+      # so a local `gradlew bundleRelease` and this workflow produce the same build.
+      - name: Read Android release version
         id: version
+        run: npm run android:version:read -- --github-output
+
+      # This workflow runs on every push to main, but most commits are not releases.
+      # A version code that has already been tagged is skipped, not failed — otherwise
+      # every ordinary commit would turn CI red. To cut a release, bump the version
+      # (`npm run android:version:patch`), commit, and push.
+      - name: Decide whether this is a new release
+        id: guard
+        working-directory: ${{ github.workspace }}
         run: |
-          npm run android:version:ci -- --github-output
+          TAG="android-v${{ steps.version.outputs.versionCode }}"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::versionCode ${{ steps.version.outputs.versionCode }} already shipped as $TAG — skipping the Android build. Bump with 'npm run android:version:patch' to cut a new release."
+          else
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Building Notive Android ${{ steps.version.outputs.versionName }} (${{ steps.version.outputs.versionCode }})."
+          fi
 
       - name: Build signed Android release bundle
-        env:
-          NOTIVE_VERSION_CODE: ${{ steps.version.outputs.versionCode }}
-          NOTIVE_VERSION_NAME: ${{ steps.version.outputs.versionName }}
+        if: steps.guard.outputs.should_build == 'true'
         run: |
           npm run android:ready
           npm run android:prepare
@@ -89,6 +111,7 @@ jobs:
           ./gradlew bundleRelease
 
       - name: Upload Android release artifact
+        if: steps.guard.outputs.should_build == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: notive-android-${{ steps.version.outputs.versionName }}-${{ github.sha }}
@@ -96,3 +119,13 @@ jobs:
             frontend/android/app/build/outputs/bundle/release/app-release.aab
             frontend/android/app/build/outputs/mapping/release/mapping.txt
           if-no-files-found: warn
+
+      # Burns the version code so it cannot be built twice. Runs only after a
+      # successful build, so a failed run leaves the version free to retry.
+      - name: Tag the released version
+        if: steps.guard.outputs.should_build == 'true'
+        working-directory: ${{ github.workspace }}
+        run: |
+          TAG="android-v${{ steps.version.outputs.versionCode }}"
+          git tag -a "$TAG" -m "Notive Android ${{ steps.version.outputs.versionName }} (${{ steps.version.outputs.versionCode }})"
+          git push origin "refs/tags/$TAG"

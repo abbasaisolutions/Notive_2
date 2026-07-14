@@ -11,7 +11,7 @@
     "start": "next start",
     "start:mobile": "node scripts/serve-export.js",
     "android:version": "node scripts/bump-android-version.mjs",
-    "android:version:ci": "node scripts/resolve-android-ci-version.mjs",
+    "android:version:read": "node scripts/read-android-version.mjs",
     "android:version:patch": "node scripts/bump-android-version.mjs patch",
     "android:version:minor": "node scripts/bump-android-version.mjs minor",
     "android:version:major": "node scripts/bump-android-version.mjs major",
