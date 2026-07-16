@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { FiCheck, FiClock } from 'react-icons/fi';
+import ExperienceControlPanel from '@/components/ux/ExperienceControlPanel';
 import { TagInput, TextAreaField, SelectField } from './fields';
 import {
     EXPERIENCE_LEVEL_OPTIONS,
@@ -116,6 +117,10 @@ export function PreferencesSection({
                 </div>
 
                 <div className="space-y-6">
+                    {/* Tone / insight / capture defaults — moved here from the
+                        dashboard, where a settings panel sat mid-feed. */}
+                    <ExperienceControlPanel />
+
                     <section className="workspace-panel p-6 space-y-4 rounded-card-200">
                         <div>
                             <p className="text-xs uppercase tracking-[0.16em] text-ink-muted font-bold">Setup Checklist</p>

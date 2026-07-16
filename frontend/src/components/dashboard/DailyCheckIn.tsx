@@ -123,7 +123,7 @@ export default function DailyCheckIn({ hasCheckedInToday, todayMood = null, onSu
                             <span className={`text-xl transition-transform ${isSelected ? 'scale-110' : ''}`}>
                                 {MOOD_EMOJIS[mood] ?? '😐'}
                             </span>
-                            <span className={`text-[0.55rem] capitalize leading-none ${
+                            <span className={`text-[0.62rem] capitalize leading-none ${
                                 isSelected ? 'font-semibold text-[rgb(var(--brand))]' : 'text-[rgb(140,140,140)]'
                             }`}>
                                 {mood}

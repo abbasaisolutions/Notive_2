@@ -54,17 +54,6 @@ const heroTrustPoints = [
     { icon: FiStar, label: 'Built for later use' },
 ];
 
-/** Sage rule down the left edge, mirroring a notebook margin. */
-function PaperMargin() {
-    return (
-        <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-6 w-px md:left-10"
-            style={{ background: 'rgba(138, 154, 111, 0.55)' }}
-        />
-    );
-}
-
 export function QuietNotebookHero({
     onPrimaryCtaClick,
     onSecondaryCtaClick,
@@ -78,8 +67,6 @@ export function QuietNotebookHero({
                 boxShadow: '0 16px 32px rgba(92,92,92,0.1)',
             }}
         >
-            <PaperMargin />
-
             <div className="relative flex min-h-[38rem] flex-col md:min-h-[40rem]">
                 <div className="flex items-center justify-between px-5 py-5 md:px-10 md:py-7">
                     <NotiveLogo href="/" size="sm" />
@@ -171,9 +158,7 @@ export function QuietNotebookAuthIllustration({
             className="quiet-panel radius-ui-hero relative hidden overflow-hidden p-6 lg:flex lg:flex-col lg:justify-between"
             style={paperSheetStyle}
         >
-            <PaperMargin />
-
-            <div className="relative pl-6">
+            <div className="relative">
                 <p className="type-overline text-[rgb(126,117,103)]">
                     {eyebrow}
                 </p>
@@ -182,7 +167,7 @@ export function QuietNotebookAuthIllustration({
                 </p>
             </div>
 
-            <div className="relative mt-8 flex items-end justify-between pl-6">
+            <div className="relative mt-8 flex items-end justify-between">
                 <div className="max-w-[15rem]">
                     <p className="type-overline text-[rgb(126,117,103)]">
                         {NOTIVE_VOICE.auth.sideTitle}

@@ -300,7 +300,6 @@ const buildSafetyFocus = (input: {
 const buildValueFocus = (input: {
     entries: Entry[];
     themeClusters: ThemeCluster[];
-    resurfacedMoments: ResurfacedMoment[];
     storyOverview: DashboardStoryOverview | null;
     homeAction: ReturnType<typeof buildHomeActionContent>;
     newEntryHref: string;
@@ -312,7 +311,6 @@ const buildValueFocus = (input: {
     const {
         entries,
         themeClusters,
-        resurfacedMoments,
         storyOverview,
         homeAction,
         newEntryHref,
@@ -326,16 +324,12 @@ const buildValueFocus = (input: {
     const topTheme = themeClusters[0]?.label || null;
     const extractedLesson = storyOverview?.topLessons?.[0] || null;
     const extractedSkill = storyOverview?.topSkills?.[0] || null;
-    const resurfacedMoment = resurfacedMoments[0]?.matchedEntry || null;
     const readyToReuse = storyOverview?.experiences.filter((experience) =>
         Boolean(experience.verified || experience.completeness?.readyForExport)
     ).length || 0;
     const readyToReview = storyOverview?.experiences.filter((experience) =>
         Boolean(!experience.verified && experience.completeness?.readyForVerification)
     ).length || 0;
-    const latestCapture = latestEntry
-        ? compactText(latestEntry.title || firstSentence(latestEntry.content, 88), 88)
-        : 'Your next memory starts here.';
     const extractedSignal = extractedLesson
         ? `Lesson: ${extractedLesson}`
         : extractedSkill
@@ -343,12 +337,6 @@ const buildValueFocus = (input: {
             : topTheme
                 ? `Theme: ${topTheme}`
                 : 'Keep capturing real moments to see lessons, skills, and themes emerge.';
-    const resurfacedSignal = resurfacedMoment
-        ? compactText(
-            `${resurfacedMoment.title || 'Untitled'} from ${new Date(resurfacedMoment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
-            88
-        )
-        : 'Older memories start resurfacing once you have a few memories here.';
     const storyPipeline = storyOverview
         ? readyToReuse > 0
                 ? `${readyToReuse} stor${readyToReuse === 1 ? 'y is' : 'ies are'} ready to reuse.`
@@ -365,22 +353,12 @@ const buildValueFocus = (input: {
             : compactText(input.homeAction.intro || 'Capture one real moment and Notive will start building useful context from it.', 136),
         evidence: storyPipeline,
         evidenceFallback: 'Keep a few real moments here and Notive will start surfacing lessons, skills, and story signals.',
+        // One panel only: the latest capture, resurfaced memory, and story
+        // pipeline already have their own places on the dashboard.
         panels: [
-            {
-                label: 'Latest capture',
-                value: latestCapture,
-            },
             {
                 label: 'Lesson / skill / theme',
                 value: compactText(extractedSignal, 92),
-            },
-            {
-                label: 'Resurfaced memory',
-                value: resurfacedSignal,
-            },
-            {
-                label: 'Use outside Notive',
-                value: storyPipeline,
             },
         ],
         primaryAction: {
@@ -1000,7 +978,6 @@ export default function DashboardPage() {
         focusCard = buildValueFocus({
             entries,
             themeClusters,
-            resurfacedMoments,
             storyOverview,
             homeAction,
             newEntryHref,

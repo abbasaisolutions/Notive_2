@@ -71,6 +71,8 @@ export const getToneMicrocopy = (tone: AiResponseTone) => {
     }
 };
 
+export type DailyPathKind = 'write-first' | 'checkin' | 'shape' | 'follow-up';
+
 export const buildDailyPath = (input: {
     entries: UxEntrySignal[];
     hasCheckedInToday: boolean;
@@ -85,20 +87,22 @@ export const buildDailyPath = (input: {
 
     if (!latestEntry) {
         return {
-            eyebrow: 'Today path',
+            kind: 'write-first' as DailyPathKind,
+            eyebrow: 'Today',
             title: 'Save one real moment.',
-            body: 'Start with one honest note. Nothing else has to be organized yet.',
+            body: 'Start with one honest memory. Nothing else has to be organized yet.',
             href: input.recommendedHref,
-            cta: 'Write first note',
+            cta: 'Write first memory',
             reason: 'Notive needs one private signal before it can become useful.',
         };
     }
 
     if (!input.hasCheckedInToday && !hasWrittenToday) {
         return {
-            eyebrow: 'Today path',
+            kind: 'checkin' as DailyPathKind,
+            eyebrow: 'Today',
             title: 'Check in before the day gets loud.',
-            body: 'A quick mood check gives today context without asking you to write a full entry.',
+            body: 'A quick mood check gives today context without a full memory.',
             href: `${input.recommendedHref}&source=daily_path_checkin`,
             cta: 'Start quick check-in',
             reason: 'You have not logged today yet.',
@@ -107,9 +111,10 @@ export const buildDailyPath = (input: {
 
     if (input.entries.length >= 4) {
         return {
-            eyebrow: 'Today path',
+            kind: 'shape' as DailyPathKind,
+            eyebrow: 'Today',
             title: 'Turn one memory into something usable.',
-            body: 'A few notes are ready to become story, resume, lesson, or skill material when you need it.',
+            body: 'A few memories are ready to become story, resume, lesson, or skill material when you need it.',
             href: input.portfolioHref,
             cta: 'Shape a memory',
             reason: `${input.entries.length} memories are now available as raw material.`,
@@ -117,12 +122,13 @@ export const buildDailyPath = (input: {
     }
 
     return {
-        eyebrow: 'Today path',
+        kind: 'follow-up' as DailyPathKind,
+        eyebrow: 'Today',
         title: input.focusTitle || 'Stay with the clearest thread.',
         body: 'Write one follow-up while the signal is still fresh.',
         href: input.recommendedHref,
         cta: 'Write follow-up',
-        reason: 'Follow-up notes make patterns easier to trust.',
+        reason: 'Follow-up memories make patterns easier to trust.',
     };
 };
 
@@ -158,12 +164,12 @@ export const buildFirstWeekSteps = (entryCount: number, hasCheckedInToday: boole
     {
         label: 'Add mood context',
         done: hasCheckedInToday || entryCount >= 2,
-        hint: 'A quick check-in makes patterns less guessy.',
+        hint: 'A quick check-in gives your patterns more context.',
     },
     {
         label: 'Return once',
         done: entryCount >= 3,
-        hint: 'The second or third note is when the notebook starts feeling alive.',
+        hint: 'The second or third memory is when the notebook starts feeling alive.',
     },
     {
         label: 'Review weekly read',

@@ -52,7 +52,7 @@ export default function ExperienceControlPanel({ compact = false }: { compact?: 
 
             <div className="mt-3 space-y-3">
                 <div>
-                    <p className="mb-1.5 text-[0.58rem] font-bold uppercase tracking-[0.1em] text-[rgb(var(--text-soft))]">AI tone</p>
+                    <p className="mb-1.5 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[rgb(var(--text-soft))]">AI tone</p>
                     <div className="grid grid-cols-4 gap-1.5">
                         {TONE_OPTIONS.map((option) => (
                             <button
