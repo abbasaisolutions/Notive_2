@@ -127,5 +127,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           TAG="android-v${{ steps.version.outputs.versionCode }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$TAG" -m "Notive Android ${{ steps.version.outputs.versionName }} (${{ steps.version.outputs.versionCode }})"
           git push origin "refs/tags/$TAG"
