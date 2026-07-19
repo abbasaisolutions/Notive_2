@@ -19,17 +19,17 @@ const PERMISSION_META: Record<PermissionKind, { icon: typeof FiBell; label: stri
     notifications: {
         icon: FiBell,
         label: 'Notifications',
-        reason: 'Get gentle reminders to reflect and pattern alerts',
+        reason: 'Reminders and pattern alerts',
     },
     microphone: {
         icon: FiMic,
         label: 'Microphone',
-        reason: 'Speak your thoughts instead of typing',
+        reason: 'Speak instead of typing',
     },
     location: {
         icon: FiMapPin,
         label: 'Location',
-        reason: 'Tag entries with where you were for richer context',
+        reason: 'Tag entries with where you were',
     },
 };
 
