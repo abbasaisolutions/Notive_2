@@ -38,11 +38,11 @@ export function PreferencesSection({
     return (
         <div className="space-y-6">
             <section className="grid gap-6 xl:grid-cols-[1.4fr,1fr]">
-                <div className="workspace-panel p-8 space-y-6 rounded-card-200">
+                <div className="workspace-panel p-6 space-y-5 rounded-card-200">
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                         <div>
-                            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Goals & Style</p>
-                            <h2 className="workspace-heading mt-2 text-2xl font-serif">Goals &amp; style</h2>
+                            <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Preferences</p>
+                            <h2 className="workspace-heading mt-1.5 text-xl font-serif">Goals &amp; style</h2>
                             <p className="mt-2 text-sm text-ink-secondary">
                                 These settings shape your questions, patterns, and stories.
                             </p>

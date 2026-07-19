@@ -28,10 +28,10 @@ export function ProfileSection({
     return (
         <div className="space-y-6">
             <section className="grid gap-6 lg:grid-cols-[1.6fr,1fr]">
-                <div className="workspace-panel p-8 space-y-6 rounded-card-200">
+                <div className="workspace-panel p-6 space-y-5 rounded-card-200">
                     <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">About</p>
-                        <h2 className="workspace-heading mt-2 text-2xl font-serif">Basic details</h2>
+                        <h2 className="workspace-heading mt-1.5 text-xl font-serif">Basic details</h2>
                         <p className="mt-2 text-sm text-ink-secondary">
                             Keep your name and public details here. Sign-in email and account delete tools are in Security.
                         </p>

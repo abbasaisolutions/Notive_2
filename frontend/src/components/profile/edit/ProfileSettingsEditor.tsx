@@ -1515,7 +1515,7 @@ export function ProfileSettingsEditor() {
                             </div>
                             <div>
                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Section</p>
-                                <h2 className="workspace-heading mt-2 text-2xl font-serif">{activeTabItem.label}</h2>
+                                <h2 className="workspace-heading mt-1.5 text-xl font-serif">{activeTabItem.label}</h2>
                                 <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{activeTabDescription}</p>
                                 <p className="mt-2 text-xs uppercase tracking-[0.12em] text-ink-muted">
                                     Each section saves separately.

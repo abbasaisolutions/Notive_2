@@ -23,19 +23,19 @@ import {
 
 // Badge definitions
 export const BADGES = {
-    first_entry: { id: 'first_entry', name: 'The First Spark', icon: FiFeather, description: 'Began the journey of documentation' },
-    streak_3: { id: 'streak_3', name: 'Rhythm of Thought', icon: FiTrendingUp, description: 'Maintained a 3-day flow' },
-    streak_7: { id: 'streak_7', name: 'Synchronized', icon: FiRefreshCw, description: 'A full week of self-alignment' },
-    streak_30: { id: 'streak_30', name: 'Architect of Habit', icon: FiAward, description: 'A month of dedication to your legacy' },
-    entries_10: { id: 'entries_10', name: 'Chronicle I', icon: FiBookmark, description: 'Authored 10 chapters of your story' },
-    entries_50: { id: 'entries_50', name: 'Life Historian', icon: FiBook, description: 'Documented 50 significant moments' },
-    entries_100: { id: 'entries_100', name: 'Master Reflector', icon: FiBookOpen, description: 'A century of captured insights' },
-    words_1000: { id: 'words_1000', name: 'Eloquent Mind', icon: FiEdit3, description: 'Synthesized 1,000 words of truth' },
-    words_10000: { id: 'words_10000', name: 'The Silver Tongue', icon: FiEdit, description: 'Wove 10,000 words of personal wisdom' },
-    chapter_first: { id: 'chapter_first', name: 'Curator', icon: FiLayers, description: 'Began curating your life volumes' },
-    mood_tracker: { id: 'mood_tracker', name: 'Emotional Intel', icon: FiActivity, description: 'Mapped your emotional landscape 10 times' },
-    night_owl: { id: 'night_owl', name: 'Lunar Reflections', icon: FiMoon, description: 'Documented wisdom in the quiet of the night' },
-    early_bird: { id: 'early_bird', name: 'Dawn Insight', icon: FiSunrise, description: 'Captured clarity at the first light' },
+    first_entry: { id: 'first_entry', name: 'First note', icon: FiFeather, description: 'You wrote your first note' },
+    streak_3: { id: 'streak_3', name: '3-day streak', icon: FiTrendingUp, description: 'Three days in a row' },
+    streak_7: { id: 'streak_7', name: 'Week streak', icon: FiRefreshCw, description: 'Seven days in a row' },
+    streak_30: { id: 'streak_30', name: 'Month streak', icon: FiAward, description: 'Thirty days in a row' },
+    entries_10: { id: 'entries_10', name: '10 notes', icon: FiBookmark, description: 'Ten notes saved' },
+    entries_50: { id: 'entries_50', name: '50 notes', icon: FiBook, description: 'Fifty notes saved' },
+    entries_100: { id: 'entries_100', name: '100 notes', icon: FiBookOpen, description: 'A hundred notes saved' },
+    words_1000: { id: 'words_1000', name: '1,000 words', icon: FiEdit3, description: 'A thousand words on paper' },
+    words_10000: { id: 'words_10000', name: '10,000 words', icon: FiEdit, description: 'Ten thousand words on paper' },
+    chapter_first: { id: 'chapter_first', name: 'First thread', icon: FiLayers, description: 'You started your first thread' },
+    mood_tracker: { id: 'mood_tracker', name: 'Mood mapper', icon: FiActivity, description: 'Ten moods logged' },
+    night_owl: { id: 'night_owl', name: 'Night writer', icon: FiMoon, description: 'Written late at night' },
+    early_bird: { id: 'early_bird', name: 'Early writer', icon: FiSunrise, description: 'Written at first light' },
 };
 
 // XP values

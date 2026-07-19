@@ -120,10 +120,10 @@ export function PrivacySection({
     return (
         <div className="space-y-6">
             <section className="grid gap-6 xl:grid-cols-[1.35fr,1fr]">
-                <div className="workspace-panel rounded-card-200 p-8 space-y-6">
+                <div className="workspace-panel rounded-card-160 p-6 space-y-6">
                     <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Data</p>
-                        <h2 className="workspace-heading mt-2 text-2xl font-serif">See and control saved answers</h2>
+                        <h2 className="workspace-heading mt-1.5 text-xl font-serif">See and control saved answers</h2>
                         <p className="mt-2 text-sm text-ink-secondary">
                             The answers used to personalize your prompts. Change how often questions appear, remove answers, or export your data.
                         </p>
@@ -698,10 +698,10 @@ export function PrivacySection({
             </section>
 
             {/* ── Device Preferences ── */}
-            <section className="workspace-panel rounded-card-200 p-8 space-y-6">
+            <section className="workspace-panel rounded-card-160 p-6 space-y-6">
                 <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Device Context</p>
-                    <h2 className="workspace-heading mt-2 text-2xl font-serif">Context signals</h2>
+                    <h2 className="workspace-heading mt-1.5 text-xl font-serif">Context signals</h2>
                     <p className="mt-2 text-sm text-ink-secondary">
                         Where you write, what you listen to, how your day felt. Used only to enrich your insights — nothing is shared.
                     </p>

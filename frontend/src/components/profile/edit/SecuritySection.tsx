@@ -75,10 +75,10 @@ export function SecuritySection({
     return (
         <div className="space-y-6">
             <section className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
-                <div className="workspace-panel rounded-card-200 p-8 space-y-6">
+                <div className="workspace-panel rounded-card-160 p-6 space-y-6">
                     <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Security</p>
-                        <h2 className="workspace-heading mt-2 text-2xl font-serif">Confirm it&rsquo;s you</h2>
+                        <h2 className="workspace-heading mt-1.5 text-xl font-serif">Confirm it&rsquo;s you</h2>
                         <p className="mt-2 text-sm text-ink-secondary">
                             Changing your email or password, or deleting your account, requires a fresh verification.
                         </p>
@@ -170,7 +170,7 @@ export function SecuritySection({
             </section>
 
             <section className="grid gap-6 xl:grid-cols-[1fr,1fr]">
-                <div className="workspace-panel rounded-card-200 p-8 space-y-6">
+                <div className="workspace-panel rounded-card-160 p-6 space-y-6">
                     <div className="flex items-start gap-3">
                         <div className="mt-1 rounded-xl bg-primary/10 p-2 text-primary">
                             <FiMail size={16} aria-hidden="true" />
@@ -221,7 +221,7 @@ export function SecuritySection({
                     </button>
                 </div>
 
-                <div className="workspace-panel rounded-card-200 p-8 space-y-6">
+                <div className="workspace-panel rounded-card-160 p-6 space-y-6">
                     <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Password</p>
                         <h3 className="workspace-heading mt-2 text-xl font-serif">
@@ -270,7 +270,7 @@ export function SecuritySection({
 
             <section
                 id="delete-account"
-                className="rounded-card-200 border p-8 space-y-6"
+                className="rounded-card-200 border p-6 space-y-5"
                 style={{
                     background: 'linear-gradient(180deg, rgba(255,255,255,0.82), rgba(246,236,226,0.92))',
                     borderColor: 'rgba(214, 185, 149, 0.5)',
