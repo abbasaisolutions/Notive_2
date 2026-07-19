@@ -165,22 +165,14 @@ export default function MandatoryAppUpdateGate({
                             Update required
                         </p>
                         <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-[rgb(39,35,31)]">
-                            A newer version of Notive is ready
+                            A newer version is ready
                         </h2>
                     </div>
                 </div>
 
                 <p className="mt-4 text-sm leading-7 text-[rgb(76,70,62)]">
-                    This version is no longer supported. Update now to keep using Notive with the latest fixes and the smoothest experience.
+                    This version is no longer supported. The Play Store opens next.
                 </p>
-
-                <div className="mt-6 rounded-card-125 border border-[rgba(122,112,98,0.16)] bg-white/70 p-4">
-                    <p className="text-sm font-semibold text-[rgb(39,35,31)]">What happens next</p>
-                    <ul className="mt-2 space-y-2 text-sm leading-6 text-[rgb(76,70,62)]">
-                        <li>• You’ll be taken to the Play Store to install the latest version.</li>
-                        <li>• The update is required before you can continue using the app.</li>
-                    </ul>
-                </div>
 
                 <button
                     type="button"

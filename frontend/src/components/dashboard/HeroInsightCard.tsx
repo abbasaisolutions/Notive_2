@@ -169,9 +169,6 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
             className="notebook-card overflow-hidden rounded-card-175"
             style={{ backgroundColor: accent.bg }}
         >
@@ -195,15 +192,13 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
                 </div>
 
                 <h3
-                    className="mb-2 text-base font-semibold leading-snug"
-                    style={{ color: 'rgb(var(--paper-ink))' }}
+                    className="mb-2 text-base font-semibold leading-snug text-paper-ink"
                 >
                     {insight.title}
                 </h3>
 
                 <p
-                    className="notebook-copy text-[0.88rem] leading-relaxed"
-                    style={{ color: 'rgb(var(--paper-ink-soft))' }}
+                    className="notebook-copy text-[0.88rem] leading-relaxed text-paper-soft"
                 >
                     {displayedBody}
                     {typing && (
@@ -216,8 +211,7 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
 
                 <div className="mt-4 rounded-card-110 border border-[rgba(var(--paper-border),0.28)] bg-white/35 p-3">
                     <p
-                        className="text-[0.66rem] font-semibold uppercase tracking-[0.12em]"
-                        style={{ color: 'rgb(var(--paper-ink-muted))' }}
+                        className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-paper-muted"
                     >
                         Why this insight
                     </p>
@@ -229,16 +223,14 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
                         {sourceEntryHref ? <TagPill>Source note linked</TagPill> : null}
                     </div>
                     <p
-                        className="mt-2 text-[0.76rem] leading-6"
-                        style={{ color: 'rgb(var(--paper-ink-soft))' }}
+                        className="mt-2 text-[0.76rem] leading-6 text-paper-soft"
                     >
                         {freshness === 'fresh'
                             ? 'This is today\u2019s fresh read from your recent notes. Use it as a reflection prompt, not a final verdict.'
                             : 'This is a cached daily read from your recent notes. Use it as a reflection prompt, not a final verdict.'}
                     </p>
                     <p
-                        className="mt-1 text-[0.72rem] leading-5"
-                        style={{ color: 'rgb(var(--paper-ink-muted))' }}
+                        className="mt-1 text-[0.72rem] leading-5 text-paper-muted"
                     >
                         Response style: {toneLabel}
                     </p>
@@ -250,30 +242,25 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
                 <AnimatePresence>
                     {expanded && insight.evidence && (
                         <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
                             transition={{ duration: 0.25 }}
                             className="mt-3 pt-3"
                             style={{ borderTop: '1px solid rgba(var(--paper-border), 0.3)' }}
                         >
                             <p
-                                className="text-[0.66rem] font-semibold uppercase tracking-[0.12em]"
-                                style={{ color: 'rgb(var(--paper-ink-muted))' }}
+                                className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-paper-muted"
                             >
                                 Why This Showed Up
                             </p>
                             <p
-                                className="mt-2 text-[0.78rem] italic"
-                                style={{ color: 'rgb(var(--paper-ink-muted))' }}
+                                className="mt-2 text-[0.78rem] italic text-paper-muted"
                             >
                                 {insight.evidence}
                             </p>
                             {sourceEntryHref && (
                                 <Link
                                     href={sourceEntryHref}
-                                    className="mt-3 inline-flex text-[0.72rem] font-semibold underline-offset-4 hover:underline"
-                                    style={{ color: 'rgb(var(--paper-ink))' }}
+                                    className="mt-3 inline-flex text-[0.72rem] font-semibold underline-offset-4 hover:underline text-paper-ink"
                                 >
                                     Open source note
                                 </Link>
@@ -284,9 +271,6 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
 
                 {!typing && (
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
                         className="mt-4 flex flex-wrap items-center gap-2"
                     >
                         {insight.evidence && !expanded && (
@@ -331,16 +315,14 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
                         </button>
                         <button
                             onClick={handleDismiss}
-                            className="rounded-lg px-3 py-2.5 text-xs transition-colors"
-                            style={{ color: 'rgb(var(--paper-ink-muted))' }}
+                            className="rounded-lg px-3 py-2.5 text-xs transition-colors text-paper-muted"
                             disabled={feedbackPending}
                         >
                             Hide for now
                         </button>
                         {selectedFeedback && (
                             <span
-                                className="text-[0.72rem]"
-                                style={{ color: 'rgb(var(--paper-ink-muted))' }}
+                                className="text-[0.72rem] text-paper-muted"
                             >
                                 Thanks. This will tune future insight picks.
                             </span>

@@ -1,13 +1,5 @@
 import type { PromptData } from '@/services/context.service';
 import type { PersonalizationQuestion } from '@/services/progressive-personalization.service';
-import {
-    PROGRESSIVE_PROMPT_FRAMING_EXPERIMENT_ID,
-    SMART_PROMPT_FRAMING_EXPERIMENT_ID,
-    type ProgressivePromptFramingVariant,
-    type SmartPromptFramingVariant,
-    resolveProgressivePromptFramingVariant,
-    resolveSmartPromptFramingVariant,
-} from '@/content/notive-voice';
 
 type EngagementKind = 'smart' | 'progressive';
 type EngagementOutcome = 'accepted' | 'dismissed';
@@ -45,8 +37,6 @@ type EngagementState = {
 };
 
 type SmartPromptPresentation = {
-    experimentId: string;
-    framingVariant: SmartPromptFramingVariant;
     eyebrow: string;
     title: string;
     body: string;
@@ -56,8 +46,6 @@ type SmartPromptPresentation = {
 };
 
 type ProgressivePromptPresentation = {
-    experimentId: string;
-    framingVariant: ProgressivePromptFramingVariant;
     eyebrow: string;
     title: string;
     helper: string;
@@ -249,62 +237,6 @@ const getSignalTitle = (prompt: PromptData): string => {
     }
 };
 
-const getMomentumTitle = (prompt: PromptData): string => {
-    switch (prompt.signalKind) {
-        case 'sleep_deficit':
-            return 'Slow down and check in';
-        case 'sleep_recovery':
-            return 'Use this good start';
-        case 'activity_boost':
-            return 'Keep this good pace';
-        case 'activity_dip':
-            return 'Reset before the day drifts';
-        case 'recovery_strain':
-            return 'Ease the load now';
-        case 'consistency_streak':
-            return 'Keep this habit going';
-        default:
-            switch (prompt.lens) {
-                case 'clarity':
-                    return 'Find the next step';
-                case 'memory':
-                    return 'Save this good stretch';
-                case 'productivity':
-                    return 'Save what moved today forward';
-                default:
-                    return 'Keep the day moving';
-            }
-    }
-};
-
-const getStoryTitle = (prompt: PromptData): string => {
-    switch (prompt.signalKind) {
-        case 'sleep_deficit':
-            return 'Save what this hard day is showing';
-        case 'sleep_recovery':
-            return 'Save what made today easier';
-        case 'activity_boost':
-            return 'This could become a strong story';
-        case 'activity_dip':
-            return 'Save what slowed things down';
-        case 'recovery_strain':
-            return 'Name what feels heavy';
-        case 'consistency_streak':
-            return 'This habit could become a story';
-        default:
-            switch (prompt.lens) {
-                case 'clarity':
-                    return 'Name what stands out';
-                case 'memory':
-                    return 'Save this story';
-                case 'productivity':
-                    return 'Save what made today work';
-                default:
-                    return 'Turn this moment into a story';
-            }
-    }
-};
-
 const getSignalReason = (prompt: PromptData): string => {
     switch (prompt.signalKind) {
         case 'sleep_deficit':
@@ -316,49 +248,11 @@ const getSignalReason = (prompt: PromptData): string => {
         case 'activity_dip':
             return 'Why now: slower days can show what is getting in the way.';
         case 'recovery_strain':
-            return 'Why now: naming stress early helps Notive see the pattern.';
+            return 'Why now: naming stress early makes the pattern visible.';
         case 'consistency_streak':
             return 'Why now: steady days show habits worth keeping.';
         default:
             return 'Why now: small notes are easiest to keep when you save them soon.';
-    }
-};
-
-const getMomentumReason = (prompt: PromptData): string => {
-    switch (prompt.signalKind) {
-        case 'sleep_deficit':
-            return 'Why now: a short note can help a hard day feel more manageable.';
-        case 'sleep_recovery':
-            return 'Why now: when you feel better, it is easier to notice what helped.';
-        case 'activity_boost':
-            return 'Why now: a good stretch is easier to repeat when you name what helped.';
-        case 'activity_dip':
-            return 'Why now: slow days can show the blocker you may want to change.';
-        case 'recovery_strain':
-            return 'Why now: small check-ins help before stress becomes normal.';
-        case 'consistency_streak':
-            return 'Why now: habits grow faster when you notice what is helping.';
-        default:
-            return 'Why now: a quick note can help the rest of the day.';
-    }
-};
-
-const getStoryReason = (prompt: PromptData): string => {
-    switch (prompt.signalKind) {
-        case 'sleep_deficit':
-            return 'Why now: hard days can turn into honest stories later.';
-        case 'sleep_recovery':
-            return 'Why now: good days are easy to forget unless you save what helped.';
-        case 'activity_boost':
-            return 'Why now: strong days often hold your clearest story details.';
-        case 'activity_dip':
-            return 'Why now: even slow days can show something important.';
-        case 'recovery_strain':
-            return 'Why now: words can help you understand pressure while it is fresh.';
-        case 'consistency_streak':
-            return 'Why now: a steady stretch can become a story you use later.';
-        default:
-            return 'Why now: everyday moments can become useful stories later.';
     }
 };
 
@@ -375,146 +269,41 @@ const getSignalCta = (prompt: PromptData): string => {
     }
 };
 
-const getMomentumCta = (prompt: PromptData): string => {
-    switch (prompt.lens) {
-        case 'memory':
-            return 'Keep this';
-        case 'productivity':
-            return 'Save what helped';
-        case 'clarity':
-            return 'Next step';
-        default:
-            return 'Write a quick note';
-    }
-};
-
-const getStoryCta = (prompt: PromptData): string => {
-    switch (prompt.lens) {
-        case 'memory':
-            return 'Save the story';
-        case 'productivity':
-            return 'Use this story';
-        case 'clarity':
-            return 'Name it';
-        default:
-            return 'Save the story';
-    }
-};
-
-const getFramingEyebrow = (variant: SmartPromptFramingVariant): string => {
-    switch (variant) {
-        case 'momentum':
-            return 'Small next step';
-        case 'story':
-            return 'Story idea';
-        default:
-            return 'Good time to write';
-    }
-};
-
 const getQuestionTitle = (question: PersonalizationQuestion): string => {
     switch (question.field) {
         case 'primaryGoal':
-            return 'Pick what Notive should help with most';
+            return 'Pick your main goal';
         case 'focusArea':
-            return 'Pick where Notive should focus';
+            return 'Pick where to focus';
         case 'writingPreference':
             return 'Pick how you like to write';
         case 'experienceLevel':
-            return 'Tell Notive where you are now';
+            return 'Where are you now?';
         case 'outputGoals':
-            return 'Pick what you want to use your notes for';
+            return 'What should your notes become?';
         case 'starterPrompt':
             return 'Pick an easy first question';
         default:
-            return 'Help Notive fit you better';
-    }
-};
-
-const getQuestionBenefitTitle = (question: PersonalizationQuestion): string => {
-    switch (question.field) {
-        case 'primaryGoal':
-            return 'Help Notive ask better questions';
-        case 'focusArea':
-            return 'Show what part of life matters most';
-        case 'writingPreference':
-            return 'Make writing feel easier';
-        case 'experienceLevel':
-            return 'Help Notive meet you where you are';
-        case 'outputGoals':
-            return 'Show what your notes should grow into';
-        case 'starterPrompt':
-            return 'Make it easier to start';
-        default:
-            return 'Help Notive fit you better';
-    }
-};
-
-const getQuestionFutureTitle = (question: PersonalizationQuestion): string => {
-    switch (question.field) {
-        case 'primaryGoal':
-            return 'Set what future notes should help with';
-        case 'focusArea':
-            return 'Choose what future notes should focus on';
-        case 'writingPreference':
-            return 'Choose a writing style you will keep using';
-        case 'experienceLevel':
-            return 'Set the right starting point';
-        case 'outputGoals':
-            return 'Choose what your notes can become';
-        case 'starterPrompt':
-            return 'Choose the first question you want later';
-        default:
-            return 'Set up Notive for later';
+            return 'A quick setup question';
     }
 };
 
 const getQuestionBenefit = (question: PersonalizationQuestion): string => {
     switch (question.field) {
         case 'primaryGoal':
-            return 'This helps Notive ask better questions and show the right help.';
+            return 'Sharpens your prompts and suggestions.';
         case 'focusArea':
-            return 'This helps Notive focus on life, school, work, or both.';
+            return 'Keeps prompts focused on life, school, work, or both.';
         case 'writingPreference':
-            return 'This helps Notive use a style that feels easier for you.';
+            return 'Prompts match a style that feels easier for you.';
         case 'experienceLevel':
-            return 'This helps Notive match its help to where you are now.';
+            return 'Keeps guidance at the right level.';
         case 'outputGoals':
-            return 'This helps turn notes into stories you can use later.';
+            return 'Turns notes into stories you can use later.';
         case 'starterPrompt':
-            return 'This gives you an easier way to start writing.';
+            return 'An easier way to start writing.';
         default:
-            return 'This helps Notive fit you better.';
-    }
-};
-
-const getQuestionFutureBenefit = (question: PersonalizationQuestion): string => {
-    switch (question.field) {
-        case 'primaryGoal':
-            return 'This keeps future prompts focused on the progress you care about.';
-        case 'focusArea':
-            return 'This keeps future notes focused on the part of life you want to understand most.';
-        case 'writingPreference':
-            return 'This helps future writing feel natural for you.';
-        case 'experienceLevel':
-            return 'This keeps future help at the right level.';
-        case 'outputGoals':
-            return 'This gives future notes a clear use later.';
-        case 'starterPrompt':
-            return 'This makes future check-ins easier to start.';
-        default:
-            return 'This keeps Notive useful later.';
-    }
-};
-
-const getProgressiveFramingEyebrow = (variant: ProgressivePromptFramingVariant): string => {
-    switch (variant) {
-        case 'benefit':
-            return 'Make Notive fit you';
-        case 'future':
-            return 'Set up later';
-        default:
-            return 'Help Notive know you';
+            return 'Makes your prompts fit better.';
     }
 };
 
@@ -861,56 +650,23 @@ class EngagementService {
         }));
     }
 
-    getSmartPromptPresentation(prompt: PromptData, userId?: string): SmartPromptPresentation {
-        const framingVariant = resolveSmartPromptFramingVariant(userId || '');
-        const timeContext = getTimeContextLabel();
-
-        const title = framingVariant === 'momentum'
-            ? getMomentumTitle(prompt)
-            : framingVariant === 'story'
-                ? getStoryTitle(prompt)
-                : getSignalTitle(prompt);
-        const reason = framingVariant === 'momentum'
-            ? getMomentumReason(prompt)
-            : framingVariant === 'story'
-                ? getStoryReason(prompt)
-                : getSignalReason(prompt);
-        const ctaLabel = framingVariant === 'momentum'
-            ? getMomentumCta(prompt)
-            : framingVariant === 'story'
-                ? getStoryCta(prompt)
-                : getSignalCta(prompt);
-
+    getSmartPromptPresentation(prompt: PromptData): SmartPromptPresentation {
         return {
-            experimentId: SMART_PROMPT_FRAMING_EXPERIMENT_ID,
-            framingVariant,
-            eyebrow: `${getFramingEyebrow(framingVariant)} · ${timeContext}`,
-            title,
+            eyebrow: `Good time to write · ${getTimeContextLabel()}`,
+            title: getSignalTitle(prompt),
             body: prompt.text,
-            reason,
-            ctaLabel,
+            reason: getSignalReason(prompt),
+            ctaLabel: getSignalCta(prompt),
             laterLabel: 'Not now',
         };
     }
 
-    getProgressivePromptPresentation(question: PersonalizationQuestion, userId?: string): ProgressivePromptPresentation {
-        const framingVariant = resolveProgressivePromptFramingVariant(userId || '');
-        const title = framingVariant === 'benefit'
-            ? getQuestionBenefitTitle(question)
-            : framingVariant === 'future'
-                ? getQuestionFutureTitle(question)
-                : getQuestionTitle(question);
-        const benefit = framingVariant === 'future'
-            ? getQuestionFutureBenefit(question)
-            : getQuestionBenefit(question);
-
+    getProgressivePromptPresentation(question: PersonalizationQuestion): ProgressivePromptPresentation {
         return {
-            experimentId: PROGRESSIVE_PROMPT_FRAMING_EXPERIMENT_ID,
-            framingVariant,
-            eyebrow: getProgressiveFramingEyebrow(framingVariant),
-            title,
+            eyebrow: 'Quick setup',
+            title: getQuestionTitle(question),
             helper: question.prompt,
-            benefit,
+            benefit: getQuestionBenefit(question),
             laterLabel: 'Later',
             setupLabel: 'Open all settings',
         };

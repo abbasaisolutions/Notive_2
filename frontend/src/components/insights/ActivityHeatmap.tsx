@@ -158,7 +158,7 @@ export default function ActivityHeatmap({
                                             if (day.count <= 0) return;
                                             onDaySelect?.(day);
                                         }}
-                                        className={`h-3.5 w-3.5 rounded-[3px] transition-transform hover:scale-125 focus-visible:scale-125 ${
+                                        className={`h-3.5 w-3.5 rounded-sm transition-transform hover:scale-125 focus-visible:scale-125 ${
                                             selectedDate === day.date ? 'ring-2 ring-primary/70 ring-offset-1 ring-offset-[rgb(var(--paper-soft))]' : ''
                                         } ${getCellClass(day.count)} ${day.count > 0 && onDaySelect ? 'cursor-pointer' : ''}`}
                                         title={`${formatShortDate(day.date)}: ${day.count} entries`}
@@ -177,7 +177,7 @@ export default function ActivityHeatmap({
                     {[0, 1, 2, 3, 4].map((count) => (
                         <span
                             key={`legend-${count}`}
-                            className={`h-3 w-3 rounded-[3px] ${getCellClass(count)}`}
+                            className={`h-3 w-3 rounded-sm ${getCellClass(count)}`}
                             aria-hidden="true"
                         />
                     ))}

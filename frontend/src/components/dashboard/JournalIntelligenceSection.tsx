@@ -181,8 +181,6 @@ export default function JournalIntelligenceSection({ intel }: Props) {
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
             className="notebook-card rounded-card-175 p-5"
         >
             <p
@@ -222,8 +220,6 @@ export default function JournalIntelligenceSection({ intel }: Props) {
                 {expandedKey && (
                     <motion.div
                         key={expandedKey}
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.25 }}
                         className="mt-3 overflow-hidden"

@@ -123,9 +123,6 @@ export default function DashboardFocusCard({
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 12, rotate: -0.3 }}
-            animate={{ opacity: 1, y: 0, rotate: 0 }}
-            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
             className={cn(
                 'notebook-card notebook-focus-shadow relative overflow-hidden rounded-card-200 p-6 md:p-7',
                 className
@@ -151,9 +148,6 @@ export default function DashboardFocusCard({
 
                     {doodle && (
                         <motion.div
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.14, duration: 0.24 }}
                             className="shrink-0"
                         >
                             <NotebookDoodle name={doodle} accent={accent} />
@@ -164,8 +158,7 @@ export default function DashboardFocusCard({
                 <div className="max-w-3xl">
                     <h2 className="notebook-title text-[1.22rem] leading-[1.18] md:text-[1.34rem]">{title}</h2>
                     <p
-                        className="notebook-copy mt-3 max-w-2xl text-base leading-7 md:text-[1.05rem]"
-                        style={{ color: 'rgb(var(--paper-ink-soft))' }}
+                        className="notebook-copy mt-3 max-w-2xl text-base leading-7 md:text-[1.05rem] text-paper-soft"
                     >
                         {body}
                     </p>
@@ -183,7 +176,7 @@ export default function DashboardFocusCard({
                 {visiblePanels.length > 0 && (
                     <div className={cn('grid gap-3', visiblePanels.length === 1 ? 'md:grid-cols-1' : 'md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]')}>
                         {visiblePanels.map((panel) => (
-                            <div key={`${panel.label}-${panel.value}`} className="notebook-card-soft min-w-0 overflow-hidden rounded-[1.55rem] p-4">
+                            <div key={`${panel.label}-${panel.value}`} className="notebook-card-soft min-w-0 overflow-hidden rounded-card-160 p-4">
                                 <p className="section-label">{panel.label}</p>
                                 <p className="notebook-title mt-2 break-words text-lg leading-7">{panel.value}</p>
                             </div>

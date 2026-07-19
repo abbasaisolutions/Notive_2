@@ -81,11 +81,9 @@ export default function WellnessCheckin({ onSubmit, submitted }: WellnessCheckin
     if (submitted) {
         return (
             <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
                 className="notebook-card-soft rounded-card-175 p-4 text-center"
             >
-                <p className="text-sm" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                <p className="text-sm text-paper-soft">
                     Check-in saved. This helps your insights get smarter.
                 </p>
             </motion.div>
@@ -94,8 +92,6 @@ export default function WellnessCheckin({ onSubmit, submitted }: WellnessCheckin
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
             className="notebook-card rounded-card-175 p-5"
         >
             <button
@@ -116,8 +112,6 @@ export default function WellnessCheckin({ onSubmit, submitted }: WellnessCheckin
             <AnimatePresence>
                 {expanded && (
                     <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.25 }}
                         className="mt-4 space-y-4"
@@ -126,7 +120,7 @@ export default function WellnessCheckin({ onSubmit, submitted }: WellnessCheckin
                             <div key={dim.key}>
                                 <div className="flex items-center gap-1.5 mb-2">
                                     <span className="text-sm" aria-hidden="true">{dim.icon}</span>
-                                    <p className="text-xs font-medium" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                    <p className="text-xs font-medium text-paper-ink">
                                         {dim.label}
                                     </p>
                                 </div>
@@ -167,8 +161,6 @@ export default function WellnessCheckin({ onSubmit, submitted }: WellnessCheckin
 
                         {allAnswered && (
                             <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
                                 className="pt-2"
                             >
                                 <button

@@ -122,7 +122,7 @@ export default function UpcomingEventsStrip({ refreshTrigger }: Props) {
 
     return (
         <section aria-label="Upcoming events">
-            <p className="type-overline mb-2 px-1" style={{ color: 'rgb(var(--paper-sage))' }}>
+            <p className="type-overline mb-2 px-1 text-paper-sage">
                 Coming up
             </p>
             <div className="flex flex-col gap-2">
@@ -130,9 +130,6 @@ export default function UpcomingEventsStrip({ refreshTrigger }: Props) {
                     {events.map((event, i) => (
                         <motion.button
                             key={event.id}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.07, duration: 0.25 }}
                             onClick={() => handleTap(event)}
                             className="notebook-card-soft group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all active:scale-[0.98] active:opacity-80"
                             aria-label={`Journal about ${event.title}`}
@@ -145,10 +142,10 @@ export default function UpcomingEventsStrip({ refreshTrigger }: Props) {
                             />
 
                             <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium leading-5" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                <p className="truncate text-sm font-medium leading-5 text-paper-ink">
                                     {event.title}
                                 </p>
-                                <p className="text-xs leading-4" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                                <p className="text-xs leading-4 text-paper-soft">
                                     {formatEventTime(event)}
                                     {event.location ? ` · ${event.location}` : ''}
                                 </p>
@@ -156,8 +153,7 @@ export default function UpcomingEventsStrip({ refreshTrigger }: Props) {
 
                             {/* Tap hint */}
                             <span
-                                className="shrink-0 text-xs opacity-0 transition-opacity group-hover:opacity-100"
-                                style={{ color: 'rgb(var(--paper-sage))' }}
+                                className="shrink-0 text-xs opacity-0 transition-opacity group-hover:opacity-100 text-paper-sage"
                                 aria-hidden="true"
                             >
                                 Reflect →

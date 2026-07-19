@@ -103,7 +103,7 @@ export default function CalendarToggle() {
                 <div className="flex-1">
                     <p className="text-sm font-semibold text-strong">Calendar connected</p>
                     <p className="mt-0.5 text-xs text-muted">
-                        Notive uses your upcoming events to ask better questions before they happen. Events are read-only and never uploaded.
+                        Upcoming events shape the questions you&rsquo;re asked. Events are read-only and never uploaded.
                     </p>
                 </div>
             </div>
@@ -119,7 +119,7 @@ export default function CalendarToggle() {
                 <div className="flex-1">
                     <p className="text-sm font-semibold text-strong">Calendar access blocked</p>
                     <p className="mt-0.5 text-xs text-muted">
-                        Calendar permission was denied. Open system settings to enable it for Notive.
+                        Permission was denied. Open system settings to allow calendar access.
                     </p>
                     <button
                         type="button"
@@ -143,7 +143,7 @@ export default function CalendarToggle() {
             <div className="flex-1">
                 <p className="text-sm font-semibold text-strong">Life-aware prompts</p>
                 <p className="mt-0.5 text-xs text-muted">
-                    Connect your calendar so Notive can ask sharper questions before meetings, classes, and big moments. Read-only — never uploaded.
+                    Sharper questions before meetings, classes, and big moments. Read-only — never uploaded.
                 </p>
                 <div className="mt-3 flex gap-2">
                     <button

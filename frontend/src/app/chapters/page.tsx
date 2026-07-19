@@ -13,22 +13,11 @@ import { writeWorkspaceResume } from '@/utils/workspace-resume';
 import { FiArrowLeft, FiArrowRight, FiBook, FiEdit3, FiPlus } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
 import { CHAPTER_ICON_OPTIONS, CHAPTER_ICON_MAP, ChapterIconKey, getChapterIconComponent, normalizeChapterIcon } from '@/constants/chapter-icons';
-import { pickRotatingCopy } from '@/utils/rotating-copy';
 
-const EMPTY_CHAPTERS_VARIANTS = [
-    {
-        title: 'No groups yet',
-        description: 'Create groups to keep related notes, projects, or recurring life themes together.',
-    },
-    {
-        title: 'Ready to group your notes?',
-        description: 'A group is just a shelf — pull together everything about one season, one person, or one project.',
-    },
-    {
-        title: 'Start your first collection',
-        description: 'Groups help you find, compare, and revisit notes that belong to the same story.',
-    },
-] as const;
+const EMPTY_CHAPTERS_COPY = {
+    title: 'No threads yet',
+    description: 'A thread keeps related notes together — one season, one person, one project.',
+} as const;
 
 interface Chapter {
     id: string;
@@ -183,7 +172,7 @@ export default function ChaptersPage() {
                             <SectionHeader
                                 kicker={NOTIVE_VOICE.surfaces.storyCollections}
                                 title="Group related notes"
-                                description="Put notes together by project, season, or part of life so they are easier to find and use later."
+                                description="Group notes by project, season, or part of life."
                                 as="h1"
                             />
                         </div>
@@ -226,7 +215,7 @@ export default function ChaptersPage() {
                     </AppPanel>
                 ) : chapters.length === 0 ? (
                     (() => {
-                        const emptyCopy = pickRotatingCopy('empty-chapters', EMPTY_CHAPTERS_VARIANTS);
+                        const emptyCopy = EMPTY_CHAPTERS_COPY;
                         return (
                             <AppPanel className="space-y-6 text-center">
                                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
@@ -326,7 +315,7 @@ export default function ChaptersPage() {
                         <SectionHeader
                             kicker={NOTIVE_VOICE.surfaces.storyCollections}
                             title={editingChapter ? 'Edit group' : 'New group'}
-                            description="Name the group, add a short note, then choose the icon and color that make it easy to spot."
+                            description="Name it, then pick an icon and color."
                         />
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>

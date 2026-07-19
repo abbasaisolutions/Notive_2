@@ -83,13 +83,13 @@ const homeNavItem: NavItem = { href: '/dashboard', label: NOTIVE_VOICE.surfaces.
 const writeNavItem: NavItem = { href: '/entry/new', label: 'Write', shortLabel: 'Write', icon: icons.write, isMain: true, matchPrefixes: ['/entry/new', '/entry/edit'] };
 const memoriesNavItem: NavItem = { href: '/timeline', label: NOTIVE_VOICE.surfaces.memoryAtlas, shortLabel: 'Timeline', icon: icons.memories, matchPrefixes: ['/timeline'] };
 const notificationsNavItem: NavItem = { href: '/notifications', label: 'Notifications', shortLabel: 'Alerts', icon: icons.notifications, matchPrefixes: ['/notifications'] };
-const guideNavItem: NavItem = { href: '/chat', label: NOTIVE_VOICE.surfaces.reflectionCoach, shortLabel: 'Ask', icon: icons.guide, matchPrefixes: ['/chat'] };
+const guideNavItem: NavItem = { href: '/chat', label: NOTIVE_VOICE.surfaces.reflectionCoach, shortLabel: 'Chat', icon: icons.guide, matchPrefixes: ['/chat'] };
 const groupsNavItem: NavItem = { href: '/chapters', label: NOTIVE_VOICE.surfaces.storyCollections, shortLabel: 'Threads', icon: icons.chapters, matchPrefixes: ['/chapters'] };
-const importsNavItem: NavItem = { href: '/import', label: NOTIVE_VOICE.surfaces.memoryInbox, shortLabel: 'Bring In', icon: icons.imports, matchPrefixes: ['/import'] };
-// Naming alias note: the user-facing "Story Seeds" surface lives at /portfolio and
+const importsNavItem: NavItem = { href: '/import', label: NOTIVE_VOICE.surfaces.memoryInbox, shortLabel: 'Import', icon: icons.imports, matchPrefixes: ['/import'] };
+// Naming alias note: the user-facing "Stories" surface lives at /portfolio and
 // is labeled from NOTIVE_VOICE.surfaces.outcomeStudio.
 const storiesNavItem: NavItem = { href: '/portfolio', label: NOTIVE_VOICE.surfaces.outcomeStudio, shortLabel: 'Use', icon: icons.stories, matchPrefixes: ['/portfolio'] };
-const profileNavItem: NavItem = { href: '/profile', label: NOTIVE_VOICE.surfaces.profileStudio, shortLabel: 'Me', icon: icons.profile, matchPrefixes: ['/profile'] };
+const profileNavItem: NavItem = { href: '/profile', label: NOTIVE_VOICE.surfaces.profileStudio, shortLabel: 'Profile', icon: icons.profile, matchPrefixes: ['/profile'] };
 const adminNavItem: NavItem = { href: '/admin', label: 'Admin', shortLabel: 'Admin', icon: icons.admin, matchPrefixes: ['/admin'], allowedRoles: ['ADMIN', 'SUPERADMIN'] };
 
 export const getWorkspaceMaturity = ({
@@ -143,7 +143,7 @@ export const getMobileMainNavItems = (maturity: WorkspaceMaturity): NavItem[] =>
 
 export const getMobileMoreNavSections = (_maturity: WorkspaceMaturity): NavSection[] => {
     // Only admin items remain in the More drawer.
-    // Regular users see Today, Timeline, +Write, AskNotive, Me in the bottom bar.
+    // Regular users see Today, Timeline, +Write, Chat, Profile in the bottom bar.
     return [
         {
             id: 'admin',
@@ -156,9 +156,9 @@ export const getMobileMoreNavSections = (_maturity: WorkspaceMaturity): NavSecti
 export const journeyStages: JourneyStage[] = [
     { id: 'capture', label: 'Write', description: 'Capture a real moment while it is still fresh.', href: '/entry/new' },
     { id: 'organize', label: 'Threads', description: 'Follow related memories, emotions, people, and themes over time.', href: '/chapters' },
-    { id: 'reflect', label: 'AskNotive', description: 'Understand your notes, find threads, and ask better questions.', href: '/chat' },
-    { id: 'apply', label: 'Use', description: 'Turn saved moments into outputs you choose to use outside Notive.', href: '/portfolio' },
-    { id: 'account', label: 'Me', description: 'Choose your goals, settings, and privacy.', href: '/profile' },
+    { id: 'reflect', label: 'Chat', description: 'Understand your notes, find threads, and ask better questions.', href: '/chat' },
+    { id: 'apply', label: 'Use', description: 'Turn saved moments into material you can use elsewhere.', href: '/portfolio' },
+    { id: 'account', label: 'Profile', description: 'Your goals, settings, and privacy.', href: '/profile' },
 ];
 
 const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
@@ -180,12 +180,12 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
         prefix: '/dashboard',
         meta: {
             title: 'Today',
-            description: 'See your private overview: inner weather, active threads, a memory echo, and one next reflection.',
+            description: 'Your private overview: latest note, active threads, and one next step.',
             section: 'Main',
             breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Today' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
             secondaryAction: { label: 'Open Timeline', shortLabel: 'Timeline', href: '/timeline' },
-            visibleInfo: ['Inner weather', 'Active threads', 'Memory echo'],
+            visibleInfo: ['Latest note', 'Active threads', 'Next step'],
             journeyStage: 'capture',
             headerMode: 'none',
         },
@@ -249,12 +249,12 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
     {
         prefix: '/import',
         meta: {
-            title: 'Bring In',
-            description: 'Bring old posts, notes, and files into Notive so they can become useful memories, lessons, and stories.',
+            title: 'Import',
+            description: 'Import old posts, notes, and files. They join your timeline like any other note.',
             section: 'Organize',
-            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Bring In' }],
+            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Import' }],
             primaryAction: { label: 'Open Timeline', shortLabel: 'Timeline', href: '/timeline' },
-            secondaryAction: { label: 'Open Story Seeds', shortLabel: 'Seeds', href: '/portfolio?view=evidence' },
+            secondaryAction: { label: 'Open Stories', shortLabel: 'Stories', href: '/portfolio?view=evidence' },
             visibleInfo: ['Connected apps', 'Import queue', 'Ready items'],
             journeyStage: 'organize',
             headerMode: 'none',
@@ -263,10 +263,10 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
     {
         prefix: '/chat',
         meta: {
-            title: 'AskNotive',
-            description: 'Ask better questions, understand your notes, and trace the threads underneath them.',
+            title: 'Chat',
+            description: 'Ask about anything you have written.',
             section: 'Reflect',
-            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'AskNotive' }],
+            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Chat' }],
             primaryAction: { label: 'Open Timeline', shortLabel: 'Timeline', href: '/timeline' },
             secondaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
             visibleInfo: ['Notes', 'Threads', 'Questions'],
@@ -277,12 +277,12 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
     {
         prefix: '/portfolio',
         meta: {
-            title: 'Story Seeds',
-            description: 'Turn private notes into story, resume, statement, interview, and growth material you choose to use.',
+            title: 'Stories',
+            description: 'Turn private notes into resume, statement, interview, and growth material.',
             section: 'Apply',
-            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Story Seeds' }],
+            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Stories' }],
             primaryAction: { label: 'Write', shortLabel: 'Write', href: '/entry/new' },
-            secondaryAction: { label: 'Open Me', shortLabel: 'Me', href: '/profile/edit' },
+            secondaryAction: { label: 'Open Profile', shortLabel: 'Profile', href: '/profile/edit' },
             visibleInfo: ['Stories', 'Resume moments', 'Exports'],
             journeyStage: 'apply',
             headerMode: 'none',
@@ -291,11 +291,11 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
     {
         prefix: '/profile',
         meta: {
-            title: 'Me',
+            title: 'Profile',
             description: 'Your profile, goals, settings, and privacy.',
             section: 'Account',
-            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Me' }],
-            primaryAction: { label: 'Edit Me', shortLabel: 'Edit', href: '/profile/edit' },
+            breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Profile' }],
+            primaryAction: { label: 'Edit profile', shortLabel: 'Edit', href: '/profile/edit' },
             secondaryAction: { label: 'Privacy & Data', shortLabel: 'Privacy', href: '/profile/edit?tab=privacy' },
             visibleInfo: ['Goals', 'Settings', 'Privacy'],
             journeyStage: 'account',
@@ -310,7 +310,7 @@ const routeMetaByPrefix: Array<{ prefix: string; meta: RouteMeta }> = [
             section: 'Account',
             breadcrumbs: [{ label: 'Today', href: '/dashboard' }, { label: 'Admin' }],
             primaryAction: { label: 'Review Users', shortLabel: 'Review', href: '/admin' },
-            secondaryAction: { label: 'Open Me', shortLabel: 'Me', href: '/profile' },
+            secondaryAction: { label: 'Open Profile', shortLabel: 'Profile', href: '/profile' },
             visibleInfo: ['Users', 'Support', 'Safety'],
             journeyStage: 'account',
             headerMode: 'none',

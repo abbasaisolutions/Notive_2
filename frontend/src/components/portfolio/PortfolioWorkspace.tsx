@@ -184,7 +184,7 @@ const exportTypeLabels: Record<ExportType, string> = {
 };
 
 const exportTypeDescriptions: Record<ExportType, string> = {
-    resume: 'Bullet points and short story fragments you can reuse for resumes, school, and applications.',
+    resume: 'Reusable bullet points and story fragments.',
     statement: 'A narrative draft that turns lived moments into direction, identity, and voice.',
     interview: 'A focused STAR-style workspace for previewing and rehearsing your stories.',
     growth: 'A progress view with repeated strengths, proof, and what to strengthen next.',
@@ -230,7 +230,7 @@ const storyUseCaseDescriptions: Record<StoryUseCase, string> = {
 
 const portfolioViewLabels: Record<PortfolioView, string> = {
     export: 'Resume & Statement',
-    evidence: 'Story Seeds',
+    evidence: 'Stories',
     interview: 'Interview',
     growth: 'Growth',
 };
@@ -1042,8 +1042,8 @@ export default function PortfolioWorkspace() {
     const nextAction = useMemo(() => {
         if (!overview || overview.experiences.length === 0) {
             return {
-                title: 'Capture your first story seed',
-                description: 'Start with one quick entry. Story Seeds get stronger once there is one concrete situation, action, and outcome to work from.',
+                title: 'Capture your first story',
+                description: 'Start with one quick entry.',
                 actionLabel: 'Start Quick Capture',
                 actionHref: captureHref,
                 targetView: null as PortfolioView | null,
@@ -1055,7 +1055,7 @@ export default function PortfolioWorkspace() {
             return {
                 title: 'Tighten one unfinished story',
                 description: `${filterCounts.needs_attention} stor${filterCounts.needs_attention === 1 ? 'y needs' : 'ies need'} one clearer block before export or practice will feel useful.`,
-                actionLabel: 'Open Story Seeds',
+                actionLabel: 'Open Stories',
                 actionHref: null as string | null,
                 targetView: 'evidence' as PortfolioView,
                 targetExportType: null as DocumentExportType | null,
@@ -1076,7 +1076,7 @@ export default function PortfolioWorkspace() {
         if (recommendedView === 'interview') {
             return {
                 title: 'Open interview practice',
-                description: 'Your evidence base is in good shape. Go straight into the interview workspace and rehearse one story at a time.',
+                description: 'Rehearse one story at a time.',
                 actionLabel: 'Open Interview',
                 actionHref: null as string | null,
                 targetView: 'interview' as PortfolioView,
@@ -1087,7 +1087,7 @@ export default function PortfolioWorkspace() {
         if (recommendedView === 'growth') {
             return {
                 title: 'Review growth progress',
-                description: 'Your evidence base is stable. Step into growth mode to review momentum, proof, and what should strengthen next.',
+                description: 'Review momentum, proof, and what to strengthen next.',
                 actionLabel: 'Open Growth',
                 actionHref: null as string | null,
                 targetView: 'growth' as PortfolioView,
@@ -1097,7 +1097,7 @@ export default function PortfolioWorkspace() {
 
         return {
             title: `Open ${exportTypeLabels[recommendedExportType]}`,
-            description: 'Your evidence base is in good shape. Open the document workspace and tailor the output to the audience you need right now.',
+            description: 'Tailor the output to your audience.',
             actionLabel: `Open ${exportTypeLabels[recommendedExportType]}`,
             actionHref: null as string | null,
             targetView: 'export' as PortfolioView,
@@ -1173,7 +1173,7 @@ export default function PortfolioWorkspace() {
             case 'verified':
                 return `${filterCounts.verified} saved stor${filterCounts.verified === 1 ? 'y is' : 'ies are'} ready to reuse or rehearse without much extra work.`;
             default:
-                return 'Use the full queue when you want the complete picture of what is weak, ready, or already strong.';
+                return 'The complete picture: weak, ready, strong.';
         }
     }, [filterCounts, recommendedEvidenceFilter]);
     const currentEvidenceLaneDescription = useMemo(() => {
@@ -1198,15 +1198,15 @@ export default function PortfolioWorkspace() {
     }, [evidenceSummary.total, filterCounts.needs_attention, filterCounts.ready_to_verify, filterCounts.verified]);
     const evidenceSnapshotDescription = useMemo(() => {
         if (filterCounts.needs_attention > 0) {
-            return 'Start with the weakest stories first. A single missing block or clearer proof detail usually unlocks the rest of the queue.';
+            return 'Weakest first.';
         }
         if (filterCounts.ready_to_verify > 0) {
-            return 'These stories already have structure. The next step is reviewing proof instead of reopening everything.';
+            return 'Structured. Next: review proof.';
         }
         if (filterCounts.verified > 0) {
-            return 'Your strongest stories are ready to support exports and interview practice, so you can stay focused on reuse.';
+            return 'Ready for export and practice.';
         }
-        return 'Capture another note when you want more material. The current queue does not need much attention right now.';
+        return 'Queue is in good shape.';
     }, [filterCounts.needs_attention, filterCounts.ready_to_verify, filterCounts.verified]);
     const currentWorkspaceDescription = useMemo(() => {
         if (activeView === 'export') {
@@ -1258,7 +1258,7 @@ export default function PortfolioWorkspace() {
     const editingDetailsLabel = showEditingDetails ? 'Hide supporting details' : 'Supporting details';
     const editingDetailsDescription = showEditingDetails
         ? 'Go back to the shortest edit path when you only want the core story blocks.'
-        : 'Skills, proof notes, readiness, and the source memory stay here when you want to round the story out.';
+        : 'Skills, proof notes, readiness, and the source memory.';
     const toggleExportTools = () => {
         const nextValue = !showExportTools;
         setShowExportTools(nextValue);
@@ -1482,7 +1482,7 @@ export default function PortfolioWorkspace() {
                     </details>
 
                     {selectedPathwayCard && (
-                        <div className="workspace-panel rounded-[30px] p-5">
+                        <div className="workspace-panel rounded-card-180 p-5">
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Chosen pack</p>
@@ -1511,7 +1511,7 @@ export default function PortfolioWorkspace() {
                                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Statement angle</p>
                                             <h4 className="workspace-heading mt-2 text-lg font-semibold">{statementVariantLabels[statementVariant]}</h4>
                                             <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                                Change the angle here whenever you want the preview to lean more general, more college-ready, or more job-ready.
+                                                Angle the preview: general, college, or job.
                                             </p>
                                         </div>
                                         <TagPill tone="primary">Updates preview</TagPill>
@@ -1639,7 +1639,7 @@ export default function PortfolioWorkspace() {
                                 <p className="mt-2 text-sm leading-7 text-ink-secondary">
                                     {selectedExportType === 'resume'
                                         ? 'Start with the print-ready version if you want the cleanest copy to reuse or share.'
-                                        : 'Start with the print-ready version when this angle feels close and you want a polished draft.'}
+                                        : 'Print-ready when the angle feels close.'}
                                 </p>
                             </div>
                             <TagPill tone="primary">Primary action</TagPill>
@@ -1804,10 +1804,10 @@ export default function PortfolioWorkspace() {
                 <EmptyState
                     doodle="ladder"
                     doodleAccent="apricot"
-                    title={hasPortfolioMaterial ? 'No story seeds in this lane yet' : 'Your first story seed starts with one memory'}
+                    title={hasPortfolioMaterial ? 'No stories in this lane yet' : 'Your first story starts with one memory'}
                     description={hasPortfolioMaterial
-                        ? 'Switch lanes or capture another memory to generate more story seeds.'
-                        : 'Save a moment with a situation, action, lesson, or outcome. Story Seeds will build from there.'}
+                        ? 'Switch lanes or capture another memory to build more stories.'
+                        : 'Save a moment with a situation, action, lesson, or outcome. Stories build from there.'}
                     actionLabel={hasPortfolioMaterial ? 'Add memory' : 'Start Quick Capture'}
                     actionHref={captureHref}
                 />
@@ -1838,7 +1838,7 @@ export default function PortfolioWorkspace() {
                             if (nextMissingField === 'outcome') return 'Capture what changed or improved so the story has a clean finish.';
                             if (nextMissingField === 'skills') return 'Add one to three skills so this story can travel into resume and statement drafts.';
                             if (!experience.verified) return 'The core blocks are filled. Add any last proof details, then save it when it feels solid.';
-                            return 'This one is already strong. Only tighten the label or details if you want a cleaner version later.';
+                            return 'Already strong.';
                         })();
                         const primaryActionLabel = nextMissingField
                             ? `Refine ${EVIDENCE_FIELD_LABELS[nextMissingField]}`
@@ -1862,14 +1862,14 @@ export default function PortfolioWorkspace() {
                                         <div>
                                             <h3 className="workspace-heading text-lg font-semibold">{experience.title || 'Untitled experience'}</h3>
                                             <p className="mt-2 max-w-3xl text-sm leading-7 text-ink-secondary">
-                                                {primarySnippet || 'This part is missing from the memory. Add what happened next, what you learned, or the proof you want to reuse.'}
+                                                {primarySnippet || 'Missing. Add what happened next, or the proof.'}
                                             </p>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
                                             <TagPill tone={stateTone}>{storyStatusLabels[state]}</TagPill>
                                             <TagPill>{readinessLabel}</TagPill>
                                         </div>
-                                        <div className="workspace-panel rounded-[22px] p-3">
+                                        <div className="workspace-panel rounded-card-140 p-3">
                                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Next move</p>
                                             <p className="workspace-heading mt-2 text-sm font-semibold">{focusTitle}</p>
                                             <p className="mt-2 text-sm leading-7 text-ink-secondary">{focusDescription}</p>
@@ -2000,8 +2000,8 @@ export default function PortfolioWorkspace() {
             return (
                 <EmptyState
                     title="No interview stories yet"
-                    description="Check a few stronger stories and the interview workspace will build a focused STAR story set."
-                    actionLabel="Open Story Seeds"
+                    description="Check stronger stories to build a STAR set."
+                    actionLabel="Open Stories"
                     actionHref={`${pathname}?view=evidence`}
                 />
             );
@@ -2025,9 +2025,9 @@ export default function PortfolioWorkspace() {
         const storyAnchorPreview = story.result || story.action || story.situation || 'Use this story as your current interview anchor.';
         const interviewSurfaceHint = practiceMode
             ? practiceReveal
-                ? 'Compare your answer against the scaffold, then hide it again when you want another recall pass.'
-                : 'Answer from memory first, then reveal the scaffold only when you want a quick check.'
-            : 'Use the scaffold to tighten the story first, then switch to recall mode when it feels ready.';
+                ? 'Compare your answer against the scaffold, then hide it for another recall pass.'
+                : 'Answer from memory first, then reveal the scaffold for a quick check.'
+            : 'Tighten with the scaffold, then switch to recall.';
         const interviewPrimaryAction = practiceMode
             ? practiceReveal
                 ? {
@@ -2052,7 +2052,7 @@ export default function PortfolioWorkspace() {
                     <SectionHeader
                         kicker="Interview"
                         title="Stay with one story at a time"
-                        description="Keep one story in focus. Open the rest only when you want to switch."
+                        description="Keep one story in focus. Open the rest to switch."
                     />
 
                     <div className="workspace-soft-panel rounded-card-175 p-4">
@@ -2155,7 +2155,7 @@ export default function PortfolioWorkspace() {
                                     >
                                         <span className="workspace-heading block text-sm font-semibold">Recall</span>
                                         <span className="mt-2 block text-xs leading-6 text-ink-secondary">
-                                            Hide the scaffold first, then reveal it only when you want a check.
+                                            Hide the scaffold first; reveal it to check yourself.
                                         </span>
                                     </button>
                                 </div>
@@ -2473,7 +2473,7 @@ export default function PortfolioWorkspace() {
                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Trendline</p>
                             <h3 className="workspace-heading mt-1 text-xl font-semibold">Momentum across the last six windows</h3>
                             <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                This stays as the main growth read, with the surrounding context cards close enough to reference without opening anything else.
+                                The main growth read.
                             </p>
                         </div>
                         <TagPill tone="primary">
@@ -2524,7 +2524,7 @@ export default function PortfolioWorkspace() {
                     ) : (
                         <EmptyState
                             title="Growth data is still warming up"
-                            description="Keep capturing and shaping evidence. The growth map becomes more useful once a few windows of activity accumulate."
+                            description="The growth map sharpens as activity accumulates."
                             actionLabel="Start Quick Capture"
                             actionHref={captureHref}
                         />
@@ -2605,11 +2605,11 @@ export default function PortfolioWorkspace() {
                 : 'Best next move: polish the story label';
         const focusCardBody = (() => {
             if (recommendedEditorField === 'situation') return 'Start with the context so the story has a clear anchor before you polish anything else.';
-            if (recommendedEditorField === 'action') return 'Name the action you actually took so this reads like your story, not just something that happened to you.';
+            if (recommendedEditorField === 'action') return 'Name the action you took.';
             if (recommendedEditorField === 'outcome') return 'Capture what changed, improved, or happened next so the story has a clean finish.';
             if (recommendedEditorField === 'lesson') return 'Write the takeaway this moment proves so it becomes reusable in interviews and exports.';
             if (recommendedEditorField === 'skillsText') return 'Add one to three skills next so this story can travel into resume and statement drafts.';
-            if (recommendedEditorField === 'notes') return 'Drop in any proof, metric, or follow-up note you would want before saving this story as reusable.';
+            if (recommendedEditorField === 'notes') return 'Add proof, a metric, or a follow-up note.';
             return 'Give this story a cleaner label so it is easier to find and reuse later.';
         })();
         const statusTitle = draftCompleteness.readyForExport
@@ -2685,7 +2685,7 @@ export default function PortfolioWorkspace() {
                                     {editingExperience.title || 'Refine story'}
                                 </h2>
                                 <p className="mt-2 text-sm text-ink-secondary">
-                                    Tune the version you will reuse later. Supporting checks stay tucked away until you need them.
+                                    Tune the version you will reuse.
                                 </p>
                             </div>
                             <button
@@ -2760,7 +2760,7 @@ export default function PortfolioWorkspace() {
                                 </div>
                             </div>
 
-                            <div className="workspace-panel space-y-3 rounded-[22px] p-3">
+                            <div className="workspace-panel space-y-3 rounded-card-140 p-3">
                                 <button
                                     type="button"
                                     onClick={toggleEditingDetails}
@@ -2945,14 +2945,14 @@ export default function PortfolioWorkspace() {
                 ? `${overview.interviewStories.length} stor${overview.interviewStories.length === 1 ? 'y is' : 'ies are'} ready to rehearse`
                 : 'Your saved moments are ready for the next pass';
     const storySnapshotDescription = !hasPortfolioMaterial
-        ? 'Write one concrete moment with what happened, what you did, and what changed. Notive will turn it into story material here.'
+        ? 'Write one concrete moment: what happened, what you did, what changed.'
         : filterCounts.needs_attention > 0
         ? 'Start with the missing block. The stronger stories can wait.'
         : filterCounts.ready_to_export > 0
-            ? 'You already have reusable material here. Keep the focus on exporting or lightly polishing instead of reopening everything.'
+            ? 'Reusable material is ready. Export or polish.'
             : overview.interviewStories.length > 0
-                ? 'The strongest stories are already taking shape, so this is a good moment to rehearse or export instead of digging for more.'
-                : 'Capture one more note when you want new material. The rest of the studio can stay quiet for now.';
+                ? 'Strong stories are taking shape. Rehearse or export.'
+                : 'Queue is quiet. Capture a note for new material.';
     const workspaceDestinations = [
         {
             id: 'resume',
@@ -2978,7 +2978,7 @@ export default function PortfolioWorkspace() {
         },
         {
             id: 'evidence',
-            label: 'Story Seeds',
+            label: 'Stories',
             detail: 'Shape, review, use, save',
             icon: FiCheckCircle,
             active: activeView === 'evidence',

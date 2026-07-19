@@ -75,12 +75,12 @@ export function SecuritySection({
     return (
         <div className="space-y-6">
             <section className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
-                <div className="workspace-panel rounded-card-200 p-8 space-y-6">
+                <div className="workspace-panel rounded-card-160 p-6 space-y-6">
                     <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Security</p>
-                        <h2 className="workspace-heading mt-2 text-2xl font-serif">Check your account before big changes</h2>
+                        <h2 className="workspace-heading mt-1.5 text-xl font-serif">Confirm it&rsquo;s you</h2>
                         <p className="mt-2 text-sm text-ink-secondary">
-                            Sign-in email, password changes, and delete account tools are locked until you verify again.
+                            Changing your email or password, or deleting your account, requires a fresh verification.
                         </p>
                     </div>
 
@@ -91,7 +91,7 @@ export function SecuritySection({
                                 <p className="mt-1 text-xs text-ink-secondary">
                                     {isSensitiveUnlocked
                                         ? `Unlocked until ${formatExpiry(sensitiveSessionExpiresAt)}`
-                                        : 'Unlock this section before changing sign-in details or deleting the account.'}
+                                        : 'Confirm it’s you to change email, password, or delete your account.'}
                                 </p>
                             </div>
                             <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${
@@ -111,7 +111,6 @@ export function SecuritySection({
                                     value={reauthPassword}
                                     onChange={onReauthPasswordChange}
                                     placeholder="Enter your current password"
-                                    helper="We only use this to unlock sensitive account changes for a short time."
                                 />
                                 <button
                                     type="button"
@@ -130,7 +129,7 @@ export function SecuritySection({
                         ) : (
                             <div className="space-y-4">
                                 <div className="workspace-soft-panel rounded-2xl p-4 text-sm text-ink-secondary">
-                                    This account signs in through Google. Re-verify with Google before changing the sign-in email, setting a password, or deleting the account.
+                                    This account signs in with Google. Re-verify to continue.
                                 </div>
                                 <GoogleSsoPanel
                                     mode="reauth"
@@ -150,9 +149,9 @@ export function SecuritySection({
                             <FiShield size={16} aria-hidden="true" />
                         </div>
                         <div>
-                            <h3 className="workspace-heading text-xl font-serif">Why this matters</h3>
+                            <h3 className="workspace-heading text-xl font-serif">What to expect</h3>
                             <p className="mt-2 text-sm text-ink-secondary">
-                                Basic profile details can stay fast. Sign-in email, passwords, and deletion now require a second verification step.
+                                Email, password, and deletion changes require a second verification step.
                             </p>
                         </div>
                     </div>
@@ -161,17 +160,17 @@ export function SecuritySection({
                             Sign-in email changes preserve the current session when possible and clear the others.
                         </div>
                         <div className="workspace-soft-panel rounded-2xl p-4">
-                            Password changes revoke saved sessions on other devices and may also prompt this device to sign in again once the current session rolls over.
+                            Password changes sign out other devices; this one may re-ask later.
                         </div>
                         <div className="workspace-soft-panel rounded-2xl p-4">
-                            Permanent deletion requires a verified session and your sign-in email typed as confirmation.
+                            Deletion requires verification and your email typed as confirmation.
                         </div>
                     </div>
                 </section>
             </section>
 
             <section className="grid gap-6 xl:grid-cols-[1fr,1fr]">
-                <div className="workspace-panel rounded-card-200 p-8 space-y-6">
+                <div className="workspace-panel rounded-card-160 p-6 space-y-6">
                     <div className="flex items-start gap-3">
                         <div className="mt-1 rounded-xl bg-primary/10 p-2 text-primary">
                             <FiMail size={16} aria-hidden="true" />
@@ -180,7 +179,7 @@ export function SecuritySection({
                             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Sign-In Email</p>
                             <h3 className="workspace-heading mt-2 text-xl font-serif">Change your sign-in email</h3>
                             <p className="mt-2 text-sm text-ink-secondary">
-                                This is separate from your public profile details. It changes the email used for account access.
+                                Changes the email used for account access.
                             </p>
                         </div>
                     </div>
@@ -222,7 +221,7 @@ export function SecuritySection({
                     </button>
                 </div>
 
-                <div className="workspace-panel rounded-card-200 p-8 space-y-6">
+                <div className="workspace-panel rounded-card-160 p-6 space-y-6">
                     <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Password</p>
                         <h3 className="workspace-heading mt-2 text-xl font-serif">
@@ -230,8 +229,8 @@ export function SecuritySection({
                         </h3>
                         <p className="mt-2 text-sm text-ink-secondary">
                             {hasPassword
-                                ? 'Use the unlocked session to update your password without mixing it into ordinary profile edits.'
-                                : 'If you signed up with Google, you can add a local password after re-verifying your identity.'}
+                                ? 'Your password changes here, separate from profile edits.'
+                                : 'If you signed up with Google, you can add a password after verifying your identity.'}
                         </p>
                     </div>
 
@@ -271,7 +270,7 @@ export function SecuritySection({
 
             <section
                 id="delete-account"
-                className="rounded-card-200 border p-8 space-y-6"
+                className="rounded-card-200 border p-6 space-y-5"
                 style={{
                     background: 'linear-gradient(180deg, rgba(255,255,255,0.82), rgba(246,236,226,0.92))',
                     borderColor: 'rgba(214, 185, 149, 0.5)',
@@ -286,7 +285,7 @@ export function SecuritySection({
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Delete Account</p>
                         <h3 className="workspace-heading mt-2 text-xl font-serif">Delete your account</h3>
                         <p className="mt-2 text-sm text-ink-secondary">
-                            This removes your account, notes, groups, imports, and linked data. Type your sign-in email to confirm.
+                            Removes your account and all its data. Type your email to confirm.
                         </p>
                     </div>
                 </div>
@@ -318,7 +317,7 @@ export function SecuritySection({
                     <ConfirmDialog
                         open={showDeleteConfirm}
                         title="Permanently delete your account?"
-                        description="All your notes, groups, imports, and linked data will be permanently removed. This cannot be undone."
+                        description="Everything will be permanently removed. This cannot be undone."
                         actionLabel="Delete Everything"
                         isDangerous={true}
                         isLoading={isDeletingAccount}

@@ -27,9 +27,6 @@ export default function ReflectionDepthMeter({
 }: ReflectionDepthMeterProps) {
     return (
         <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.14, duration: 0.28 }}
             className="notebook-card-soft rounded-card-175 p-5"
         >
             <p
@@ -98,7 +95,7 @@ export default function ReflectionDepthMeter({
                 </div>
             )}
 
-            <p className="notebook-copy text-[0.82rem] mt-3" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+            <p className="notebook-copy text-[0.82rem] mt-3 text-paper-soft">
                 {LEVEL_DESCRIPTIONS[level]}
             </p>
         </motion.div>

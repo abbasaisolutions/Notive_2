@@ -81,7 +81,7 @@ export default function ReviewPage() {
                         <Spinner size="md" />
                     </div>
                 ) : error ? (
-                    <div className="notebook-card-soft mt-8 rounded-2xl p-6 text-center text-sm" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                    <div className="notebook-card-soft mt-8 rounded-2xl p-6 text-center text-sm text-paper-soft">
                         We couldn&rsquo;t load your review right now. Try again in a moment.
                     </div>
                 ) : insufficient ? (
@@ -92,7 +92,7 @@ export default function ReviewPage() {
                         >
                             Almost there
                         </p>
-                        <p className="notebook-copy mt-2 text-sm leading-relaxed" style={{ color: 'rgb(var(--paper-ink))' }}>
+                        <p className="notebook-copy mt-2 text-sm leading-relaxed text-paper-ink">
                             A review needs {MIN_ENTRIES_FOR_REVIEW - analytics.totalEntries} more {MIN_ENTRIES_FOR_REVIEW - analytics.totalEntries === 1 ? 'entry' : 'entries'} before it will feel meaningful. Capture a moment, a lesson, or a small shift and your {subject} will come together here.
                         </p>
                         <div className="mt-4 grid gap-2 text-left sm:grid-cols-3">
@@ -100,8 +100,7 @@ export default function ReviewPage() {
                                 <Link
                                     key={prompt}
                                     href={`/entry/new?prompt=${encodeURIComponent(prompt)}`}
-                                    className="rounded-xl border border-[rgba(0,0,0,0.08)] bg-[rgba(255,255,255,0.38)] px-3 py-3 text-sm font-medium transition-colors hover:bg-[rgba(255,255,255,0.58)]"
-                                    style={{ color: 'rgb(var(--paper-ink))' }}
+                                    className="rounded-xl border border-[rgba(0,0,0,0.08)] bg-[rgba(255,255,255,0.38)] px-3 py-3 text-sm font-medium transition-colors hover:bg-[rgba(255,255,255,0.58)] text-paper-ink"
                                 >
                                     {prompt}
                                 </Link>
@@ -126,14 +125,12 @@ export default function ReviewPage() {
                                 Your {subject} in review
                             </p>
                             <h1
-                                className="mt-2 text-3xl font-serif leading-tight"
-                                style={{ color: 'rgb(var(--paper-ink))' }}
+                                className="mt-2 text-3xl font-serif leading-tight text-paper-ink"
                             >
                                 {signature.editorialRecap.title}
                             </h1>
                             <p
-                                className="notebook-copy mt-4 text-base leading-relaxed"
-                                style={{ color: 'rgb(var(--paper-ink-soft))' }}
+                                className="notebook-copy mt-4 text-base leading-relaxed text-paper-soft"
                             >
                                 {signature.editorialRecap.summary}
                             </p>
@@ -145,7 +142,7 @@ export default function ReviewPage() {
                                 <p className="notebook-muted text-[0.7rem] uppercase tracking-[0.12em]" style={{ color: 'rgb(155 143 120)' }}>
                                     Entries
                                 </p>
-                                <p className="mt-1 font-serif text-xl" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                <p className="mt-1 font-serif text-xl text-paper-ink">
                                     {analytics.totalEntries}
                                 </p>
                             </div>
@@ -153,7 +150,7 @@ export default function ReviewPage() {
                                 <p className="notebook-muted text-[0.7rem] uppercase tracking-[0.12em]" style={{ color: 'rgb(155 143 120)' }}>
                                     Active days
                                 </p>
-                                <p className="mt-1 font-serif text-xl" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                <p className="mt-1 font-serif text-xl text-paper-ink">
                                     {analytics.activeDays}
                                 </p>
                             </div>
@@ -161,7 +158,7 @@ export default function ReviewPage() {
                                 <p className="notebook-muted text-[0.7rem] uppercase tracking-[0.12em]" style={{ color: 'rgb(155 143 120)' }}>
                                     Avg words
                                 </p>
-                                <p className="mt-1 font-serif text-xl" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                <p className="mt-1 font-serif text-xl text-paper-ink">
                                     {analytics.avgWordCount}
                                 </p>
                             </div>
@@ -182,14 +179,12 @@ export default function ReviewPage() {
                                             {signature.patternDigest.primary.label}
                                         </p>
                                         <p
-                                            className="mt-1 font-semibold"
-                                            style={{ color: 'rgb(var(--paper-ink))' }}
+                                            className="mt-1 font-semibold text-paper-ink"
                                         >
                                             {signature.patternDigest.primary.title}
                                         </p>
                                         <p
-                                            className="notebook-copy mt-2 text-sm leading-relaxed"
-                                            style={{ color: 'rgb(var(--paper-ink-soft))' }}
+                                            className="notebook-copy mt-2 text-sm leading-relaxed text-paper-soft"
                                         >
                                             {signature.patternDigest.primary.summary}
                                         </p>
@@ -211,8 +206,7 @@ export default function ReviewPage() {
                                     {signature.editorialRecap.highlights.map((highlight, index) => (
                                         <li
                                             key={index}
-                                            className="notebook-card-soft rounded-2xl p-4 text-sm leading-relaxed"
-                                            style={{ color: 'rgb(var(--paper-ink))' }}
+                                            className="notebook-card-soft rounded-2xl p-4 text-sm leading-relaxed text-paper-ink"
                                         >
                                             {highlight}
                                         </li>
@@ -234,8 +228,7 @@ export default function ReviewPage() {
                                     {analytics.topThemes.slice(0, 8).map((theme) => (
                                         <span
                                             key={theme.theme}
-                                            className="rounded-full border border-[rgba(0,0,0,0.08)] bg-[rgba(0,0,0,0.03)] px-3 py-1 text-sm"
-                                            style={{ color: 'rgb(var(--paper-ink))' }}
+                                            className="rounded-full border border-[rgba(0,0,0,0.08)] bg-[rgba(0,0,0,0.03)] px-3 py-1 text-sm text-paper-ink"
                                         >
                                             {titleCase(theme.theme)} · {theme.count}
                                         </span>
@@ -248,7 +241,7 @@ export default function ReviewPage() {
                         {topMoodLabel && (
                             <section className="notebook-card-soft mt-6 rounded-2xl p-5">
                                 <div className="flex items-start gap-3">
-                                    <div className="mt-1 shrink-0" style={{ color: 'rgb(var(--brand-strong))' }}>
+                                    <div className="mt-1 shrink-0 text-brand-strong">
                                         <FiHeart size={18} aria-hidden="true" />
                                     </div>
                                     <div className="min-w-0 flex-1">
@@ -259,14 +252,12 @@ export default function ReviewPage() {
                                             Dominant feeling
                                         </p>
                                         <p
-                                            className="mt-1 font-semibold"
-                                            style={{ color: 'rgb(var(--paper-ink))' }}
+                                            className="mt-1 font-semibold text-paper-ink"
                                         >
                                             {topMoodLabel}
                                         </p>
                                         <p
-                                            className="notebook-copy mt-2 text-sm leading-relaxed"
-                                            style={{ color: 'rgb(var(--paper-ink-soft))' }}
+                                            className="notebook-copy mt-2 text-sm leading-relaxed text-paper-soft"
                                         >
                                             This was the color most of your {subject} was written in.
                                         </p>
@@ -284,7 +275,7 @@ export default function ReviewPage() {
                                 >
                                     Then &amp; now
                                 </p>
-                                <p className="notebook-copy mt-2 text-sm leading-relaxed" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                <p className="notebook-copy mt-2 text-sm leading-relaxed text-paper-ink">
                                     {signature.thenNow.prompt}
                                 </p>
                                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -295,7 +286,7 @@ export default function ReviewPage() {
                                         <p className="notebook-muted text-[0.7rem] uppercase tracking-[0.12em]" style={{ color: 'rgb(155 143 120)' }}>
                                             {signature.thenNow.daysBetween} days ago
                                         </p>
-                                        <p className="mt-1 text-sm font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                        <p className="mt-1 text-sm font-semibold text-paper-ink">
                                             {signature.thenNow.thenEntry.title || 'Untitled note'}
                                         </p>
                                     </Link>
@@ -306,7 +297,7 @@ export default function ReviewPage() {
                                         <p className="notebook-muted text-[0.7rem] uppercase tracking-[0.12em]" style={{ color: 'rgb(155 143 120)' }}>
                                             Recent
                                         </p>
-                                        <p className="mt-1 text-sm font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                        <p className="mt-1 text-sm font-semibold text-paper-ink">
                                             {signature.thenNow.nowEntry.title || 'Untitled note'}
                                         </p>
                                     </Link>
@@ -318,7 +309,7 @@ export default function ReviewPage() {
                         <section className="mt-8">
                             <div className="rounded-2xl border-2 border-dashed border-[rgba(var(--brand-strong),0.35)] bg-[rgba(var(--brand-strong),0.04)] p-5">
                                 <div className="flex items-start gap-3">
-                                    <div className="mt-1 shrink-0" style={{ color: 'rgb(var(--brand-strong))' }}>
+                                    <div className="mt-1 shrink-0 text-brand-strong">
                                         <FiBookOpen size={18} aria-hidden="true" />
                                     </div>
                                     <div className="min-w-0 flex-1">
@@ -329,8 +320,7 @@ export default function ReviewPage() {
                                             A prompt before you close this
                                         </p>
                                         <p
-                                            className="notebook-copy mt-2 text-base leading-relaxed"
-                                            style={{ color: 'rgb(var(--paper-ink))' }}
+                                            className="notebook-copy mt-2 text-base leading-relaxed text-paper-ink"
                                         >
                                             {signature.editorialRecap.nextPrompt}
                                         </p>

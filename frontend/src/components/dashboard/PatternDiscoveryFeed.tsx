@@ -37,7 +37,7 @@ function CardFeedbackStrip({ surfaceType, entityKey, state, onFeedback }: CardFe
 
     return (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[rgba(var(--paper-border),0.22)] pt-3">
-            <span className="text-[0.68rem]" style={{ color: 'rgb(var(--paper-ink-muted))' }}>
+            <span className="text-[0.68rem] text-paper-muted">
                 Helpful read?
             </span>
             <button
@@ -71,7 +71,7 @@ function CardFeedbackStrip({ surfaceType, entityKey, state, onFeedback }: CardFe
                 Off mark
             </button>
             {selected === 'not_helpful' && (
-                <span className="text-[0.66rem]" style={{ color: 'rgb(var(--paper-ink-muted))' }}>
+                <span className="text-[0.66rem] text-paper-muted">
                     We&rsquo;ll hide similar reads.
                 </span>
             )}
@@ -112,10 +112,10 @@ function CorrelationCard({
                     aria-hidden="true"
                 />
                 <div className="flex-1">
-                    <p className="text-sm font-medium" style={{ color: 'rgb(var(--paper-ink))' }}>
+                    <p className="text-sm font-medium text-paper-ink">
                         When you write about &ldquo;{data.topic}&rdquo;
                     </p>
-                    <p className="notebook-copy text-[0.82rem] mt-1" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                    <p className="notebook-copy text-[0.82rem] mt-1 text-paper-soft">
                         {isLifter
                             ? `your mood tends to be ${Math.abs(data.delta).toFixed(1)} points higher`
                             : `your mood tends to dip by ${Math.abs(data.delta).toFixed(1)} points`}
@@ -176,7 +176,7 @@ function ContradictionCard({
                     aria-hidden="true"
                 />
                 <div className="flex-1">
-                    <p className="text-sm font-medium" style={{ color: 'rgb(var(--paper-ink))' }}>
+                    <p className="text-sm font-medium text-paper-ink">
                         {data.description}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -233,7 +233,7 @@ function TriggerRow({
     return (
         <div className="flex items-center gap-1.5">
             <div className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: accent }} />
-            <span className="text-xs truncate flex-1" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+            <span className="text-xs truncate flex-1 text-paper-soft">
                 {item.entity}
             </span>
             <span className="text-[0.62rem] text-[rgb(var(--text-soft))]">
@@ -273,7 +273,7 @@ function TriggerMapCard({
 
     return (
         <div className="notebook-card-soft rounded-xl p-4">
-            <p className="text-sm font-medium mb-3" style={{ color: 'rgb(var(--paper-ink))' }}>
+            <p className="text-sm font-medium mb-3 text-paper-ink">
                 What lifts and drains your mood
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -402,9 +402,6 @@ export default function PatternDiscoveryFeed({
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.3 }}
             className="notebook-card rounded-card-175 p-5"
         >
             <p
@@ -442,8 +439,6 @@ export default function PatternDiscoveryFeed({
             <AnimatePresence mode="wait">
                 <motion.div
                     key={activeTab}
-                    initial={{ opacity: 0, x: 8 }}
-                    animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -8 }}
                     transition={{ duration: 0.2 }}
                     className="space-y-2"

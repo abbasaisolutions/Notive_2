@@ -122,9 +122,6 @@ export default function WritingRhythmCalendar({ entries }: WritingRhythmCalendar
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.12, duration: 0.28 }}
             className="notebook-card-soft rounded-2xl p-4"
         >
             <p
@@ -140,8 +137,7 @@ export default function WritingRhythmCalendar({ entries }: WritingRhythmCalendar
                 {DAY_LABELS.map((day) => (
                     <div
                         key={day}
-                        className="text-center text-[0.58rem]"
-                        style={{ color: 'rgb(var(--paper-ink-muted))' }}
+                        className="text-center text-[0.58rem] text-paper-muted"
                     >
                         {day}
                     </div>
@@ -186,8 +182,7 @@ export default function WritingRhythmCalendar({ entries }: WritingRhythmCalendar
                 {BLOCK_LABELS.map((block) => (
                     <span
                         key={block}
-                        className="text-[0.55rem]"
-                        style={{ color: 'rgb(var(--paper-ink-muted))' }}
+                        className="text-[0.55rem] text-paper-muted"
                     >
                         {block}
                     </span>
@@ -196,7 +191,7 @@ export default function WritingRhythmCalendar({ entries }: WritingRhythmCalendar
 
             {/* Ritual detection */}
             {rituals.length > 0 && (
-                <p className="notebook-copy text-[0.82rem]" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                <p className="notebook-copy text-[0.82rem] text-paper-soft">
                     {rituals.length === 1
                         ? `You have a ${rituals[0].day} ${rituals[0].block.toLowerCase()} ritual.`
                         : `You have a ${rituals[0].day} ${rituals[0].block.toLowerCase()} and ${rituals[1].day} ${rituals[1].block.toLowerCase()} ritual.`}

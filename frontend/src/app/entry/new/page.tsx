@@ -1267,7 +1267,7 @@ function NewEntryPageContent() {
                 ? `This moment already has a lesson: ${lesson}. Shape it with what you did and what changed.`
                 : threadConnection
                     ? `This connects to ${threadConnection}. Add one action or result and it becomes easier to reuse later.`
-                    : 'This is saved as raw material. Add a clear action, result, or lesson when you want to use it later.';
+                    : 'This is saved as raw material. Add a clear action, result, or lesson to make it reusable.';
 
         if (
             people.length === 0
@@ -2331,7 +2331,7 @@ function NewEntryPageContent() {
 
 
                 {showContextualPrompt && (
-                    <div className="mb-4 rounded-[1.35rem] border border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.34)] px-4 py-4">
+                    <div className="mb-4 rounded-card-140 border border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.34)] px-4 py-4">
                         {threadContext && (
                             <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">
                                 Writing into: <span className="text-[rgb(var(--paper-sage))]">{threadContext}</span>
@@ -2402,9 +2402,9 @@ function NewEntryPageContent() {
                                     <details className="group">
                                         <summary className="cursor-pointer select-none list-none">
                                             <div className="workspace-soft-panel rounded-2xl p-4">
-                                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">What Notive noticed</p>
+                                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">From this note</p>
                                                 <p className="mt-1 text-sm text-ink-secondary">
-                                                    {isAnalyzing || isAiLoading ? 'Analyzing...' : 'Click to see mood, themes, and suggestions'}
+                                                    {isAnalyzing || isAiLoading ? 'Reading…' : 'Mood, themes, and suggestions'}
                                                 </p>
                                             </div>
                                         </summary>
@@ -2437,8 +2437,8 @@ function NewEntryPageContent() {
                                     </details>
                                 ) : (
                                     <div className="workspace-soft-panel rounded-2xl p-4">
-                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">What Notive noticed</p>
-                                        <p className="mt-1 text-sm text-ink-secondary">Save your note to see what Notive noticed</p>
+                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">From this note</p>
+                                        <p className="mt-1 text-sm text-ink-secondary">Save your note to see its mood, themes, and suggestions</p>
                                     </div>
                                 )}
 
@@ -2651,7 +2651,7 @@ function NewEntryPageContent() {
                             },
                             {
                                 label: 'Ask about it',
-                                description: 'Use AskNotive to understand the note or find what keeps repeating.',
+                                description: 'Understand the note or find what keeps repeating.',
                                 onSelect: handleAskAboutSavedEntry,
                             },
                             {
@@ -2687,7 +2687,7 @@ function NewEntryPageContent() {
                         <p className="text-xs uppercase tracking-[0.15em] text-ink-muted">Draft Detected</p>
                         <h2 id="draft-conflict-title" className="workspace-heading mt-2 text-xl font-semibold">Keep your existing draft or replace it?</h2>
                         <p className="mt-2 text-sm text-ink-secondary">
-                            A saved draft exists for this account. An incoming prompt or shared moment is also ready. Choose how to proceed.
+                            You have a saved draft and an incoming prompt. Choose one.
                         </p>
 
                         <div className="mt-5 grid gap-2">

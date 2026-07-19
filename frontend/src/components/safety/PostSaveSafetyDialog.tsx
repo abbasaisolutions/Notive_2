@@ -63,14 +63,12 @@ export default function PostSaveSafetyDialog({ risk, safetyCard, onContinue }: P
                 </p>
                 <h2
                     id="post-save-safety-headline"
-                    className="notebook-copy mt-2 text-lg font-semibold"
-                    style={{ color: 'rgb(var(--paper-ink))' }}
+                    className="notebook-copy mt-2 text-lg font-semibold text-paper-ink"
                 >
                     {headline}
                 </h2>
                 <p
-                    className="notebook-copy mt-2 text-sm leading-relaxed"
-                    style={{ color: 'rgb(var(--paper-ink-soft))' }}
+                    className="notebook-copy mt-2 text-sm leading-relaxed text-paper-soft"
                 >
                     {body}
                 </p>
@@ -99,8 +97,7 @@ export default function PostSaveSafetyDialog({ risk, safetyCard, onContinue }: P
                         {safetyCard.secondaryActionHref && safetyCard.secondaryActionLabel && (
                             <a
                                 href={safetyCard.secondaryActionHref}
-                                className="rounded-full border border-[rgba(0,0,0,0.12)] bg-[rgba(0,0,0,0.03)] px-4 py-2 text-sm font-medium transition-colors hover:bg-[rgba(0,0,0,0.06)]"
-                                style={{ color: 'rgb(var(--paper-ink))' }}
+                                className="rounded-full border border-[rgba(0,0,0,0.12)] bg-[rgba(0,0,0,0.03)] px-4 py-2 text-sm font-medium transition-colors hover:bg-[rgba(0,0,0,0.06)] text-paper-ink"
                             >
                                 {safetyCard.secondaryActionLabel}
                             </a>
@@ -109,8 +106,7 @@ export default function PostSaveSafetyDialog({ risk, safetyCard, onContinue }: P
                             <a
                                 key={`${action.kind}-${action.href}`}
                                 href={action.href}
-                                className="rounded-full border border-[rgba(0,0,0,0.12)] bg-[rgba(0,0,0,0.03)] px-4 py-2 text-sm font-medium transition-colors hover:bg-[rgba(0,0,0,0.06)]"
-                                style={{ color: 'rgb(var(--paper-ink))' }}
+                                className="rounded-full border border-[rgba(0,0,0,0.12)] bg-[rgba(0,0,0,0.03)] px-4 py-2 text-sm font-medium transition-colors hover:bg-[rgba(0,0,0,0.06)] text-paper-ink"
                             >
                                 {action.label}
                             </a>

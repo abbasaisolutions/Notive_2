@@ -76,8 +76,6 @@ export default function DailyCheckIn({ hasCheckedInToday, todayMood = null, onSu
         const moodLabel = todayMood || selectedMood;
         return (
             <motion.div
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
                 className="rounded-card-125 border border-[rgba(138,154,111,0.2)] bg-[rgba(138,154,111,0.06)] px-4 py-3 text-center"
             >
                 <p className="text-[0.78rem] font-medium text-[rgb(var(--brand))]">

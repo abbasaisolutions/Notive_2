@@ -63,7 +63,7 @@ export default function ReviewBanner({ totalEntries }: { totalEntries: number })
                 Hide
             </button>
             <div className="flex items-start gap-3 pr-12">
-                <div className="mt-1 shrink-0" style={{ color: 'rgb(var(--brand-strong))' }}>
+                <div className="mt-1 shrink-0 text-brand-strong">
                     <FiBookOpen size={18} aria-hidden="true" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -73,13 +73,12 @@ export default function ReviewBanner({ totalEntries }: { totalEntries: number })
                     >
                         Your {lastMonthName} is ready
                     </p>
-                    <p className="notebook-copy mt-1 text-sm leading-relaxed" style={{ color: 'rgb(var(--paper-ink))' }}>
+                    <p className="notebook-copy mt-1 text-sm leading-relaxed text-paper-ink">
                         A gentle recap of what you wrote, felt, and came back to.
                     </p>
                     <Link
                         href="/review"
-                        className="mt-3 inline-flex items-center gap-1 text-sm font-semibold transition-opacity hover:opacity-80"
-                        style={{ color: 'rgb(var(--brand-strong))' }}
+                        className="mt-3 inline-flex items-center gap-1 text-sm font-semibold transition-opacity hover:opacity-80 text-brand-strong"
                     >
                         <span>Open review</span>
                         <FiChevronRight size={14} aria-hidden="true" />

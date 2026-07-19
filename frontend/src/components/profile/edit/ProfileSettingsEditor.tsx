@@ -451,11 +451,11 @@ export function ProfileSettingsEditor() {
     const activeTabDescription = activeTab === 'profile'
         ? 'Update your photo, name, bio, and the basic details that identify this notebook.'
         : activeTab === 'preferences'
-            ? 'Tune goals, prompts, and guidance so Notive helps in a way that fits.'
+            ? 'Tune your goals, prompts, and guidance.'
             : activeTab === 'security'
                 ? 'Handle sign-in email, password, and protected account actions in one place.'
                 : activeTab === 'reminders'
-                    ? 'Set reflection nudges, calendar context, and device behavior without digging through privacy settings.'
+                    ? 'Reminders, calendar context, and device behavior.'
                     : 'Manage saved signals, support anchors, data exports, and permission-related controls.';
     const dirtyByTab: Record<EditableTab, boolean> = {
         profile: profileDirty,
@@ -505,13 +505,13 @@ export function ProfileSettingsEditor() {
                 id: 'writing',
                 label: 'Pick a writing style',
                 done: Boolean(preferencesDraft.writingPreference),
-                hint: 'This helps Notive use a writing style that feels easier.',
+                hint: 'Writing feels easier in your own style.',
             },
             {
                 id: 'life-goals',
                 label: 'Add at least one life goal',
                 done: profileDraft.lifeGoals.length > 0,
-                hint: 'This helps Notive understand what matters to you over time.',
+                hint: 'Tracks what matters to you over time.',
             },
             {
                 id: 'output-goals',
@@ -1109,7 +1109,7 @@ export function ProfileSettingsEditor() {
                 });
                 setNotice({
                     type: 'error',
-                    text: data?.message || 'This section changed somewhere else. Load the newest version or replace it with yours.',
+                    text: data?.message || 'Changed elsewhere. Load the newest version or replace it with yours.',
                 });
                 return;
             }
@@ -1190,7 +1190,7 @@ export function ProfileSettingsEditor() {
             setReauthPassword('');
             setNotice({
                 type: 'success',
-                text: 'Sensitive account changes unlocked for a short time.',
+                text: 'Confirmed — you can make account changes now.',
             });
         } catch (error: any) {
             setNotice({
@@ -1204,7 +1204,7 @@ export function ProfileSettingsEditor() {
 
     const handleUnlockSecurityWithPassword = useCallback(async () => {
         if (!reauthPassword) {
-            setNotice({ type: 'error', text: 'Enter your current password to unlock security changes.' });
+            setNotice({ type: 'error', text: 'Enter your current password to continue.' });
             return;
         }
 
@@ -1230,7 +1230,7 @@ export function ProfileSettingsEditor() {
         const normalizedConfirmEmail = confirmSignInEmailDraft.trim().toLowerCase();
 
         if (!hasUnlockedSensitiveActions) {
-            setNotice({ type: 'error', text: 'Unlock security changes before updating your sign-in email.' });
+            setNotice({ type: 'error', text: 'Confirm it’s you before updating your sign-in email.' });
             return;
         }
 
@@ -1277,7 +1277,7 @@ export function ProfileSettingsEditor() {
             await refreshUser();
             setNotice({
                 type: 'success',
-                text: 'Sign-in email updated. The current session was kept when possible and the other sessions were cleared.',
+                text: 'Email updated. Other sessions were signed out.',
             });
         } catch (error: any) {
             setNotice({
@@ -1291,7 +1291,7 @@ export function ProfileSettingsEditor() {
 
     const handleChangePassword = async () => {
         if (!hasUnlockedSensitiveActions) {
-            setNotice({ type: 'error', text: 'Unlock security changes before updating your password.' });
+            setNotice({ type: 'error', text: 'Confirm it’s you before updating your password.' });
             return;
         }
 
@@ -1331,7 +1331,7 @@ export function ProfileSettingsEditor() {
             await refreshUser();
             setNotice({
                 type: 'success',
-                text: 'Password updated. Other saved sessions were revoked, and this device may ask you to sign in again when the current session expires.',
+                text: 'Password updated. Other devices were signed out.',
             });
         } catch (error: any) {
             setNotice({
@@ -1348,7 +1348,7 @@ export function ProfileSettingsEditor() {
         const normalizedCurrentEmail = (savedProfileDraft.email || user?.email || '').trim().toLowerCase();
 
         if (!hasUnlockedSensitiveActions) {
-            setNotice({ type: 'error', text: 'Unlock security changes before deleting your account.' });
+            setNotice({ type: 'error', text: 'Confirm it’s you before deleting your account.' });
             return;
         }
 
@@ -1492,7 +1492,7 @@ export function ProfileSettingsEditor() {
                             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Settings</p>
                             <h1 className="workspace-heading text-2xl md:text-4xl font-serif tracking-tight">Settings</h1>
                             <p className="max-w-3xl text-sm md:text-base text-ink-secondary">
-                                Identity, goals, reminders, permissions, privacy, and account controls stay in separate sections.
+                                Each area has its own section.
                             </p>
                         </div>
                     </div>
@@ -1515,7 +1515,7 @@ export function ProfileSettingsEditor() {
                             </div>
                             <div>
                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Section</p>
-                                <h2 className="workspace-heading mt-2 text-2xl font-serif">{activeTabItem.label}</h2>
+                                <h2 className="workspace-heading mt-1.5 text-xl font-serif">{activeTabItem.label}</h2>
                                 <p className="mt-2 max-w-2xl text-sm leading-7 text-ink-secondary">{activeTabDescription}</p>
                                 <p className="mt-2 text-xs uppercase tracking-[0.12em] text-ink-muted">
                                     Each section saves separately.

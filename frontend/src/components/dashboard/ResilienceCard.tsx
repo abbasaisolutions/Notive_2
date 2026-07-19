@@ -29,9 +29,6 @@ export default function ResilienceCard({
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.12, duration: 0.28 }}
             className="notebook-card-soft rounded-card-175 p-5"
         >
             <div className="flex items-center gap-2 mb-3">
@@ -48,7 +45,7 @@ export default function ResilienceCard({
                 </p>
             </div>
 
-            <p className="notebook-copy text-sm leading-relaxed" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+            <p className="notebook-copy text-sm leading-relaxed text-paper-soft">
                 {narrative}
             </p>
 
@@ -58,8 +55,7 @@ export default function ResilienceCard({
                     <div className="flex-1 notebook-card rounded-xl p-3 text-center">
                         <p className="notebook-muted text-[0.65rem] uppercase tracking-wide">Before</p>
                         <p
-                            className="text-xl font-bold tabular-nums mt-1"
-                            style={{ color: 'rgb(var(--paper-ink))' }}
+                            className="text-xl font-bold tabular-nums mt-1 text-paper-ink"
                         >
                             {previousRecovery}
                         </p>
@@ -73,8 +69,7 @@ export default function ResilienceCard({
                     <div className="flex-1 notebook-card rounded-xl p-3 text-center">
                         <p className="notebook-muted text-[0.65rem] uppercase tracking-wide">Now</p>
                         <p
-                            className="text-xl font-bold tabular-nums mt-1"
-                            style={{ color: 'rgb(var(--paper-ink))' }}
+                            className="text-xl font-bold tabular-nums mt-1 text-paper-ink"
                         >
                             {currentRecovery}
                         </p>

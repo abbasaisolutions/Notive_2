@@ -14,8 +14,8 @@ export default function DashboardError({
             error={error}
             reset={reset}
             route="dashboard"
-            title="Your dashboard didn't load"
-            message="A gentle refresh usually fixes this. Your entries are safe."
+            title="Couldn't load the dashboard"
+            message="Your entries are safe — refresh to try again."
         />
     );
 }

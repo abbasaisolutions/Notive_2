@@ -108,8 +108,6 @@ export default function DeviceContextStrip({ signals }: DeviceContextStripProps)
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
             className="w-full overflow-x-auto scrollbar-hide snap-x snap-mandatory"
             style={{ WebkitOverflowScrolling: 'touch' }}
         >
@@ -117,9 +115,6 @@ export default function DeviceContextStrip({ signals }: DeviceContextStripProps)
                 {cards.map((card, i) => (
                     <motion.div
                         key={card.key}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.05 }}
                         className="notebook-card-soft rounded-xl px-3 py-2 snap-start shrink-0"
                         style={{ minWidth: 120 }}
                     >
@@ -127,7 +122,7 @@ export default function DeviceContextStrip({ signals }: DeviceContextStripProps)
                             <span className="text-xs" aria-hidden="true">{card.icon}</span>
                             <span className="notebook-muted text-[0.6rem]">{card.label}</span>
                         </div>
-                        <div style={{ color: 'rgb(var(--paper-ink))' }}>
+                        <div className="text-paper-ink">
                             {card.value}
                         </div>
                     </motion.div>

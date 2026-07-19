@@ -121,16 +121,13 @@ export default function PrimeTimePrediction({ entries }: PrimeTimePredictionProp
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.28 }}
             className="notebook-card-soft rounded-2xl p-4"
         >
             <p
                 className="section-label mb-3"
                 style={{ fontStyle: 'italic', fontFamily: 'var(--font-serif, Georgia, serif)' }}
             >
-                Your prime time
+                When you write
             </p>
 
             {/* Heat strip grid */}
@@ -139,8 +136,7 @@ export default function PrimeTimePrediction({ entries }: PrimeTimePredictionProp
                 {DAY_LABELS.map((day) => (
                     <div
                         key={day}
-                        className="text-center text-[0.6rem] pb-0.5"
-                        style={{ color: 'rgb(var(--paper-ink-muted))' }}
+                        className="text-center text-[0.6rem] pb-0.5 text-paper-muted"
                     >
                         {day}
                     </div>
@@ -179,8 +175,7 @@ export default function PrimeTimePrediction({ entries }: PrimeTimePredictionProp
                 {TIME_BLOCKS.map((block) => (
                     <span
                         key={block}
-                        className="text-[0.58rem]"
-                        style={{ color: 'rgb(var(--paper-ink-muted))' }}
+                        className="text-[0.58rem] text-paper-muted"
                     >
                         {BLOCK_LABELS[block]}
                     </span>
@@ -189,7 +184,7 @@ export default function PrimeTimePrediction({ entries }: PrimeTimePredictionProp
 
             {/* Narrative */}
             {bestNarrative && (
-                <p className="notebook-copy text-[0.82rem]" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                <p className="notebook-copy text-[0.82rem] text-paper-soft">
                     {bestNarrative}
                 </p>
             )}

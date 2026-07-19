@@ -81,8 +81,6 @@ export default function WordGarden({ vocabulary }: WordGardenProps) {
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
             className="notebook-card rounded-card-175 p-5 overflow-hidden"
         >
             <div className="flex items-center justify-between mb-4">
@@ -162,7 +160,7 @@ export default function WordGarden({ vocabulary }: WordGardenProps) {
             <div className="flex items-center justify-between mt-3 gap-2">
                 <div className="flex items-center gap-3">
                     <div className="text-center">
-                        <p className="text-xs font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                        <p className="text-xs font-semibold text-paper-ink">
                             {growthLabel}
                         </p>
                         <p className="notebook-muted text-[0.6rem]">
@@ -174,7 +172,7 @@ export default function WordGarden({ vocabulary }: WordGardenProps) {
                         style={{ backgroundColor: 'rgba(var(--paper-border), 0.3)' }}
                     />
                     <div className="text-center">
-                        <p className="text-xs font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                        <p className="text-xs font-semibold text-paper-ink">
                             {rarityLabel}
                         </p>
                         <p className="notebook-muted text-[0.6rem]">
@@ -200,12 +198,9 @@ export default function WordGarden({ vocabulary }: WordGardenProps) {
             {/* ── New words callout ── */}
             {recentNewWords.length > 0 && (
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
                     className="mt-3 notebook-card-soft rounded-xl px-3 py-2"
                 >
-                    <p className="text-[0.7rem] font-medium" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                    <p className="text-[0.7rem] font-medium text-paper-soft">
                         New blooms this week
                     </p>
                     <div className="flex flex-wrap gap-1 mt-1">

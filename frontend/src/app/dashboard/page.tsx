@@ -54,7 +54,7 @@ import {
     shouldPresentGentleReflection,
 } from '@/utils/gentle-reflection';
 import { deriveWriterDNA } from '@/services/writer-dna.service';
-import { getInsightTier, Gate, WhatsComingCard, FirstReadCard, EmptyDashboard } from '@/components/dashboard/ColdStartGate';
+import { getInsightTier } from '@/components/dashboard/ColdStartGate';
 const LifeAreaBreakdown = dynamic(() => import('@/components/dashboard/LifeAreaBreakdown'), { ssr: false });
 import { Surface } from '@/components/ui/surface';
 const DashboardCalmerLayout = dynamic(() => import('@/components/dashboard/DashboardCalmerLayout'), {
@@ -350,9 +350,9 @@ const buildValueFocus = (input: {
         title: latestEntry ? NOTIVE_VOICE.dashboard.heroTitle : 'Start with one real moment.',
         body: latestEntry
             ? NOTIVE_VOICE.dashboard.heroBody
-            : compactText(input.homeAction.intro || 'Capture one real moment and Notive will start building useful context from it.', 136),
+            : compactText(input.homeAction.intro || 'Capture one real moment. Context builds from there.', 136),
         evidence: storyPipeline,
-        evidenceFallback: 'Keep a few real moments here and Notive will start surfacing lessons, skills, and story signals.',
+        evidenceFallback: 'Lessons, skills, and story signals appear after a few notes.',
         // One panel only: the latest capture, resurfaced memory, and story
         // pipeline already have their own places on the dashboard.
         panels: [
@@ -367,7 +367,7 @@ const buildValueFocus = (input: {
             onClick: latestEntry ? onPrimary : undefined,
         },
         secondaryAction: {
-            label: latestEntry ? 'Use outside Notive' : 'Browse notebook',
+            label: latestEntry ? 'Open Stories' : 'Browse notebook',
             href: latestEntry ? portfolioHref : timelineHref,
             tone: 'secondary',
         },
@@ -427,7 +427,7 @@ const buildStarterFocus = (input: {
     eyebrow: 'Start light',
     title: 'Start with one real moment.',
     body: compactText(input.homeAction.intro || 'You do not need a polished story to begin. One real memory is enough.', 128),
-    evidenceFallback: 'A simple capture is enough for Notive to start building useful context.',
+    evidenceFallback: 'A simple capture is enough to start.',
     panels: [
         {
             label: 'Starter prompt',
@@ -439,7 +439,7 @@ const buildStarterFocus = (input: {
         href: input.newEntryHref,
     },
     secondaryAction: {
-        label: 'AskNotive',
+        label: 'Chat',
         href: input.guideHref,
         tone: 'secondary',
     },

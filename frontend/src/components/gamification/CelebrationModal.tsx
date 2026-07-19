@@ -1,100 +1,56 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useGamification } from '@/context/gamification-context';
 import { FiAward, FiTrendingUp } from 'react-icons/fi';
-import { Modal } from '@/components/ui/modal';
 
-const Confetti = () => {
-    const [particles, setParticles] = useState<Array<{ id: number; x: number; color: string; delay: number }>>([]);
+const AUTO_DISMISS_MS = 4000;
 
-    useEffect(() => {
-        const colors = ['#64748b', '#6b7280', '#78716c', '#52525b', '#334155', '#94a3b8'];
-        const newParticles = Array.from({ length: 50 }, (_, i) => ({
-            id: i,
-            x: Math.random() * 100,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            delay: Math.random() * 0.5,
-        }));
-        setParticles(newParticles);
-    }, []);
-
-    return (
-        <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-            {particles.map((p) => (
-                <div
-                    key={p.id}
-                    className="absolute w-3 h-3 rounded-full animate-confetti"
-                    style={{
-                        left: `${p.x}%`,
-                        backgroundColor: p.color,
-                        animationDelay: `${p.delay}s`,
-                    }}
-                />
-            ))}
-        </div>
-    );
-};
-
+/**
+ * Quiet milestone acknowledgment. Replaced the confetti + modal version:
+ * a private diary doesn't interrupt writing to congratulate itself.
+ */
 export default function CelebrationModal() {
     const { showCelebration, celebrationType, newBadge, dismissCelebration, stats } = useGamification();
 
+    useEffect(() => {
+        if (!showCelebration) return;
+        const timer = window.setTimeout(dismissCelebration, AUTO_DISMISS_MS);
+        return () => window.clearTimeout(timer);
+    }, [showCelebration, dismissCelebration]);
+
+    if (!showCelebration) return null;
+
+    const BadgeIcon = celebrationType === 'badge' && newBadge ? newBadge.icon : null;
+    const line = celebrationType === 'badge' && newBadge
+        ? newBadge.name
+        : celebrationType === 'levelup'
+            ? `Level ${stats?.level}`
+            : celebrationType === 'streak'
+                ? `${stats?.currentStreak}-day streak`
+                : null;
+    if (!line) return null;
+
     return (
-        <>
-            {showCelebration && <Confetti />}
-            <Modal
-                open={showCelebration}
-                onClose={dismissCelebration}
-                maxWidth="sm"
-                labelledBy="celebration-title"
-                backdropClassName="bg-black/60"
-                className="!rounded-3xl p-8 text-center animate-celebration"
+        <div
+            role="status"
+            className="fixed bottom-[calc(var(--app-bottom-clearance,4.5rem)+0.75rem)] left-1/2 z-50 -translate-x-1/2"
+        >
+            <button
+                type="button"
+                onClick={dismissCelebration}
+                className="notebook-card-soft flex items-center gap-2.5 rounded-full border border-[rgba(var(--paper-border),0.4)] py-2 pl-3 pr-4 shadow-lg transition-opacity hover:opacity-80"
             >
-                <div aria-label="Celebration">
-                    {celebrationType === 'badge' && newBadge && (
-                        <>
-                            <div className="mb-4 flex items-center justify-center text-primary animate-bounce">
-                                {(() => {
-                                    const BadgeIcon = newBadge.icon;
-                                    return <BadgeIcon size={56} aria-hidden="true" />;
-                                })()}
-                            </div>
-                            <h2 id="celebration-title" className="text-2xl font-bold text-ink mb-2">Badge Unlocked!</h2>
-                            <p className="text-xl text-primary mb-2">{newBadge.name}</p>
-                            <p className="text-ink-secondary mb-6">{newBadge.description}</p>
-                        </>
-                    )}
-
-                    {celebrationType === 'levelup' && (
-                        <>
-                            <div className="mb-4 flex items-center justify-center text-primary">
-                                <FiAward size={56} aria-hidden="true" />
-                            </div>
-                            <h2 id="celebration-title" className="text-2xl font-bold text-ink mb-2">Level Up!</h2>
-                            <p className="text-5xl font-bold text-primary mb-2">{stats?.level}</p>
-                            <p className="text-ink-secondary mb-6">You&apos;re building a deeper memory-and-signal practice.</p>
-                        </>
-                    )}
-
-                    {celebrationType === 'streak' && (
-                        <>
-                            <div className="mb-4 flex items-center justify-center text-primary">
-                                <FiTrendingUp size={56} aria-hidden="true" />
-                            </div>
-                            <h2 id="celebration-title" className="text-2xl font-bold text-ink mb-2">Streak Milestone!</h2>
-                            <p className="text-5xl font-bold text-primary mb-2">{stats?.currentStreak} Days</p>
-                            <p className="text-ink-secondary mb-6">Keep the momentum going!</p>
-                        </>
-                    )}
-
-                    <button
-                        onClick={dismissCelebration}
-                        className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-all"
-                    >
-                        Awesome
-                    </button>
-                </div>
-            </Modal>
-        </>
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/12 text-primary" aria-hidden="true">
+                    {BadgeIcon ? <BadgeIcon size={15} />
+                        : celebrationType === 'levelup' ? <FiAward size={15} />
+                        : <FiTrendingUp size={15} />}
+                </span>
+                <span className="text-sm font-semibold text-paper-ink">{line}</span>
+                {celebrationType === 'badge' && newBadge?.description && (
+                    <span className="hidden text-xs text-paper-soft sm:inline">{newBadge.description}</span>
+                )}
+            </button>
+        </div>
     );
 }

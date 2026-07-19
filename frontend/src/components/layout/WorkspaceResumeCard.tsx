@@ -51,7 +51,7 @@ export default function WorkspaceResumeCard({
             <div className="mb-2 flex items-center justify-between gap-2">
                 <div className="type-overline inline-flex items-center gap-2 text-muted">
                     <FiClock size={12} aria-hidden="true" />
-                    Resume Journey
+                    Last visited
                 </div>
                 {stage && (
                     <span className="type-micro text-soft">

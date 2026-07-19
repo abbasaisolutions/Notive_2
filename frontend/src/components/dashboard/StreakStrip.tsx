@@ -15,20 +15,20 @@ function streakCopy(currentStreak: number, bestStreak?: number) {
         return {
             kicker: `${currentStreak}-day rhythm`,
             title: 'A month of steady reflection.',
-            body: 'Your practice is compounding. The patterns Notive surfaces now are built on a real record.',
+            body: 'Your practice is compounding. The patterns showing up now are built on a real record.',
         };
     }
     if (currentStreak >= 14) {
         return {
             kicker: `${currentStreak} days in a row`,
             title: 'Two weeks of showing up.',
-            body: 'You’re writing through easy days and awkward ones — that’s where the good insights come from.',
+            body: 'Easy days and awkward ones — that’s where insights come from.',
         };
     }
     if (currentStreak >= 7) {
         return {
             kicker: `${currentStreak}-day streak`,
-            title: 'A full week of honesty with yourself.',
+            title: 'Seven days straight.',
             body: bestStreak && bestStreak > currentStreak
                 ? `Your best is ${bestStreak} days. You’re on the climb back.`
                 : 'Keep going — the patterns start sharpening from here.',
@@ -38,7 +38,7 @@ function streakCopy(currentStreak: number, bestStreak?: number) {
         return {
             kicker: `${currentStreak} days in a row`,
             title: 'You’ve got a rhythm going.',
-            body: 'A few more days and Notive starts pulling threads across your notes.',
+            body: 'Threads across your notes appear after a few more days.',
         };
     }
     return {
@@ -57,9 +57,6 @@ export default function StreakStrip({ currentStreak, bestStreak, timelineHref }:
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: [0.22, 0.61, 0.36, 1] }}
             className="notebook-card-soft flex items-start gap-4 rounded-card-175 px-5 py-4"
             aria-label={`${currentStreak} day writing streak`}
         >
@@ -91,7 +88,7 @@ export default function StreakStrip({ currentStreak, bestStreak, timelineHref }:
                 >
                     {copy.title}
                 </p>
-                <p className="mt-1 text-xs leading-5" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                <p className="mt-1 text-xs leading-5 text-paper-soft">
                     {copy.body}
                 </p>
             </div>

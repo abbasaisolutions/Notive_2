@@ -37,6 +37,16 @@ const config: Config = {
                     secondary: "rgb(var(--text-secondary))",
                     muted: "rgb(var(--text-muted))",
                 },
+                // Paper-notebook ink tokens — same variables the inline
+                // style={{ color: 'rgb(var(--paper-*))' }} usages pointed at;
+                // the codemod to these classes is value-preserving.
+                paper: {
+                    ink: "rgb(var(--paper-ink))",
+                    soft: "rgb(var(--paper-ink-soft))",
+                    muted: "rgb(var(--paper-ink-muted))",
+                    sage: "rgb(var(--paper-sage))",
+                },
+                "brand-strong": "rgb(var(--brand-strong))",
                 success: "rgb(var(--success))",
                 danger: "rgb(var(--danger))",
                 glass: "var(--glass-bg)",

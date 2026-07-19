@@ -148,9 +148,6 @@ export default function QuickPulseStrip({ entries, streak, totalWords }: QuickPu
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, ease: 'easeOut' }}
             className="notebook-card rounded-card-175 p-5"
         >
             <div className="flex items-center justify-between gap-3">
@@ -169,9 +166,6 @@ export default function QuickPulseStrip({ entries, streak, totalWords }: QuickPu
                 {pills.map((pill, i) => (
                     <motion.div
                         key={pill.label}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.05 * i, duration: 0.24 }}
                         className="notebook-card-soft rounded-card-130 px-4 py-3"
                         title={pill.detail}
                     >
@@ -184,8 +178,7 @@ export default function QuickPulseStrip({ entries, streak, totalWords }: QuickPu
                             />
                         </div>
                         <p
-                            className="mt-2 text-xl font-semibold tabular-nums leading-none"
-                            style={{ color: 'rgb(var(--paper-ink))' }}
+                            className="mt-2 text-xl font-semibold tabular-nums leading-none text-paper-ink"
                         >
                             {pill.value}
                         </p>

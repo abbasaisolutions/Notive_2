@@ -79,16 +79,13 @@ export default function EmotionalFingerprint({ axes, summary }: EmotionalFingerp
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.3 }}
             className="notebook-card rounded-card-175 p-5"
         >
             <p
                 className="section-label mb-1"
                 style={{ fontStyle: 'italic', fontFamily: 'var(--font-serif, Georgia, serif)' }}
             >
-                Emotional fingerprint
+                Mood map
             </p>
             <p className="notebook-muted text-xs mb-4">{summary}</p>
 
@@ -104,9 +101,6 @@ export default function EmotionalFingerprint({ axes, summary }: EmotionalFingerp
                     stroke="rgba(var(--brand-strong), 0.6)"
                     strokeWidth="2"
                     strokeLinejoin="round"
-                    initial={{ opacity: 0, scale: 0.6 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2, duration: 0.5, ease: 'easeOut' }}
                     style={{ transformOrigin: `${cx}px ${cy}px` }}
                 />
 
