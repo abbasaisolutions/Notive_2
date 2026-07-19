@@ -1082,7 +1082,7 @@ function DashboardNotebookViewFull({
         ? `${formatNotebookLabel(strongestEmotion.emotion)} has the strongest signal across your recent memories.`
         : latestEntry?.mood
             ? `Your last saved mood was ${formatNotebookLabel(latestEntry.mood)}.`
-            : 'Write one private memory and Notive will start reading the emotional weather gently.';
+            : 'Emotional signals appear after your first private memory.';
     const primaryThread = themeClusters[0] || null;
     // Only worth surfacing once there is a genuine repeating theme to point at.
     const hasPatternToNotice = Boolean(primaryThread);
@@ -1096,10 +1096,10 @@ function DashboardNotebookViewFull({
     const primaryThreadReason = primaryThread
         ? `${primaryThreadLabel} has shown up in ${primaryThread.entryCount} recent ${primaryThread.entryCount === 1 ? 'memory' : 'memories'}${primaryThread.dominantMood ? `, often with ${formatNotebookLabel(primaryThread.dominantMood).toLowerCase()} nearby` : ''}.`
         : strongestEmotion
-            ? `${formatNotebookLabel(strongestEmotion.emotion)} is the clearest emotional signal Notive can read right now.`
+            ? `${formatNotebookLabel(strongestEmotion.emotion)} is the clearest emotional signal right now.`
             : entries.length > 0
-                ? 'Notive needs a few more memories before it can name a repeating pattern clearly.'
-                : 'Your first memory gives Notive a private signal to hold and understand.';
+                ? 'A repeating pattern takes a few more memories to name clearly.'
+                : 'Patterns start with your first memory.';
     const todaysReadLine = primaryThread
         ? `${primaryThreadLabel} is the pattern showing up most clearly. ${innerWeatherBody}`
         : innerWeatherBody;
@@ -1114,7 +1114,7 @@ function DashboardNotebookViewFull({
     const quietGrowthLine = growthLedgerItems[0] || growthEvidence || '';
     const generatedMaterialCount = storyPipelineCounts.ready + storyPipelineCounts.verified;
     const generatedMaterialLine = generatedMaterialCount > 0
-        ? `${generatedMaterialCount} generated ${generatedMaterialCount === 1 ? 'piece is' : 'pieces are'} ready when you want to use them.`
+        ? `${generatedMaterialCount} generated ${generatedMaterialCount === 1 ? 'piece is' : 'pieces are'} ready to use.`
             : storyPipelineCounts.shaping > 0
                 ? `${storyPipelineCounts.shaping} ${storyPipelineCounts.shaping === 1 ? 'memory is' : 'memories are'} shaping into possible story, resume, lesson, or skill material.`
                 : 'Story, resume, lesson, and skill material will appear here after the diary has enough signal.';
@@ -1262,7 +1262,7 @@ function DashboardNotebookViewFull({
                         {portfolioPrompt.action}
                     </Link>
                 </div>
-                {/* The stage-by-stage pipeline lives in "Use outside Notive" —
+                {/* The stage-by-stage pipeline lives in the Stories section —
                     only the strongest signal is worth repeating here. */}
                 {storyPipelineCounts.leadSignal && (
                     <p className="mt-3 text-[0.69rem] leading-5 text-[rgb(var(--text-soft))]">

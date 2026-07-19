@@ -551,7 +551,7 @@ export default function ChatPage() {
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
                             aria-label="Message to your guide"
-                            placeholder={coachAvailable ? 'Ask what this means, what keeps repeating, or what you can use outside Notive...' : 'Guide is unavailable right now.'}
+                            placeholder={coachAvailable ? 'Ask what this means, what keeps repeating, or what to make of it...' : 'Guide is unavailable right now.'}
                             rows={1}
                             disabled={!coachAvailable}
                             className="workspace-input flex-1 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(var(--brand))]/35 resize-none"

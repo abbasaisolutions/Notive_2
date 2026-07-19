@@ -1258,7 +1258,7 @@ export default function PortfolioWorkspace() {
     const editingDetailsLabel = showEditingDetails ? 'Hide supporting details' : 'Supporting details';
     const editingDetailsDescription = showEditingDetails
         ? 'Go back to the shortest edit path when you only want the core story blocks.'
-        : 'Skills, proof notes, readiness, and the source memory stay here when you want to round the story out.';
+        : 'Skills, proof notes, readiness, and the source memory.';
     const toggleExportTools = () => {
         const nextValue = !showExportTools;
         setShowExportTools(nextValue);
@@ -2025,8 +2025,8 @@ export default function PortfolioWorkspace() {
         const storyAnchorPreview = story.result || story.action || story.situation || 'Use this story as your current interview anchor.';
         const interviewSurfaceHint = practiceMode
             ? practiceReveal
-                ? 'Compare your answer against the scaffold, then hide it again when you want another recall pass.'
-                : 'Answer from memory first, then reveal the scaffold only when you want a quick check.'
+                ? 'Compare your answer against the scaffold, then hide it for another recall pass.'
+                : 'Answer from memory first, then reveal the scaffold for a quick check.'
             : 'Use the scaffold to tighten the story first, then switch to recall mode when it feels ready.';
         const interviewPrimaryAction = practiceMode
             ? practiceReveal
@@ -2052,7 +2052,7 @@ export default function PortfolioWorkspace() {
                     <SectionHeader
                         kicker="Interview"
                         title="Stay with one story at a time"
-                        description="Keep one story in focus. Open the rest only when you want to switch."
+                        description="Keep one story in focus. Open the rest to switch."
                     />
 
                     <div className="workspace-soft-panel rounded-card-175 p-4">
@@ -2155,7 +2155,7 @@ export default function PortfolioWorkspace() {
                                     >
                                         <span className="workspace-heading block text-sm font-semibold">Recall</span>
                                         <span className="mt-2 block text-xs leading-6 text-ink-secondary">
-                                            Hide the scaffold first, then reveal it only when you want a check.
+                                            Hide the scaffold first; reveal it to check yourself.
                                         </span>
                                     </button>
                                 </div>
@@ -2945,7 +2945,7 @@ export default function PortfolioWorkspace() {
                 ? `${overview.interviewStories.length} stor${overview.interviewStories.length === 1 ? 'y is' : 'ies are'} ready to rehearse`
                 : 'Your saved moments are ready for the next pass';
     const storySnapshotDescription = !hasPortfolioMaterial
-        ? 'Write one concrete moment with what happened, what you did, and what changed. Notive will turn it into story material here.'
+        ? 'Write one concrete moment with what happened, what you did, and what changed. Story material builds from it here.'
         : filterCounts.needs_attention > 0
         ? 'Start with the missing block. The stronger stories can wait.'
         : filterCounts.ready_to_export > 0

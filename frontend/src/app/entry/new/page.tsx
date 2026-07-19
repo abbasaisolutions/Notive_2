@@ -1267,7 +1267,7 @@ function NewEntryPageContent() {
                 ? `This moment already has a lesson: ${lesson}. Shape it with what you did and what changed.`
                 : threadConnection
                     ? `This connects to ${threadConnection}. Add one action or result and it becomes easier to reuse later.`
-                    : 'This is saved as raw material. Add a clear action, result, or lesson when you want to use it later.';
+                    : 'This is saved as raw material. Add a clear action, result, or lesson to make it reusable.';
 
         if (
             people.length === 0

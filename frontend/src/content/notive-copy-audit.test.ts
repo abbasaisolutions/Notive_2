@@ -3,7 +3,9 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
     NOTIVE_BANNED_PUBLIC_LANGUAGE,
+    NOTIVE_POSTLOGIN_COPY_AUDIT_PATHS,
     NOTIVE_PUBLIC_COPY_AUDIT_PATHS,
+    NOTIVE_VOICE_BANNED_PATTERNS,
 } from '@/content/notive-voice';
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -22,6 +24,31 @@ describe('public copy audit', () => {
                 if (pattern.test(source)) {
                     offenders.push(`${relativePath} -> ${phrase}`);
                 }
+            });
+        });
+
+        expect(offenders).toEqual([]);
+    });
+
+    it('keeps banned voice constructions out of post-login copy sources', () => {
+        const frontendRoot = path.resolve(process.cwd(), 'src');
+        const offenders: string[] = [];
+
+        NOTIVE_POSTLOGIN_COPY_AUDIT_PATHS.forEach((relativePath) => {
+            const absolutePath = path.resolve(frontendRoot, '..', relativePath);
+            const lines = fs.readFileSync(absolutePath, 'utf8').split('\n');
+
+            lines.forEach((line, index) => {
+                // Narrow, documented opt-out: `// voice-ok: <reason>`
+                if (line.includes('voice-ok')) return;
+                // The banned-pattern definitions themselves are not copy.
+                if (/pattern:\s*['"]/.test(line)) return;
+
+                NOTIVE_VOICE_BANNED_PATTERNS.forEach(({ pattern, flags, reason }) => {
+                    if (new RegExp(pattern, flags).test(line)) {
+                        offenders.push(`${relativePath}:${index + 1} -> ${reason} (${pattern})`);
+                    }
+                });
             });
         });
 
