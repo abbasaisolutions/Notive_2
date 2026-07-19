@@ -121,9 +121,6 @@ export default function PrimeTimePrediction({ entries }: PrimeTimePredictionProp
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.28 }}
             className="notebook-card-soft rounded-2xl p-4"
         >
             <p

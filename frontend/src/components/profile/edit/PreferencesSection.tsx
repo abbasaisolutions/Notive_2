@@ -42,9 +42,9 @@ export function PreferencesSection({
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                         <div>
                             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Goals & Style</p>
-                            <h2 className="workspace-heading mt-2 text-2xl font-serif">Tell Notive how to help you</h2>
+                            <h2 className="workspace-heading mt-2 text-2xl font-serif">Goals &amp; style</h2>
                             <p className="mt-2 text-sm text-ink-secondary">
-                                These settings help Notive ask better questions, show better patterns, and build stories you can use.
+                                These settings shape your questions, patterns, and stories.
                             </p>
                         </div>
                         <div className="rounded-card-140 border border-primary/20 bg-primary/10 px-4 py-3 min-w-[180px]">
@@ -62,21 +62,21 @@ export function PreferencesSection({
                             value={draft.primaryGoal}
                             onChange={(value) => onChange((current) => ({ ...current, primaryGoal: value }))}
                             options={PRIMARY_GOAL_OPTIONS}
-                            helper="This tells Notive what kind of help to focus on first."
+                            helper="What kind of help comes first."
                         />
                         <SelectField
                             label="Main focus"
                             value={draft.focusArea}
                             onChange={(value) => onChange((current) => ({ ...current, focusArea: value }))}
                             options={FOCUS_AREA_OPTIONS}
-                            helper="Choose whether Notive should focus on life, study, work, or both."
+                            helper="Life, study, work, or both."
                         />
                         <SelectField
                             label="Where you are now"
                             value={draft.experienceLevel}
                             onChange={(value) => onChange((current) => ({ ...current, experienceLevel: value }))}
                             options={EXPERIENCE_LEVEL_OPTIONS}
-                            helper="This gives Notive the right amount of context."
+                            helper="Sets the right amount of context."
                         />
                         <SelectField
                             label="Writing style"
@@ -98,7 +98,7 @@ export function PreferencesSection({
                                 values={draft.outputGoals}
                                 draft={outputGoalsDraft}
                                 placeholder="Add a goal and press Enter"
-                                helper="These goals help Notive turn notes into stories you can use later."
+                                helper="Notes get shaped toward these goals."
                                 onDraftChange={onOutputGoalsDraftChange}
                                 onAdd={onAddOutputGoal}
                                 onRemove={onRemoveOutputGoal}
@@ -110,7 +110,7 @@ export function PreferencesSection({
                                 value={draft.starterPrompt}
                                 onChange={(value) => onChange((current) => ({ ...current, starterPrompt: value }))}
                                 placeholder="Example: What happened today that I want to remember?"
-                                helper="This is the easy first question Notive can show when you start writing."
+                                helper="Shown when you start writing."
                             />
                         </div>
                     </div>

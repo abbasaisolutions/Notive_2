@@ -207,9 +207,6 @@ export default function DailyGentleReflectionCard({
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, ease: 'easeOut' }}
         >
             <Surface doodle="sprout" doodleAccent="sage" className="app-paper">
                 {content}

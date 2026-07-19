@@ -71,8 +71,6 @@ export default function FirstVisitWalkthrough() {
             {visible && (
                 <motion.section
                     key="walkthrough"
-                    initial={{ opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.36, ease: 'easeOut' }}
                     className="notebook-shell rounded-[2.25rem] px-5 py-5 md:px-7 md:py-6"
@@ -95,13 +93,8 @@ export default function FirstVisitWalkthrough() {
                     </div>
 
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        {STEPS.map((step, i) => (
-                            <motion.div
-                                key={step.label}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.08 + i * 0.07, duration: 0.32 }}
-                            >
+                        {STEPS.map((step) => (
+                            <div key={step.label}>
                                 <Link
                                     href={step.href}
                                     className="group flex flex-col gap-2 rounded-card-140 border border-[rgba(141,123,105,0.14)] bg-[rgba(255,255,255,0.54)] p-4 transition-all hover:border-[rgba(141,123,105,0.28)] hover:bg-[rgba(255,255,255,0.76)] hover:shadow-sm"
@@ -118,7 +111,7 @@ export default function FirstVisitWalkthrough() {
                                         {step.cta}
                                     </span>
                                 </Link>
-                            </motion.div>
+                            </div>
                         ))}
                     </div>
 

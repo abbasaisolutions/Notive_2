@@ -169,9 +169,6 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
             className="notebook-card overflow-hidden rounded-card-175"
             style={{ backgroundColor: accent.bg }}
         >
@@ -250,8 +247,6 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
                 <AnimatePresence>
                     {expanded && insight.evidence && (
                         <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
                             transition={{ duration: 0.25 }}
                             className="mt-3 pt-3"
@@ -284,9 +279,6 @@ export default function HeroInsightCard({ insight, loading, onFeedback, openEntr
 
                 {!typing && (
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
                         className="mt-4 flex flex-wrap items-center gap-2"
                     >
                         {insight.evidence && !expanded && (

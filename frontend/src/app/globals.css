@@ -3,6 +3,16 @@
 @tailwind utilities;
 
 :root {
+  /* Motion tokens — the entire animation budget.
+     Policy: entrance animation belongs to the primary surface only
+     (.stagger-child on the dashboard tabpanel); individual cards render
+     instantly. Framer Motion is reserved for semantic motion: state change,
+     dismissal (exit), confirmation, and continuous ambient accents. */
+  --motion-fast: 150ms;
+  --motion-base: 240ms;
+  --motion-slow: 360ms;
+  --motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+
   /* Warm paper-first palette — matches Notive logo (#F8F4ED, #5C5C5C, #8A9A6F) */
   --bg-canvas: 248 244 237;
   --bg-elevated: 255 251 245;
@@ -1296,7 +1306,7 @@ html {
     50%      { opacity: 1; }
   }
   .stagger-child {
-    animation: stagger-in 280ms ease-out both;
+    animation: stagger-in var(--motion-base, 240ms) var(--motion-ease, ease-out) both;
   }
   .stagger-child:nth-child(1) { animation-delay: 0ms; }
   .stagger-child:nth-child(2) { animation-delay: 60ms; }

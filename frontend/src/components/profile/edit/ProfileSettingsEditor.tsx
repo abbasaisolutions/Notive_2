@@ -505,13 +505,13 @@ export function ProfileSettingsEditor() {
                 id: 'writing',
                 label: 'Pick a writing style',
                 done: Boolean(preferencesDraft.writingPreference),
-                hint: 'This helps Notive use a writing style that feels easier.',
+                hint: 'Writing feels easier in your own style.',
             },
             {
                 id: 'life-goals',
                 label: 'Add at least one life goal',
                 done: profileDraft.lifeGoals.length > 0,
-                hint: 'This helps Notive understand what matters to you over time.',
+                hint: 'Tracks what matters to you over time.',
             },
             {
                 id: 'output-goals',

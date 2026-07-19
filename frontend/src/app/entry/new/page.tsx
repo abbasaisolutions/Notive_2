@@ -2402,9 +2402,9 @@ function NewEntryPageContent() {
                                     <details className="group">
                                         <summary className="cursor-pointer select-none list-none">
                                             <div className="workspace-soft-panel rounded-2xl p-4">
-                                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">What Notive noticed</p>
+                                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">From this note</p>
                                                 <p className="mt-1 text-sm text-ink-secondary">
-                                                    {isAnalyzing || isAiLoading ? 'Analyzing...' : 'Click to see mood, themes, and suggestions'}
+                                                    {isAnalyzing || isAiLoading ? 'Reading…' : 'Mood, themes, and suggestions'}
                                                 </p>
                                             </div>
                                         </summary>
@@ -2437,8 +2437,8 @@ function NewEntryPageContent() {
                                     </details>
                                 ) : (
                                     <div className="workspace-soft-panel rounded-2xl p-4">
-                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">What Notive noticed</p>
-                                        <p className="mt-1 text-sm text-ink-secondary">Save your note to see what Notive noticed</p>
+                                        <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">From this note</p>
+                                        <p className="mt-1 text-sm text-ink-secondary">Save your note to see its mood, themes, and suggestions</p>
                                     </div>
                                 )}
 

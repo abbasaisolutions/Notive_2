@@ -18,8 +18,6 @@ export default function DashboardNoticeCard({
 }: DashboardNoticeCardProps) {
     return (
         <motion.section
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
             className={`notebook-card-soft rounded-3xl border border-dashed ${
                 compact ? 'px-4 py-3' : 'px-5 py-4'
             }`}

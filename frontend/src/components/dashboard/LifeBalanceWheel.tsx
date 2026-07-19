@@ -88,8 +88,6 @@ export default function LifeBalanceWheel({ lifeBalance }: LifeBalanceWheelProps)
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
             className="notebook-card rounded-card-175 p-5"
         >
             <div className="flex items-center justify-between mb-2">
@@ -141,9 +139,6 @@ export default function LifeBalanceWheel({ lifeBalance }: LifeBalanceWheelProps)
                         stroke="rgba(199,220,203,0.7)"
                         strokeWidth="2"
                         strokeLinejoin="round"
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.6, type: 'spring' }}
                         style={{ transformOrigin: `${cx}px ${cy}px` }}
                     />
 

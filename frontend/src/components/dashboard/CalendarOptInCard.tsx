@@ -68,8 +68,6 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
             <AnimatePresence>
                 <motion.section
                     key="cal-settings"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
                     transition={{ duration: 0.25 }}
                     className="notebook-card-soft rounded-card-175 px-5 py-4 flex items-start gap-4"
@@ -118,8 +116,6 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
             <AnimatePresence>
                 <motion.section
                     key="cal-mini"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
                     transition={{ duration: 0.25 }}
                     className="notebook-card-soft rounded-card-175 px-5 py-3.5 flex items-center gap-3"
@@ -162,8 +158,6 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
         <AnimatePresence>
             <motion.section
                 key="cal-full"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.3, ease: [0.22, 0.61, 0.36, 1] }}
                 className="notebook-card-soft rounded-card-175 px-5 py-5"

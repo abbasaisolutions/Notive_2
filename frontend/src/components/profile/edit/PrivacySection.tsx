@@ -182,7 +182,7 @@ export function PrivacySection({
                                 <p className="text-xs uppercase tracking-[0.16em] text-ink-muted font-bold">Bridge Fallback</p>
                                 <h3 className="workspace-heading mt-2 text-xl font-serif">Keep trusted people, channels, and steady routines visible</h3>
                                 <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                    Pin the people you trust, choose how you usually reach them, and keep the routines that steady you close. When a note feels vague or overwhelmed, Notive can lean on these anchors instead of guessing.
+                                    Pin the people you trust, choose how you usually reach them, and keep the routines that steady you close. When a note feels vague or overwhelmed, these anchors are used instead of guesses.
                                 </p>
                             </div>
                             <div className="workspace-soft-panel rounded-card-130 px-4 py-4">
@@ -223,7 +223,7 @@ export function PrivacySection({
                                     <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Trusted Contacts</p>
                                     <h4 className="workspace-heading mt-2 text-lg font-serif">Save the person and the channel</h4>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                        Add up to four real contacts Notive can prioritize in Bridge Builder or Safety Mode.
+                                        Add up to four real contacts to prioritize in Bridge Builder or Safety Mode.
                                     </p>
                                 </div>
 
@@ -267,7 +267,7 @@ export function PrivacySection({
                                         onChange={(value) => onTrustedContactDraftChange({ phoneNumber: value })}
                                         placeholder="+1 555 123 4567"
                                         type="tel"
-                                        helper="Optional. If you add a number, Notive can open a text or call draft."
+                                        helper="Optional. With a number, a text or call draft can open in one tap."
                                     />
                                     <TextField
                                         label="Email"

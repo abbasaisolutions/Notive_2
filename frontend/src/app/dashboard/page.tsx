@@ -54,7 +54,7 @@ import {
     shouldPresentGentleReflection,
 } from '@/utils/gentle-reflection';
 import { deriveWriterDNA } from '@/services/writer-dna.service';
-import { getInsightTier, Gate, WhatsComingCard, FirstReadCard, EmptyDashboard } from '@/components/dashboard/ColdStartGate';
+import { getInsightTier } from '@/components/dashboard/ColdStartGate';
 const LifeAreaBreakdown = dynamic(() => import('@/components/dashboard/LifeAreaBreakdown'), { ssr: false });
 import { Surface } from '@/components/ui/surface';
 const DashboardCalmerLayout = dynamic(() => import('@/components/dashboard/DashboardCalmerLayout'), {

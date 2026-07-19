@@ -28,21 +28,7 @@ export function getInsightTier(entryCount: number): InsightTier {
     return 0;
 }
 
-type GateProps = {
-    /** Minimum tier required to show children */
-    minTier: InsightTier;
-    /** Current tier based on entry count */
-    currentTier: InsightTier;
-    children: React.ReactNode;
-};
-
-/** Show children only when the user has reached the required tier. */
-export function Gate({ minTier, currentTier, children }: GateProps) {
-    if (currentTier < minTier) return null;
-    return <>{children}</>;
-}
-
-// ── Locked-insight previews shown at tier 1 (1-2 entries) ──
+// ── Locked-insight previews shown below the full-insight tier ──
 
 type UpcomingInsight = {
     label: string;
@@ -72,9 +58,6 @@ export function WhatsComingCard({ entryCount }: { entryCount: number }) {
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.3 }}
             className="notebook-card-soft rounded-card-175 p-5"
         >
             <p
@@ -128,109 +111,6 @@ export function WhatsComingCard({ entryCount }: { entryCount: number }) {
     );
 }
 
-// ── First Read: what Notive extracted from the first entry ──
-
-type FirstReadProps = {
-    mood?: string | null;
-    tags: string[];
-    createdAt: string;
-    entities?: string[];
-    topics?: string[];
-    lessons?: string[];
-    skills?: string[];
-};
-
-const revealItem = {
-    hidden: { opacity: 0, y: 8 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 0.61, 0.36, 1] } },
-};
-
-export function FirstReadCard({ mood, tags, entities, topics, lessons, skills }: FirstReadProps) {
-    const hasContent = mood || tags.length > 0
-        || (entities && entities.length > 0) || (topics && topics.length > 0)
-        || (lessons && lessons.length > 0) || (skills && skills.length > 0);
-    if (!hasContent) return null;
-
-    const staggerContainer = {
-        hidden: {},
-        show: { transition: { staggerChildren: 0.12, delayChildren: 0.05 } },
-    };
-
-    return (
-        <motion.section
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.3 }}
-            className="notebook-card-soft rounded-card-175 p-5"
-        >
-            <div className="mb-3 flex items-center gap-2">
-                <span aria-hidden="true" className="inline-flex">
-                    <NotebookDoodle name="quill" accent="sage" size={20} />
-                </span>
-                <p
-                    className="section-label"
-                    style={{ fontStyle: 'italic', fontFamily: 'var(--font-serif, Georgia, serif)' }}
-                >
-                    From this entry
-                </p>
-            </div>
-
-            <motion.div
-                className="space-y-2"
-                variants={staggerContainer}
-                initial="hidden"
-                animate="show"
-            >
-                {lessons && lessons.length > 0 && (
-                    <motion.p variants={revealItem} className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
-                        Lesson — <span className="font-medium">{lessons[0]}</span>
-                    </motion.p>
-                )}
-
-                {skills && skills.length > 0 && (
-                    <motion.p variants={revealItem} className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
-                        {skills.length === 1 ? 'Skill' : 'Skills'} —{' '}
-                        <span className="font-medium">{skills.slice(0, 3).join(', ')}</span>
-                    </motion.p>
-                )}
-
-                {mood && (
-                    <motion.p variants={revealItem} className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
-                        Mood — <span className="font-medium capitalize">{mood}</span>
-                    </motion.p>
-                )}
-
-                {entities && entities.length > 0 && (
-                    <motion.p variants={revealItem} className="text-sm" style={{ color: 'rgb(var(--paper-ink))' }}>
-                        {entities.length === 1 ? 'Person' : 'People'} —{' '}
-                        <span className="font-medium">{entities.slice(0, 3).join(', ')}</span>
-                    </motion.p>
-                )}
-
-                {topics && topics.length > 0 && (
-                    <motion.p variants={revealItem} className="text-sm italic" style={{ color: 'rgb(var(--paper-ink-soft))', fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-                        {topics[0]}
-                    </motion.p>
-                )}
-
-                {tags.length > 0 && (
-                    <motion.div variants={revealItem} className="flex flex-wrap gap-1.5 pt-1">
-                        {tags.slice(0, 4).map((tag) => (
-                            <span
-                                key={tag}
-                                className="rounded-full border border-[rgba(var(--paper-border),0.5)] bg-[rgba(var(--paper-border),0.12)] px-2.5 py-0.5 text-xs"
-                                style={{ color: 'rgb(var(--paper-ink-soft))' }}
-                            >
-                                {tag}
-                            </span>
-                        ))}
-                    </motion.div>
-                )}
-            </motion.div>
-        </motion.section>
-    );
-}
-
 const EMPTY_DASHBOARD_COPY = {
     title: 'Nothing here yet.',
     body: 'Patterns, moods, and threads appear after your first few notes.',
@@ -241,9 +121,6 @@ export function EmptyDashboard({ writeHref }: { writeHref: string }) {
     const copy = EMPTY_DASHBOARD_COPY;
     return (
         <motion.section
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
             className="notebook-shell rounded-[2.25rem] px-6 py-10 text-center"
         >
             <NotebookDoodle name="sprout" accent="sage" className="mx-auto mb-4 animate-[breathe_3s_ease-in-out_infinite]" />

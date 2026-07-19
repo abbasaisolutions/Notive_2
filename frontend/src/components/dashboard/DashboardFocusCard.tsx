@@ -123,9 +123,6 @@ export default function DashboardFocusCard({
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 12, rotate: -0.3 }}
-            animate={{ opacity: 1, y: 0, rotate: 0 }}
-            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
             className={cn(
                 'notebook-card notebook-focus-shadow relative overflow-hidden rounded-card-200 p-6 md:p-7',
                 className
@@ -151,9 +148,6 @@ export default function DashboardFocusCard({
 
                     {doodle && (
                         <motion.div
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.14, duration: 0.24 }}
                             className="shrink-0"
                         >
                             <NotebookDoodle name={doodle} accent={accent} />

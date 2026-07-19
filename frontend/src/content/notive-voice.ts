@@ -20,6 +20,8 @@ export const NOTIVE_BANNED_PUBLIC_LANGUAGE = [
 export const NOTIVE_VOICE_BANNED_PATTERNS: ReadonlyArray<{ pattern: string; flags: string; reason: string }> = [
     { pattern: "Notive (helps|keeps|starts|builds|notices|remembers|will|learns|listens|reads|turns|asks|uses)\\b", flags: '', reason: 'app self-narration' },
     { pattern: "Notive['\\u2019]s ", flags: '', reason: 'app self-narration (possessive)' },
+    { pattern: '\\bNotive (sees|notices|noticed|surfaces|can|should)\\b', flags: '', reason: 'app self-narration' },
+    { pattern: '\\b(for|give|gives|help|helps|let|lets|tell|tells) Notive\\b', flags: '', reason: 'app self-narration (indirect)' },
     { pattern: 'outside Notive', flags: '', reason: 'app self-reference' },
     { pattern: '\\b(mood|lesson|skill|pattern)s? (detected|extracted|spotted)\\b', flags: 'i', reason: 'detection language' },
     { pattern: 'starts its magic', flags: 'i', reason: 'AI theater' },
@@ -126,7 +128,7 @@ export const NOTIVE_VOICE = {
         resetTitle: 'Set a new password and keep going.',
         resetBody: 'Update your password and reopen your private diary.',
         profileTitle: 'Add one quick detail so Notive fits your stage of life.',
-        profileBody: 'Your birthday stays private. It helps Notive phrase prompts, examples, and outputs in a way that better matches your context.',
+        profileBody: 'Your birthday stays private. It shapes prompts, examples, and outputs to better match your context.',
     },
     onboarding: {
         goalLabels: {

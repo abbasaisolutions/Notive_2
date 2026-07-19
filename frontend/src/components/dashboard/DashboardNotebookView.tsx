@@ -13,6 +13,7 @@ import DailyPathCard from '@/components/dashboard/DailyPathCard';
 import DailyCheckIn from '@/components/dashboard/DailyCheckIn';
 import DisclosureSection from '@/components/dashboard/DisclosureSection';
 import FirstWeekJourneyCard from '@/components/dashboard/FirstWeekJourneyCard';
+import { EmptyDashboard, WhatsComingCard } from '@/components/dashboard/ColdStartGate';
 import type { StudentActionBrief } from '@/components/action/types';
 import DailyGentleReflectionCard from '@/components/dashboard/DailyGentleReflectionCard';
 import { NotebookDoodle } from '@/components/dashboard/NotebookDoodles';
@@ -749,12 +750,12 @@ function DashboardNotebookViewFull({
     const highestWeekdayCount = weekdayCounts.reduce((highest, day) => Math.max(highest, day.count), 0);
     const energyTrait = writerDNA.traits[1] || writerDNA.traits[0];
     const threadSentence = weekWords > 0
-        ? `You put down ${weekWords} ${weekWords === 1 ? 'word' : 'words'} this week - enough for Notive to start finding a clearer pattern.`
+        ? `You put down ${weekWords} ${weekWords === 1 ? 'word' : 'words'} this week - enough to start finding a clearer pattern.`
         : typeof totalWords === 'number' && totalWords > 0
-            ? `You already have ${totalWords} words in the notebook - enough for Notive to start finding a clearer pattern.`
+            ? `You already have ${totalWords} words in the notebook - enough to start finding a clearer pattern.`
             : entries.length > 0
-                ? `You already have ${entries.length} ${entries.length === 1 ? 'memory' : 'memories'} here - enough for Notive to start finding a clearer pattern.`
-                : 'One honest memory is enough for Notive to start finding a clearer pattern.';
+                ? `You already have ${entries.length} ${entries.length === 1 ? 'memory' : 'memories'} here - enough to start finding a clearer pattern.`
+                : 'One real memory is enough to start.';
     const rhythmSummary = dominantWritingWindow
         ? `Most of your memories return in the ${dominantWritingWindow}. When that window opens, leave two honest lines before it passes.`
         : entries.length >= 3
@@ -820,10 +821,10 @@ function DashboardNotebookViewFull({
         : `${writerDNA.archetype.oneLiner}. The notebook is starting to hold a shape you can actually use.`;
     const growthEvidence = themeClusters[0]?.label
         ? `A theme that keeps returning lately: ${themeClusters[0].label}.`
-        : 'A few honest memories are already enough for Notive to hold onto what matters.';
+        : 'A few more memories and the recurring themes take shape.';
     const patternsLead = dominantWritingWindow
         ? `Your deepest writing tends to happen in the ${dominantWritingWindow}.`
-        : 'Your writing window is still forming, but Notive is already watching for it.';
+        : 'Your writing window is still forming.';
     const writingRhythmLine = topDayWindowMoments.length >= 2
         ? `Your deepest reflections tend to come on ${topDayWindowMoments[0].label} and ${topDayWindowMoments[1].label}.`
         : topDayWindowMoments.length === 1
@@ -1047,7 +1048,7 @@ function DashboardNotebookViewFull({
         strongestEmotion
             ? {
                 title: 'Naming what was true',
-                body: `${toTitleCase(strongestEmotion.emotion)} showed up enough times for Notive to trace it as a recurring part of the week.`,
+                body: `${toTitleCase(strongestEmotion.emotion)} showed up enough times to count as a recurring part of the week.`,
             }
             : null,
         resurfacedMoment
@@ -1067,7 +1068,7 @@ function DashboardNotebookViewFull({
         ? smallEvidenceItems
         : [{
             title: 'First pattern',
-            body: 'A few more memories will give Notive enough evidence to sketch this page more clearly.',
+            body: 'A few more memories will sketch this page more clearly.',
         }];
     const innerWeatherMood = strongestEmotion?.emotion
         || latestEntry?.mood
@@ -1273,6 +1274,11 @@ function DashboardNotebookViewFull({
         </div>
     ) : null;
     const topPreviewContent = activeTab === 'overview' ? (
+        entries.length === 0 ? (
+            /* Zero-entry state: date, one line, write CTA. Nothing else —
+               every other section at this tier is prose about absent data. */
+            <EmptyDashboard writeHref={recommendedHref} />
+        ) : (
         <>
             {/* One ask at a time: when the day's step is a check-in, the inline
                 mood picker IS the card — no separate check-in section below. */}
@@ -1289,6 +1295,10 @@ function DashboardNotebookViewFull({
             {entries.length >= 1 && entries.length < 5 && (
                 <FirstWeekJourneyCard steps={firstWeekSteps} />
             )}
+
+            {/* Below the full-insight tier: progress rings toward the next
+                insight, never prose about what is missing. Hides itself at 10+. */}
+            {entries.length < 10 && <WhatsComingCard entryCount={entries.length} />}
 
             <section className="rounded-[1.35rem] border border-[rgba(92,92,92,0.12)] bg-[linear-gradient(135deg,rgba(255,251,245,0.84),rgba(248,244,237,0.6))] px-3 py-3 shadow-[0_14px_32px_rgba(92,92,92,0.06)] sm:px-4 sm:py-4">
                 <div className="flex items-start justify-between gap-3">
@@ -1357,7 +1367,7 @@ function DashboardNotebookViewFull({
                 {/* Only when there is something actually noticed — the placeholder copy said nothing. */}
                 {quietGrowthLine && (
                     <div className="mt-3 rounded-card-105 border border-[rgba(216,199,232,0.24)] bg-[rgba(216,199,232,0.1)] p-3">
-                        <p className="section-label">Notive noticed</p>
+                        <p className="section-label">Worth noticing</p>
                         <p className="mt-1.5 text-[0.78rem] leading-5 text-[rgb(var(--paper-ink))]">
                             {quietGrowthLine}
                         </p>
@@ -1439,7 +1449,7 @@ function DashboardNotebookViewFull({
 
                     {/* ── Intelligence strip ── */}
                     <div className="border-t border-[rgba(92,92,92,0.14)] pt-3 space-y-2">
-                        <p className="section-label">What Notive sees right now</p>
+                        <p className="section-label">Right now</p>
 
                 {/* Row 1 — Mood Micro-Shift + Writing Energy */}
                 <div className="grid grid-cols-2 gap-2">
@@ -1481,7 +1491,7 @@ function DashboardNotebookViewFull({
                     repeat here. */}
                 {dashboardInsights?.contradictions[0] ? (
                     <div className="rounded-card-95 border border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.52)] px-2.5 py-2">
-                        <p className="text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-[rgb(var(--text-soft))]">Notive noticed a gap</p>
+                        <p className="text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-[rgb(var(--text-soft))]">A gap worth noticing</p>
                         <p className="mt-0.5 text-[0.73rem] leading-5 text-[rgb(var(--paper-ink))]">
                             {compactText(dashboardInsights.contradictions[0].description, 110)}
                         </p>
@@ -1505,6 +1515,7 @@ function DashboardNotebookViewFull({
                 </div>
             </DisclosureSection>
         </>
+        )
     ) : activeTab === 'growth' ? (
         <div className="space-y-2.5" data-snapshot-root>
             <style>{`
@@ -2413,6 +2424,9 @@ function DashboardNotebookViewFull({
                                 </div>
                             </div>
 
+                            {/* Growth and patterns pages have nothing to show before
+                                the first entry — the tab strip appears with the data. */}
+                            {entries.length > 0 && (
                             <div className="overflow-x-auto scrollbar-hide">
                                 <div role="tablist" aria-label="Dashboard pages" className="inline-flex min-w-full gap-1 rounded-card-120 border border-[rgba(92,92,92,0.12)] bg-[rgba(237,228,216,0.72)] p-0.5 min-[430px]:rounded-3xl min-[430px]:p-1">
                                     {TAB_ORDER.map((tab) => (
@@ -2445,6 +2459,7 @@ function DashboardNotebookViewFull({
                                     ))}
                                 </div>
                             </div>
+                            )}
 
                             <div id={`dashboard-page-${activeTab}`} role="tabpanel" className="pt-1 space-y-4 stagger-child" key={activeTab}>
                                 {topPreviewContent}

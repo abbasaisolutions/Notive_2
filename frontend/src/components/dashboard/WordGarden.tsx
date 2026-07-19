@@ -81,8 +81,6 @@ export default function WordGarden({ vocabulary }: WordGardenProps) {
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
             className="notebook-card rounded-card-175 p-5 overflow-hidden"
         >
             <div className="flex items-center justify-between mb-4">
@@ -200,9 +198,6 @@ export default function WordGarden({ vocabulary }: WordGardenProps) {
             {/* ── New words callout ── */}
             {recentNewWords.length > 0 && (
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
                     className="mt-3 notebook-card-soft rounded-xl px-3 py-2"
                 >
                     <p className="text-[0.7rem] font-medium" style={{ color: 'rgb(var(--paper-ink-soft))' }}>

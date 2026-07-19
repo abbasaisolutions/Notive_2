@@ -15,7 +15,7 @@ function streakCopy(currentStreak: number, bestStreak?: number) {
         return {
             kicker: `${currentStreak}-day rhythm`,
             title: 'A month of steady reflection.',
-            body: 'Your practice is compounding. The patterns Notive surfaces now are built on a real record.',
+            body: 'Your practice is compounding. The patterns showing up now are built on a real record.',
         };
     }
     if (currentStreak >= 14) {
@@ -57,9 +57,6 @@ export default function StreakStrip({ currentStreak, bestStreak, timelineHref }:
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: [0.22, 0.61, 0.36, 1] }}
             className="notebook-card-soft flex items-start gap-4 rounded-card-175 px-5 py-4"
             aria-label={`${currentStreak} day writing streak`}
         >

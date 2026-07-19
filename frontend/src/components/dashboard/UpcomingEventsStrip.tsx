@@ -130,9 +130,6 @@ export default function UpcomingEventsStrip({ refreshTrigger }: Props) {
                     {events.map((event, i) => (
                         <motion.button
                             key={event.id}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.07, duration: 0.25 }}
                             onClick={() => handleTap(event)}
                             className="notebook-card-soft group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all active:scale-[0.98] active:opacity-80"
                             aria-label={`Journal about ${event.title}`}

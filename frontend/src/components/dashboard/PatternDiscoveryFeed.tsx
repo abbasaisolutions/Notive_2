@@ -402,9 +402,6 @@ export default function PatternDiscoveryFeed({
 
     return (
         <motion.section
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.3 }}
             className="notebook-card rounded-card-175 p-5"
         >
             <p
@@ -442,8 +439,6 @@ export default function PatternDiscoveryFeed({
             <AnimatePresence mode="wait">
                 <motion.div
                     key={activeTab}
-                    initial={{ opacity: 0, x: 8 }}
-                    animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -8 }}
                     transition={{ duration: 0.2 }}
                     className="space-y-2"
