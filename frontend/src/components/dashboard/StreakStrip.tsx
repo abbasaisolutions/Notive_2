@@ -88,7 +88,7 @@ export default function StreakStrip({ currentStreak, bestStreak, timelineHref }:
                 >
                     {copy.title}
                 </p>
-                <p className="mt-1 text-xs leading-5" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                <p className="mt-1 text-xs leading-5 text-paper-soft">
                     {copy.body}
                 </p>
             </div>

@@ -121,7 +121,7 @@ export default function GrowthMindsetMeter({ growthLanguage, selfTalk }: GrowthM
 
                 {/* Self-talk label */}
                 <div className="flex-1 min-w-0">
-                    <p className="text-base font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                    <p className="text-base font-semibold text-paper-ink">
                         {selfTalk.label}
                     </p>
                     <p className="notebook-muted text-xs mt-1">

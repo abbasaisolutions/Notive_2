@@ -121,19 +121,19 @@ export default function GratitudePulseCard({ gratitude }: GratitudePulseCardProp
             {/* ── Stats ── */}
             <div className="grid grid-cols-3 gap-2 mt-2">
                 <div className="notebook-card-soft rounded-xl px-3 py-2 text-center">
-                    <p className="text-sm font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                    <p className="text-sm font-semibold text-paper-ink">
                         {totalExpressions}
                     </p>
                     <p className="notebook-muted text-[0.6rem]">expressions</p>
                 </div>
                 <div className="notebook-card-soft rounded-xl px-3 py-2 text-center">
-                    <p className="text-sm font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                    <p className="text-sm font-semibold text-paper-ink">
                         {avgPerWeek}/wk
                     </p>
                     <p className="notebook-muted text-[0.6rem]">frequency</p>
                 </div>
                 <div className="notebook-card-soft rounded-xl px-3 py-2 text-center">
-                    <p className="text-sm font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                    <p className="text-sm font-semibold text-paper-ink">
                         {streak > 0 ? `${streak}d` : '—'}
                     </p>
                     <p className="notebook-muted text-[0.6rem]">streak</p>

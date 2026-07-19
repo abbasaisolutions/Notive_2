@@ -73,7 +73,7 @@ export default function FirstVisitWalkthrough() {
                     key="walkthrough"
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.36, ease: 'easeOut' }}
-                    className="notebook-shell rounded-[2.25rem] px-5 py-5 md:px-7 md:py-6"
+                    className="notebook-shell rounded-card-200 px-5 py-5 md:px-7 md:py-6"
                 >
                     <div className="flex items-start justify-between gap-3 mb-4">
                         <div>

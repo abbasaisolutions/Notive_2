@@ -110,8 +110,7 @@ export default function MoodForecastCard() {
                         <TagPill>{forecast.windowDays} day window</TagPill>
                     </div>
                     <p
-                        className="notebook-copy mt-3 text-[0.92rem] leading-relaxed"
-                        style={{ color: 'rgb(var(--paper-ink))' }}
+                        className="notebook-copy mt-3 text-[0.92rem] leading-relaxed text-paper-ink"
                     >
                         {primaryLine}
                     </p>

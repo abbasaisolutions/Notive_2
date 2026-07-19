@@ -2331,7 +2331,7 @@ function NewEntryPageContent() {
 
 
                 {showContextualPrompt && (
-                    <div className="mb-4 rounded-[1.35rem] border border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.34)] px-4 py-4">
+                    <div className="mb-4 rounded-card-140 border border-[rgba(var(--paper-border),0.82)] bg-[rgba(255,255,255,0.34)] px-4 py-4">
                         {threadContext && (
                             <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">
                                 Writing into: <span className="text-[rgb(var(--paper-sage))]">{threadContext}</span>

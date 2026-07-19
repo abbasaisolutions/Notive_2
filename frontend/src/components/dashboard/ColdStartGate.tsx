@@ -96,7 +96,7 @@ export function WhatsComingCard({ entryCount }: { entryCount: number }) {
                             </div>
 
                             <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                <p className="text-sm font-medium text-paper-ink">
                                     {insight.label}
                                 </p>
                                 <p className="notebook-muted text-xs">
@@ -121,18 +121,16 @@ export function EmptyDashboard({ writeHref }: { writeHref: string }) {
     const copy = EMPTY_DASHBOARD_COPY;
     return (
         <motion.section
-            className="notebook-shell rounded-[2.25rem] px-6 py-10 text-center"
+            className="notebook-shell rounded-card-200 px-6 py-10 text-center"
         >
             <NotebookDoodle name="sprout" accent="sage" className="mx-auto mb-4 animate-[breathe_3s_ease-in-out_infinite]" />
             <h2
-                className="notebook-title text-lg"
-                style={{ color: 'rgb(var(--paper-ink))' }}
+                className="notebook-title text-lg text-paper-ink"
             >
                 {copy.title}
             </h2>
             <p
-                className="notebook-copy mt-2 text-sm mx-auto max-w-xs"
-                style={{ color: 'rgb(var(--paper-ink-soft))' }}
+                className="notebook-copy mt-2 text-sm mx-auto max-w-xs text-paper-soft"
             >
                 {copy.body}
             </p>

@@ -110,14 +110,14 @@ export default function WritingVoiceCard({ writingVoice, emotionalRange }: Writi
                         <div key={tense} className="rounded-2xl bg-[rgba(var(--paper-border),0.08)] px-3 py-2.5">
                             <div className="mb-1.5 flex items-center justify-between gap-3">
                                 <div className="min-w-0">
-                                    <p className="text-[0.72rem] font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                    <p className="text-[0.72rem] font-semibold text-paper-ink">
                                         {TENSE_COPY[tense].label}
                                     </p>
-                                    <p className="text-[0.55rem] leading-4" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                                    <p className="text-[0.55rem] leading-4 text-paper-soft">
                                         {TENSE_COPY[tense].helper}
                                     </p>
                                 </div>
-                                <span className="text-[0.68rem] font-semibold tabular-nums" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                <span className="text-[0.68rem] font-semibold tabular-nums text-paper-ink">
                                     {tenseDistribution[tense]}%
                                 </span>
                             </div>
@@ -163,11 +163,11 @@ export default function WritingVoiceCard({ writingVoice, emotionalRange }: Writi
                     ))}
                 </div>
                 <div className="flex justify-between mt-1">
-                    <span className="text-[0.55rem]" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                    <span className="text-[0.55rem] text-paper-soft">
                         {dominantEmotion}
                     </span>
                     {rarestEmotion && (
-                        <span className="text-[0.55rem]" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                        <span className="text-[0.55rem] text-paper-soft">
                             rarest: {rarestEmotion}
                         </span>
                     )}
@@ -177,7 +177,7 @@ export default function WritingVoiceCard({ writingVoice, emotionalRange }: Writi
             {/* ── Quick stats grid ── */}
             <div className="grid grid-cols-3 gap-2">
                 <div className="notebook-card-soft rounded-xl px-2 py-2 text-center">
-                    <p className="text-xs font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                    <p className="text-xs font-semibold text-paper-ink">
                         {readingLevel}
                     </p>
                     <p className="notebook-muted text-[0.55rem]">
@@ -185,7 +185,7 @@ export default function WritingVoiceCard({ writingVoice, emotionalRange }: Writi
                     </p>
                 </div>
                 <div className="notebook-card-soft rounded-xl px-2 py-2 text-center">
-                    <p className="text-xs font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                    <p className="text-xs font-semibold text-paper-ink">
                         {questionFrequency}/entry
                     </p>
                     <p className="notebook-muted text-[0.55rem]">
@@ -193,7 +193,7 @@ export default function WritingVoiceCard({ writingVoice, emotionalRange }: Writi
                     </p>
                 </div>
                 <div className="notebook-card-soft rounded-xl px-2 py-2 text-center">
-                    <p className="text-xs font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                    <p className="text-xs font-semibold text-paper-ink">
                         {Math.round(firstPersonRatio * 100)}%
                     </p>
                     <p className="notebook-muted text-[0.55rem]">

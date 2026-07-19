@@ -83,7 +83,7 @@ export default function WellnessCheckin({ onSubmit, submitted }: WellnessCheckin
             <motion.div
                 className="notebook-card-soft rounded-card-175 p-4 text-center"
             >
-                <p className="text-sm" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                <p className="text-sm text-paper-soft">
                     Check-in saved. This helps your insights get smarter.
                 </p>
             </motion.div>
@@ -120,7 +120,7 @@ export default function WellnessCheckin({ onSubmit, submitted }: WellnessCheckin
                             <div key={dim.key}>
                                 <div className="flex items-center gap-1.5 mb-2">
                                     <span className="text-sm" aria-hidden="true">{dim.icon}</span>
-                                    <p className="text-xs font-medium" style={{ color: 'rgb(var(--paper-ink))' }}>
+                                    <p className="text-xs font-medium text-paper-ink">
                                         {dim.label}
                                     </p>
                                 </div>

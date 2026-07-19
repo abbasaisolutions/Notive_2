@@ -54,7 +54,7 @@ export default function Sidebar() {
 
     return (
         <aside
-            className="hidden lg:flex flex-col w-72 glass-nav h-[calc(100vh-2rem)] sticky top-4 left-4 ml-4 my-4 rounded-[2.5rem] overflow-hidden z-50"
+            className="hidden lg:flex flex-col w-72 glass-nav h-[calc(100vh-2rem)] sticky top-4 left-4 ml-4 my-4 rounded-card-200 overflow-hidden z-50"
             role="complementary"
             aria-label="Workspace navigation"
         >

@@ -122,7 +122,7 @@ export default function DeviceContextStrip({ signals }: DeviceContextStripProps)
                             <span className="text-xs" aria-hidden="true">{card.icon}</span>
                             <span className="notebook-muted text-[0.6rem]">{card.label}</span>
                         </div>
-                        <div style={{ color: 'rgb(var(--paper-ink))' }}>
+                        <div className="text-paper-ink">
                             {card.value}
                         </div>
                     </motion.div>

@@ -160,7 +160,7 @@ export default function WordGarden({ vocabulary }: WordGardenProps) {
             <div className="flex items-center justify-between mt-3 gap-2">
                 <div className="flex items-center gap-3">
                     <div className="text-center">
-                        <p className="text-xs font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                        <p className="text-xs font-semibold text-paper-ink">
                             {growthLabel}
                         </p>
                         <p className="notebook-muted text-[0.6rem]">
@@ -172,7 +172,7 @@ export default function WordGarden({ vocabulary }: WordGardenProps) {
                         style={{ backgroundColor: 'rgba(var(--paper-border), 0.3)' }}
                     />
                     <div className="text-center">
-                        <p className="text-xs font-semibold" style={{ color: 'rgb(var(--paper-ink))' }}>
+                        <p className="text-xs font-semibold text-paper-ink">
                             {rarityLabel}
                         </p>
                         <p className="notebook-muted text-[0.6rem]">
@@ -200,7 +200,7 @@ export default function WordGarden({ vocabulary }: WordGardenProps) {
                 <motion.div
                     className="mt-3 notebook-card-soft rounded-xl px-3 py-2"
                 >
-                    <p className="text-[0.7rem] font-medium" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                    <p className="text-[0.7rem] font-medium text-paper-soft">
                         New blooms this week
                     </p>
                     <div className="flex flex-wrap gap-1 mt-1">

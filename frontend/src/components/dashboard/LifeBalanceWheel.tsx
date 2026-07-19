@@ -180,14 +180,14 @@ export default function LifeBalanceWheel({ lifeBalance }: LifeBalanceWheelProps)
             <div className="grid grid-cols-2 gap-2 mt-2">
                 <div className="notebook-card-soft rounded-xl px-3 py-2">
                     <p className="notebook-muted text-[0.65rem]">Most present</p>
-                    <p className="text-xs font-medium" style={{ color: 'rgb(var(--paper-ink))' }}>
+                    <p className="text-xs font-medium text-paper-ink">
                         {AREA_ICONS[dominantAreaKey] || '○'} {dominantArea}
                     </p>
                 </div>
                 {neglectedArea && (
                     <div className="notebook-card-soft rounded-xl px-3 py-2">
                         <p className="notebook-muted text-[0.65rem]">Less present</p>
-                        <p className="text-xs font-medium" style={{ color: 'rgb(var(--paper-ink))' }}>
+                        <p className="text-xs font-medium text-paper-ink">
                             {AREA_ICONS[neglectedAreaKey] || '○'} {neglectedArea}
                         </p>
                     </div>

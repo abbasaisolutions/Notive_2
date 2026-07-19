@@ -1482,7 +1482,7 @@ export default function PortfolioWorkspace() {
                     </details>
 
                     {selectedPathwayCard && (
-                        <div className="workspace-panel rounded-[30px] p-5">
+                        <div className="workspace-panel rounded-card-180 p-5">
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Chosen pack</p>
@@ -1869,7 +1869,7 @@ export default function PortfolioWorkspace() {
                                             <TagPill tone={stateTone}>{storyStatusLabels[state]}</TagPill>
                                             <TagPill>{readinessLabel}</TagPill>
                                         </div>
-                                        <div className="workspace-panel rounded-[22px] p-3">
+                                        <div className="workspace-panel rounded-card-140 p-3">
                                             <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Next move</p>
                                             <p className="workspace-heading mt-2 text-sm font-semibold">{focusTitle}</p>
                                             <p className="mt-2 text-sm leading-7 text-ink-secondary">{focusDescription}</p>
@@ -2760,7 +2760,7 @@ export default function PortfolioWorkspace() {
                                 </div>
                             </div>
 
-                            <div className="workspace-panel space-y-3 rounded-[22px] p-3">
+                            <div className="workspace-panel space-y-3 rounded-card-140 p-3">
                                 <button
                                     type="button"
                                     onClick={toggleEditingDetails}

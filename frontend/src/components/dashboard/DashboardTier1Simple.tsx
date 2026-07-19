@@ -157,7 +157,7 @@ export default function DashboardTier1Simple({
     <div className="min-h-screen pb-32 md:pb-20">
       <main className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6 md:py-10 space-y-5">
         {/* ── Header Block ────────────────────────────────────────── */}
-        <section className="notebook-shell rounded-[2.25rem] px-5 py-5 md:px-7 md:py-6">
+        <section className="notebook-shell rounded-card-200 px-5 py-5 md:px-7 md:py-6">
           <h1 className="notebook-title text-[23px] font-bold leading-tight">
             Hey {firstName}.
           </h1>

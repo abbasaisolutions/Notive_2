@@ -60,7 +60,7 @@ export default function ExperienceControlPanel({ compact = false }: { compact?: 
                                 type="button"
                                 onClick={() => update({ aiTone: option.value })}
                                 aria-pressed={preferences.aiTone === option.value}
-                                className={`rounded-[0.8rem] border px-2 py-2 text-[0.66rem] font-semibold transition-colors ${preferences.aiTone === option.value
+                                className={`rounded-xl border px-2 py-2 text-[0.66rem] font-semibold transition-colors ${preferences.aiTone === option.value
                                     ? 'border-[rgba(138,154,111,0.44)] bg-[rgba(138,154,111,0.16)] text-[rgb(118,134,91)]'
                                     : 'border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.38)] text-[rgb(var(--text-soft))] hover:bg-[rgba(255,255,255,0.62)]'
                                 }`}
@@ -79,7 +79,7 @@ export default function ExperienceControlPanel({ compact = false }: { compact?: 
                             type="button"
                             onClick={() => update({ insightConsent: option.value })}
                             aria-pressed={preferences.insightConsent === option.value}
-                            className={`rounded-[0.9rem] border px-3 py-2 text-left transition-colors ${preferences.insightConsent === option.value
+                            className={`rounded-card-95 border px-3 py-2 text-left transition-colors ${preferences.insightConsent === option.value
                                 ? 'border-[rgba(216,199,232,0.46)] bg-[rgba(216,199,232,0.16)]'
                                 : 'border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.32)] hover:bg-[rgba(255,255,255,0.58)]'
                             }`}

@@ -82,7 +82,7 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
                         </svg>
                     </div>
                     <div className="min-w-0 flex-1">
-                        <p className="type-overline" style={{ color: 'rgb(var(--paper-sage))' }}>Calendar access needed</p>
+                        <p className="type-overline text-paper-sage">Calendar access needed</p>
                         <p className="mt-1 text-sm font-semibold leading-5" style={{ color: 'rgb(var(--paper-ink))', fontFamily: 'var(--font-serif, Georgia, serif)' }}>
                             Enable in Settings to get life-aware prompts.
                         </p>
@@ -95,8 +95,7 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
                             </button>
                             <button
                                 onClick={handleDecline}
-                                className="rounded-full px-3 py-1.5 text-xs"
-                                style={{ color: 'rgb(var(--paper-ink-soft))' }}
+                                className="rounded-full px-3 py-1.5 text-xs text-paper-soft"
                             >
                                 Later
                             </button>
@@ -129,7 +128,7 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
                             <line x1="3" y1="10" x2="21" y2="10" />
                         </svg>
                     </div>
-                    <p className="flex-1 text-xs leading-5" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                    <p className="flex-1 text-xs leading-5 text-paper-soft">
                         {streakLine}
                     </p>
                     <div className="flex shrink-0 gap-2">
@@ -142,8 +141,7 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
                         </button>
                         <button
                             onClick={handleDecline}
-                            className="rounded-full px-2 py-1 text-xs"
-                            style={{ color: 'rgb(var(--paper-ink-muted))' }}
+                            className="rounded-full px-2 py-1 text-xs text-paper-muted"
                         >
                             ✕
                         </button>
@@ -173,7 +171,7 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
                         </svg>
                     </div>
                     <div className="min-w-0 flex-1">
-                        <p className="type-overline" style={{ color: 'rgb(var(--paper-sage))' }}>Life-aware prompts</p>
+                        <p className="type-overline text-paper-sage">Life-aware prompts</p>
                         <p className="mt-1 text-sm font-semibold leading-6" style={{ color: 'rgb(var(--paper-ink))', fontFamily: 'var(--font-serif, Georgia, serif)' }}>
                             Let Notive see what&rsquo;s coming up.
                         </p>
@@ -186,14 +184,14 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
                         'Exam in 2 days? "What do you still need to make peace with?"',
                         'Team sync today? "What do you need them to understand?"',
                     ].map((line) => (
-                        <li key={line} className="flex items-start gap-2 text-xs leading-5" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                        <li key={line} className="flex items-start gap-2 text-xs leading-5 text-paper-soft">
                             <span className="mt-0.5 shrink-0 text-[rgb(var(--paper-sage))]">·</span>
                             <span className="italic">{line}</span>
                         </li>
                     ))}
                 </ul>
 
-                <p className="type-micro mt-3 leading-4" style={{ color: 'rgb(var(--paper-ink-muted))' }}>
+                <p className="type-micro mt-3 leading-4 text-paper-muted">
                     Read-only access. Event titles never leave your device.
                 </p>
 
@@ -207,8 +205,7 @@ export default function CalendarOptInCard({ onGranted, streak }: Props) {
                     </button>
                     <button
                         onClick={handleDecline}
-                        className="rounded-full border border-[rgba(var(--paper-border),0.3)] px-4 py-2.5 text-sm"
-                        style={{ color: 'rgb(var(--paper-ink-soft))' }}
+                        className="rounded-full border border-[rgba(var(--paper-border),0.3)] px-4 py-2.5 text-sm text-paper-soft"
                     >
                         Not now
                     </button>

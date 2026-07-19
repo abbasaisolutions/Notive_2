@@ -109,7 +109,7 @@ function RevealingFeather({
 }) {
     const size = isInline ? 50 : 62;
     const sheetClassName = cn(
-        'absolute bottom-0 rounded-[1.45rem] border border-[rgba(var(--paper-border),0.16)] bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(255,251,245,0.92))] shadow-[0_16px_32px_rgba(92,92,92,0.08)]',
+        'absolute bottom-0 rounded-card-140 border border-[rgba(var(--paper-border),0.16)] bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(255,251,245,0.92))] shadow-[0_16px_32px_rgba(92,92,92,0.08)]',
         isInline ? 'h-20 w-40' : 'h-24 w-48',
     );
     const stageClassName = cn(
@@ -178,7 +178,7 @@ function RevealingFeather({
                     }}
                 />
                 <motion.span
-                    className="absolute bottom-[1.15rem] left-5 h-4 w-4 rounded-[0.35rem] bg-[rgb(61,91,82)] shadow-[0_4px_12px_rgba(61,91,82,0.22)]"
+                    className="absolute bottom-[1.15rem] left-5 h-4 w-4 rounded-md bg-[rgb(61,91,82)] shadow-[0_4px_12px_rgba(61,91,82,0.22)]"
                     style={{ rotate: 45 }}
                     animate={{
                         x: [0, isInline ? 104 : 130, isInline ? 118 : 146, 0],

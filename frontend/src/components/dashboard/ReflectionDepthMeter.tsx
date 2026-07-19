@@ -95,7 +95,7 @@ export default function ReflectionDepthMeter({
                 </div>
             )}
 
-            <p className="notebook-copy text-[0.82rem] mt-3" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+            <p className="notebook-copy text-[0.82rem] mt-3 text-paper-soft">
                 {LEVEL_DESCRIPTIONS[level]}
             </p>
         </motion.div>

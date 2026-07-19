@@ -27,12 +27,11 @@ export default function DashboardNoticeCard({
                 {eyebrow}
             </p>
             <p
-                className={`mt-1 font-semibold ${compact ? 'text-sm' : 'text-[0.98rem]'}`}
-                style={{ color: 'rgb(var(--paper-ink))' }}
+                className={`mt-1 font-semibold text-paper-ink ${compact ? 'text-sm' : 'text-[0.98rem]'}`}
             >
                 {title}
             </p>
-            <p className="notebook-copy mt-1 text-sm" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+            <p className="notebook-copy mt-1 text-sm text-paper-soft">
                 {body}
             </p>
         </motion.section>

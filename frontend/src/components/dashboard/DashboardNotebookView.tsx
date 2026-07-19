@@ -1207,7 +1207,7 @@ function DashboardNotebookViewFull({
                 {glanceSignals.map((signal) => (
                     <div
                         key={signal.key}
-                        className="rounded-[0.85rem] border border-[rgba(92,92,92,0.12)] bg-[rgba(248,244,237,0.94)] px-2 py-2 sm:rounded-card-105 sm:px-3 sm:py-3"
+                        className="rounded-card-95 border border-[rgba(92,92,92,0.12)] bg-[rgba(248,244,237,0.94)] px-2 py-2 sm:rounded-card-105 sm:px-3 sm:py-3"
                     >
                         <div className="flex items-start justify-between gap-1 sm:gap-2">
                             <div className="min-w-0">
@@ -1300,7 +1300,7 @@ function DashboardNotebookViewFull({
                 insight, never prose about what is missing. Hides itself at 10+. */}
             {entries.length < 10 && <WhatsComingCard entryCount={entries.length} />}
 
-            <section className="rounded-[1.35rem] border border-[rgba(92,92,92,0.12)] bg-[linear-gradient(135deg,rgba(255,251,245,0.84),rgba(248,244,237,0.6))] px-3 py-3 shadow-[0_14px_32px_rgba(92,92,92,0.06)] sm:px-4 sm:py-4">
+            <section className="rounded-card-140 border border-[rgba(92,92,92,0.12)] bg-[linear-gradient(135deg,rgba(255,251,245,0.84),rgba(248,244,237,0.6))] px-3 py-3 shadow-[0_14px_32px_rgba(92,92,92,0.06)] sm:px-4 sm:py-4">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                         <p className="section-label">Today&apos;s read</p>
@@ -1412,12 +1412,12 @@ function DashboardNotebookViewFull({
                             </p>
                             <div className="mt-3 grid grid-cols-4 gap-1.5">
                                 {storyPipelineStages.length > 0 ? storyPipelineStages.map((stage) => (
-                                    <div key={stage.label} className="rounded-[0.8rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.42)] px-2 py-2">
+                                    <div key={stage.label} className="rounded-xl border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.42)] px-2 py-2">
                                         <p className="truncate text-[0.62rem] font-semibold uppercase tracking-[0.06em] text-[rgb(var(--text-soft))]">{stage.label}</p>
                                         <p className="mt-1 text-[0.9rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">{stage.value}</p>
                                     </div>
                                 )) : (
-                                    <div className="col-span-4 rounded-[0.8rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.42)] px-3 py-2 text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">
+                                    <div className="col-span-4 rounded-xl border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.42)] px-3 py-2 text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">
                                         Outside material appears once the notebook has enough context.
                                     </div>
                                 )}
@@ -1592,7 +1592,7 @@ function DashboardNotebookViewFull({
 
                             return (
                                 <>
-                                    <div className="rounded-[0.85rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.55)] px-2 py-1.5">
+                                    <div className="rounded-card-95 border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.55)] px-2 py-1.5">
                                         <p className="text-[0.62rem] uppercase tracking-wider text-[rgb(150,150,150)]">Memories</p>
                                         <p className="mt-0.5 text-[0.9rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">
                                             {periodDelta.currentEntries}
@@ -1601,7 +1601,7 @@ function DashboardNotebookViewFull({
                                             {entriesD.text}
                                         </p>
                                     </div>
-                                    <div className="rounded-[0.85rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.55)] px-2 py-1.5">
+                                    <div className="rounded-card-95 border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.55)] px-2 py-1.5">
                                         <p className="text-[0.62rem] uppercase tracking-wider text-[rgb(150,150,150)]">Days</p>
                                         <p className="mt-0.5 text-[0.9rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">
                                             {periodDelta.currentWritingDays}
@@ -1610,7 +1610,7 @@ function DashboardNotebookViewFull({
                                             {daysD.text}
                                         </p>
                                     </div>
-                                    <div className="rounded-[0.85rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.55)] px-2 py-1.5">
+                                    <div className="rounded-card-95 border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.55)] px-2 py-1.5">
                                         <p className="text-[0.62rem] uppercase tracking-wider text-[rgb(150,150,150)]">Mood</p>
                                         <p className="mt-0.5 text-[0.9rem] font-bold tabular-nums text-[rgb(var(--paper-ink))]">
                                             {periodDelta.currentAvgMood !== null
@@ -2023,7 +2023,7 @@ function DashboardNotebookViewFull({
                             {[0, 1, 2, 3, 4].map((level) => (
                                 <span
                                     key={level}
-                                    className="inline-block h-[7px] w-[7px] rounded-[1.5px]"
+                                    className="inline-block h-[7px] w-[7px] rounded-sm"
                                     style={{
                                         backgroundColor: level === 0 ? 'rgba(92,92,92,0.08)'
                                             : level === 1 ? 'rgba(138,154,111,0.35)'
@@ -2066,7 +2066,7 @@ function DashboardNotebookViewFull({
                                     {day.count}
                                 </span>
                                 <div
-                                    className={`w-full max-w-[18px] rounded-t-[3px] ${isActive ? 'bg-[rgb(var(--brand))]' : 'bg-[rgba(92,92,92,0.07)]'}`}
+                                    className={`w-full max-w-[18px] rounded-t-sm ${isActive ? 'bg-[rgb(var(--brand))]' : 'bg-[rgba(92,92,92,0.07)]'}`}
                                     style={{ height: `${barH}px` }}
                                 />
                                 <span className={`text-[0.62rem] ${isActive ? 'font-medium text-[rgb(var(--paper-ink))]' : 'text-[rgb(170,170,170)]'}`}>
@@ -2078,7 +2078,7 @@ function DashboardNotebookViewFull({
                             <Link
                                 key={day.short}
                                 href={`/timeline?weekday=${day.full.toLowerCase()}`}
-                                className="flex flex-col items-center gap-1 rounded-[0.4rem] py-0.5 transition-colors hover:bg-[rgba(138,154,111,0.08)]"
+                                className="flex flex-col items-center gap-1 rounded-md py-0.5 transition-colors hover:bg-[rgba(138,154,111,0.08)]"
                                 style={{ flex: 1 }}
                             >
                                 {content}

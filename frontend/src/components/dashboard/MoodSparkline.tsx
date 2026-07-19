@@ -196,7 +196,7 @@ export default function MoodSparkline({ entries }: MoodSparklineProps) {
             {/* Summary line */}
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                 {moodLabel && trendLabel && (
-                    <span className="notebook-copy text-[0.82rem]" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                    <span className="notebook-copy text-[0.82rem] text-paper-soft">
                         {moodLabel}{' '}
                         <span style={{ color: 'rgb(155 143 120)' }}>
                             {trendLabel === 'trending up' ? '↗' : trendLabel === 'dipping' ? '↘' : '→'}

@@ -178,8 +178,7 @@ export default function QuickPulseStrip({ entries, streak, totalWords }: QuickPu
                             />
                         </div>
                         <p
-                            className="mt-2 text-xl font-semibold tabular-nums leading-none"
-                            style={{ color: 'rgb(var(--paper-ink))' }}
+                            className="mt-2 text-xl font-semibold tabular-nums leading-none text-paper-ink"
                         >
                             {pill.value}
                         </p>

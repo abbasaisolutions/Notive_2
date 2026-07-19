@@ -140,7 +140,7 @@ export default function DashboardTakeawayCard({ takeaway, compact = false }: Das
 
     return (
         <section
-            className={`relative overflow-hidden rounded-card-125 border ${styles.border} bg-[rgba(255,251,245,0.72)] ${compact ? 'px-3.5 py-3.5 md:px-5 md:py-5' : 'px-4 py-4 md:px-5 md:py-5'} shadow-[0_12px_28px_rgba(92,92,92,0.07)] md:rounded-[1.65rem]`}
+            className={`relative overflow-hidden rounded-card-125 border ${styles.border} bg-[rgba(255,251,245,0.72)] ${compact ? 'px-3.5 py-3.5 md:px-5 md:py-5' : 'px-4 py-4 md:px-5 md:py-5'} shadow-[0_12px_28px_rgba(92,92,92,0.07)] md:rounded-card-163`}
             aria-label="Dashboard takeaway"
         >
             <div className={`absolute inset-y-4 left-0 w-1 rounded-r-full ${styles.dot}`} aria-hidden="true" />
@@ -222,7 +222,7 @@ export default function DashboardTakeawayCard({ takeaway, compact = false }: Das
                     {!compact && (
                         <div className="mt-3 grid gap-2 md:grid-cols-3">
                             {steps.map((step, index) => (
-                                <div key={step.label} className="flex items-start gap-2 rounded-[0.8rem] bg-[rgba(255,255,255,0.36)] px-3 py-2">
+                                <div key={step.label} className="flex items-start gap-2 rounded-xl bg-[rgba(255,255,255,0.36)] px-3 py-2">
                                     <span className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.62rem] font-bold ${index === 0 ? styles.bg : 'bg-[rgba(92,92,92,0.08)]'} ${index === 0 ? styles.text : 'text-[rgb(var(--paper-ink-soft))]'}`}>
                                         {index + 1}
                                     </span>

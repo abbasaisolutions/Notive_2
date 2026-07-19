@@ -352,14 +352,14 @@ export default function MobileNav() {
                                         aria-expanded={isCaptureOpen}
                                         aria-controls="mobile-capture-drawer"
                                         aria-label="Open capture options"
-                                        className="capture-fab relative flex h-[3.85rem] w-[3.85rem] items-center justify-center rounded-[1.55rem]"
+                                        className="capture-fab relative flex h-[3.85rem] w-[3.85rem] items-center justify-center rounded-card-160"
                                     >
                                         {/* Multi-layer background for depth */}
                                         <div className="absolute inset-0 rounded-[inherit] bg-gradient-to-br from-[#A3B87F] via-[rgb(var(--brand))] to-[#6B7D52] shadow-[0_8px_28px_rgba(107,125,82,0.45),inset_0_1px_1px_rgba(255,255,255,0.25)]" />
                                         {/* Glass highlight on top-left */}
                                         <div className="absolute inset-0 rounded-[inherit] bg-gradient-to-br from-white/30 via-transparent to-transparent opacity-80" />
                                         {/* Subtle inner ring */}
-                                        <div className="absolute inset-[3px] rounded-[1.28rem] border border-white/15" />
+                                        <div className="absolute inset-[3px] rounded-card-130 border border-white/15" />
                                         {/* Breathing glow ring */}
                                         {!prefersReducedMotion && (
                                             <motion.div

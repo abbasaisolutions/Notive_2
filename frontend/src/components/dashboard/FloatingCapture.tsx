@@ -31,8 +31,7 @@ export default function FloatingCapture({ writeHref, voiceHref }: FloatingCaptur
                 <svg
                     viewBox="0 0 28 28"
                     fill="none"
-                    className="h-7 w-7 ink-breathe"
-                    style={{ color: 'rgb(var(--paper-ink))' }}
+                    className="h-7 w-7 ink-breathe text-paper-ink"
                     aria-hidden="true"
                 >
                     {/* Pen nib — hand-drawn style */}
@@ -77,8 +76,7 @@ export default function FloatingCapture({ writeHref, voiceHref }: FloatingCaptur
                 <svg
                     viewBox="0 0 28 28"
                     fill="none"
-                    className="h-7 w-7 ink-pulse"
-                    style={{ color: 'rgb(var(--brand))' }}
+                    className="h-7 w-7 ink-pulse text-primary"
                     aria-hidden="true"
                 >
                     {/* Mic body — sketchy rounded rect */}

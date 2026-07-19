@@ -136,8 +136,7 @@ export default function PrimeTimePrediction({ entries }: PrimeTimePredictionProp
                 {DAY_LABELS.map((day) => (
                     <div
                         key={day}
-                        className="text-center text-[0.6rem] pb-0.5"
-                        style={{ color: 'rgb(var(--paper-ink-muted))' }}
+                        className="text-center text-[0.6rem] pb-0.5 text-paper-muted"
                     >
                         {day}
                     </div>
@@ -176,8 +175,7 @@ export default function PrimeTimePrediction({ entries }: PrimeTimePredictionProp
                 {TIME_BLOCKS.map((block) => (
                     <span
                         key={block}
-                        className="text-[0.58rem]"
-                        style={{ color: 'rgb(var(--paper-ink-muted))' }}
+                        className="text-[0.58rem] text-paper-muted"
                     >
                         {BLOCK_LABELS[block]}
                     </span>
@@ -186,7 +184,7 @@ export default function PrimeTimePrediction({ entries }: PrimeTimePredictionProp
 
             {/* Narrative */}
             {bestNarrative && (
-                <p className="notebook-copy text-[0.82rem]" style={{ color: 'rgb(var(--paper-ink-soft))' }}>
+                <p className="notebook-copy text-[0.82rem] text-paper-soft">
                     {bestNarrative}
                 </p>
             )}
