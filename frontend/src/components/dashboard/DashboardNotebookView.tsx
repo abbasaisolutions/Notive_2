@@ -687,7 +687,7 @@ function DashboardNotebookViewFull({
         ? {
             question: 'Thinking about your college admission statement?',
             title: 'Shape the moments that show where you are headed.',
-            body: 'Your saved reflections can become a personal narrative with real detail, growth, and direction.',
+            body: 'Saved moments become a personal narrative with real detail.',
             action: 'Draft a statement',
         }
         : outputGoals.includes('interview-examples')
@@ -707,7 +707,7 @@ function DashboardNotebookViewFull({
                 : {
                     question: 'What are you preparing for next?',
                     title: 'Turn your saved moments into material you can use.',
-                    body: 'Build a resume, rehearse an interview story, or shape a statement from your own experience.',
+                    body: 'A resume, interview story, or statement — from your own experience.',
                     action: 'Explore your portfolio',
                 };
 
@@ -775,8 +775,8 @@ function DashboardNotebookViewFull({
     const supportSummary = hasDeviceSignals && deviceSignals?.wellness
         ? `Your last check-in showed energy at ${deviceSignals.wellness.energyLevel}/10 and stress at ${deviceSignals.wellness.stressLevel}/10. Let that be context, not pressure.`
         : wellnessSubmitted
-            ? 'Your last check-in is already part of the picture here. You do not need to explain the whole day again.'
-            : 'If today feels noisy, a quick check-in or short chat can give the next memory more context.';
+            ? 'Your last check-in is already counted here.'
+            : 'A quick check-in gives the next memory more context.';
     const weeklyDigestSnippet = weeklyDigest?.spotlightLine
         ? `"${compactText(weeklyDigest.spotlightLine, 150)}"`
         : weeklyDigest?.editorial
@@ -1118,7 +1118,7 @@ function DashboardNotebookViewFull({
         ? `${generatedMaterialCount} generated ${generatedMaterialCount === 1 ? 'piece is' : 'pieces are'} ready to use.`
             : storyPipelineCounts.shaping > 0
                 ? `${storyPipelineCounts.shaping} ${storyPipelineCounts.shaping === 1 ? 'memory is' : 'memories are'} shaping into possible story, resume, lesson, or skill material.`
-                : 'Story, resume, lesson, and skill material will appear here after the diary has enough signal.';
+                : 'Material appears once the diary has enough signal.';
 
     const renderFocusAction = (action: DashboardAction | null | undefined, tone: 'primary' | 'secondary') => {
         if (!action) return null;
@@ -1637,7 +1637,7 @@ function DashboardNotebookViewFull({
                 <div className="app-paper-soft rounded-card-110 px-3 pt-2 pb-1.5">
                     <p className="section-label">Month-over-month</p>
                     <p className="mt-0.5 text-[0.62rem] leading-4 text-[rgb(150,150,150)]">
-                        Your first month-over-month comparison unlocks once last month has a few memories to compare against.
+                        Unlocks once last month has a few memories.
                     </p>
                 </div>
             ) : null}
@@ -1842,7 +1842,7 @@ function DashboardNotebookViewFull({
                 <p className="section-label">Carry this forward</p>
                 <p className="mt-1 text-[0.68rem] leading-[1.35] text-[rgb(var(--text-soft))]">
                     {resurfacedMoment
-                        ? 'An older memory is echoing this week. Growth often looks like noticing the same moment sooner.'
+                        ? 'An older memory is echoing this week.'
                         : 'Keep saving real moments. They become evidence for school, work, and your own story.'}
                 </p>
                 <div className="mt-1.5 flex items-center gap-3">

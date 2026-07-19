@@ -2687,7 +2687,7 @@ function NewEntryPageContent() {
                         <p className="text-xs uppercase tracking-[0.15em] text-ink-muted">Draft Detected</p>
                         <h2 id="draft-conflict-title" className="workspace-heading mt-2 text-xl font-semibold">Keep your existing draft or replace it?</h2>
                         <p className="mt-2 text-sm text-ink-secondary">
-                            A saved draft exists for this account. An incoming prompt or shared moment is also ready. Choose how to proceed.
+                            You have a saved draft and an incoming prompt. Choose one.
                         </p>
 
                         <div className="mt-5 grid gap-2">

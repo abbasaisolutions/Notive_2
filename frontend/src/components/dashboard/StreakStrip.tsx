@@ -22,7 +22,7 @@ function streakCopy(currentStreak: number, bestStreak?: number) {
         return {
             kicker: `${currentStreak} days in a row`,
             title: 'Two weeks of showing up.',
-            body: 'You’re writing through easy days and awkward ones — that’s where the good insights come from.',
+            body: 'Easy days and awkward ones — that’s where insights come from.',
         };
     }
     if (currentStreak >= 7) {

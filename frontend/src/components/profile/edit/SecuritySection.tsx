@@ -129,7 +129,7 @@ export function SecuritySection({
                         ) : (
                             <div className="space-y-4">
                                 <div className="workspace-soft-panel rounded-2xl p-4 text-sm text-ink-secondary">
-                                    This account signs in through Google. Re-verify with Google before changing the sign-in email, setting a password, or deleting the account.
+                                    This account signs in with Google. Re-verify to continue.
                                 </div>
                                 <GoogleSsoPanel
                                     mode="reauth"
@@ -160,10 +160,10 @@ export function SecuritySection({
                             Sign-in email changes preserve the current session when possible and clear the others.
                         </div>
                         <div className="workspace-soft-panel rounded-2xl p-4">
-                            Password changes revoke saved sessions on other devices and may also prompt this device to sign in again once the current session rolls over.
+                            Password changes sign out other devices; this one may re-ask later.
                         </div>
                         <div className="workspace-soft-panel rounded-2xl p-4">
-                            Permanent deletion requires a verified session and your sign-in email typed as confirmation.
+                            Deletion requires verification and your email typed as confirmation.
                         </div>
                     </div>
                 </section>
@@ -179,7 +179,7 @@ export function SecuritySection({
                             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Sign-In Email</p>
                             <h3 className="workspace-heading mt-2 text-xl font-serif">Change your sign-in email</h3>
                             <p className="mt-2 text-sm text-ink-secondary">
-                                This is separate from your public profile details. It changes the email used for account access.
+                                Changes the email used for account access.
                             </p>
                         </div>
                     </div>
@@ -285,7 +285,7 @@ export function SecuritySection({
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Delete Account</p>
                         <h3 className="workspace-heading mt-2 text-xl font-serif">Delete your account</h3>
                         <p className="mt-2 text-sm text-ink-secondary">
-                            This removes your account, notes, groups, imports, and linked data. Type your sign-in email to confirm.
+                            Removes your account and all its data. Type your email to confirm.
                         </p>
                     </div>
                 </div>
@@ -317,7 +317,7 @@ export function SecuritySection({
                     <ConfirmDialog
                         open={showDeleteConfirm}
                         title="Permanently delete your account?"
-                        description="All your notes, groups, imports, and linked data will be permanently removed. This cannot be undone."
+                        description="Everything will be permanently removed. This cannot be undone."
                         actionLabel="Delete Everything"
                         isDangerous={true}
                         isLoading={isDeletingAccount}

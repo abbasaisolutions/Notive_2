@@ -393,7 +393,7 @@ export default function ChatPage() {
                                 <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Lens</p>
                                 <h2 className="workspace-heading mt-2 text-lg font-semibold">{selectedLensLabel}</h2>
                                 <p className="mt-1 text-sm leading-7 text-ink-secondary">
-                                    {activeGuidedLens?.description || 'Choose a lens: understand the moment, find the thread, name growth, or turn it into material.'}
+                                    {activeGuidedLens?.description || 'Choose a lens.'}
                                 </p>
                             </div>
                             <button

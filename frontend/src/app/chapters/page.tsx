@@ -172,7 +172,7 @@ export default function ChaptersPage() {
                             <SectionHeader
                                 kicker={NOTIVE_VOICE.surfaces.storyCollections}
                                 title="Group related notes"
-                                description="Put notes together by project, season, or part of life so they are easier to find and use later."
+                                description="Group notes by project, season, or part of life."
                                 as="h1"
                             />
                         </div>
@@ -315,7 +315,7 @@ export default function ChaptersPage() {
                         <SectionHeader
                             kicker={NOTIVE_VOICE.surfaces.storyCollections}
                             title={editingChapter ? 'Edit group' : 'New group'}
-                            description="Name the group, add a short note, then choose the icon and color that make it easy to spot."
+                            description="Name it, then pick an icon and color."
                         />
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>

@@ -86,7 +86,7 @@ export const NOTIVE_VOICE = {
     appName: 'Notive',
     signature: 'Private diary for useful stories.',
     shortSummary: 'A private diary for turning real moments into lessons, patterns, and stories you can use.',
-    longSummary: 'Notive is a private diary that helps you capture real moments, understand what they hold, and turn them into lessons, skills, patterns, and stories for life, study, and work.',
+    longSummary: 'Notive is a private diary that helps you capture real moments, understand what they hold, and turn them into lessons, skills, patterns, and stories for life, study, and work.', // voice-ok: pre-login store/manifest copy
     journey: ['Capture', 'Keep', 'Understand', 'Use'],
     surfaces: {
         homeBase: 'Today',
@@ -128,7 +128,7 @@ export const NOTIVE_VOICE = {
         resetTitle: 'Set a new password and keep going.',
         resetBody: 'Update your password and reopen your private diary.',
         profileTitle: 'Add one quick detail so Notive fits your stage of life.',
-        profileBody: 'Your birthday stays private. It shapes prompts, examples, and outputs to better match your context.',
+        profileBody: 'Your birthday stays private. It tunes prompts to your stage of life.',
     },
     onboarding: {
         goalLabels: {
@@ -184,7 +184,7 @@ export const NOTIVE_VOICE = {
     },
     stories: {
         title: 'Turn saved moments into stories you can use.',
-        description: 'Resume bullets, statements, interview stories, and growth summaries — built from your notes.',
+        description: 'Resume bullets, statements, interview stories — from your notes.',
     },
     imports: {
         title: 'Import old posts, notes, and files.',

@@ -125,7 +125,7 @@ export function PrivacySection({
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Data</p>
                         <h2 className="workspace-heading mt-1.5 text-xl font-serif">See and control saved answers</h2>
                         <p className="mt-2 text-sm text-ink-secondary">
-                            The answers used to personalize your prompts. Change how often questions appear, remove answers, or export your data.
+                            Answers that personalize your prompts.
                         </p>
                     </div>
 
@@ -146,7 +146,7 @@ export function PrivacySection({
                                         {dailyGentleReflectionsEnabled ? 'On' : 'Off'}
                                     </p>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                        An optional daily prompt on the dashboard, built from your recent notes, moods, and themes.
+                                        An optional daily prompt built from your notes.
                                     </p>
                                 </div>
                                 <button
@@ -182,7 +182,7 @@ export function PrivacySection({
                                 <p className="text-xs uppercase tracking-[0.16em] text-ink-muted font-bold">Bridge Fallback</p>
                                 <h3 className="workspace-heading mt-2 text-xl font-serif">Keep trusted people, channels, and steady routines visible</h3>
                                 <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                    Pin the people you trust, choose how you usually reach them, and keep the routines that steady you close. When a note feels vague or overwhelmed, these anchors are used instead of guesses.
+                                    Pin trusted people and routines — used instead of guesses when a note feels overwhelmed.
                                 </p>
                             </div>
                             <div className="workspace-soft-panel rounded-card-130 px-4 py-4">
@@ -200,7 +200,7 @@ export function PrivacySection({
                                 values={pinnedPeople}
                                 draft={pinnedPeopleDraft}
                                 placeholder="Add a trusted adult, friend, coach, or counselor"
-                                helper="Connect us with up to six people you trust—we may suggest them when reflection gets unclear."
+                                helper="Up to six people you trust, suggested when reflection gets unclear."
                                 onDraftChange={onPinnedPeopleDraftChange}
                                 onAdd={onAddPinnedPerson}
                                 onRemove={onRemovePinnedPerson}
@@ -305,11 +305,12 @@ export function PrivacySection({
                                 />
 
                                 <div className="workspace-muted-panel rounded-2xl p-4 text-sm leading-7 text-ink-secondary">
+                                    {/* voice-ok: safety copy is never cut for style */}
                                     {safetyRegion === 'us'
                                         ? 'Safety Mode will show 988 and 911 guidance.'
                                         : safetyRegion === 'intl'
-                                            ? 'Safety Mode will point toward local emergency services and a trusted person instead of U.S.-only numbers.'
-                                            : 'Safety Mode will try to use your profile location first, then fall back to general local-emergency guidance.'}
+                                            ? 'Safety Mode will point toward local emergency services and a trusted person instead of U.S.-only numbers.' // voice-ok: safety copy
+                                            : 'Safety Mode will try to use your profile location first, then fall back to general local-emergency guidance.'} {/* voice-ok: safety copy */}
                                 </div>
 
                                 <SafetyAlertsToggle />
@@ -419,7 +420,7 @@ export function PrivacySection({
                         <div>
                             <p className="workspace-heading text-sm font-semibold">Clear saved answers</p>
                             <p className="mt-1 text-xs text-ink-secondary">
-                                This removes saved answers and history but keeps your question frequency and pinned support anchors.
+                                Removes answers and history; keeps frequency and anchors.
                             </p>
                         </div>
                         <button
@@ -502,7 +503,7 @@ export function PrivacySection({
                                 Removing an answer stops it from being used going forward.
                             </div>
                             <div className="rounded-2xl border border-amber-300/20 bg-amber-200/[0.06] p-4">
-                                Pinned anchors, trusted contacts, and safety-region choices are different from saved prompt answers. They act like a manual fallback for support suggestions and safety handoffs.
+                                Separate from prompt answers: these are the manual fallback for safety handoffs.
                             </div>
                         </div>
                     </section>
@@ -513,7 +514,7 @@ export function PrivacySection({
                                 <p className="text-xs uppercase tracking-[0.16em] text-ink-muted font-bold">Voice Spellings</p>
                                 <h3 className="workspace-heading mt-2 text-xl font-serif">Teach names and places once</h3>
                                 <p className="mt-2 text-sm text-ink-secondary">
-                                    Add people, locations, schools, or event names that should keep their spelling across voice notes.
+                                    Names that must keep their spelling in voice notes.
                                 </p>
                             </div>
                             <div className="workspace-soft-panel rounded-2xl px-4 py-3">
@@ -703,7 +704,7 @@ export function PrivacySection({
                     <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Device Context</p>
                     <h2 className="workspace-heading mt-1.5 text-xl font-serif">Context signals</h2>
                     <p className="mt-2 text-sm text-ink-secondary">
-                        Where you write, what you listen to, how your day felt. Used only to enrich your insights — nothing is shared.
+                        Where you write, what you listen to, how your day felt. Nothing is shared.
                     </p>
                 </div>
 

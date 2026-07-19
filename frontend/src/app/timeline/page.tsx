@@ -2126,7 +2126,7 @@ function TimelinePageContent() {
             if (anchorId) {
                 jumpToTimelineMonth(anchorId);
             } else {
-                setLoadError('That season is older than the entries currently loaded. Use Load More Memories and try again.');
+                setLoadError('Older than the loaded entries. Load more and retry.');
             }
         } catch (error) {
             console.error('Failed to load season anchor:', error);
@@ -2305,7 +2305,7 @@ function TimelinePageContent() {
     const timelineSearchLead = timelineStats.hasActiveFilters ? 'Refine this memory slice' : 'Find memories fast';
     const timelineSearchHint = timelineStats.hasActiveFilters
         ? activeFilterSummary
-        : 'Start with search. Filters, map view, and jump shortcuts stay tucked away until you want them.';
+        : 'Start with search.';
     const activeSurfaceLabel = surface === 'constellation'
         ? 'Map'
         : surface === 'shared'

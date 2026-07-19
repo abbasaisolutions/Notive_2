@@ -23,7 +23,7 @@ const STEPS: Step[] = [
         accent: 'sky',
         label: 'Notebook',
         title: 'Look back as you grow',
-        body: 'Every note you write appears here in order. Threads and emotional signals surface as entries accumulate.',
+        body: 'Every note lands here in order.',
         href: '/timeline',
         cta: 'Open notebook →',
     },
