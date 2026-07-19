@@ -11,7 +11,6 @@ import useContextNavigation from '@/hooks/use-context-navigation';
 import { NOTIVE_VOICE } from '@/content/notive-voice';
 import { AppPanel, EmptyState, TagPill } from '@/components/ui/surface';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
-import { pickRotatingCopy } from '@/utils/rotating-copy';
 import { writeWorkspaceResume } from '@/utils/workspace-resume';
 import { FiArrowLeft } from 'react-icons/fi';
 import { Spinner } from '@/components/ui';
@@ -20,20 +19,10 @@ import { formatStoryConfidence, storyStatusClassName, storyStatusLabel, type Sto
 import { clipCompactPillByLimit, COMPACT_PILL_LIMITS } from '@/utils/tags';
 import { passthroughImageLoader } from '@/lib/image-loader';
 
-const EMPTY_CHAPTER_DETAIL_VARIANTS = [
-    {
-        title: 'No entries in this collection yet',
-        description: 'Route one note here and this collection starts feeling like a real chapter.',
-    },
-    {
-        title: 'This collection is still waiting on its first note',
-        description: 'Add an entry from quick capture or the full editor and it will begin to gather shape here.',
-    },
-    {
-        title: 'An empty chapter can still be promising',
-        description: 'The first memory you place here will give this collection its tone.',
-    },
-] as const;
+const EMPTY_CHAPTER_DETAIL_COPY = {
+    title: 'No entries in this thread yet',
+    description: 'Add a note from quick capture or the full editor.',
+} as const;
 
 interface Chapter {
     id: string;
@@ -142,7 +131,7 @@ function ChapterDetailContent() {
     }
 
     const ChapterIcon = getChapterIconComponent(chapter.icon);
-    const emptyCopy = pickRotatingCopy('empty-chapter-detail', EMPTY_CHAPTER_DETAIL_VARIANTS);
+    const emptyCopy = EMPTY_CHAPTER_DETAIL_COPY;
 
     return (
         <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">

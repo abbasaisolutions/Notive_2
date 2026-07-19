@@ -36,7 +36,7 @@ export default function ProgressivePersonalizationPrompt() {
     const [error, setError] = useState<string | null>(null);
     const [promptInstanceId, setPromptInstanceId] = useState<string | null>(null);
     const promptPresentation = question
-        ? engagementService.getProgressivePromptPresentation(question, user?.id)
+        ? engagementService.getProgressivePromptPresentation(question)
         : null;
 
     const userId = user?.id;
@@ -76,7 +76,6 @@ export default function ProgressivePersonalizationPrompt() {
         if (!nextQuestion) return;
         if (!engagementService.canShowProgressivePrompt(userId, nextQuestion.id)) return;
         const nextPromptInstanceId = createPromptInstanceId();
-        const nextPresentation = engagementService.getProgressivePromptPresentation(nextQuestion, userId);
 
         progressivePersonalizationService.markPromptShown({
             userId,
@@ -91,8 +90,6 @@ export default function ProgressivePersonalizationPrompt() {
             metadata: {
                 questionId: nextQuestion.id,
                 promptInstanceId: nextPromptInstanceId,
-                promptExperimentId: nextPresentation.experimentId,
-                promptFramingVariant: nextPresentation.framingVariant,
                 promptCategory: 'progressive_personalization',
             },
         });
@@ -150,8 +147,6 @@ export default function ProgressivePersonalizationPrompt() {
                     questionId: question.id,
                     answerValue: value,
                     promptInstanceId,
-                    promptExperimentId: promptPresentation?.experimentId || null,
-                    promptFramingVariant: promptPresentation?.framingVariant || null,
                     promptCategory: 'progressive_personalization',
                 },
             });
@@ -166,7 +161,7 @@ export default function ProgressivePersonalizationPrompt() {
             });
 
             if (!progressivePersonalizationService.shouldSyncPatch({ patch, state })) {
-                setNotice('Saved. Notive will use this right away.');
+                setNotice('Saved.');
                 clearNoticeLater();
                 return;
             }
@@ -194,7 +189,7 @@ export default function ProgressivePersonalizationPrompt() {
             clearNoticeLater();
         } catch (err: any) {
             setError(err?.message || 'Failed to save this answer right now.');
-            setNotice('Saved here for now. Notive will sync it when it can.');
+            setNotice('Saved on this device — it will sync when possible.');
             clearNoticeLater();
         } finally {
             setIsSubmitting(false);
@@ -205,8 +200,6 @@ export default function ProgressivePersonalizationPrompt() {
         isSubmitting,
         normalizedPath,
         promptInstanceId,
-        promptPresentation?.experimentId,
-        promptPresentation?.framingVariant,
         question,
         refreshUser,
         trackEvent,
@@ -224,8 +217,6 @@ export default function ProgressivePersonalizationPrompt() {
             metadata: {
                 questionId: question.id,
                 promptInstanceId,
-                promptExperimentId: promptPresentation?.experimentId || null,
-                promptFramingVariant: promptPresentation?.framingVariant || null,
                 promptCategory: 'progressive_personalization',
             },
         });
@@ -234,7 +225,7 @@ export default function ProgressivePersonalizationPrompt() {
         setQuestion(null);
         setPromptInstanceId(null);
         setError(null);
-    }, [promptInstanceId, promptPresentation?.experimentId, promptPresentation?.framingVariant, question, trackEvent, userId]);
+    }, [promptInstanceId, question, trackEvent, userId]);
 
     const handleOpenSetup = useCallback(() => {
         if (userId && question) {
@@ -247,8 +238,6 @@ export default function ProgressivePersonalizationPrompt() {
                     questionId: question.id,
                     answerValue: '__open_setup__',
                     promptInstanceId,
-                    promptExperimentId: promptPresentation?.experimentId || null,
-                    promptFramingVariant: promptPresentation?.framingVariant || null,
                     promptCategory: 'progressive_personalization',
                 },
             });
@@ -257,7 +246,7 @@ export default function ProgressivePersonalizationPrompt() {
         setQuestion(null);
         setPromptInstanceId(null);
         router.push('/onboarding?source=progressive');
-    }, [promptInstanceId, promptPresentation?.experimentId, promptPresentation?.framingVariant, question, router, trackEvent, userId]);
+    }, [promptInstanceId, question, router, trackEvent, userId]);
 
     if (!userId) return null;
 

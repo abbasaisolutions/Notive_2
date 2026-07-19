@@ -11,7 +11,6 @@ import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { refreshNotificationBadge } from '@/hooks/use-notification-count';
 import { useSharedUnreadCount } from '@/hooks/use-shared-unread-count';
-import { pickRotatingCopy } from '@/utils/rotating-copy';
 import {
     extractNotificationPreferences,
     mergeNotificationPreferencesIntoSignals,
@@ -33,38 +32,14 @@ type InboxNotification = {
 type NotificationFilter = 'all' | 'unread';
 
 const PAGE_SIZE = 25;
-const EMPTY_INBOX_VARIANTS = [
-    {
-        title: 'No notifications yet',
-        description: 'Reminders, shared-memory reactions, and gentle nudges will gather here.',
-    },
-    {
-        title: 'Your inbox is quiet',
-        description: 'Once Notive has something worth tapping you about, it will land here first.',
-    },
-    {
-        title: 'Nothing waiting right now',
-        description: 'This space fills with reminder notes, shared moments, and reflection follow-ups.',
-    },
-    {
-        title: 'A calm page for now',
-        description: 'When your writing rhythm picks up, this inbox starts carrying the small signals around it.',
-    },
-] as const;
-const EMPTY_UNREAD_VARIANTS = [
-    {
-        title: "You're all caught up",
-        description: 'No unread pings are sitting in the stack right now.',
-    },
-    {
-        title: 'Everything here has been opened',
-        description: 'Your unread list is clear for the moment.',
-    },
-    {
-        title: 'No unread notes left',
-        description: 'You cleared the latest reminders and shared-memory activity.',
-    },
-] as const;
+const EMPTY_INBOX_COPY = {
+    title: 'No notifications yet',
+    description: 'Reminders and shared-memory activity land here.',
+} as const;
+const EMPTY_UNREAD_COPY = {
+    title: "You're all caught up",
+    description: 'Nothing unread.',
+} as const;
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
     value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -308,8 +283,8 @@ export default function NotificationsPage() {
     const deviceTimezone = useMemo(() => preferences.quietHours.timezone || resolveDefaultNotificationTimezone(), [preferences.quietHours.timezone]);
     const notificationGroups = useMemo(() => groupNotifications(notifications), [notifications]);
     const emptyCopy = filter === 'unread'
-        ? pickRotatingCopy('empty-notifications-unread', EMPTY_UNREAD_VARIANTS)
-        : pickRotatingCopy('empty-notifications-all', EMPTY_INBOX_VARIANTS);
+        ? EMPTY_UNREAD_COPY
+        : EMPTY_INBOX_COPY;
 
     if (authLoading) return <div className="flex min-h-[60vh] items-center justify-center"><Spinner size="md" /></div>;
     if (!isAuthenticated) return null;

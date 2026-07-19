@@ -38,7 +38,6 @@ import {
     markTimelineContextPending,
     type TimelineContextSnapshot,
 } from '@/utils/timeline-context';
-import { pickRotatingCopy } from '@/utils/rotating-copy';
 import { buildTimelineMonthGroups, buildTimelineMonthKey } from '@/utils/timeline-groups';
 import { writeWorkspaceResume } from '@/utils/workspace-resume';
 import PullToRefreshIndicator from '@/components/layout/PullToRefreshIndicator';
@@ -160,38 +159,14 @@ type TimelineFilterPreset = {
 const TIMELINE_PAGE_SIZE = 30;
 const TIMELINE_RECENT_PRESETS_KEY = 'notive_timeline_recent_presets_v1';
 const MAX_TIMELINE_PRESETS = 4;
-const EMPTY_TIMELINE_VARIANTS = [
-    {
-        title: 'Your timeline is empty',
-        subtitle: 'Start writing - every note becomes part of your story.',
-    },
-    {
-        title: 'No memories on the shelf yet',
-        subtitle: 'Your first note gives the timeline something to hold onto.',
-    },
-    {
-        title: 'This page fills one note at a time',
-        subtitle: 'Capture one real moment and the story starts threading itself here.',
-    },
-    {
-        title: 'A blank timeline still counts as a beginning',
-        subtitle: 'Write your first note and let the archive start taking shape.',
-    },
-] as const;
-const EMPTY_SHARED_VARIANTS = [
-    {
-        title: 'No shared memories yet',
-        subtitle: "When someone sends a memory your way, it will land here with room to respond.",
-    },
-    {
-        title: 'Your shared shelf is quiet',
-        subtitle: 'Memory bundles, accepted requests, and replies will gather here once sharing starts.',
-    },
-    {
-        title: 'No shared moments waiting',
-        subtitle: 'Invite a memory into the conversation when you are ready.',
-    },
-] as const;
+const EMPTY_TIMELINE_COPY = {
+    title: 'No notes yet',
+    subtitle: 'Your notes appear here in order, newest first.',
+} as const;
+const EMPTY_SHARED_COPY = {
+    title: 'No shared memories yet',
+    subtitle: 'When someone sends a memory your way, it lands here.',
+} as const;
 const SOURCE_FILTER_OPTIONS: Array<{ key: SourceFilter; label: string }> = [
     { key: 'all', label: 'All Sources' },
     { key: 'notive', label: 'Notive' },
@@ -514,7 +489,7 @@ function SharedWithMeList({ bundles, loading, onRefresh, allowEmptyState = true 
             return null;
         }
 
-        const emptySharedCopy = pickRotatingCopy('empty-shared-memories', EMPTY_SHARED_VARIANTS);
+        const emptySharedCopy = EMPTY_SHARED_COPY;
 
         return (
             <EmptyState
@@ -2351,7 +2326,7 @@ function TimelinePageContent() {
         if (typeof window === 'undefined') return;
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
-    const emptyTimelineCopy = pickRotatingCopy('empty-timeline', EMPTY_TIMELINE_VARIANTS);
+    const emptyTimelineCopy = EMPTY_TIMELINE_COPY;
 
     if (authLoading || isLoading) {
         return <TimelineLoadingState />;

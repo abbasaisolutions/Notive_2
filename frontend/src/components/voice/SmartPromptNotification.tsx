@@ -32,7 +32,7 @@ export default function SmartPromptNotification() {
     const [activePrompt, setActivePrompt] = useState<ActivePromptState | null>(null);
     const [isVisible, setIsVisible] = useState(false);
     const promptPresentation = activePrompt
-        ? engagementService.getSmartPromptPresentation(activePrompt, user?.id)
+        ? engagementService.getSmartPromptPresentation(activePrompt)
         : null;
 
     useEffect(() => {
@@ -94,8 +94,6 @@ export default function SmartPromptNotification() {
                 ...promptData,
                 promptInstanceId: createPromptInstanceId(),
             };
-            const nextPresentation = engagementService.getSmartPromptPresentation(nextPrompt, user.id);
-
             if (!engagementService.canShowSmartPrompt(user.id, nextPrompt)) {
                 return;
             }
@@ -124,8 +122,6 @@ export default function SmartPromptNotification() {
                     metric: nextPrompt.metric || null,
                     priority: nextPrompt.priority,
                     promptInstanceId: nextPrompt.promptInstanceId,
-                    promptExperimentId: nextPresentation.experimentId,
-                    promptFramingVariant: nextPresentation.framingVariant,
                 },
             });
 
@@ -181,8 +177,6 @@ export default function SmartPromptNotification() {
                 metric: activePrompt.metric || null,
                 priority: activePrompt.priority,
                 promptInstanceId: activePrompt.promptInstanceId,
-                promptExperimentId: promptPresentation?.experimentId || null,
-                promptFramingVariant: promptPresentation?.framingVariant || null,
             },
         });
     };
