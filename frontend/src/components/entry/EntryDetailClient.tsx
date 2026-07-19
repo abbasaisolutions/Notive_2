@@ -285,7 +285,7 @@ function EntryDetailContent() {
     const storySecondaryLabel = shouldOpenInterviewDeck
         ? 'Practice Story'
         : isImportedEntry
-            ? 'Open Bring In'
+            ? 'Open Import'
             : 'Open Story Check';
     const storyMessage = storySignal
         ? storySignal.status === 'verified'

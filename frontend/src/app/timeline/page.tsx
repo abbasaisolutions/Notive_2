@@ -2847,7 +2847,7 @@ function TimelinePageContent() {
                             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 md:px-6 [&::-webkit-details-marker]:hidden">
                                 <span>
                                     <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-primary">Story arc available</span>
-                                    <span className="mt-1 block text-sm text-ink-secondary">Open this optional read when you want a larger pattern view.</span>
+                                    <span className="mt-1 block text-sm text-ink-secondary">A larger pattern view across these entries.</span>
                                 </span>
                                 <span className="text-xs font-semibold uppercase tracking-[0.1em] text-primary">
                                     <span className="group-open:hidden">Open</span>
@@ -2933,7 +2933,7 @@ function TimelinePageContent() {
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
                             <span>
                                 <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Topics and filters</span>
-                                <span className="mt-1 block text-sm text-ink-secondary">Keep the memory stream first; open topics when you want to narrow it.</span>
+                                <span className="mt-1 block text-sm text-ink-secondary">Narrow the stream by topic.</span>
                             </span>
                             <span className="text-xs font-semibold uppercase tracking-[0.1em] text-primary">
                                 <span className="group-open:hidden">Open</span>

@@ -93,19 +93,19 @@ export default function AdminPerformanceOverview({
     const notePopulation = Math.max(overview.population.usersWithNotes, 1);
     const dashboardMeters = [
         {
-            label: 'Writer DNA',
+            label: 'Writing style',
             value: percent(overview.dashboard.writerDnaReady, notePopulation),
             caption: `${overview.dashboard.writerDnaReady} note-holding users have enough writing for the first identity layer.`,
             gradient: 'linear-gradient(90deg, rgba(199,220,203,0.9), rgba(153, 211, 186, 0.8))',
         },
         {
-            label: 'Fingerprint',
+            label: 'Mood map',
             value: percent(overview.dashboard.emotionalFingerprintReady, notePopulation),
             caption: `${overview.dashboard.emotionalFingerprintReady} users can unlock a stronger emotion map.`,
             gradient: 'linear-gradient(90deg, rgba(216,199,232,0.88), rgba(187, 160, 218, 0.78))',
         },
         {
-            label: 'Prime Time',
+            label: 'When they write',
             value: percent(overview.dashboard.primeTimeReady, notePopulation),
             caption: `${overview.dashboard.primeTimeReady} users have enough notes for timing-based rhythm cards.`,
             gradient: 'linear-gradient(90deg, rgba(191,214,221,0.88), rgba(130, 181, 196, 0.78))',

@@ -125,7 +125,7 @@ export function PrivacySection({
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Data</p>
                         <h2 className="workspace-heading mt-2 text-2xl font-serif">See and control saved answers</h2>
                         <p className="mt-2 text-sm text-ink-secondary">
-                            See what Notive remembers to personalize prompts. You can change how often it asks questions, remove answers, or export your data.
+                            The answers used to personalize your prompts. Change how often questions appear, remove answers, or export your data.
                         </p>
                     </div>
 
@@ -136,17 +136,17 @@ export function PrivacySection({
                             onChange={(value) => onPromptFrequencyChange(value as PromptFrequency)}
                             options={PROMPT_FREQUENCY_OPTIONS}
                             emptyLabel="Normal"
-                            helper="This changes how often Notive asks short setup questions."
+                            helper="How often short setup questions appear."
                         />
                         <div className="workspace-soft-panel rounded-card-140 p-5">
                             <div className="flex items-start justify-between gap-4">
                                 <div>
-                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Daily Gentle Reflections</p>
+                                    <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Daily Reflections</p>
                                     <p className="mt-2 text-lg font-semibold text-[rgb(var(--text-primary))]">
                                         {dailyGentleReflectionsEnabled ? 'On' : 'Off'}
                                     </p>
                                     <p className="mt-2 text-sm leading-7 text-ink-secondary">
-                                        Warm, optional journal nudges on the dashboard. This build uses recent notes, moods, and resurfaced journal themes only.
+                                        An optional daily prompt on the dashboard, built from your recent notes, moods, and themes.
                                     </p>
                                 </div>
                                 <button
@@ -171,7 +171,7 @@ export function PrivacySection({
                             <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">Saved Answers</p>
                             <p className="workspace-heading mt-2 text-3xl font-serif">{signalEntries.length}</p>
                             <p className="mt-1 text-sm text-ink-secondary">
-                                Answers Notive uses to fit prompts and help.
+                                Answers used to personalize your prompts.
                             </p>
                         </div>
                     </div>
@@ -249,7 +249,7 @@ export function PrivacySection({
                                         onChange={(value) => onTrustedContactDraftChange({ channel: value as TrustedContactDraft['channel'] })}
                                         options={TRUSTED_CONTACT_CHANNEL_OPTIONS}
                                         emptyLabel="Text"
-                                        helper="Notive uses this to suggest the best way to reach out."
+                                        helper="Used when suggesting how to reach out."
                                     />
                                     <TextField
                                         label="Context note"
@@ -496,10 +496,10 @@ export function PrivacySection({
                                 Saved answers, question history, and question frequency are stored in your settings.
                             </div>
                             <div className="workspace-soft-panel rounded-2xl p-4">
-                                These answers affect prompts, tone, and how Notive helps you.
+                                These answers shape your prompts and their tone.
                             </div>
                             <div className="workspace-soft-panel rounded-2xl p-4">
-                                Removing an answer stops Notive from using it going forward.
+                                Removing an answer stops it from being used going forward.
                             </div>
                             <div className="rounded-2xl border border-amber-300/20 bg-amber-200/[0.06] p-4">
                                 Pinned anchors, trusted contacts, and safety-region choices are different from saved prompt answers. They act like a manual fallback for support suggestions and safety handoffs.
@@ -666,7 +666,7 @@ export function PrivacySection({
                                     <FiLink size={16} aria-hidden="true" />
                                 </div>
                                 <div>
-                                    <p className="workspace-heading text-sm font-semibold">Manage Bring In</p>
+                                    <p className="workspace-heading text-sm font-semibold">Manage imports</p>
                                     <p className="text-xs text-ink-secondary">Review connected sources and import choices.</p>
                                 </div>
                             </div>
@@ -683,7 +683,7 @@ export function PrivacySection({
                                 </div>
                                 <div>
                                     <p className="workspace-heading text-sm font-semibold">Open security</p>
-                                    <p className="text-xs text-ink-secondary">Go to the place for sign-in, password, and account access changes.</p>
+                                    <p className="text-xs text-ink-secondary">Sign-in, password, and account access changes.</p>
                                 </div>
                             </div>
                             <FiExternalLink size={16} aria-hidden="true" className="text-ink-muted" />
@@ -701,9 +701,9 @@ export function PrivacySection({
             <section className="workspace-panel rounded-card-200 p-8 space-y-6">
                 <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Device Context</p>
-                    <h2 className="workspace-heading mt-2 text-2xl font-serif">What Notive notices</h2>
+                    <h2 className="workspace-heading mt-2 text-2xl font-serif">Context signals</h2>
                     <p className="mt-2 text-sm text-ink-secondary">
-                        These signals enrich your insights — where you write, what you listen to, how your day felt. Nothing is shared.
+                        Where you write, what you listen to, how your day felt. Used only to enrich your insights — nothing is shared.
                     </p>
                 </div>
 

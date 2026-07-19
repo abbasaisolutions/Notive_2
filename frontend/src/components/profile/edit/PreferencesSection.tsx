@@ -86,11 +86,11 @@ export function PreferencesSection({
                             helper="Choose the writing style that feels easiest for you."
                         />
                         <SelectField
-                            label="Bring In help"
+                            label="Import help"
                             value={draft.importPreference}
                             onChange={(value) => onChange((current) => ({ ...current, importPreference: value }))}
                             options={IMPORT_PREFERENCE_OPTIONS}
-                            helper="Choose how much help you want when bringing in old posts or files."
+                            helper="How much help you want when importing old posts or files."
                         />
                         <div className="md:col-span-2">
                             <TagInput

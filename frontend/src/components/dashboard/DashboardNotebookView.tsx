@@ -1384,13 +1384,13 @@ function DashboardNotebookViewFull({
 
             <DisclosureSection
                 label="Suggested focus"
-                description="More guidance for today, when you want it."
+                description="More guidance for today."
             >
                 {heroContent}
             </DisclosureSection>
 
             <DisclosureSection
-                label="Use outside Notive"
+                label="Stories"
                 description="Turn saved memories into story, resume, or interview material."
                 className="border-[rgba(216,199,232,0.22)] bg-[rgba(255,255,255,0.34)]"
             >
@@ -1408,12 +1408,12 @@ function DashboardNotebookViewFull({
                                     </div>
                                 )) : (
                                     <div className="col-span-4 rounded-[0.8rem] border border-[rgba(92,92,92,0.1)] bg-[rgba(255,255,255,0.42)] px-3 py-2 text-[0.72rem] leading-5 text-[rgb(var(--text-soft))]">
-                                        Keep writing privately. Useful outside material appears after the notebook has enough context.
+                                        Outside material appears once the notebook has enough context.
                                     </div>
                                 )}
                             </div>
                             <Link href={portfolioHref} className="mt-3 inline-flex rounded-xl border border-[rgba(92,92,92,0.14)] bg-[rgba(255,255,255,0.46)] px-3 py-2 text-[0.76rem] font-semibold text-[rgb(var(--paper-ink))] transition-colors hover:bg-[rgba(255,255,255,0.72)]">
-                                Open Story Seeds →
+                                Open Stories →
                             </Link>
                         </div>
                     </div>
@@ -1431,7 +1431,7 @@ function DashboardNotebookViewFull({
 
             <DisclosureSection
                 label="Advanced insights"
-                description="Stats and pattern details, when you want a deeper read."
+                description="Stats and pattern details."
                 className="border-[rgba(92,92,92,0.12)] bg-[rgba(255,255,255,0.42)]"
             >
                 <div className="space-y-3">
@@ -2132,7 +2132,7 @@ function DashboardNotebookViewFull({
             {dashboardInsights?.emotionalFingerprint && dashboardInsights.emotionalFingerprint.axes.length > 0 && (
                 <div className="app-paper-soft rounded-card-110 px-3 pt-3 pb-2.5">
                     <div className="flex items-baseline justify-between">
-                        <p className="section-label">Emotional fingerprint</p>
+                        <p className="section-label">Mood map</p>
                         <span className="text-[0.62rem] text-[rgb(170,170,170)] uppercase tracking-wider">frequency</span>
                     </div>
                     <div className="mt-2 space-y-[0.35rem]">

@@ -78,9 +78,9 @@ export function SecuritySection({
                 <div className="workspace-panel rounded-card-200 p-8 space-y-6">
                     <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-muted font-bold">Security</p>
-                        <h2 className="workspace-heading mt-2 text-2xl font-serif">Check your account before big changes</h2>
+                        <h2 className="workspace-heading mt-2 text-2xl font-serif">Confirm it&rsquo;s you</h2>
                         <p className="mt-2 text-sm text-ink-secondary">
-                            Sign-in email, password changes, and delete account tools are locked until you verify again.
+                            Changing your email or password, or deleting your account, requires a fresh verification.
                         </p>
                     </div>
 
@@ -91,7 +91,7 @@ export function SecuritySection({
                                 <p className="mt-1 text-xs text-ink-secondary">
                                     {isSensitiveUnlocked
                                         ? `Unlocked until ${formatExpiry(sensitiveSessionExpiresAt)}`
-                                        : 'Unlock this section before changing sign-in details or deleting the account.'}
+                                        : 'Confirm it’s you to change email, password, or delete your account.'}
                                 </p>
                             </div>
                             <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${
@@ -111,7 +111,6 @@ export function SecuritySection({
                                     value={reauthPassword}
                                     onChange={onReauthPasswordChange}
                                     placeholder="Enter your current password"
-                                    helper="We only use this to unlock sensitive account changes for a short time."
                                 />
                                 <button
                                     type="button"
@@ -150,9 +149,9 @@ export function SecuritySection({
                             <FiShield size={16} aria-hidden="true" />
                         </div>
                         <div>
-                            <h3 className="workspace-heading text-xl font-serif">Why this matters</h3>
+                            <h3 className="workspace-heading text-xl font-serif">What to expect</h3>
                             <p className="mt-2 text-sm text-ink-secondary">
-                                Basic profile details can stay fast. Sign-in email, passwords, and deletion now require a second verification step.
+                                Email, password, and deletion changes require a second verification step.
                             </p>
                         </div>
                     </div>
@@ -230,8 +229,8 @@ export function SecuritySection({
                         </h3>
                         <p className="mt-2 text-sm text-ink-secondary">
                             {hasPassword
-                                ? 'Use the unlocked session to update your password without mixing it into ordinary profile edits.'
-                                : 'If you signed up with Google, you can add a local password after re-verifying your identity.'}
+                                ? 'Your password changes here, separate from profile edits.'
+                                : 'If you signed up with Google, you can add a password after verifying your identity.'}
                         </p>
                     </div>
 

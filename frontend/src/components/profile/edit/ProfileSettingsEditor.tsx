@@ -451,7 +451,7 @@ export function ProfileSettingsEditor() {
     const activeTabDescription = activeTab === 'profile'
         ? 'Update your photo, name, bio, and the basic details that identify this notebook.'
         : activeTab === 'preferences'
-            ? 'Tune goals, prompts, and guidance so Notive helps in a way that fits.'
+            ? 'Tune your goals, prompts, and guidance.'
             : activeTab === 'security'
                 ? 'Handle sign-in email, password, and protected account actions in one place.'
                 : activeTab === 'reminders'
@@ -1190,7 +1190,7 @@ export function ProfileSettingsEditor() {
             setReauthPassword('');
             setNotice({
                 type: 'success',
-                text: 'Sensitive account changes unlocked for a short time.',
+                text: 'Confirmed — you can make account changes now.',
             });
         } catch (error: any) {
             setNotice({
@@ -1204,7 +1204,7 @@ export function ProfileSettingsEditor() {
 
     const handleUnlockSecurityWithPassword = useCallback(async () => {
         if (!reauthPassword) {
-            setNotice({ type: 'error', text: 'Enter your current password to unlock security changes.' });
+            setNotice({ type: 'error', text: 'Enter your current password to continue.' });
             return;
         }
 
@@ -1230,7 +1230,7 @@ export function ProfileSettingsEditor() {
         const normalizedConfirmEmail = confirmSignInEmailDraft.trim().toLowerCase();
 
         if (!hasUnlockedSensitiveActions) {
-            setNotice({ type: 'error', text: 'Unlock security changes before updating your sign-in email.' });
+            setNotice({ type: 'error', text: 'Confirm it’s you before updating your sign-in email.' });
             return;
         }
 
@@ -1291,7 +1291,7 @@ export function ProfileSettingsEditor() {
 
     const handleChangePassword = async () => {
         if (!hasUnlockedSensitiveActions) {
-            setNotice({ type: 'error', text: 'Unlock security changes before updating your password.' });
+            setNotice({ type: 'error', text: 'Confirm it’s you before updating your password.' });
             return;
         }
 
@@ -1348,7 +1348,7 @@ export function ProfileSettingsEditor() {
         const normalizedCurrentEmail = (savedProfileDraft.email || user?.email || '').trim().toLowerCase();
 
         if (!hasUnlockedSensitiveActions) {
-            setNotice({ type: 'error', text: 'Unlock security changes before deleting your account.' });
+            setNotice({ type: 'error', text: 'Confirm it’s you before deleting your account.' });
             return;
         }
 

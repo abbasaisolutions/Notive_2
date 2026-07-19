@@ -130,7 +130,7 @@ export default function PrimeTimePrediction({ entries }: PrimeTimePredictionProp
                 className="section-label mb-3"
                 style={{ fontStyle: 'italic', fontFamily: 'var(--font-serif, Georgia, serif)' }}
             >
-                Your prime time
+                When you write
             </p>
 
             {/* Heat strip grid */}

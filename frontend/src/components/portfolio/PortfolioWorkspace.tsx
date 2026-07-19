@@ -230,7 +230,7 @@ const storyUseCaseDescriptions: Record<StoryUseCase, string> = {
 
 const portfolioViewLabels: Record<PortfolioView, string> = {
     export: 'Resume & Statement',
-    evidence: 'Story Seeds',
+    evidence: 'Stories',
     interview: 'Interview',
     growth: 'Growth',
 };
@@ -1042,8 +1042,8 @@ export default function PortfolioWorkspace() {
     const nextAction = useMemo(() => {
         if (!overview || overview.experiences.length === 0) {
             return {
-                title: 'Capture your first story seed',
-                description: 'Start with one quick entry. Story Seeds get stronger once there is one concrete situation, action, and outcome to work from.',
+                title: 'Capture your first story',
+                description: 'Start with one quick entry. Stories get stronger once there is a concrete situation, action, and outcome to work from.',
                 actionLabel: 'Start Quick Capture',
                 actionHref: captureHref,
                 targetView: null as PortfolioView | null,
@@ -1055,7 +1055,7 @@ export default function PortfolioWorkspace() {
             return {
                 title: 'Tighten one unfinished story',
                 description: `${filterCounts.needs_attention} stor${filterCounts.needs_attention === 1 ? 'y needs' : 'ies need'} one clearer block before export or practice will feel useful.`,
-                actionLabel: 'Open Story Seeds',
+                actionLabel: 'Open Stories',
                 actionHref: null as string | null,
                 targetView: 'evidence' as PortfolioView,
                 targetExportType: null as DocumentExportType | null,
@@ -1804,10 +1804,10 @@ export default function PortfolioWorkspace() {
                 <EmptyState
                     doodle="ladder"
                     doodleAccent="apricot"
-                    title={hasPortfolioMaterial ? 'No story seeds in this lane yet' : 'Your first story seed starts with one memory'}
+                    title={hasPortfolioMaterial ? 'No stories in this lane yet' : 'Your first story starts with one memory'}
                     description={hasPortfolioMaterial
-                        ? 'Switch lanes or capture another memory to generate more story seeds.'
-                        : 'Save a moment with a situation, action, lesson, or outcome. Story Seeds will build from there.'}
+                        ? 'Switch lanes or capture another memory to build more stories.'
+                        : 'Save a moment with a situation, action, lesson, or outcome. Stories build from there.'}
                     actionLabel={hasPortfolioMaterial ? 'Add memory' : 'Start Quick Capture'}
                     actionHref={captureHref}
                 />
@@ -2001,7 +2001,7 @@ export default function PortfolioWorkspace() {
                 <EmptyState
                     title="No interview stories yet"
                     description="Check a few stronger stories and the interview workspace will build a focused STAR story set."
-                    actionLabel="Open Story Seeds"
+                    actionLabel="Open Stories"
                     actionHref={`${pathname}?view=evidence`}
                 />
             );
@@ -2978,7 +2978,7 @@ export default function PortfolioWorkspace() {
         },
         {
             id: 'evidence',
-            label: 'Story Seeds',
+            label: 'Stories',
             detail: 'Shape, review, use, save',
             icon: FiCheckCircle,
             active: activeView === 'evidence',

@@ -2651,7 +2651,7 @@ function NewEntryPageContent() {
                             },
                             {
                                 label: 'Ask about it',
-                                description: 'Use AskNotive to understand the note or find what keeps repeating.',
+                                description: 'Understand the note or find what keeps repeating.',
                                 onSelect: handleAskAboutSavedEntry,
                             },
                             {

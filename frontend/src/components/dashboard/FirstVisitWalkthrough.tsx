@@ -39,11 +39,11 @@ const STEPS: Step[] = [
     {
         doodle: 'see-my-growth',
         accent: 'lilac',
-        label: 'AskNotive',
+        label: 'Chat',
         title: 'Ask a better question',
-        body: 'Notive helps you understand a note, find the thread, name growth, or prepare outside material.',
+        body: 'Understand a note, find the thread, name growth, or turn a moment into material.',
         href: '/chat',
-        cta: 'Open AskNotive →',
+        cta: 'Open Chat →',
     },
 ];
 
@@ -79,7 +79,7 @@ export default function FirstVisitWalkthrough() {
                 >
                     <div className="flex items-start justify-between gap-3 mb-4">
                         <div>
-                            <p className="type-overline text-muted">What&apos;s in Notive</p>
+                            <p className="type-overline text-muted">Getting started</p>
                             <h2 className="notebook-title text-base mt-0.5">Three places to explore after your first note</h2>
                         </div>
                         <button

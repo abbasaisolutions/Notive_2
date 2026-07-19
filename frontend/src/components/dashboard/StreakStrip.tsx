@@ -28,7 +28,7 @@ function streakCopy(currentStreak: number, bestStreak?: number) {
     if (currentStreak >= 7) {
         return {
             kicker: `${currentStreak}-day streak`,
-            title: 'A full week of honesty with yourself.',
+            title: 'Seven days straight.',
             body: bestStreak && bestStreak > currentStreak
                 ? `Your best is ${bestStreak} days. You’re on the climb back.`
                 : 'Keep going — the patterns start sharpening from here.',
@@ -38,7 +38,7 @@ function streakCopy(currentStreak: number, bestStreak?: number) {
         return {
             kicker: `${currentStreak} days in a row`,
             title: 'You’ve got a rhythm going.',
-            body: 'A few more days and Notive starts pulling threads across your notes.',
+            body: 'Threads across your notes appear after a few more days.',
         };
     }
     return {

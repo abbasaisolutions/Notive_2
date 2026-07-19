@@ -367,7 +367,7 @@ export default function ChatPage() {
                             <FiArrowLeft size={20} aria-hidden="true" />
                         </button>
                         <div>
-                            <h1 className="text-lg font-semibold workspace-heading">AskNotive</h1>
+                            <h1 className="text-lg font-semibold workspace-heading">Chat</h1>
                             <p className="text-xs text-ink-muted">
                                 {coachAvailable ? NOTIVE_VOICE.chat.subtitle : 'Unavailable in this environment'}
                             </p>
@@ -379,7 +379,7 @@ export default function ChatPage() {
                     <details className="group rounded-2xl border border-[rgba(141,123,105,0.16)] bg-[rgba(255,255,255,0.03)]">
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
                             <span>
-                                <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Private mirror mode</span>
+                                <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Lens</span>
                                 <span className="mt-1 block text-sm text-ink-secondary">{selectedLensLabel}</span>
                             </span>
                             <span className="text-xs font-semibold uppercase tracking-[0.1em] text-primary">
@@ -390,10 +390,10 @@ export default function ChatPage() {
                     <AppPanel className="space-y-3 rounded-none border-t border-[rgba(141,123,105,0.14)]">
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                             <div className="min-w-0">
-                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Private mirror mode</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-ink-muted">Lens</p>
                                 <h2 className="workspace-heading mt-2 text-lg font-semibold">{selectedLensLabel}</h2>
                                 <p className="mt-1 text-sm leading-7 text-ink-secondary">
-                                    {activeGuidedLens?.description || 'Choose how you want Notive to read with you: understand the moment, find the thread, name growth, or prepare material for outside use.'}
+                                    {activeGuidedLens?.description || 'Choose a lens: understand the moment, find the thread, name growth, or turn it into material.'}
                                 </p>
                             </div>
                             <button
@@ -439,7 +439,7 @@ export default function ChatPage() {
                     <div className="space-y-4" aria-live="polite" aria-atomic="false" aria-label="Conversation">
                         {!coachAvailable && (
                             <div className="workspace-soft-panel rounded-2xl px-4 py-4 text-sm">
-                                <p className="font-medium workspace-heading">AskNotive is paused here.</p>
+                                <p className="font-medium workspace-heading">Chat is paused here.</p>
                                 <p className="mt-2 text-[rgb(var(--text-secondary))]">{coachMessage}</p>
                                 <p className="mt-2 text-[rgb(var(--text-secondary))]">You can still write entries, browse memories, and check patterns.</p>
                             </div>
@@ -450,9 +450,9 @@ export default function ChatPage() {
                                 <EmptyState
                                     doodle="compass"
                                     doodleAccent="sky"
-                                    title="Ask your private mirror"
+                                    title="Ask about your notes"
                                     description={coachAvailable
-                                        ? 'Start with a question about what a note means, what keeps repeating, or what you may want to use later.'
+                                        ? 'What a note means, what keeps repeating, or what to make of it.'
                                         : 'Come back when the guide is available.'}
                                     actionLabel={coachAvailable ? 'Write memory' : undefined}
                                     actionHref={coachAvailable ? '/entry/new?mode=quick' : undefined}

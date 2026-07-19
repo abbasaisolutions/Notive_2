@@ -88,7 +88,7 @@ export default function EmotionalFingerprint({ axes, summary }: EmotionalFingerp
                 className="section-label mb-1"
                 style={{ fontStyle: 'italic', fontFamily: 'var(--font-serif, Georgia, serif)' }}
             >
-                Emotional fingerprint
+                Mood map
             </p>
             <p className="notebook-muted text-xs mb-4">{summary}</p>
 

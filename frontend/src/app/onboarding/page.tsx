@@ -739,7 +739,7 @@ function OnboardingPageContent() {
                                 <span>
                                     Notes are encrypted and private to you.{' '}
                                     <Link href="/privacy" className="underline transition-opacity hover:opacity-70">
-                                        How Notive uses what you write
+                                        How your writing is used
                                     </Link>
                                 </span>
                             </p>

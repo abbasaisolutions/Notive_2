@@ -39,11 +39,11 @@ export const NOTIVE_VOICE = {
         homeBase: 'Today',
         memoryAtlas: 'Timeline',
         signalStudio: 'Patterns',
-        outcomeStudio: 'Story Seeds',
-        reflectionCoach: 'AskNotive',
+        outcomeStudio: 'Stories',
+        reflectionCoach: 'Chat',
         storyCollections: 'Threads',
-        memoryInbox: 'Bring In',
-        profileStudio: 'Me',
+        memoryInbox: 'Import',
+        profileStudio: 'Profile',
         admin: 'Manage',
     },
     home: {
@@ -92,23 +92,23 @@ export const NOTIVE_VOICE = {
         },
     },
     chat: {
-        subtitle: 'Talk with your private mirror about notes, threads, lessons, and what you may want to use later.',
+        subtitle: 'Ask about anything you have written.',
         suggestions: [
-            'Help me understand what I keep circling back to.',
-            'Find the thread underneath my recent notes.',
-            'Ask me a better question about this memory.',
-            'Turn this into something I can use outside Notive.',
+            'What do I keep coming back to?',
+            'Summarize this week.',
+            'What changed since last month?',
+            'Turn this into a resume bullet.',
         ],
         lenses: [
             {
                 id: 'memory' as NotiveChatLens,
                 label: 'Understand this',
-                description: 'Look closely at one note and what it may be trying to tell you.',
+                description: 'Read one note closely.',
             },
             {
                 id: 'patterns' as NotiveChatLens,
                 label: 'Find the thread',
-                description: 'Look across notes for repeated themes, moods, people, and unresolved loops.',
+                description: 'Look across notes for repeated themes, moods, and people.',
             },
             {
                 id: 'lessons' as NotiveChatLens,
@@ -117,25 +117,25 @@ export const NOTIVE_VOICE = {
             },
             {
                 id: 'stories' as NotiveChatLens,
-                label: 'Use outside Notive',
-                description: 'Turn private notes into story, resume, lesson, or shareable material only when you choose.',
+                label: 'Turn into material',
+                description: 'Turn a note into resume, story, or interview material.',
             },
         ],
     },
     dashboard: {
-        heroEyebrow: 'Capture -> Keep -> Understand -> Use',
-        heroTitle: 'Your latest memory already holds something useful.',
-        heroBody: 'Start with the moment you saved, then look for the lesson, skill, pattern, or story piece inside it.',
-        evidenceLabel: 'What this memory is showing',
-        actionLabel: 'Suggested reuse',
+        heroEyebrow: 'Latest note',
+        heroTitle: 'Pick up where you left off.',
+        heroBody: 'Your latest note, and what it holds.',
+        evidenceLabel: 'From this note',
+        actionLabel: 'Next step',
     },
     stories: {
-        title: 'Turn saved moments into story seeds you can use later.',
-        description: 'Build resume bullets, statements, interview stories, growth summaries, and reusable life evidence from your private diary.',
+        title: 'Turn saved moments into stories you can use.',
+        description: 'Resume bullets, statements, interview stories, and growth summaries — built from your notes.',
     },
     imports: {
-        title: 'Bring old memories into your diary system.',
-        description: 'Import posts, notes, and files so they can become useful memories, lessons, and stories too.',
+        title: 'Import old posts, notes, and files.',
+        description: 'Imported items join your timeline like any other note.',
     },
 } as const;
 

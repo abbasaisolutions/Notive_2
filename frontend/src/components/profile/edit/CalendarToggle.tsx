@@ -103,7 +103,7 @@ export default function CalendarToggle() {
                 <div className="flex-1">
                     <p className="text-sm font-semibold text-strong">Calendar connected</p>
                     <p className="mt-0.5 text-xs text-muted">
-                        Notive uses your upcoming events to ask better questions before they happen. Events are read-only and never uploaded.
+                        Upcoming events shape the questions you're asked. Events are read-only and never uploaded.
                     </p>
                 </div>
             </div>
