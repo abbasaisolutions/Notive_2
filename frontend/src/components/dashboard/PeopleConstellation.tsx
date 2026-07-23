@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { MOTION_DURATION } from '@/lib/motion';
 
 type PersonMention = {
     name: string;
@@ -114,7 +115,7 @@ export default function PeopleConstellation({ peopleMap }: PeopleConstellationPr
                             strokeDasharray="4 3"
                             initial={{ pathLength: 0 }}
                             animate={{ pathLength: 1 }}
-                            transition={{ delay: 0.3 + i * 0.05, duration: 0.4 }}
+                            transition={{ delay: 0.3 + Math.min(i * 0.05, 0.3), duration: MOTION_DURATION.slow }}
                         />
                     ))}
 
@@ -124,7 +125,7 @@ export default function PeopleConstellation({ peopleMap }: PeopleConstellationPr
                             key={star.name}
                             initial={{ scale: 0, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
-                            transition={{ delay: i * 0.06, type: 'spring', stiffness: 200 }}
+                            transition={{ delay: Math.min(i * 0.06, 0.3), type: 'spring', stiffness: 200 }}
                         >
                             {/* Glow */}
                             <circle

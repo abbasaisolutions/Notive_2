@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import { MOTION_DURATION, MOTION_EASE } from '@/lib/motion';
 
 type WritingVoice = {
     avgSentenceLength: number;
@@ -127,7 +128,7 @@ export default function WritingVoiceCard({ writingVoice, emotionalRange }: Writi
                                     style={{ backgroundColor: TENSE_COLORS[tense] }}
                                     initial={{ width: 0 }}
                                     animate={{ width: `${tenseDistribution[tense]}%` }}
-                                    transition={{ delay: index * 0.08, duration: 0.55, ease: 'easeOut' }}
+                                    transition={{ delay: Math.min(index * 0.08, 0.32), duration: MOTION_DURATION.slow, ease: MOTION_EASE.standard }}
                                 />
                             </div>
                         </div>
@@ -157,7 +158,7 @@ export default function WritingVoiceCard({ writingVoice, emotionalRange }: Writi
                             }}
                             initial={{ height: 0 }}
                             animate={{ height: `${Math.max(15, ef.percentage)}%` }}
-                            transition={{ delay: i * 0.04, duration: 0.5 }}
+                            transition={{ delay: Math.min(i * 0.04, 0.32), duration: MOTION_DURATION.slow }}
                             title={`${ef.emotion}: ${ef.percentage}%`}
                         />
                     ))}

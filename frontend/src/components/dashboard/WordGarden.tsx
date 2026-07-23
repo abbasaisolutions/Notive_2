@@ -120,7 +120,7 @@ export default function WordGarden({ vocabulary }: WordGardenProps) {
                                 key={w.word}
                                 initial={{ scale: 0, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
-                                transition={{ delay: i * 0.05, type: 'spring', stiffness: 180 }}
+                                transition={{ delay: Math.min(i * 0.05, 0.3), type: 'spring', stiffness: 180 }}
                             >
                                 {/* Stem */}
                                 <line

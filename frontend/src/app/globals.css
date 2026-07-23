@@ -7,7 +7,12 @@
      Policy: entrance animation belongs to the primary surface only
      (.stagger-child on the dashboard tabpanel); individual cards render
      instantly. Framer Motion is reserved for semantic motion: state change,
-     dismissal (exit), confirmation, and continuous ambient accents. */
+     dismissal (exit), confirmation, and continuous ambient accents.
+     Mirrored in JS as MOTION_DURATION/MOTION_EASE in src/lib/motion.ts —
+     keep both in sync, this is the single source of truth. --ease-notive
+     below is a separate, deliberately different "settle" curve used by a
+     few one-off CSS keyframes (page-turn, voice-record-bar, hover) — not
+     part of the entrance-budget policy, don't merge the two. */
   --motion-fast: 150ms;
   --motion-base: 240ms;
   --motion-slow: 360ms;
@@ -68,15 +73,12 @@
   --shadow-strong: 0 18px 42px rgba(92, 92, 92, 0.14);
 
   /*
-    Motion timing tokens. --ease-notive is the "settle" curve used for
-    entrances/exits across CSS keyframes and framer-motion transitions alike
-    (matches the values already hand-rolled at most framer-motion call sites);
-    --duration-* give a common scale for one-shot UI transitions.
+    --ease-notive is the "settle" curve used for entrances/exits across a
+    handful of one-off CSS keyframes (paper-page-turn, voice-record-bar,
+    hover transforms) — kept distinct from --motion-ease above, which is
+    scoped to the dashboard entrance-animation budget specifically.
   */
   --ease-notive: cubic-bezier(0.16, 1, 0.3, 1);
-  --duration-fast: 160ms;
-  --duration-base: 280ms;
-  --duration-slow: 420ms;
 
   /* Legacy aliases used by current components */
   --foreground: 58 58 58;
@@ -112,6 +114,14 @@
   --shell-bottom-gap: 4.75rem;
   --app-notification-surface-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   --app-notification-dialog-offset: 0px;
+
+  /* Canonical safe-area tokens — the single source of truth for system-bar
+     insets. Prefer the pt-safe-top/pb-safe-bottom/pl-safe-left/pr-safe-right
+     Tailwind utilities (tailwind.config.ts) over hand-rolled env() calls. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 @media (max-width: 1023px) {
@@ -765,7 +775,20 @@ html {
 
   .app-shell {
     padding-bottom: calc(var(--shell-bottom-gap) + env(safe-area-inset-bottom, 0px));
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
     isolation: isolate;
+  }
+
+  /* Sticky headers that pin to the viewport top need the status bar
+     inset added to their offset, or they render underneath it. */
+  .sticky-top-safe {
+    top: calc(var(--safe-top) + 1rem);
+  }
+  @media (min-width: 768px) {
+    .sticky-top-safe {
+      top: calc(var(--safe-top) + 1.5rem);
+    }
   }
 
   .spotlight-grid {
@@ -1914,6 +1937,8 @@ html {
 
   .app-shell {
     padding-bottom: calc(var(--shell-bottom-gap) + env(safe-area-inset-bottom, 0px));
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
   }
 }
 

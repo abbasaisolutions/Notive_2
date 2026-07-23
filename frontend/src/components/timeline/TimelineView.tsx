@@ -106,7 +106,7 @@ export default function TimelineView({
                             <div
                                 data-timeline-month-anchor={group.label}
                                 data-timeline-month-key={group.key}
-                                className="sticky top-4 z-20 mb-4 pl-11 md:top-6 md:mb-7 md:flex md:justify-center md:pl-0"
+                                className="sticky-top-safe sticky z-20 mb-4 pl-11 md:mb-7 md:flex md:justify-center md:pl-0"
                             >
                                 <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-[rgba(var(--paper-border),0.58)] bg-[rgba(var(--surface-2),0.82)] px-3.5 py-2 shadow-lg shadow-black/12 backdrop-blur-xl">
                                     <span className="text-xs font-semibold uppercase tracking-[0.18em] workspace-heading">

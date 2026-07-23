@@ -13,6 +13,7 @@ import { FiEdit3, FiMic, FiMoreHorizontal } from 'react-icons/fi';
 import { appendReturnTo, buildCurrentReturnTo } from '@/utils/navigation';
 import useHasMounted from '@/hooks/use-has-mounted';
 import UserAvatar from '@/components/ui/UserAvatar';
+import { MOTION_EASE } from '@/lib/motion';
 import {
     filterNavItemsByRole,
     filterNavSectionsByRole,
@@ -332,8 +333,12 @@ export default function MobileNav() {
             <nav
                 ref={navRef}
                 data-zen-fade
-                className="fixed left-2.5 right-2.5 z-50 lg:hidden"
-                style={{ bottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+                className="fixed z-50 lg:hidden"
+                style={{
+                    bottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+                    left: 'max(0.625rem, var(--safe-left))',
+                    right: 'max(0.625rem, var(--safe-right))',
+                }}
                 aria-label="Mobile navigation"
             >
                 <div className="glass-nav relative flex items-center justify-around rounded-card-200 px-2.5 py-2 shadow-2xl">
@@ -360,12 +365,15 @@ export default function MobileNav() {
                                         <div className="absolute inset-0 rounded-[inherit] bg-gradient-to-br from-white/30 via-transparent to-transparent opacity-80" />
                                         {/* Subtle inner ring */}
                                         <div className="absolute inset-[3px] rounded-card-130 border border-white/15" />
-                                        {/* Breathing glow ring */}
+                                        {/* Breathing glow ring — pulses a couple of times on mount, then
+                                            rests. Was repeat: Infinity, an always-on tween for the whole
+                                            session; motion budget policy reserves continuous animation for
+                                            semantic state, not ambient decoration. */}
                                         {!prefersReducedMotion && (
                                             <motion.div
                                                 className="absolute -inset-1 rounded-card-200 border-2 border-[#A3B87F]/40"
                                                 animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0.15, 0.5] }}
-                                                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                                                transition={{ duration: 3, repeat: 2, ease: MOTION_EASE.standard }}
                                             />
                                         )}
 

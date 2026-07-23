@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { normalizeLifeBalanceAreaKey } from './life-balance';
+import { MOTION_DURATION } from '@/lib/motion';
 
 type LifeBalanceArea = {
     area: string;
@@ -156,7 +157,7 @@ export default function LifeBalanceWheel({ lifeBalance }: LifeBalanceWheelProps)
                                 strokeWidth="1.5"
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
-                                transition={{ delay: i * 0.06 }}
+                                transition={{ delay: Math.min(i * 0.06, 0.3), duration: MOTION_DURATION.base }}
                             />
                             {/* Label */}
                             <text

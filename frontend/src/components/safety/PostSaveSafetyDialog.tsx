@@ -50,7 +50,7 @@ export default function PostSaveSafetyDialog({ risk, safetyCard, onContinue }: P
             role="dialog"
             aria-modal="true"
             aria-labelledby="post-save-safety-headline"
-            className="fixed inset-0 z-[100] flex items-end justify-center bg-[rgba(20,18,14,0.4)] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-8 backdrop-blur-sm sm:items-center sm:pb-8"
+            className="fixed inset-0 z-[100] flex items-end justify-center bg-[rgba(20,18,14,0.4)] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(2rem,calc(env(safe-area-inset-top,0px)+1rem))] backdrop-blur-sm sm:items-center sm:pb-8"
         >
             <div
                 className={`notebook-card-soft relative w-full max-w-md overflow-hidden rounded-3xl border-2 ${accentBorder} p-5 shadow-2xl`}

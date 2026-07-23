@@ -115,7 +115,10 @@ export default function EntryTopBar({
 
     return (
         <>
-            <div className="sticky top-3 z-20 mb-3 rounded-2xl workspace-soft-panel backdrop-blur-xl px-3 py-2.5 shadow-xl">
+            <div
+                className="sticky z-20 mb-3 rounded-2xl workspace-soft-panel backdrop-blur-xl px-3 py-2.5 shadow-xl"
+                style={{ top: 'calc(var(--safe-top) + 0.75rem)' }}
+            >
                 <div className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-2">
                         <button

@@ -8,6 +8,14 @@ const config: Config = {
     ],
     theme: {
         extend: {
+            spacing: {
+                // Canonical safe-area utilities (globals.css --safe-*) — use
+                // these instead of hand-rolled env(safe-area-inset-*) style props.
+                'safe-top': 'var(--safe-top)',
+                'safe-bottom': 'var(--safe-bottom)',
+                'safe-left': 'var(--safe-left)',
+                'safe-right': 'var(--safe-right)',
+            },
             fontFamily: {
                 sans: ["var(--font-sans)", "sans-serif"],
                 serif: ["var(--font-serif)", "serif"],
