@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import type { StudentRisk, StudentSafetyCard } from '@/components/action/types';
+import { useDialogA11y } from '@/components/ui/use-dialog-a11y';
 
 export { SAFETY_ALERTS_PREF_KEY, isSafetyAlertsEnabled } from '@/utils/safety-alerts';
 
@@ -12,18 +13,15 @@ type PostSaveSafetyDialogProps = {
 };
 
 export default function PostSaveSafetyDialog({ risk, safetyCard, onContinue }: PostSaveSafetyDialogProps) {
+    const containerRef = useDialogA11y(true, onContinue);
+
     useEffect(() => {
-        const handleKey = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') onContinue();
-        };
-        window.addEventListener('keydown', handleKey);
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         return () => {
-            window.removeEventListener('keydown', handleKey);
             document.body.style.overflow = previousOverflow;
         };
-    }, [onContinue]);
+    }, []);
 
     if (risk.level === 'none') return null;
 
@@ -53,6 +51,7 @@ export default function PostSaveSafetyDialog({ risk, safetyCard, onContinue }: P
             className="fixed inset-0 z-[100] flex items-end justify-center bg-[rgba(20,18,14,0.4)] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(2rem,calc(env(safe-area-inset-top,0px)+1rem))] backdrop-blur-sm sm:items-center sm:pb-8"
         >
             <div
+                ref={containerRef}
                 className={`notebook-card-soft relative w-full max-w-md overflow-hidden rounded-3xl border-2 ${accentBorder} p-5 shadow-2xl`}
             >
                 <p

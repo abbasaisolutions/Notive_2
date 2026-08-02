@@ -4,7 +4,39 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CHECKIN_MOODS, MOOD_EMOJIS } from '@/constants/moods';
 import { useToast } from '@/context/toast-context';
+import { useAuth } from '@/context/auth-context';
 import { useChipScroller } from '@/hooks/use-chip-scroller';
+
+const getCheckInDraftKey = (userId: string) => `notive_checkin_draft_${userId}`;
+
+type CheckInDraft = { mood: string; note: string };
+
+const loadCheckInDraft = (userId: string | undefined): CheckInDraft | null => {
+    if (!userId || typeof window === 'undefined') return null;
+    try {
+        const raw = localStorage.getItem(getCheckInDraftKey(userId));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as Partial<CheckInDraft>;
+        if (typeof parsed?.mood !== 'string') return null;
+        return { mood: parsed.mood, note: typeof parsed.note === 'string' ? parsed.note : '' };
+    } catch {
+        return null;
+    }
+};
+
+const saveCheckInDraft = (userId: string | undefined, draft: CheckInDraft): void => {
+    if (!userId || typeof window === 'undefined') return;
+    try {
+        localStorage.setItem(getCheckInDraftKey(userId), JSON.stringify(draft));
+    } catch {
+        // Best-effort only — a full localStorage quota shouldn't block check-in.
+    }
+};
+
+const clearCheckInDraft = (userId: string | undefined): void => {
+    if (!userId || typeof window === 'undefined') return;
+    localStorage.removeItem(getCheckInDraftKey(userId));
+};
 
 const QUICK_MOODS = CHECKIN_MOODS;
 
@@ -17,12 +49,14 @@ interface DailyCheckInProps {
 }
 
 export default function DailyCheckIn({ hasCheckedInToday, todayMood = null, onSubmit }: DailyCheckInProps) {
+    const { user } = useAuth();
     const [state, setState] = useState<CheckInState>(hasCheckedInToday ? 'done' : 'idle');
     const [selectedMood, setSelectedMood] = useState<string | null>(null);
     const [note, setNote] = useState('');
     const [error, setError] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const hasAttemptedRestore = useRef(false);
     const toast = useToast();
     const { containerRef: moodRowRef, registerItem: registerMoodChip } = useChipScroller(selectedMood);
 
@@ -30,14 +64,33 @@ export default function DailyCheckIn({ hasCheckedInToday, todayMood = null, onSu
         if (hasCheckedInToday) {
             setState('done');
             setError(null);
+            clearCheckInDraft(user?.id);
             return;
+        }
+
+        if (!hasAttemptedRestore.current) {
+            hasAttemptedRestore.current = true;
+            const draft = loadCheckInDraft(user?.id);
+            if (draft) {
+                setSelectedMood(draft.mood);
+                setNote(draft.note);
+                setState(draft.note ? 'writing' : 'selected');
+                setError(null);
+                return;
+            }
         }
 
         setState((current) => (current === 'done' ? 'idle' : current));
         setSelectedMood(null);
         setNote('');
         setError(null);
-    }, [hasCheckedInToday]);
+    }, [hasCheckedInToday, user?.id]);
+
+    useEffect(() => {
+        if (!selectedMood) return;
+        if (state !== 'selected' && state !== 'writing') return;
+        saveCheckInDraft(user?.id, { mood: selectedMood, note });
+    }, [selectedMood, note, state, user?.id]);
 
     useEffect(() => () => {
         if (focusTimerRef.current) {
@@ -63,6 +116,7 @@ export default function DailyCheckIn({ hasCheckedInToday, todayMood = null, onSu
         try {
             await onSubmit(selectedMood, note.trim());
             setState('done');
+            clearCheckInDraft(user?.id);
             toast.success('Check-in saved', 'Your dashboard will start weaving this into today’s signals.');
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Couldn’t save your check-in. Please try again.';
@@ -70,7 +124,7 @@ export default function DailyCheckIn({ hasCheckedInToday, todayMood = null, onSu
             setState(note.trim() ? 'writing' : 'selected');
             toast.error('Couldn’t save check-in', message);
         }
-    }, [note, onSubmit, selectedMood, toast]);
+    }, [note, onSubmit, selectedMood, toast, user?.id]);
 
     if (state === 'done') {
         const moodLabel = todayMood || selectedMood;

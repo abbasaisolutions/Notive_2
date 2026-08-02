@@ -21,6 +21,7 @@ import { ErrorState, Spinner } from '@/components/ui';
 import useApi from '@/hooks/use-api';
 import useAuthRedirect from '@/hooks/use-auth-redirect';
 import { appendReturnTo } from '@/utils/navigation';
+import { sanitizeReturnTo } from '@/utils/redirect';
 
 type EvidenceField = 'situation' | 'action' | 'lesson' | 'outcome' | 'skills';
 type EvidenceCompleteness = {
@@ -184,7 +185,7 @@ export default function PortfolioStoryView() {
     const [error, setError] = useState('');
 
     const entryId = params.get('id') || '';
-    const returnTo = params.get('returnTo') || '/portfolio?view=evidence';
+    const returnTo = sanitizeReturnTo(params.get('returnTo')) || '/portfolio?view=evidence';
     const story = useMemo(() => overview?.experiences.find((item) => item.entryId === entryId) || null, [entryId, overview]);
     const interviewStory = useMemo(
         () => overview?.interviewStories.find((item) => item.entryId === entryId) || null,

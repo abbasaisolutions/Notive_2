@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { useGamification } from '@/context/gamification-context';
 import { FiAward, FiTrendingUp } from 'react-icons/fi';
+import { hapticSuccess } from '@/services/haptics.service';
 
 const AUTO_DISMISS_MS = 4000;
 
@@ -15,6 +16,7 @@ export default function CelebrationModal() {
 
     useEffect(() => {
         if (!showCelebration) return;
+        hapticSuccess();
         const timer = window.setTimeout(dismissCelebration, AUTO_DISMISS_MS);
         return () => window.clearTimeout(timer);
     }, [showCelebration, dismissCelebration]);

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React from 'react';
 import type { IconType } from 'react-icons';
 import { FiCalendar, FiCheckSquare, FiEdit3, FiHeart, FiMoon, FiMessageSquare, FiX } from 'react-icons/fi';
+import { useDialogA11y } from '@/components/ui/use-dialog-a11y';
 
 interface Template {
     id: string;
@@ -106,43 +107,7 @@ interface TemplatesModalProps {
 }
 
 export default function TemplatesModal({ isOpen, onClose, onSelect }: TemplatesModalProps) {
-    const dialogRef = useRef<HTMLDivElement>(null);
-    const previousFocusRef = useRef<HTMLElement | null>(null);
-
-    const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-            onClose();
-            return;
-        }
-        if (e.key !== 'Tab' || !dialogRef.current) return;
-        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-            'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
-        }
-    }, [onClose]);
-
-    useEffect(() => {
-        if (!isOpen) return;
-        previousFocusRef.current = document.activeElement as HTMLElement;
-        document.addEventListener('keydown', handleKeyDown);
-        const timer = setTimeout(() => {
-            dialogRef.current?.querySelector<HTMLElement>('button')?.focus();
-        }, 50);
-        return () => {
-            document.removeEventListener('keydown', handleKeyDown);
-            clearTimeout(timer);
-            previousFocusRef.current?.focus();
-        };
-    }, [isOpen, handleKeyDown]);
+    const dialogRef = useDialogA11y(isOpen, onClose);
 
     if (!isOpen) return null;
 
@@ -167,7 +132,7 @@ export default function TemplatesModal({ isOpen, onClose, onSelect }: TemplatesM
             >
                 <div className="flex items-center justify-between mb-6">
                     <h2 id="templates-modal-title" className="text-xl font-bold workspace-heading">Choose a Template</h2>
-                    <button onClick={onClose} aria-label="Close templates" className="p-2 rounded-lg text-ink-secondary hover:text-white hover:bg-white/10 transition-all">
+                    <button onClick={onClose} aria-label="Close templates" className="p-2 rounded-lg text-ink-secondary hover:text-primary hover:bg-primary/10 transition-all">
                         <FiX size={20} aria-hidden="true" />
                     </button>
                 </div>
@@ -180,12 +145,12 @@ export default function TemplatesModal({ isOpen, onClose, onSelect }: TemplatesM
                         <button
                             key={template.id}
                             onClick={() => handleSelect(template)}
-                            className="p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-left group"
+                            className="workspace-soft-panel p-4 rounded-xl hover:bg-primary/10 transition-all text-left group"
                         >
-                            <span className="mb-2 inline-flex rounded-lg bg-white/5 p-2 text-white">
+                            <span className="mb-2 inline-flex rounded-lg bg-primary/10 p-2 text-primary">
                                 <Icon size={22} aria-hidden="true" />
                             </span>
-                            <h3 className="text-white font-medium group-hover:text-primary transition-colors">{template.name}</h3>
+                            <h3 className="text-ink font-medium group-hover:text-primary transition-colors">{template.name}</h3>
                             <p className="text-ink-secondary text-sm">{template.description}</p>
                         </button>
                             );

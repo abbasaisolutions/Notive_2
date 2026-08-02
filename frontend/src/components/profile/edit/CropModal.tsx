@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Cropper, { Area } from 'react-easy-crop';
 import { FiCheck, FiX, FiZoomIn, FiZoomOut } from 'react-icons/fi';
+import { useDialogA11y } from '@/components/ui/use-dialog-a11y';
 
 type CropModalProps = {
     imageUrl: string;
@@ -16,6 +17,7 @@ export default function CropModal({ imageUrl, onConfirm, onCancel }: CropModalPr
     const [zoom, setZoom] = useState(1);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
     const [isMounted, setIsMounted] = useState(false);
+    const containerRef = useDialogA11y(true, onCancel);
 
     const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
         setCroppedAreaPixels(croppedPixels);
@@ -53,6 +55,10 @@ export default function CropModal({ imageUrl, onConfirm, onCancel }: CropModalPr
                 onClick={onCancel}
             >
                 <div
+                    ref={containerRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Crop photo"
                     className="relative flex h-[min(92vh,760px)] w-[min(100%,520px)] flex-col overflow-hidden rounded-card-180 shadow-2xl"
                     style={{ background: 'rgb(var(--paper-bg))' }}
                     onClick={(event) => event.stopPropagation()}

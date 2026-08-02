@@ -355,7 +355,7 @@ function EntryDetailContent() {
                         </Link>
                         <details className="relative">
                             <summary
-                                className="workspace-button-outline flex min-h-9 min-w-9 cursor-pointer list-none items-center justify-center rounded-full p-2 text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))] [&::-webkit-details-marker]:hidden"
+                                className="workspace-button-outline flex min-h-11 min-w-11 cursor-pointer list-none items-center justify-center rounded-full p-2 text-ink-secondary transition-colors hover:text-[rgb(var(--text-primary))] [&::-webkit-details-marker]:hidden"
                                 aria-label="More memory actions"
                                 title="More memory actions"
                             >

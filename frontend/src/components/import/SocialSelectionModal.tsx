@@ -8,6 +8,7 @@ import { FiCheck } from 'react-icons/fi';
 import { Spinner, EmptyState } from '@/components/ui';
 import { clipCompactPillByLimit, COMPACT_PILL_LIMITS } from '@/utils/tags';
 import { passthroughImageLoader } from '@/lib/image-loader';
+import { useDialogA11y } from '@/components/ui/use-dialog-a11y';
 
 interface ImportCandidate {
     id: string;
@@ -83,6 +84,7 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
     const [isLoading, setIsLoading] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const containerRef = useDialogA11y(isOpen, onClose);
 
     const providerName = provider === 'instagram' ? 'Instagram' : 'Facebook';
     const providerGradient = provider === 'instagram'
@@ -206,9 +208,9 @@ export function SocialSelectionModal({ isOpen, onClose, provider, onImportComple
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
                 onClick={onClose}
-                onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
             >
                 <motion.div
+                    ref={containerRef}
                     initial={{ opacity: 0, scale: 0.96, y: 14 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96, y: 10 }}

@@ -30,6 +30,8 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
+const MAX_VISIBLE_TOASTS = 4;
+
 /**
  * Toast Provider - manages global toast notifications
  */
@@ -48,7 +50,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             duration: toast.duration ?? 5000,
         };
 
-        setToasts(prev => [newToast, ...prev]);
+        setToasts(prev => [newToast, ...prev].slice(0, MAX_VISIBLE_TOASTS));
 
         // Auto-remove after duration (unless manually dismissed)
         if (newToast.duration && newToast.duration > 0) {
