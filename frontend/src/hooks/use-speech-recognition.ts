@@ -56,6 +56,12 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
     const nativeListenersRef = useRef<PluginListenerHandle[]>([]);
     const nativeInterimRef = useRef('');
     const nativeRestartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // The native plugin loads asynchronously (dynamic import + an available()
+    // bridge call). start() can be invoked before that resolves — e.g.
+    // auto-record kicks off recording just 150ms after the entry page mounts —
+    // so a start requested while the plugin is still loading is remembered
+    // here and honored as soon as it's ready, instead of being silently dropped.
+    const pendingNativeStartRef = useRef(false);
 
     useEffect(() => {
         callbacksRef.current = { onFinal, onInterim };
@@ -144,8 +150,21 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
     const stopNativeListening = useCallback(async () => {
         clearNativeRestartTimeout();
         await teardownNativeListeners();
+
+        // The Web Speech API finalizes whatever was captured so far when .stop()
+        // is called (that's how a quick, one-breath web dictation still ends up
+        // in `content`). The native Android plugin doesn't do this on its own —
+        // without flushing here, a short voice note stopped manually (before any
+        // natural mid-speech pause finalizes a segment) never reaches `onFinal`,
+        // so `content` stays empty and the auto-generated subject line never has
+        // anything to work with.
+        const finalText = nativeInterimRef.current.trim();
         nativeInterimRef.current = '';
         setInterimText('');
+        if (finalText) {
+            callbacksRef.current.onFinal?.(finalText);
+        }
+
         try {
             await nativePluginRef.current?.stop();
         } catch (e) {
@@ -162,7 +181,13 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
                     if (cancelled) return;
                     nativePluginRef.current = SpeechRecognition;
                     const { available } = await SpeechRecognition.available();
-                    if (!cancelled) setIsSupported(available);
+                    if (cancelled) return;
+                    setIsSupported(available);
+
+                    if (available && pendingNativeStartRef.current && listeningRef.current) {
+                        pendingNativeStartRef.current = false;
+                        void startNativeListening();
+                    }
                 } catch (e) {
                     if (!cancelled) setIsSupported(false);
                 }
@@ -268,14 +293,19 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
                 }
             }
         };
-    }, [language, interimResults, continuous, autoRestart, stopNativeListening]);
+    }, [language, interimResults, continuous, autoRestart, stopNativeListening, startNativeListening]);
 
     const start = useCallback(() => {
         if (isNativeAndroidRef.current) {
-            if (!nativePluginRef.current) return;
             setIsListening(true);
             listeningRef.current = true;
             setError(null);
+            if (!nativePluginRef.current) {
+                // Plugin hasn't finished its dynamic import + available() check yet —
+                // startNativeListening() runs once that resolves (see the effect above).
+                pendingNativeStartRef.current = true;
+                return;
+            }
             void startNativeListening();
             return;
         }
@@ -293,6 +323,7 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
 
     const stop = useCallback(() => {
         if (isNativeAndroidRef.current) {
+            pendingNativeStartRef.current = false;
             setIsListening(false);
             listeningRef.current = false;
             void stopNativeListening();
