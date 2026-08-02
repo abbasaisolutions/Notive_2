@@ -706,7 +706,8 @@ export class SocialImportService {
             });
 
             for (const filePath of jsonFiles) {
-                const json = this.safeJsonParse(fs.readFileSync(filePath, 'utf8'));
+                const fileContents = await fs.promises.readFile(filePath, 'utf8');
+                const json = this.safeJsonParse(fileContents);
                 if (!json) continue;
 
                 const extractedPosts = provider === 'INSTAGRAM'

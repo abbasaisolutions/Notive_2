@@ -493,6 +493,9 @@ model ShareLink {
   chapter   Chapter?  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   expiresAt DateTime?
   createdAt DateTime  @default(now())
+
+  @@index([entryId])
+  @@index([chapterId])
 }
 
 model SocialConnection {

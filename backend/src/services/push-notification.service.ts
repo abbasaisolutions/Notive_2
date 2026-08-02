@@ -254,6 +254,8 @@ export class PushNotificationService {
         let sent = 0;
         let failed = 0;
         const failedTokens: string[] = [];
+        const successfulTokenIds: string[] = [];
+        const deadTokenIds: string[] = [];
 
         for (const deviceToken of tokens) {
             try {
@@ -264,17 +266,15 @@ export class PushNotificationService {
                 }
 
                 sent++;
-                await this.prisma.deviceToken.update({
-                    where: { id: deviceToken.id },
-                    data: { lastUsedAt: new Date() },
-                });
+                successfulTokenIds.push(deviceToken.id);
             } catch (error: any) {
                 failed++;
                 failedTokens.push(deviceToken.id);
 
                 const errorCode: string = error?.errorInfo?.code ?? error?.code ?? '';
-                if (DEAD_TOKEN_CODES.has(errorCode)) {
-                    await this.markTokenInactive(deviceToken.id).catch(() => {});
+                const isDeadToken = DEAD_TOKEN_CODES.has(errorCode);
+                if (isDeadToken) {
+                    deadTokenIds.push(deviceToken.id);
                 }
 
                 serverLogger.warn('push.send_failed', {
@@ -284,9 +284,23 @@ export class PushNotificationService {
                     platform: deviceToken.platform,
                     errorCode: errorCode || undefined,
                     errorMessage: error?.message,
-                    markedInactive: DEAD_TOKEN_CODES.has(errorCode),
+                    markedInactive: isDeadToken,
                 });
             }
+        }
+
+        if (successfulTokenIds.length > 0) {
+            await this.prisma.deviceToken.updateMany({
+                where: { id: { in: successfulTokenIds } },
+                data: { lastUsedAt: new Date() },
+            }).catch(() => {});
+        }
+
+        if (deadTokenIds.length > 0) {
+            await this.prisma.deviceToken.updateMany({
+                where: { id: { in: deadTokenIds } },
+                data: { isActive: false },
+            }).catch(() => {});
         }
 
         if (sent > 0) {

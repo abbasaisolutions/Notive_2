@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import Link from "next/link";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth-context";
-import { SmartProvider } from "@/context/smart-context";
 import { GamificationProvider } from "@/context/gamification-context";
 import { ThemeProvider } from "@/context/theme-context";
 import { PushNotificationProvider } from "@/context/push-notification-context";
@@ -154,7 +153,6 @@ body:has(.app-shell) #notive-cold-shell{opacity:0}
                                 <ToastProvider>
                                     <PushNotificationProvider>
                                         <GamificationProvider>
-                                            <SmartProvider>
                                                 <OnboardingGuard />
                                                 <script
                                                     type="application/ld+json"
@@ -191,7 +189,6 @@ body:has(.app-shell) #notive-cold-shell{opacity:0}
                                                 <OfflineBanner />
                                                 <DeferredClientSystems />
                                                 <ToastContainer />
-                                            </SmartProvider>
                                         </GamificationProvider>
                                     </PushNotificationProvider>
                                 </ToastProvider>

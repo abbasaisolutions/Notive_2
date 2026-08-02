@@ -3,6 +3,7 @@ import { buildJournalIntelligence } from '../services/journal-intelligence.servi
 import { buildDashboardInsights } from '../services/dashboard-insights.service';
 import { fetchInsightInputs } from '../services/insight-inputs.service';
 import { applySurfaceFeedback } from '../services/insight-surface-feedback.service';
+import { getCachedJournalIntelligence, setCachedJournalIntelligence } from '../services/journal-intelligence-cache.service';
 
 /**
  * GET /api/v1/analytics/journal-intelligence
@@ -11,12 +12,18 @@ import { applySurfaceFeedback } from '../services/insight-surface-feedback.servi
  */
 export const getJournalIntelligence = async (req: Request, res: Response) => {
     try {
-        const userId = req.userId;
+        const userId = req.userId!;
         const days = Math.min(Number(req.query.days) || 90, 365);
+
+        const cached = await getCachedJournalIntelligence(userId, days);
+        if (cached) {
+            return res.json({ intelligence: cached });
+        }
+
         const since = new Date();
         since.setDate(since.getDate() - days);
 
-        const { entries, analyses } = await fetchInsightInputs(userId!, { since });
+        const { entries, analyses } = await fetchInsightInputs(userId, { since });
 
         if (entries.length < 3) {
             return res.json({
@@ -28,6 +35,7 @@ export const getJournalIntelligence = async (req: Request, res: Response) => {
         }
 
         const intelligence = buildJournalIntelligence(entries, analyses);
+        void setCachedJournalIntelligence(userId, days, intelligence);
 
         return res.json({ intelligence });
     } catch (error) {

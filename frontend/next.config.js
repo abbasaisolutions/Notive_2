@@ -19,6 +19,9 @@ const resolveProxyApiUrl = () => {
 
 const nextConfig = {
     ...(outputMode ? { output: outputMode } : {}),
+    experimental: {
+        optimizePackageImports: ['react-icons', 'framer-motion'],
+    },
     webpack(config) {
         config.resolve.alias = {
             ...config.resolve.alias,

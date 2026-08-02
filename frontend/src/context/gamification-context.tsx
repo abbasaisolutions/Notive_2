@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './auth-context';
 import useApi from '@/hooks/use-api';
 import { API_URL } from '@/constants/config';
@@ -207,19 +207,28 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
         setCelebrationType(null);
     }, []);
 
+    const value = useMemo(() => ({
+        stats,
+        isLoading,
+        newBadge,
+        showCelebration,
+        celebrationType,
+        dismissCelebration,
+        refreshStats,
+        awardXP,
+    }), [
+        stats,
+        isLoading,
+        newBadge,
+        showCelebration,
+        celebrationType,
+        dismissCelebration,
+        refreshStats,
+        awardXP,
+    ]);
+
     return (
-        <GamificationContext.Provider
-            value={{
-                stats,
-                isLoading,
-                newBadge,
-                showCelebration,
-                celebrationType,
-                dismissCelebration,
-                refreshStats,
-                awardXP,
-            }}
-        >
+        <GamificationContext.Provider value={value}>
             {children}
         </GamificationContext.Provider>
     );
