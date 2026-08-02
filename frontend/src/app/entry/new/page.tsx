@@ -14,6 +14,7 @@ import {
 } from '@/hooks/use-entry-draft';
 import useEntryAnalysis from '@/hooks/use-entry-analysis';
 import useContextNavigation from '@/hooks/use-context-navigation';
+import { markFirstMemorySatisfied } from '@/utils/first-memory-gate';
 import useSpeechRecognition from '@/hooks/use-speech-recognition';
 import useUploadQueue from '@/hooks/use-upload-queue';
 import useTelemetry from '@/hooks/use-telemetry';
@@ -1803,6 +1804,7 @@ function NewEntryPageContent() {
 
             const createdNewEntry = !entryId;
             const savedEntryId = data.entry?.id || entryId || null;
+            markFirstMemorySatisfied(user?.id);
             const savedEntryTitle = typeof data.entry?.title === 'string'
                 ? data.entry.title
                 : finalTitle;
